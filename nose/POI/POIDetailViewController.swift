@@ -47,6 +47,15 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
         ])
         
         // Add content to StackView
+        // Create the icon button
+        let iconButton = UIButton(type: .system)
+        iconButton.contentHorizontalAlignment = .right
+        iconButton.setImage(UIImage(systemName: "bookmark"), for: .normal) // Using SF Symbols
+        iconButton.tintColor = .systemBlue
+        iconButton.translatesAutoresizingMaskIntoConstraints = false
+        iconButton.addTarget(self, action: #selector(iconButtonTapped), for: .touchUpInside)
+        stackView.addArrangedSubview(iconButton)
+        
         let nameLabel = UILabel()
         nameLabel.text = placeName
         nameLabel.textAlignment = .left
@@ -89,14 +98,6 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
         openingHoursLabel.numberOfLines = 0
         openingHoursLabel.translatesAutoresizingMaskIntoConstraints = false
         stackView.addArrangedSubview(openingHoursLabel)
-
-        // Create the icon button
-        let iconButton = UIButton(type: .system)
-        iconButton.setImage(UIImage(systemName: "star.fill"), for: .normal) // Using SF Symbols
-        iconButton.tintColor = .systemBlue
-        iconButton.translatesAutoresizingMaskIntoConstraints = false
-        iconButton.addTarget(self, action: #selector(iconButtonTapped), for: .touchUpInside)
-        stackView.addArrangedSubview(iconButton)
         
         // Create the collection view layout
         let layout = UICollectionViewFlowLayout()
