@@ -20,7 +20,7 @@
                                 <rect key="frame" x="-30" y="-30" width="453" height="912"/>
                             </imageView>
                             <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" misplaced="YES" image="Logo" translatesAutoresizingMaskIntoConstraints="NO" id="G43-zA-6SF">
-                                <rect key="frame" x="66" y="335" width="260" height="137"/>
+                                <rect key="frame" x="122" y="365" width="149" height="122"/>
                             </imageView>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
