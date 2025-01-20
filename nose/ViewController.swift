@@ -3,15 +3,15 @@ import GoogleMaps
 import GooglePlaces
 import CoreLocation
 
-class ViewController: UIViewController, UISearchBarDelegate, CLLocationManagerDelegate {
-
+class ViewController: UIViewController, UISearchBarDelegate, GMSMapViewDelegate, CLLocationManagerDelegate {
+    
     var mapView: GMSMapView!
     var locationManager = CLLocationManager()
     var placesClient: GMSPlacesClient!
 
     override func viewDidLoad() {
         super.viewDidLoad()
-
+                
         // Initialize Google Places Client
         placesClient = GMSPlacesClient.shared()
 
@@ -20,6 +20,7 @@ class ViewController: UIViewController, UISearchBarDelegate, CLLocationManagerDe
         mapView = GMSMapView(frame: self.view.bounds, camera: camera)
         mapView.settings.myLocationButton = true  // Show "My Location" button
         mapView.isMyLocationEnabled = true        // Enable blue dot for user location
+        mapView.delegate = self                   // Set mapView delegate to self
         view.addSubview(mapView)
 
         // Setup Location Manager
@@ -86,6 +87,34 @@ class ViewController: UIViewController, UISearchBarDelegate, CLLocationManagerDe
     func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
         if status == .denied {
             print("Location access denied")
+        }
+    }
+
+    // Delegate method: Handle POI taps
+    func mapView(_ mapView: GMSMapView, didTapPOIWithPlaceID placeID: String, name: String, location: CLLocationCoordinate2D) {
+        print("POI Tapped: \(name), Place ID: \(placeID), Location: \(location)")
+
+        placesClient.lookUpPlaceID(placeID) { (place, error) in
+            if let error = error {
+                print("Error getting place details: \(error.localizedDescription)")
+                return
+            }
+
+            if let place = place {
+                let detailVC = POIDetailViewController()
+                detailVC.placeName = name
+                detailVC.placeID = placeID
+                detailVC.address = place.formattedAddress
+                detailVC.phoneNumber = place.phoneNumber
+                detailVC.website = place.website?.absoluteString
+                detailVC.rating = Double(place.rating)
+                detailVC.openingHours = place.openingHours?.weekdayText
+                detailVC.modalPresentationStyle = .pageSheet
+                if let sheet = detailVC.sheetPresentationController {
+                    sheet.detents = [.medium()]
+                }
+                self.present(detailVC, animated: true, completion: nil)
+            }
         }
     }
 }
