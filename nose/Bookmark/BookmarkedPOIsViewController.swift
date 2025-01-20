@@ -22,6 +22,15 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
 
         view.backgroundColor = .white
 
+        // Add navigation bar
+        let navBar = UINavigationBar()
+        navBar.translatesAutoresizingMaskIntoConstraints = false
+        let navItem = UINavigationItem(title: "Bookmark Lists")
+        let backItem = UIBarButtonItem(barButtonSystemItem: .close, target: self, action: #selector(backButtonTapped))
+        navItem.leftBarButtonItem = backItem
+        navBar.setItems([navItem], animated: false)
+        view.addSubview(navBar)
+        
         // Initialize the table view
         tableView = UITableView(frame: .zero, style: .plain)
         tableView.dataSource = self
@@ -45,9 +54,13 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
         
         // Set up constraints
         NSLayoutConstraint.activate([
+            navBar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            navBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            navBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            
+            tableView.topAnchor.constraint(equalTo: navBar.bottomAnchor),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            tableView.topAnchor.constraint(equalTo: view.topAnchor),
             tableView.bottomAnchor.constraint(equalTo: createListButton.topAnchor, constant: -10),
             
             createListButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
@@ -59,6 +72,10 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
         
         // Load bookmark lists
         bookmarkLists = BookmarksManager.shared.bookmarkLists
+    }
+
+    @objc func backButtonTapped() {
+        dismiss(animated: true, completion: nil)
     }
 
     @objc func createListButtonTapped() {
@@ -114,13 +131,11 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
         // Print confirmation
         print("Bookmarked POI: \(placeName) in list: \(selectedList.name)")
         
-        // Return to the home screen
         if let navigationController = navigationController {
             navigationController.popToRootViewController(animated: true)
         } else {
             dismiss(animated: true, completion: nil)
         }
-
     }
 
     // MARK: - UITableViewDataSource
@@ -130,9 +145,10 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "cell") ?? UITableViewCell(style: .default, reuseIdentifier: "cell")
+        let cell = tableView.dequeueReusableCell(withIdentifier: "cell") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "cell")
         let list = bookmarkLists[indexPath.row]
         cell.textLabel?.text = list.name
+        cell.detailTextLabel?.text = "\(list.bookmarks.count) POIs saved" // Show number of POIs saved
         
         // Add a checkmark to indicate the selected list
         cell.accessoryType = list == selectedBookmarkList ? .checkmark : .none
