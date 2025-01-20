@@ -1,6 +1,6 @@
 import UIKit
 
-class POIDetailViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
+class POIDetailViewController: UIViewController, UITableViewDelegate, UITableViewDataSource, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
 
     var placeName: String?
     var placeID: String?
@@ -9,8 +9,10 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
     var website: String?
     var rating: Double?
     var openingHours: [String]?
+    var photos: [UIImage] = [] // Array to hold POI photos
 
     var tableView: UITableView!
+    var collectionView: UICollectionView!
     var bookmarkLists: [BookmarkList] = []
 
     override func viewDidLoad() {
@@ -34,10 +36,11 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
         phoneLabel.textAlignment = .left
         phoneLabel.translatesAutoresizingMaskIntoConstraints = false
 
-        let websiteLabel = UILabel()
-        websiteLabel.attributedText = createAttributedTextWithIcon(text: website ?? "N/A", icon: UIImage(systemName: "globe"))
-        websiteLabel.textAlignment = .left
-        websiteLabel.translatesAutoresizingMaskIntoConstraints = false
+        let websiteButton = UIButton(type: .system)
+        websiteButton.setAttributedTitle(createAttributedTextWithIcon(text: website ?? "N/A", icon: UIImage(systemName: "globe")), for: .normal)
+        websiteButton.contentHorizontalAlignment = .left
+        websiteButton.translatesAutoresizingMaskIntoConstraints = false
+        websiteButton.addTarget(self, action: #selector(websiteButtonTapped), for: .touchUpInside)
 
         let ratingLabel = UILabel()
         ratingLabel.text = "Rating: \(rating != nil ? String(rating!) : "N/A")"
@@ -56,14 +59,28 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
         iconButton.tintColor = .systemBlue
         iconButton.translatesAutoresizingMaskIntoConstraints = false
         iconButton.addTarget(self, action: #selector(iconButtonTapped), for: .touchUpInside)
+        
+        // Create the collection view layout
+        let layout = UICollectionViewFlowLayout()
+        layout.itemSize = CGSize(width: 100, height: 100)
+        layout.scrollDirection = .horizontal
+        
+        // Initialize the collection view
+        collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
+        collectionView.dataSource = self
+        collectionView.delegate = self
+        collectionView.translatesAutoresizingMaskIntoConstraints = false
+        collectionView.register(PhotoCollectionViewCell.self, forCellWithReuseIdentifier: "PhotoCell")
+        collectionView.backgroundColor = .white
 
         view.addSubview(nameLabel)
         view.addSubview(addressLabel)
         view.addSubview(phoneLabel)
-        view.addSubview(websiteLabel)
+        view.addSubview(websiteButton)
         view.addSubview(ratingLabel)
         view.addSubview(openingHoursLabel)
         view.addSubview(iconButton)
+        view.addSubview(collectionView)
 
         NSLayoutConstraint.activate([
             nameLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
@@ -72,14 +89,18 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
             addressLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 10),
             phoneLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             phoneLabel.topAnchor.constraint(equalTo: addressLabel.bottomAnchor, constant: 10),
-            websiteLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            websiteLabel.topAnchor.constraint(equalTo: phoneLabel.bottomAnchor, constant: 10),
+            websiteButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            websiteButton.topAnchor.constraint(equalTo: phoneLabel.bottomAnchor, constant: 10),
             ratingLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            ratingLabel.topAnchor.constraint(equalTo: websiteLabel.bottomAnchor, constant: 10),
+            ratingLabel.topAnchor.constraint(equalTo: websiteButton.bottomAnchor, constant: 10),
             openingHoursLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             openingHoursLabel.topAnchor.constraint(equalTo: ratingLabel.bottomAnchor, constant: 10),
             iconButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             iconButton.topAnchor.constraint(equalTo: openingHoursLabel.bottomAnchor, constant: 20),
+            collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            collectionView.topAnchor.constraint(equalTo: iconButton.bottomAnchor, constant: 20),
+            collectionView.heightAnchor.constraint(equalToConstant: 100)
         ])
 
         // Initialize the table view
@@ -92,7 +113,7 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
         NSLayoutConstraint.activate([
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            tableView.topAnchor.constraint(equalTo: iconButton.bottomAnchor, constant: 20),
+            tableView.topAnchor.constraint(equalTo: collectionView.bottomAnchor, constant: 20),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
     }
@@ -109,6 +130,12 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
         combinedString.append(textString)
 
         return combinedString
+    }
+
+    @objc func websiteButtonTapped() {
+        if let website = website, let url = URL(string: website) {
+            UIApplication.shared.open(url)
+        }
     }
 
     @objc func iconButtonTapped() {
@@ -156,6 +183,18 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell") ?? UITableViewCell(style: .default, reuseIdentifier: "cell")
         let list = bookmarkLists[indexPath.row]
         cell.textLabel?.text = list.name
+        return cell
+    }
+
+    // MARK: - UICollectionViewDataSource
+
+    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        return photos.count
+    }
+
+    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "PhotoCell", for: indexPath) as! PhotoCollectionViewCell
+        cell.imageView.image = photos[indexPath.item]
         return cell
     }
 }
