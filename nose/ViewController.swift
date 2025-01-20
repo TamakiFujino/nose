@@ -33,6 +33,24 @@ class ViewController: UIViewController, UISearchBarDelegate, GMSMapViewDelegate,
         searchBar.placeholder = "Search for a place"
         searchBar.delegate = self
         view.addSubview(searchBar)
+        
+        // Add button to view bookmarked POIs
+        let bookmarksButton = UIButton(type: .system)
+        bookmarksButton.setTitle("View Bookmarks", for: .normal)
+        bookmarksButton.translatesAutoresizingMaskIntoConstraints = false
+        bookmarksButton.addTarget(self, action: #selector(bookmarksButtonTapped), for: .touchUpInside)
+        view.addSubview(bookmarksButton)
+        
+        NSLayoutConstraint.activate([
+            bookmarksButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            bookmarksButton.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -20)
+        ])
+    }
+
+    @objc func bookmarksButtonTapped() {
+        let bookmarkedPOIsVC = BookmarkedPOIsViewController()
+        bookmarkedPOIsVC.modalPresentationStyle = .fullScreen
+        present(bookmarkedPOIsVC, animated: true, completion: nil)
     }
 
     // Handle search input

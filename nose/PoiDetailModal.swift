@@ -51,6 +51,13 @@ class POIDetailViewController: UIViewController {
         openingHoursLabel.numberOfLines = 0
         openingHoursLabel.translatesAutoresizingMaskIntoConstraints = false
 
+        // Create the icon button
+        let iconButton = UIButton(type: .system)
+        iconButton.setImage(UIImage(systemName: "star.fill"), for: .normal) // Using SF Symbols
+        iconButton.tintColor = .systemBlue
+        iconButton.translatesAutoresizingMaskIntoConstraints = false
+        iconButton.addTarget(self, action: #selector(iconButtonTapped), for: .touchUpInside)
+
         view.addSubview(nameLabel)
         view.addSubview(placeIDLabel)
         view.addSubview(addressLabel)
@@ -58,6 +65,7 @@ class POIDetailViewController: UIViewController {
         view.addSubview(websiteLabel)
         view.addSubview(ratingLabel)
         view.addSubview(openingHoursLabel)
+        view.addSubview(iconButton)
 
         NSLayoutConstraint.activate([
             nameLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -73,7 +81,27 @@ class POIDetailViewController: UIViewController {
             ratingLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             ratingLabel.topAnchor.constraint(equalTo: websiteLabel.bottomAnchor, constant: 10),
             openingHoursLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            openingHoursLabel.topAnchor.constraint(equalTo: ratingLabel.bottomAnchor, constant: 10)
+            openingHoursLabel.topAnchor.constraint(equalTo: ratingLabel.bottomAnchor, constant: 10),
+            iconButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            iconButton.topAnchor.constraint(equalTo: openingHoursLabel.bottomAnchor, constant: 20),
         ])
+    }
+    
+    @objc func iconButtonTapped() {
+        print("Icon button tapped!")
+        guard let placeID = placeID, let placeName = placeName else { return }
+        
+        let bookmarkedPOI = BookmarkedPOI(
+            placeID: placeID,
+            name: placeName,
+            address: address,
+            phoneNumber: phoneNumber,
+            website: website,
+            rating: rating,
+            openingHours: openingHours
+        )
+        
+        BookmarksManager.shared.addBookmark(bookmarkedPOI)
+        print("Bookmarked POI: \(placeName)")
     }
 }
