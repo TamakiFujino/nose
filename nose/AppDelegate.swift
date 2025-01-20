@@ -12,9 +12,19 @@ import GooglePlaces
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        GMSServices.provideAPIKey("AIzaSyA1hUsxuy_mY0rVpZJ7TX6nqMCNrgRN3vE")
-        GMSPlacesClient.provideAPIKey("AIzaSyA1hUsxuy_mY0rVpZJ7TX6nqMCNrgRN3vE")
-        // Override point for customization after application launch.
+        // Attempt to load the API key from Config.plist
+                if let path = Bundle.main.path(forResource: "Config", ofType: "plist"),
+                   let config = NSDictionary(contentsOfFile: path),
+                   let apiKey = config["GoogleMapsAPIKey"] as? String, !apiKey.isEmpty {
+                    
+                    // Provide API Key to Google Maps and Places SDK
+                    GMSServices.provideAPIKey(apiKey)
+                    GMSPlacesClient.provideAPIKey(apiKey)
+                    
+                    print("Google Maps API Key Loaded Successfully!")
+                } else {
+                    print("Failed to load Google Maps API Key. Check Config.plist.")
+                }
         return true
     }
 
