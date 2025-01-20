@@ -49,6 +49,7 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
         // Add content to StackView
         // Create the icon button
         let iconButton = UIButton(type: .system)
+        // set the icon button to right-aligned
         iconButton.contentHorizontalAlignment = .right
         iconButton.setImage(UIImage(systemName: "bookmark"), for: .normal) // Using SF Symbols
         iconButton.tintColor = .systemBlue
@@ -150,38 +151,22 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
     }
 
     @objc func iconButtonTapped() {
-        bookmarkLists = BookmarksManager.shared.bookmarkLists
+        let bookmarkedPOIsVC = BookmarkedPOIsViewController()
+        bookmarkedPOIsVC.placeID = placeID
+        bookmarkedPOIsVC.placeName = placeName
+        bookmarkedPOIsVC.address = address
+        bookmarkedPOIsVC.phoneNumber = phoneNumber
+        bookmarkedPOIsVC.website = website
+        bookmarkedPOIsVC.rating = rating
+        bookmarkedPOIsVC.openingHours = openingHours
         
-        let alertController = UIAlertController(title: "Select Bookmark List", message: nil, preferredStyle: .alert)
+        // Debug prints to verify properties
+        print("Transitioning to BookmarkedPOIsViewController with:")
+        print("placeID: \(placeID ?? "nil")")
+        print("placeName: \(placeName ?? "nil")")
         
-        for list in bookmarkLists {
-            let action = UIAlertAction(title: list.name, style: .default) { _ in
-                self.addPOIToBookmarkList(named: list.name)
-            }
-            alertController.addAction(action)
-        }
-        
-        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
-        alertController.addAction(cancelAction)
-        
-        present(alertController, animated: true, completion: nil)
-    }
-    
-    func addPOIToBookmarkList(named listName: String) {
-        guard let placeID = placeID, let placeName = placeName else { return }
-        
-        let bookmarkedPOI = BookmarkedPOI(
-            placeID: placeID,
-            name: placeName,
-            address: address,
-            phoneNumber: phoneNumber,
-            website: website,
-            rating: rating,
-            openingHours: openingHours
-        )
-        
-        BookmarksManager.shared.addBookmark(bookmarkedPOI, to: listName)
-        print("Bookmarked POI: \(placeName) in list: \(listName)")
+        bookmarkedPOIsVC.modalPresentationStyle = .fullScreen
+        present(bookmarkedPOIsVC, animated: true, completion: nil)
     }
 
     // MARK: - UITableViewDataSource

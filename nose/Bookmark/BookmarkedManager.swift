@@ -2,26 +2,24 @@ import Foundation
 
 class BookmarksManager {
     static let shared = BookmarksManager()
-    private(set) var bookmarkLists = [BookmarkList]()
     
-    private init() {}
+    var bookmarkLists: [BookmarkList] = []
     
-    // Create a new bookmark list
+    private init() {
+        // Load initial data if needed
+    }
+    
     func createBookmarkList(name: String) {
-        bookmarkLists.append(BookmarkList(name: name, bookmarks: []))
+        let newList = BookmarkList(name: name, bookmarks: [])
+        bookmarkLists.append(newList)
     }
     
-    // Add a bookmark to a specific list
-    func addBookmark(_ poi: BookmarkedPOI, to listName: String) {
-        if let index = bookmarkLists.firstIndex(where: { $0.name == listName }) {
-            bookmarkLists[index].bookmarks.append(poi)
+    func saveBookmarkList(_ list: BookmarkList) {
+        if let index = bookmarkLists.firstIndex(where: { $0.name == list.name }) {
+            bookmarkLists[index] = list
+        } else {
+            bookmarkLists.append(list)
         }
-    }
-    
-    // Remove a bookmark from a specific list
-    func removeBookmark(_ poi: BookmarkedPOI, from listName: String) {
-        if let index = bookmarkLists.firstIndex(where: { $0.name == listName }) {
-            bookmarkLists[index].bookmarks.removeAll { $0.placeID == poi.placeID }
-        }
+        // Save to persistent storage if needed
     }
 }

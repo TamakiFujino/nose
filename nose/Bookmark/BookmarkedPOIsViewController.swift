@@ -3,68 +3,139 @@ import UIKit
 class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
 
     var tableView: UITableView!
-    var selectedList: BookmarkList?
-
+    var bookmarkLists: [BookmarkList] = []
+    
+    // Properties to hold POI information
+    var placeID: String?
+    var placeName: String?
+    var address: String?
+    var phoneNumber: String?
+    var website: String?
+    var rating: Double?
+    var openingHours: [String]?
+    
+    // Property to keep track of the selected bookmark list
+    var selectedBookmarkList: BookmarkList?
+    
     override func viewDidLoad() {
         super.viewDidLoad()
 
         view.backgroundColor = .white
-        
-        // Set up the table view
-        tableView = UITableView(frame: view.bounds)
+
+        // Initialize the table view
+        tableView = UITableView(frame: .zero, style: .plain)
         tableView.dataSource = self
         tableView.delegate = self
+        tableView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(tableView)
+
+        // Add "Create Bookmark List" button
+        let createListButton = UIButton(type: .system)
+        createListButton.setTitle("Create Bookmark List", for: .normal)
+        createListButton.translatesAutoresizingMaskIntoConstraints = false
+        createListButton.addTarget(self, action: #selector(createListButtonTapped), for: .touchUpInside)
+        view.addSubview(createListButton)
         
-        // Add a close button
-        let closeButton = UIButton(type: .system)
-        closeButton.setTitle("Close", for: .normal)
-        closeButton.translatesAutoresizingMaskIntoConstraints = false
-        closeButton.addTarget(self, action: #selector(closeButtonTapped), for: .touchUpInside)
-        view.addSubview(closeButton)
+        // Add "Confirm" button
+        let confirmButton = UIButton(type: .system)
+        confirmButton.setTitle("Confirm", for: .normal)
+        confirmButton.translatesAutoresizingMaskIntoConstraints = false
+        confirmButton.addTarget(self, action: #selector(confirmButtonTapped), for: .touchUpInside)
+        view.addSubview(confirmButton)
         
+        // Set up constraints
         NSLayoutConstraint.activate([
-            closeButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
-            closeButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -10)
+            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            tableView.topAnchor.constraint(equalTo: view.topAnchor),
+            tableView.bottomAnchor.constraint(equalTo: createListButton.topAnchor, constant: -10),
+            
+            createListButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            createListButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
+            
+            confirmButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            confirmButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20)
         ])
         
-        if selectedList == nil {
-            title = "Bookmark Lists"
-        } else {
-            title = selectedList?.name
-        }
+        // Load bookmark lists
+        bookmarkLists = BookmarksManager.shared.bookmarkLists
     }
 
-    @objc func closeButtonTapped() {
-        dismiss(animated: true, completion: nil)
+    @objc func createListButtonTapped() {
+        let alertController = UIAlertController(title: "Create Bookmark List", message: "Enter a name for your new bookmark list.", preferredStyle: .alert)
+        alertController.addTextField { textField in
+            textField.placeholder = "List Name"
+        }
+        let createAction = UIAlertAction(title: "Create", style: .default) { _ in
+            if let listName = alertController.textFields?.first?.text, !listName.isEmpty {
+                BookmarksManager.shared.createBookmarkList(name: listName)
+                self.bookmarkLists = BookmarksManager.shared.bookmarkLists // Refresh the list
+                self.tableView.reloadData()
+            }
+        }
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
+        alertController.addAction(createAction)
+        alertController.addAction(cancelAction)
+        present(alertController, animated: true, completion: nil)
+    }
+    
+    @objc func confirmButtonTapped() {
+        print("Confirm button tapped") // Debug print
+
+        guard let selectedList = selectedBookmarkList else {
+            print("No bookmark list selected") // Debug print
+            return
+        }
+        
+        guard let placeID = placeID, let placeName = placeName else {
+            print("POI information is incomplete") // Debug print
+            return
+        }
+        
+        print("Selected list: \(selectedList.name)") // Debug print
+        print("POI name: \(placeName)") // Debug print
+        
+        let bookmarkedPOI = BookmarkedPOI(
+            placeID: placeID,
+            name: placeName,
+            address: address,
+            phoneNumber: phoneNumber,
+            website: website,
+            rating: rating,
+            openingHours: openingHours
+        )
+        
+        // Add the POI to the selected bookmark list
+        if let index = bookmarkLists.firstIndex(of: selectedList) {
+            bookmarkLists[index].bookmarks.append(bookmarkedPOI)
+            BookmarksManager.shared.saveBookmarkList(bookmarkLists[index])
+        }
+        
+        // Print confirmation
+        print("Bookmarked POI: \(placeName) in list: \(selectedList.name)")
+        
+        // Return to the home screen
+        if let navigationController = navigationController {
+            navigationController.popToRootViewController(animated: true)
+        } else {
+            dismiss(animated: true, completion: nil)
+        }
+
     }
 
     // MARK: - UITableViewDataSource
 
-    func numberOfSections(in tableView: UITableView) -> Int {
-        return 1
-    }
-
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        if let selectedList = selectedList {
-            return selectedList.bookmarks.count
-        } else {
-            return BookmarksManager.shared.bookmarkLists.count
-        }
+        return bookmarkLists.count
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "cell") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "cell")
+        let cell = tableView.dequeueReusableCell(withIdentifier: "cell") ?? UITableViewCell(style: .default, reuseIdentifier: "cell")
+        let list = bookmarkLists[indexPath.row]
+        cell.textLabel?.text = list.name
         
-        if let selectedList = selectedList {
-            let bookmark = selectedList.bookmarks[indexPath.row]
-            cell.textLabel?.text = bookmark.name
-            cell.detailTextLabel?.text = bookmark.address
-        } else {
-            let bookmarkList = BookmarksManager.shared.bookmarkLists[indexPath.row]
-            cell.textLabel?.text = bookmarkList.name
-            cell.detailTextLabel?.text = "\(bookmarkList.bookmarks.count) POIs"
-        }
+        // Add a checkmark to indicate the selected list
+        cell.accessoryType = list == selectedBookmarkList ? .checkmark : .none
         
         return cell
     }
@@ -74,27 +145,7 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         
-        if let selectedList = selectedList {
-            let bookmark = selectedList.bookmarks[indexPath.row]
-            let detailVC = POIDetailViewController()
-            detailVC.placeName = bookmark.name
-            detailVC.placeID = bookmark.placeID
-            detailVC.address = bookmark.address
-            detailVC.phoneNumber = bookmark.phoneNumber
-            detailVC.website = bookmark.website
-            detailVC.rating = bookmark.rating
-            detailVC.openingHours = bookmark.openingHours
-            detailVC.modalPresentationStyle = .pageSheet
-            if let sheet = detailVC.sheetPresentationController {
-                sheet.detents = [.medium()]
-            }
-            present(detailVC, animated: true, completion: nil)
-        } else {
-            let bookmarkList = BookmarksManager.shared.bookmarkLists[indexPath.row]
-            let bookmarkedPOIsVC = BookmarkedPOIsViewController()
-            bookmarkedPOIsVC.selectedList = bookmarkList
-            bookmarkedPOIsVC.modalPresentationStyle = .fullScreen
-            present(bookmarkedPOIsVC, animated: true, completion: nil)
-        }
+        selectedBookmarkList = bookmarkLists[indexPath.row]
+        tableView.reloadData()
     }
 }
