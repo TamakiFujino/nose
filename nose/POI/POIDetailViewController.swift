@@ -13,6 +13,8 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
 
     var tableView: UITableView!
     var collectionView: UICollectionView!
+    var scrollView: UIScrollView!
+    var stackView: UIStackView!
     var bookmarkLists: [BookmarkList] = []
 
     override func viewDidLoad() {
@@ -20,38 +22,73 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
         
         view.backgroundColor = .white
         
+        // Initialize ScrollView and StackView
+        scrollView = UIScrollView()
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(scrollView)
+        
+        stackView = UIStackView()
+        stackView.axis = .vertical
+        stackView.spacing = 10
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.addSubview(stackView)
+        
+        NSLayoutConstraint.activate([
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scrollView.topAnchor.constraint(equalTo: view.topAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            
+            stackView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor, constant: 20),
+            stackView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor, constant: -20),
+            stackView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: 20),
+            stackView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -20),
+            stackView.widthAnchor.constraint(equalTo: scrollView.widthAnchor, constant: -40) // Adjust width to account for left and right margins
+        ])
+        
+        // Add content to StackView
         let nameLabel = UILabel()
         nameLabel.text = placeName
         nameLabel.textAlignment = .left
         nameLabel.font = UIFont.systemFont(ofSize: 18, weight: .bold)
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
+        stackView.addArrangedSubview(nameLabel)
 
         let addressLabel = UILabel()
         addressLabel.attributedText = createAttributedTextWithIcon(text: address ?? "N/A", icon: UIImage(systemName: "map"))
         addressLabel.textAlignment = .left
         addressLabel.translatesAutoresizingMaskIntoConstraints = false
+        stackView.addArrangedSubview(addressLabel)
 
         let phoneLabel = UILabel()
         phoneLabel.attributedText = createAttributedTextWithIcon(text: phoneNumber ?? "N/A", icon: UIImage(systemName: "phone"))
         phoneLabel.textAlignment = .left
         phoneLabel.translatesAutoresizingMaskIntoConstraints = false
+        stackView.addArrangedSubview(phoneLabel)
 
         let websiteButton = UIButton(type: .system)
         websiteButton.setAttributedTitle(createAttributedTextWithIcon(text: website ?? "N/A", icon: UIImage(systemName: "globe")), for: .normal)
         websiteButton.contentHorizontalAlignment = .left
         websiteButton.translatesAutoresizingMaskIntoConstraints = false
         websiteButton.addTarget(self, action: #selector(websiteButtonTapped), for: .touchUpInside)
+        stackView.addArrangedSubview(websiteButton)
 
         let ratingLabel = UILabel()
-        ratingLabel.text = "Rating: \(rating != nil ? String(rating!) : "N/A")"
+        if let rating = rating {
+            ratingLabel.attributedText = createAttributedTextWithIcon(text: String(format: "%.1f", rating), icon: UIImage(systemName: "star.fill"))
+        } else {
+            ratingLabel.text = "Rating: N/A"
+        }
         ratingLabel.textAlignment = .left
         ratingLabel.translatesAutoresizingMaskIntoConstraints = false
+        stackView.addArrangedSubview(ratingLabel)
 
         let openingHoursLabel = UILabel()
         openingHoursLabel.text = "Opening Hours:\n\(openingHours?.joined(separator: "\n") ?? "N/A")"
         openingHoursLabel.textAlignment = .left
         openingHoursLabel.numberOfLines = 0
         openingHoursLabel.translatesAutoresizingMaskIntoConstraints = false
+        stackView.addArrangedSubview(openingHoursLabel)
 
         // Create the icon button
         let iconButton = UIButton(type: .system)
@@ -59,6 +96,7 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
         iconButton.tintColor = .systemBlue
         iconButton.translatesAutoresizingMaskIntoConstraints = false
         iconButton.addTarget(self, action: #selector(iconButtonTapped), for: .touchUpInside)
+        stackView.addArrangedSubview(iconButton)
         
         // Create the collection view layout
         let layout = UICollectionViewFlowLayout()
@@ -72,34 +110,9 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
         collectionView.translatesAutoresizingMaskIntoConstraints = false
         collectionView.register(PhotoCollectionViewCell.self, forCellWithReuseIdentifier: "PhotoCell")
         collectionView.backgroundColor = .white
-
-        view.addSubview(nameLabel)
-        view.addSubview(addressLabel)
-        view.addSubview(phoneLabel)
-        view.addSubview(websiteButton)
-        view.addSubview(ratingLabel)
-        view.addSubview(openingHoursLabel)
-        view.addSubview(iconButton)
-        view.addSubview(collectionView)
+        stackView.addArrangedSubview(collectionView)
 
         NSLayoutConstraint.activate([
-            nameLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            nameLabel.topAnchor.constraint(equalTo: view.topAnchor, constant: 20),
-            addressLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            addressLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 10),
-            phoneLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            phoneLabel.topAnchor.constraint(equalTo: addressLabel.bottomAnchor, constant: 10),
-            websiteButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            websiteButton.topAnchor.constraint(equalTo: phoneLabel.bottomAnchor, constant: 10),
-            ratingLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            ratingLabel.topAnchor.constraint(equalTo: websiteButton.bottomAnchor, constant: 10),
-            openingHoursLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            openingHoursLabel.topAnchor.constraint(equalTo: ratingLabel.bottomAnchor, constant: 10),
-            iconButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            iconButton.topAnchor.constraint(equalTo: openingHoursLabel.bottomAnchor, constant: 20),
-            collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-            collectionView.topAnchor.constraint(equalTo: iconButton.bottomAnchor, constant: 20),
             collectionView.heightAnchor.constraint(equalToConstant: 100)
         ])
 
@@ -108,13 +121,10 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
         tableView.dataSource = self
         tableView.delegate = self
         tableView.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(tableView)
+        stackView.addArrangedSubview(tableView)
 
         NSLayoutConstraint.activate([
-            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            tableView.topAnchor.constraint(equalTo: collectionView.bottomAnchor, constant: 20),
-            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+            tableView.heightAnchor.constraint(equalToConstant: 200) // Adjust as needed
         ])
     }
     
