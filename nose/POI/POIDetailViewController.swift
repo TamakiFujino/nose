@@ -20,37 +20,33 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
         
         let nameLabel = UILabel()
         nameLabel.text = placeName
-        nameLabel.textAlignment = .center
+        nameLabel.textAlignment = .left
+        nameLabel.font = UIFont.systemFont(ofSize: 18, weight: .bold)
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
 
-        let placeIDLabel = UILabel()
-        placeIDLabel.text = "Place ID: \(placeID ?? "")"
-        placeIDLabel.textAlignment = .center
-        placeIDLabel.translatesAutoresizingMaskIntoConstraints = false
-
         let addressLabel = UILabel()
-        addressLabel.text = "Address: \(address ?? "N/A")"
-        addressLabel.textAlignment = .center
+        addressLabel.attributedText = createAttributedTextWithIcon(text: address ?? "N/A", icon: UIImage(systemName: "map"))
+        addressLabel.textAlignment = .left
         addressLabel.translatesAutoresizingMaskIntoConstraints = false
 
         let phoneLabel = UILabel()
-        phoneLabel.text = "Phone: \(phoneNumber ?? "N/A")"
-        phoneLabel.textAlignment = .center
+        phoneLabel.attributedText = createAttributedTextWithIcon(text: phoneNumber ?? "N/A", icon: UIImage(systemName: "phone"))
+        phoneLabel.textAlignment = .left
         phoneLabel.translatesAutoresizingMaskIntoConstraints = false
 
         let websiteLabel = UILabel()
-        websiteLabel.text = "Website: \(website ?? "N/A")"
-        websiteLabel.textAlignment = .center
+        websiteLabel.attributedText = createAttributedTextWithIcon(text: website ?? "N/A", icon: UIImage(systemName: "globe"))
+        websiteLabel.textAlignment = .left
         websiteLabel.translatesAutoresizingMaskIntoConstraints = false
 
         let ratingLabel = UILabel()
         ratingLabel.text = "Rating: \(rating != nil ? String(rating!) : "N/A")"
-        ratingLabel.textAlignment = .center
+        ratingLabel.textAlignment = .left
         ratingLabel.translatesAutoresizingMaskIntoConstraints = false
 
         let openingHoursLabel = UILabel()
         openingHoursLabel.text = "Opening Hours:\n\(openingHours?.joined(separator: "\n") ?? "N/A")"
-        openingHoursLabel.textAlignment = .center
+        openingHoursLabel.textAlignment = .left
         openingHoursLabel.numberOfLines = 0
         openingHoursLabel.translatesAutoresizingMaskIntoConstraints = false
 
@@ -62,7 +58,6 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
         iconButton.addTarget(self, action: #selector(iconButtonTapped), for: .touchUpInside)
 
         view.addSubview(nameLabel)
-        view.addSubview(placeIDLabel)
         view.addSubview(addressLabel)
         view.addSubview(phoneLabel)
         view.addSubview(websiteLabel)
@@ -71,19 +66,17 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
         view.addSubview(iconButton)
 
         NSLayoutConstraint.activate([
-            nameLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            nameLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             nameLabel.topAnchor.constraint(equalTo: view.topAnchor, constant: 20),
-            placeIDLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            placeIDLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 10),
-            addressLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            addressLabel.topAnchor.constraint(equalTo: placeIDLabel.bottomAnchor, constant: 10),
-            phoneLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            addressLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            addressLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 10),
+            phoneLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             phoneLabel.topAnchor.constraint(equalTo: addressLabel.bottomAnchor, constant: 10),
-            websiteLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            websiteLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             websiteLabel.topAnchor.constraint(equalTo: phoneLabel.bottomAnchor, constant: 10),
-            ratingLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            ratingLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             ratingLabel.topAnchor.constraint(equalTo: websiteLabel.bottomAnchor, constant: 10),
-            openingHoursLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            openingHoursLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             openingHoursLabel.topAnchor.constraint(equalTo: ratingLabel.bottomAnchor, constant: 10),
             iconButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             iconButton.topAnchor.constraint(equalTo: openingHoursLabel.bottomAnchor, constant: 20),
@@ -102,6 +95,20 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
             tableView.topAnchor.constraint(equalTo: iconButton.bottomAnchor, constant: 20),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
+    }
+    
+    func createAttributedTextWithIcon(text: String, icon: UIImage?) -> NSAttributedString {
+        let attachment = NSTextAttachment()
+        attachment.image = icon?.withTintColor(.label) // Adjust the icon color if needed
+
+        let attachmentString = NSAttributedString(attachment: attachment)
+        let textString = NSAttributedString(string: " \(text)") // Adding a space before the text
+
+        let combinedString = NSMutableAttributedString()
+        combinedString.append(attachmentString)
+        combinedString.append(textString)
+
+        return combinedString
     }
 
     @objc func iconButtonTapped() {

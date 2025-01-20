@@ -19,17 +19,16 @@
                             <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="Gradient" translatesAutoresizingMaskIntoConstraints="NO" id="oHd-OO-4Mw">
                                 <rect key="frame" x="-30" y="-30" width="453" height="912"/>
                             </imageView>
-                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" misplaced="YES" image="Logo" translatesAutoresizingMaskIntoConstraints="NO" id="G43-zA-6SF">
-                                <rect key="frame" x="122" y="365" width="149" height="122"/>
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" fixedFrame="YES" image="Logo" translatesAutoresizingMaskIntoConstraints="NO" id="O5Z-lw-WHU">
+                                <rect key="frame" x="114" y="383" width="164" height="86"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                             </imageView>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                         <constraints>
                             <constraint firstItem="oHd-OO-4Mw" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="3bT-5E-CRS"/>
-                            <constraint firstItem="oHd-OO-4Mw" firstAttribute="centerY" secondItem="G43-zA-6SF" secondAttribute="centerY" id="6ts-br-sS8"/>
                             <constraint firstAttribute="bottom" secondItem="oHd-OO-4Mw" secondAttribute="bottom" constant="-30" id="DhK-5E-Q9I"/>
-                            <constraint firstItem="oHd-OO-4Mw" firstAttribute="centerX" secondItem="G43-zA-6SF" secondAttribute="centerX" id="QHR-NL-imt"/>
                             <constraint firstItem="oHd-OO-4Mw" firstAttribute="top" secondItem="Ze5-6b-2t3" secondAttribute="top" constant="-30" id="m9s-BY-KVp"/>
                             <constraint firstItem="oHd-OO-4Mw" firstAttribute="leading" secondItem="Ze5-6b-2t3" secondAttribute="leadingMargin" constant="-46" id="x5G-Kf-pXT"/>
                         </constraints>
