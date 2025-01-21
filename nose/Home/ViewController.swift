@@ -1,5 +1,3 @@
-// Inside ViewController.swift
-
 import UIKit
 import GoogleMaps
 import GooglePlaces
@@ -10,6 +8,8 @@ class ViewController: UIViewController, UISearchBarDelegate, GMSMapViewDelegate,
     var mapView: GMSMapView!
     var locationManager = CLLocationManager()
     var placesClient: GMSPlacesClient!
+    var slider: UISlider!
+    var hasShownHalfModal = false // Flag to track modal presentation
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -30,11 +30,64 @@ class ViewController: UIViewController, UISearchBarDelegate, GMSMapViewDelegate,
         locationManager.requestWhenInUseAuthorization() // Request permission
         locationManager.startUpdatingLocation()         // Start location tracking
 
+        // Add slider
+        slider = UISlider()
+        slider.minimumValue = 0
+        slider.maximumValue = 100
+        slider.value = 50 // Default value
+        slider.translatesAutoresizingMaskIntoConstraints = false
+        slider.addTarget(self, action: #selector(sliderValueChanged), for: .valueChanged)
+        view.addSubview(slider)
+
         // Add search bar
-        let searchBar = UISearchBar(frame: CGRect(x: 0, y: 50, width: view.frame.width, height: 50))
+        let searchBar = UISearchBar(frame: .zero)
         searchBar.placeholder = "Search for a place"
         searchBar.delegate = self
+        searchBar.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(searchBar)
+
+        // Set up constraints
+        NSLayoutConstraint.activate([
+            // Slider constraints
+            slider.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
+            slider.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            slider.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            
+            // Search bar constraints
+            searchBar.topAnchor.constraint(equalTo: slider.bottomAnchor, constant: 10),
+            searchBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            searchBar.trailingAnchor.constraint(equalTo: view.trailingAnchor)
+        ])
+    }
+
+    // Function to handle slider value changes with snapping
+    @objc func sliderValueChanged(_ sender: UISlider) {
+        let step: Float = 50
+        let newValue = round(sender.value / step) * step
+        
+        // Animate the transition to the new value
+        UIView.animate(withDuration: 0.3) {
+            sender.setValue(newValue, animated: true)
+        }
+        
+        // Show half modal when the slider value is 100
+        if newValue == 100 && !hasShownHalfModal {
+            hasShownHalfModal = true
+            showSavedBookmarkLists()
+        } else if newValue != 100 {
+            hasShownHalfModal = false
+        }
+    }
+
+    // Function to show the saved bookmark lists in a half modal
+    func showSavedBookmarkLists() {
+        let savedBookmarksVC = SavedBookmarksViewController()
+        let navController = UINavigationController(rootViewController: savedBookmarksVC)
+        navController.modalPresentationStyle = .pageSheet
+        if let sheet = navController.sheetPresentationController {
+            sheet.detents = [.medium()] // Present as a half modal
+        }
+        present(navController, animated: true, completion: nil)
     }
 
     @objc func bookmarksButtonTapped() {
@@ -98,6 +151,7 @@ class ViewController: UIViewController, UISearchBarDelegate, GMSMapViewDelegate,
         }
     }
 
+    // Delegate method: Handle POI taps
     func mapView(_ mapView: GMSMapView, didTapPOIWithPlaceID placeID: String, name: String, location: CLLocationCoordinate2D) {
         print("POI Tapped: \(name), Place ID: \(placeID), Location: \(location)")
 
