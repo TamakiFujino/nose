@@ -4,6 +4,7 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
 
     var tableView: UITableView!
     var bookmarkLists: [BookmarkList] = []
+    var messageLabel: UILabel!
     
     // Properties to hold POI information
     var placeID: String?
@@ -19,15 +20,18 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
     
     override func viewDidLoad() {
         super.viewDidLoad()
-
+        
         view.backgroundColor = .white
-
+        
         // Add navigation bar
         let navBar = UINavigationBar()
+        navBar.barTintColor = .white
         navBar.translatesAutoresizingMaskIntoConstraints = false
         let navItem = UINavigationItem(title: "Bookmark Lists")
         let backItem = UIBarButtonItem(barButtonSystemItem: .close, target: self, action: #selector(backButtonTapped))
         navItem.leftBarButtonItem = backItem
+        backItem.tintColor = .none
+        backItem.image = UIImage(systemName: "arrow.left")
         navBar.setItems([navItem], animated: false)
         view.addSubview(navBar)
         
@@ -37,7 +41,20 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
         tableView.delegate = self
         tableView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(tableView)
-
+        
+        // Initialize message label
+        messageLabel = UILabel()
+        messageLabel.text = "No bookmark lists created yet."
+        messageLabel.textColor = .gray
+        messageLabel.textAlignment = .center
+        messageLabel.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(messageLabel)
+        
+        NSLayoutConstraint.activate([
+            messageLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            messageLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+        ])
+        
         // Add "Create Bookmark List" button
         let createListButton = UIButton(type: .system)
         createListButton.setTitle("Create Bookmark List", for: .normal)
@@ -72,6 +89,11 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
         
         // Load bookmark lists
         bookmarkLists = BookmarksManager.shared.bookmarkLists
+        updateMessageVisibility()
+    }
+
+    func updateMessageVisibility() {
+        messageLabel.isHidden = !bookmarkLists.isEmpty
     }
 
     @objc func backButtonTapped() {
@@ -88,6 +110,7 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
                 BookmarksManager.shared.createBookmarkList(name: listName)
                 self.bookmarkLists = BookmarksManager.shared.bookmarkLists // Refresh the list
                 self.tableView.reloadData()
+                self.updateMessageVisibility()
             }
         }
         let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
@@ -97,20 +120,17 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
     }
     
     @objc func confirmButtonTapped() {
-        print("Confirm button tapped") // Debug print
+        print("Confirm button tapped")
 
         guard let selectedList = selectedBookmarkList else {
-            print("No bookmark list selected") // Debug print
+            print("No bookmark list selected")
             return
         }
         
         guard let placeID = placeID, let placeName = placeName else {
-            print("POI information is incomplete") // Debug print
+            print("POI information is incomplete")
             return
         }
-        
-        print("Selected list: \(selectedList.name)") // Debug print
-        print("POI name: \(placeName)") // Debug print
         
         let bookmarkedPOI = BookmarkedPOI(
             placeID: placeID,
@@ -122,14 +142,10 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
             openingHours: openingHours
         )
         
-        // Add the POI to the selected bookmark list
         if let index = bookmarkLists.firstIndex(of: selectedList) {
             bookmarkLists[index].bookmarks.append(bookmarkedPOI)
             BookmarksManager.shared.saveBookmarkList(bookmarkLists[index])
         }
-        
-        // Print confirmation
-        print("Bookmarked POI: \(placeName) in list: \(selectedList.name)")
         
         if let navigationController = navigationController {
             navigationController.popToRootViewController(animated: true)
@@ -148,11 +164,8 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "cell")
         let list = bookmarkLists[indexPath.row]
         cell.textLabel?.text = list.name
-        cell.detailTextLabel?.text = "\(list.bookmarks.count) POIs saved" // Show number of POIs saved
-        
-        // Add a checkmark to indicate the selected list
+        cell.detailTextLabel?.text = "\(list.bookmarks.count) POIs saved"
         cell.accessoryType = list == selectedBookmarkList ? .checkmark : .none
-        
         return cell
     }
 
@@ -160,8 +173,18 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        
         selectedBookmarkList = bookmarkLists[indexPath.row]
         tableView.reloadData()
+    }
+    
+    func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
+        let deleteAction = UIContextualAction(style: .destructive, title: "Delete") { (_, _, completionHandler) in
+            let listToDelete = self.bookmarkLists.remove(at: indexPath.row)
+            BookmarksManager.shared.deleteBookmarkList(listToDelete)
+            tableView.deleteRows(at: [indexPath], with: .automatic)
+            self.updateMessageVisibility()
+            completionHandler(true)
+        }
+        return UISwipeActionsConfiguration(actions: [deleteAction])
     }
 }

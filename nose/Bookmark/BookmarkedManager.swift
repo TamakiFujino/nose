@@ -22,4 +22,11 @@ class BookmarksManager {
         }
         // Save to persistent storage if needed
     }
+    
+    func deleteBookmarkList(_ list: BookmarkList) {
+        if let index = bookmarkLists.firstIndex(where: { $0.name == list.name }) {
+            bookmarkLists.remove(at: index)
+        }
+        // Save changes if necessary
+    }
 }
