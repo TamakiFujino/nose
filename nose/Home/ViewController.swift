@@ -274,12 +274,11 @@ class ViewController: UIViewController, UISearchBarDelegate, GMSMapViewDelegate,
             view.backgroundColor = .white
             
             backButton = UIButton(type: .system)
-            backButton.setImage(UIImage(systemName: "arrow.left"), for: .normal)
-            // make the icon button color to black
-            backButton.tintColor = .black
-            backButton.addTarget(self, action: #selector(backButtonTapped), for: .touchUpInside)
-            backButton.translatesAutoresizingMaskIntoConstraints = false
-            view.addSubview(backButton)
+                    backButton.setImage(UIImage(systemName: "arrow.left"), for: .normal)
+                    backButton.tintColor = .black
+                    backButton.addTarget(self, action: #selector(backButtonTapped), for: .touchUpInside)
+                    backButton.translatesAutoresizingMaskIntoConstraints = false
+                    view.addSubview(backButton)
             
             searchBar = UISearchBar()
             searchBar.placeholder = "Search for a place"
@@ -311,9 +310,9 @@ class ViewController: UIViewController, UISearchBarDelegate, GMSMapViewDelegate,
         }
         
         @objc func backButtonTapped() {
-            navigationController?.popViewController(animated: true)
+            dismiss(animated: true, completion: nil)
         }
-        
+
         func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
             let filter = GMSAutocompleteFilter()
             placesClient.findAutocompletePredictions(fromQuery: searchText, filter: filter, sessionToken: nil) { (results, error) in
@@ -325,11 +324,11 @@ class ViewController: UIViewController, UISearchBarDelegate, GMSMapViewDelegate,
                 self.tableView.reloadData()
             }
         }
-        
+
         func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
             return predictions.count
         }
-        
+
         func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
             let cell = tableView.dequeueReusableCell(withIdentifier: "cell") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "cell")
             let prediction = predictions[indexPath.row]
@@ -337,11 +336,11 @@ class ViewController: UIViewController, UISearchBarDelegate, GMSMapViewDelegate,
             cell.detailTextLabel?.text = prediction.attributedSecondaryText?.string
             return cell
         }
-        
+
         func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
             let prediction = predictions[indexPath.row]
             print("Selected POI: \(prediction.attributedPrimaryText.string)")
-            navigationController?.popViewController(animated: true)
+            navigationController?.popToRootViewController(animated: true)
         }
     }
 }
