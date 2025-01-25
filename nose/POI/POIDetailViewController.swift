@@ -22,7 +22,6 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        
         view.backgroundColor = .white
         
         // Initialize ScrollView and StackView
