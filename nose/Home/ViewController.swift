@@ -10,6 +10,7 @@ class ViewController: UIViewController, UISearchBarDelegate, GMSMapViewDelegate,
     var placesClient: GMSPlacesClient!
     var slider: UISlider!
     var hasShownHalfModal = false // Flag to track modal presentation
+    var searchButton: UIButton!
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -39,12 +40,22 @@ class ViewController: UIViewController, UISearchBarDelegate, GMSMapViewDelegate,
         slider.addTarget(self, action: #selector(sliderValueChanged), for: .valueChanged)
         view.addSubview(slider)
         
-        // Add search bar
-        let searchBar = UISearchBar(frame: .zero)
-        searchBar.placeholder = "Search for a place"
-        searchBar.delegate = self
-        searchBar.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(searchBar)
+        // Add search button
+        searchButton = UIButton(type: .system)
+        // set background color to white and rounc the corners
+        searchButton.backgroundColor = .white
+        searchButton.layer.cornerRadius = 20
+        // add padding to the button
+        searchButton.contentEdgeInsets = UIEdgeInsets(top: 10, left: 10, bottom: 10, right: 10)
+        // add drop shadow to the button
+        searchButton.layer.shadowColor = UIColor.black.cgColor
+        // set the image to magnifying glass, color to black and size to 40
+        searchButton.setImage(UIImage(systemName: "magnifyingglass"), for: .normal)
+        searchButton.tintColor = .black
+        searchButton.imageView?.contentMode = .scaleAspectFit
+        searchButton.addTarget(self, action: #selector(searchButtonTapped), for: .touchUpInside)
+        searchButton.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(searchButton)
         
         // Set up constraints
         NSLayoutConstraint.activate([
@@ -53,11 +64,18 @@ class ViewController: UIViewController, UISearchBarDelegate, GMSMapViewDelegate,
             slider.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             slider.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
             
-            // Search bar constraints
-            searchBar.topAnchor.constraint(equalTo: slider.bottomAnchor, constant: 10),
-            searchBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            searchBar.trailingAnchor.constraint(equalTo: view.trailingAnchor)
+            // Search button constraints
+            searchButton.topAnchor.constraint(equalTo: slider.bottomAnchor, constant: 10),
+            searchButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            searchButton.widthAnchor.constraint(equalToConstant: 40),
+            searchButton.heightAnchor.constraint(equalToConstant: 40)
         ])
+    }
+    
+    @objc func searchButtonTapped() {
+        let searchVC = SearchViewController()
+        searchVC.modalPresentationStyle = .fullScreen
+        present(searchVC, animated: true, completion: nil)
     }
     
     // Function to handle slider value changes with snapping
@@ -242,5 +260,88 @@ class ViewController: UIViewController, UISearchBarDelegate, GMSMapViewDelegate,
         print("Displayed \(savedPOIs.count) saved POIs on the map.")
         
         
+    }
+    
+    class SearchViewController: UIViewController, UISearchBarDelegate, UITableViewDelegate, UITableViewDataSource {
+        var searchBar: UISearchBar!
+        var tableView: UITableView!
+        var placesClient = GMSPlacesClient.shared()
+        var predictions: [GMSAutocompletePrediction] = []
+        var backButton: UIButton!
+        
+        override func viewDidLoad() {
+            super.viewDidLoad()
+            view.backgroundColor = .white
+            
+            backButton = UIButton(type: .system)
+            backButton.setImage(UIImage(systemName: "arrow.left"), for: .normal)
+            // make the icon button color to black
+            backButton.tintColor = .black
+            backButton.addTarget(self, action: #selector(backButtonTapped), for: .touchUpInside)
+            backButton.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(backButton)
+            
+            searchBar = UISearchBar()
+            searchBar.placeholder = "Search for a place"
+            searchBar.delegate = self
+            searchBar.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(searchBar)
+            
+            tableView = UITableView()
+            tableView.delegate = self
+            tableView.dataSource = self
+            tableView.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(tableView)
+            
+            NSLayoutConstraint.activate([
+                // set back button on the left corner, above search bar
+                backButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
+                backButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 10),
+                
+                // set search bar below back button
+                searchBar.topAnchor.constraint(equalTo: backButton.bottomAnchor, constant: 10),
+                searchBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                searchBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+                
+                tableView.topAnchor.constraint(equalTo: searchBar.bottomAnchor, constant: 10),
+                tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+                tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+            ])
+        }
+        
+        @objc func backButtonTapped() {
+            navigationController?.popViewController(animated: true)
+        }
+        
+        func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+            let filter = GMSAutocompleteFilter()
+            placesClient.findAutocompletePredictions(fromQuery: searchText, filter: filter, sessionToken: nil) { (results, error) in
+                if let error = error {
+                    print("Autocomplete error: \(error.localizedDescription)")
+                    return
+                }
+                self.predictions = results ?? []
+                self.tableView.reloadData()
+            }
+        }
+        
+        func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+            return predictions.count
+        }
+        
+        func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+            let cell = tableView.dequeueReusableCell(withIdentifier: "cell") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "cell")
+            let prediction = predictions[indexPath.row]
+            cell.textLabel?.text = prediction.attributedPrimaryText.string
+            cell.detailTextLabel?.text = prediction.attributedSecondaryText?.string
+            return cell
+        }
+        
+        func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+            let prediction = predictions[indexPath.row]
+            print("Selected POI: \(prediction.attributedPrimaryText.string)")
+            navigationController?.popViewController(animated: true)
+        }
     }
 }
