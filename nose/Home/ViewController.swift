@@ -12,6 +12,9 @@ class ViewController: UIViewController, UISearchBarDelegate, GMSMapViewDelegate,
     var hasShownHalfModal = false // Flag to track modal presentation
     var searchButton: UIButton!
     
+    let mapID = GMSMapID(identifier: "7f9a1d61a6b1809f")
+    // let mapView = GMSMapView(frame: .zero, mapID: mapID, camera: camera)
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -20,7 +23,7 @@ class ViewController: UIViewController, UISearchBarDelegate, GMSMapViewDelegate,
         
         // Set default camera position (San Francisco)
         let camera = GMSCameraPosition.camera(withLatitude: 37.7749, longitude: -122.4194, zoom: 12.0)
-        mapView = GMSMapView(frame: self.view.bounds, camera: camera)
+        mapView = GMSMapView(frame: self.view.bounds, mapID: mapID, camera: camera)
         mapView.settings.myLocationButton = true  // Show "My Location" button
         mapView.isMyLocationEnabled = true        // Enable blue dot for user location
         mapView.delegate = self                   // Set mapView delegate to self
