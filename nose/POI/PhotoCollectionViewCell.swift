@@ -1,3 +1,4 @@
+// this sript is to display photos of POIs
 import UIKit
 
 class PhotoCollectionViewCell: UICollectionViewCell {

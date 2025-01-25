@@ -1,3 +1,4 @@
+// This script is to create bookmark lists and save POIs to them
 import UIKit
 
 class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
@@ -14,6 +15,8 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
     var website: String?
     var rating: Double?
     var openingHours: [String]?
+    var latitude: Double?
+    var longitude: Double?
     
     // Property to keep track of the selected bookmark list
     var selectedBookmarkList: BookmarkList?
@@ -98,6 +101,8 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
 
     @objc func backButtonTapped() {
         dismiss(animated: true, completion: nil)
+        // set background of button to none
+        view.backgroundColor = .white
     }
 
     @objc func createListButtonTapped() {
@@ -139,7 +144,9 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
             phoneNumber: phoneNumber,
             website: website,
             rating: rating,
-            openingHours: openingHours
+            openingHours: openingHours,
+            latitude: latitude ?? 0.0,
+            longitude: longitude ?? 0.0
         )
         
         if let index = bookmarkLists.firstIndex(of: selectedList) {

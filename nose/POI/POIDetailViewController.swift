@@ -1,3 +1,4 @@
+// this script is to display the detail info of a selected POI
 import UIKit
 
 class POIDetailViewController: UIViewController, UITableViewDelegate, UITableViewDataSource, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
@@ -10,6 +11,8 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
     var rating: Double?
     var openingHours: [String]?
     var photos: [UIImage] = [] // Array to hold POI photos
+    var latitude: Double?
+    var longitude: Double?
 
     var tableView: UITableView!
     var collectionView: UICollectionView!
@@ -159,6 +162,8 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
         bookmarkedPOIsVC.website = website
         bookmarkedPOIsVC.rating = rating
         bookmarkedPOIsVC.openingHours = openingHours
+        bookmarkedPOIsVC.latitude = latitude
+        bookmarkedPOIsVC.longitude =  longitude
         
         // Debug prints to verify properties
         print("Transitioning to BookmarkedPOIsViewController with:")

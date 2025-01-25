@@ -1,3 +1,4 @@
+// This script is to show the list of saved POIs in the future map
 import UIKit
 
 class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {

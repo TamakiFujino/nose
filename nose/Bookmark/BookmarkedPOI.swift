@@ -7,4 +7,7 @@ struct BookmarkedPOI {
     var website: String?
     var rating: Double?
     var openingHours: [String]?
+    // longitude and latitude properties
+    var latitude: Double
+    var longitude: Double
 }
