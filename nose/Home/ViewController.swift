@@ -42,7 +42,7 @@ class ViewController: UIViewController, UISearchBarDelegate, GMSMapViewDelegate,
         
         // Add search button
         searchButton = UIButton(type: .system)
-        // set background color to white and rounc the corners
+        // set background color to white and round the corners
         searchButton.backgroundColor = .white
         searchButton.layer.cornerRadius = 20
         // add padding to the button
@@ -75,6 +75,7 @@ class ViewController: UIViewController, UISearchBarDelegate, GMSMapViewDelegate,
     @objc func searchButtonTapped() {
         let searchVC = SearchViewController()
         searchVC.modalPresentationStyle = .fullScreen
+        searchVC.mainViewController = self
         present(searchVC, animated: true, completion: nil)
     }
     
@@ -174,7 +175,10 @@ class ViewController: UIViewController, UISearchBarDelegate, GMSMapViewDelegate,
     // Delegate method: Handle POI taps
     func mapView(_ mapView: GMSMapView, didTapPOIWithPlaceID placeID: String, name: String, location: CLLocationCoordinate2D) {
         print("POI Tapped: \(name), Place ID: \(placeID), Location: \(location)")
-        
+        fetchPlaceDetailsAndPresent(placeID: placeID, name: name, location: location)
+    }
+    
+    func fetchPlaceDetailsAndPresent(placeID: String, name: String, location: CLLocationCoordinate2D?) {
         placesClient.lookUpPlaceID(placeID) { (place, error) in
             if let error = error {
                 print("Error getting place details: \(error.localizedDescription)")
@@ -182,21 +186,30 @@ class ViewController: UIViewController, UISearchBarDelegate, GMSMapViewDelegate,
             }
             
             if let place = place {
-                // Fetch photos for the POI
                 self.fetchPhotos(forPlaceID: placeID) { photos in
                     DispatchQueue.main.async {
                         let detailVC = POIDetailViewController()
-                        detailVC.placeID = placeID // Ensure placeID is set
+                        detailVC.placeID = placeID
                         detailVC.placeName = name
                         detailVC.address = place.formattedAddress
                         detailVC.phoneNumber = place.phoneNumber
                         detailVC.website = place.website?.absoluteString
                         detailVC.rating = Double(place.rating)
                         detailVC.openingHours = place.openingHours?.weekdayText
-                        detailVC.photos = photos // Pass the photos to the detail view controller
-                        // do the same for latitude and lognitute
-                        detailVC.latitude = location.latitude
-                        detailVC.longitude = location.longitude
+                        detailVC.photos = photos
+                        if let location = location {
+                            detailVC.latitude = location.latitude
+                            detailVC.longitude = location.longitude
+                            // Move the map to the location of the POI
+                            let camera = GMSCameraPosition.camera(withLatitude: location.latitude, longitude: location.longitude, zoom: 15.0)
+                            self.mapView.animate(to: camera)
+                        } else {
+                            detailVC.latitude = place.coordinate.latitude
+                            detailVC.longitude = place.coordinate.longitude
+                            // Move the map to the location of the POI
+                            let camera = GMSCameraPosition.camera(withLatitude: place.coordinate.latitude, longitude: place.coordinate.longitude, zoom: 15.0)
+                            self.mapView.animate(to: camera)
+                        }
                         detailVC.modalPresentationStyle = .pageSheet
                         if let sheet = detailVC.sheetPresentationController {
                             sheet.detents = [.medium()]
@@ -258,8 +271,6 @@ class ViewController: UIViewController, UISearchBarDelegate, GMSMapViewDelegate,
         }
         
         print("Displayed \(savedPOIs.count) saved POIs on the map.")
-        
-        
     }
     
     class SearchViewController: UIViewController, UISearchBarDelegate, UITableViewDelegate, UITableViewDataSource {
@@ -269,16 +280,18 @@ class ViewController: UIViewController, UISearchBarDelegate, GMSMapViewDelegate,
         var predictions: [GMSAutocompletePrediction] = []
         var backButton: UIButton!
         
+        weak var mainViewController: ViewController?
+        
         override func viewDidLoad() {
             super.viewDidLoad()
             view.backgroundColor = .white
             
             backButton = UIButton(type: .system)
-                    backButton.setImage(UIImage(systemName: "arrow.left"), for: .normal)
-                    backButton.tintColor = .black
-                    backButton.addTarget(self, action: #selector(backButtonTapped), for: .touchUpInside)
-                    backButton.translatesAutoresizingMaskIntoConstraints = false
-                    view.addSubview(backButton)
+            backButton.setImage(UIImage(systemName: "arrow.left"), for: .normal)
+            backButton.tintColor = .black
+            backButton.addTarget(self, action: #selector(backButtonTapped), for: .touchUpInside)
+            backButton.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(backButton)
             
             searchBar = UISearchBar()
             searchBar.placeholder = "Search for a place"
@@ -293,15 +306,11 @@ class ViewController: UIViewController, UISearchBarDelegate, GMSMapViewDelegate,
             view.addSubview(tableView)
             
             NSLayoutConstraint.activate([
-                // set back button on the left corner, above search bar
                 backButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
                 backButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 10),
-                
-                // set search bar below back button
                 searchBar.topAnchor.constraint(equalTo: backButton.bottomAnchor, constant: 10),
                 searchBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
                 searchBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-                
                 tableView.topAnchor.constraint(equalTo: searchBar.bottomAnchor, constant: 10),
                 tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
                 tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
@@ -312,7 +321,7 @@ class ViewController: UIViewController, UISearchBarDelegate, GMSMapViewDelegate,
         @objc func backButtonTapped() {
             dismiss(animated: true, completion: nil)
         }
-
+        
         func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
             let filter = GMSAutocompleteFilter()
             placesClient.findAutocompletePredictions(fromQuery: searchText, filter: filter, sessionToken: nil) { (results, error) in
@@ -324,11 +333,11 @@ class ViewController: UIViewController, UISearchBarDelegate, GMSMapViewDelegate,
                 self.tableView.reloadData()
             }
         }
-
+        
         func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
             return predictions.count
         }
-
+        
         func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
             let cell = tableView.dequeueReusableCell(withIdentifier: "cell") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "cell")
             let prediction = predictions[indexPath.row]
@@ -336,11 +345,13 @@ class ViewController: UIViewController, UISearchBarDelegate, GMSMapViewDelegate,
             cell.detailTextLabel?.text = prediction.attributedSecondaryText?.string
             return cell
         }
-
+        
         func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
             let prediction = predictions[indexPath.row]
             print("Selected POI: \(prediction.attributedPrimaryText.string)")
-            navigationController?.popToRootViewController(animated: true)
+            dismiss(animated: true) {
+                self.mainViewController?.fetchPlaceDetailsAndPresent(placeID: prediction.placeID, name: prediction.attributedPrimaryText.string, location: nil)
+            }
         }
     }
 }
