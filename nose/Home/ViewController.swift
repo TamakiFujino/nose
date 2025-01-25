@@ -94,9 +94,13 @@ class ViewController: UIViewController, UISearchBarDelegate, GMSMapViewDelegate,
             hasShownHalfModal = true
             showSavedBookmarkLists()
             showSavedPOIMarkers()
+            // hide a search button
+            searchButton.isHidden = true
         } else if newValue != 100 {
             hasShownHalfModal = false
             mapView.clear() // Clear all markers
+            // show a search button
+            searchButton.isHidden = false
         }
     }
     

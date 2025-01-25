@@ -1,4 +1,3 @@
-// this script is to display the detail info of a selected POI
 import UIKit
 
 class POIDetailViewController: UIViewController, UITableViewDelegate, UITableViewDataSource, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
@@ -23,6 +22,13 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .white
+        
+        // Debug print to check initial state
+        print("POIDetailViewController loaded with placeID: \(placeID ?? "nil")")
+        print("Bookmark lists count: \(bookmarkLists.count)")
+        for list in bookmarkLists {
+            print("Bookmark list: \(list.name) with \(list.bookmarks.count) POIs")
+        }
         
         // Initialize ScrollView and StackView
         scrollView = UIScrollView()
@@ -53,11 +59,12 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
         let iconButton = UIButton(type: .system)
         // set the icon button to right-aligned
         iconButton.contentHorizontalAlignment = .right
-        iconButton.setImage(UIImage(systemName: "bookmark"), for: .normal) // Using SF Symbols
         iconButton.tintColor = .systemBlue
         iconButton.translatesAutoresizingMaskIntoConstraints = false
         iconButton.addTarget(self, action: #selector(iconButtonTapped), for: .touchUpInside)
         stackView.addArrangedSubview(iconButton)
+        
+        updateIconButtonImage(iconButton)
         
         let nameLabel = UILabel()
         nameLabel.text = placeName
@@ -162,7 +169,7 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
         bookmarkedPOIsVC.rating = rating
         bookmarkedPOIsVC.openingHours = openingHours
         bookmarkedPOIsVC.latitude = latitude
-        bookmarkedPOIsVC.longitude =  longitude
+        bookmarkedPOIsVC.longitude = longitude
         
         // Debug prints to verify properties
         print("Transitioning to BookmarkedPOIsViewController with:")
@@ -171,6 +178,34 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
         
         bookmarkedPOIsVC.modalPresentationStyle = .fullScreen
         present(bookmarkedPOIsVC, animated: true, completion: nil)
+    }
+
+    func updateIconButtonImage(_ button: UIButton) {
+        print("Updating icon button image")
+        if isPOIBookmarked() {
+            print("POI is bookmarked")
+            button.setImage(UIImage(systemName: "bookmark.fill"), for: .normal) // Filled bookmark icon
+        } else {
+            print("POI is not bookmarked")
+            button.setImage(UIImage(systemName: "bookmark"), for: .normal) // Outline bookmark icon
+        }
+    }
+
+    func isPOIBookmarked() -> Bool {
+        print("Checking if POI is bookmarked")
+        print("Bookmark lists: \(bookmarkLists)")
+        for list in bookmarkLists {
+            print("Checking list: \(list.name)")
+            for poi in list.bookmarks {
+                print("Checking POI: \(poi.placeID)")
+                if poi.placeID == placeID {
+                    print("POI found in list: \(list.name)")
+                    return true
+                }
+            }
+        }
+        print("POI not found in any list")
+        return false
     }
 
     // MARK: - UITableViewDataSource
