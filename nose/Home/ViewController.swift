@@ -15,6 +15,22 @@ class ViewController: UIViewController, UISearchBarDelegate, GMSMapViewDelegate,
     let mapID = GMSMapID(identifier: "7f9a1d61a6b1809f")
     // let mapView = GMSMapView(frame: .zero, mapID: mapID, camera: camera)
     
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        
+        // Remove any existing dots before adding new ones (to prevent duplicates)
+        view.subviews.forEach { if $0.tag == 999 { $0.removeFromSuperview() } }
+        
+        // Get slider track start & end points
+        let trackWidth = slider.frame.width - slider.thumbRect(forBounds: slider.bounds, trackRect: slider.bounds, value: 0).width
+        let startX = slider.frame.origin.x + (slider.thumbRect(forBounds: slider.bounds, trackRect: slider.bounds, value: 0).width / 2)
+        
+        // Add dots at the correct positions
+        addDot(at: startX, for: slider)                   // 0%
+        addDot(at: startX + (trackWidth / 2), for: slider) // 50%
+        addDot(at: startX + trackWidth, for: slider)       // 100%
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -41,6 +57,11 @@ class ViewController: UIViewController, UISearchBarDelegate, GMSMapViewDelegate,
         slider.value = 50 // Default value
         slider.translatesAutoresizingMaskIntoConstraints = false
         slider.addTarget(self, action: #selector(sliderValueChanged), for: .valueChanged)
+        slider.minimumTrackTintColor = .black // Color of the left side (before the thumb)
+        slider.maximumTrackTintColor = .black
+        slider.transform = CGAffineTransform(scaleX: 1.0, y: 1.0) // Shrinks the height
+        slider.setThumbImage(UIImage(systemName: "circle.fill"), for: .normal)
+        slider.thumbTintColor = UIColor(red: 0.792, green: 1.0, blue: 0.341, alpha: 0.8)
         view.addSubview(slider)
         
         // Add search button
@@ -360,5 +381,25 @@ class ViewController: UIViewController, UISearchBarDelegate, GMSMapViewDelegate,
                 self.mainViewController?.fetchPlaceDetailsAndPresent(placeID: prediction.placeID, name: prediction.attributedPrimaryText.string, location: nil)
             }
         }
+    }
+    
+    func addDot(at xPosition: CGFloat, for slider: UISlider) {
+        let dotSize: CGFloat = 10  // Dot diameter
+        
+        // Define slider track start and end positions
+        let trackStart = slider.frame.minX
+        let trackEnd = slider.frame.maxX
+        
+        // Ensure dot is not placed at the extreme ends
+        guard xPosition > trackStart, xPosition < trackEnd else { return }
+        
+        let dot = UIView(frame: CGRect(x: xPosition - (dotSize / 2),
+                                       y: slider.frame.midY - (dotSize / 2), // Align to track
+                                       width: dotSize,
+                                       height: dotSize))
+        dot.backgroundColor = .black
+        dot.layer.cornerRadius = dotSize / 2  // Make it a circle
+        dot.tag = 999 // Assign a tag for easy removal
+        view.addSubview(dot)
     }
 }
