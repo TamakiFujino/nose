@@ -3,7 +3,7 @@ import GoogleMaps
 import GooglePlaces
 import CoreLocation
 
-class ViewController: UIViewController, UISearchBarDelegate, GMSMapViewDelegate, CLLocationManagerDelegate {
+class HomeViewController: UIViewController, UISearchBarDelegate, GMSMapViewDelegate, CLLocationManagerDelegate {
     
     var mapView: GMSMapView!
     var locationManager = CLLocationManager()
@@ -308,7 +308,7 @@ class ViewController: UIViewController, UISearchBarDelegate, GMSMapViewDelegate,
         var predictions: [GMSAutocompletePrediction] = []
         var backButton: UIButton!
         
-        weak var mainViewController: ViewController?
+        weak var mainViewController: HomeViewController?
         
         override func viewDidLoad() {
             super.viewDidLoad()

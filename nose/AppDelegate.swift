@@ -8,10 +8,28 @@
 import UIKit
 import GoogleMaps
 import GooglePlaces
+import FirebaseCore
+import Firebase
+import GoogleSignIn
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
+    
+    var window: UIWindow?
+    
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        
+        FirebaseApp.configure()
+        
+        // Initialize Google sign-in
+                GIDSignIn.sharedInstance.restorePreviousSignIn { user, error in
+                    if error != nil || user == nil {
+                        // Show the app's signed-out state.
+                    } else {
+                        // Show the app's signed-in state.
+                    }
+                }
+        
         // Attempt to load the API key from Config.plist
                 if let path = Bundle.main.path(forResource: "Config", ofType: "plist"),
                    let config = NSDictionary(contentsOfFile: path),
@@ -22,11 +40,21 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                     GMSPlacesClient.provideAPIKey(apiKey)
                     
                     print("Google Maps API Key Loaded Successfully!")
+                    
+
                 } else {
                     print("Failed to load Google Maps API Key. Check Config.plist.")
                 }
         return true
     }
+
+        func application(
+            _ app: UIApplication,
+            open url: URL,
+            options: [UIApplication.OpenURLOptionsKey: Any] = [:]
+        ) -> Bool {
+            return GIDSignIn.sharedInstance.handle(url)
+        }
 
     // MARK: UISceneSession Lifecycle
 
