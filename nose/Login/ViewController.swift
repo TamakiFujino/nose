@@ -24,6 +24,7 @@ class ViewController: UIViewController {
             print("No clientID found")
             return
         }
+        
         let config = GIDConfiguration(clientID: clientID)
         GIDSignIn.sharedInstance.configuration = config
         
@@ -37,7 +38,9 @@ class ViewController: UIViewController {
                 print("No authentication or ID token")
                 return
             }
-            let credential = GoogleAuthProvider.credential(withIDToken: idToken.tokenString, accessToken: authentication.accessToken.tokenString)
+            
+            let credential = GoogleAuthProvider.credential(withIDToken: idToken.tokenString,
+                                                           accessToken: authentication.accessToken.tokenString)
             
             Auth.auth().signIn(with: credential) { authResult, error in
                 if let error = error {
@@ -45,8 +48,14 @@ class ViewController: UIViewController {
                     return
                 }
                 print("Google Login Successful! ✅")
-                self.dismiss(animated: true, completion: nil)
+                self.navigateToHomeScreen()
             }
         }
+    }
+    
+    func navigateToHomeScreen() {
+        let homeViewController = HomeViewController()
+        homeViewController.modalPresentationStyle = .fullScreen
+        self.present(homeViewController, animated: true, completion: nil)
     }
 }
