@@ -1,17 +1,6 @@
 from appium import webdriver
 from appium.options.ios import XCUITestOptions
 
-# def get_driver():
-#     options = XCUITestOptions()
-#     options.platform_name = "iOS"
-#     options.platform_version = "18.2"
-#     options.device_name = "iPhone 16 Pro"
-#     options.app = "/Users/tamakifujino/Library/Developer/Xcode/DerivedData/nose-azrmgrrquncuczcwgevpuqyfssst/Build/Products/Debug-iphonesimulator/nose.app"
-#     options.automation_name = "XCUITest"
-
-#     driver = webdriver.Remote("http://localhost:4723", options=options)
-#     return driver
-
 class DriverSetup:
     def __init__(self):
         """ Set up desired capabilities for iOS Appium driver """
