@@ -30,6 +30,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                     }
                 }
         
+        do {
+                    try Auth.auth().useUserAccessGroup(nil) // Ensures persistence
+                } catch let error {
+                    print("Error enabling Auth persistence: \(error.localizedDescription)")
+                }
+        
         // Attempt to load the API key from Config.plist
                 if let path = Bundle.main.path(forResource: "Config", ofType: "plist"),
                    let config = NSDictionary(contentsOfFile: path),

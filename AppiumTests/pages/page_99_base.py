@@ -15,3 +15,8 @@ class BasePage:
         self.find_element(locator_type, locator).send_keys(text)
         # and click return
         self.find_element(locator_type, locator).send_keys(Keys.RETURN)
+
+def set_slider(self, locator_type, locator, value):
+    slider = self.find_element(locator_type, locator)
+    slider.send_keys(value)
+    print(f"Slider value set to: {value}")

@@ -6,6 +6,39 @@ class ViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupGoogleSignInButton()
+        
+        // Ensure Firebase restores session
+        Auth.auth().addStateDidChangeListener { auth, user in
+            if let user = user {
+                print("User is already logged in: \(user.uid)")
+                self.checkUserStatus()
+            } else {
+                print("No user session found, waiting for login.")
+            }
+        }
+    }
+    
+    func checkUserStatus() {
+        if let user = Auth.auth().currentUser {
+            if user.displayName == nil || user.displayName!.isEmpty {
+                showNameInputScreen()  // Show name input screen for first-time users
+            } else {
+                goToMainScreen()  // Proceed to main app
+            }
+        }
+    }
+    
+    func showNameInputScreen() {
+        let nameInputVC = NameInputViewController()
+        nameInputVC.modalPresentationStyle = .fullScreen
+        present(nameInputVC, animated: true)
+    }
+    
+    func goToMainScreen() {
+        print("User has a name, proceeding to main app")
+        let homeViewController = HomeViewController()
+        homeViewController.modalPresentationStyle = .fullScreen
+        self.present(homeViewController, animated: true, completion: nil)
     }
     
     func setupGoogleSignInButton() {
@@ -48,14 +81,10 @@ class ViewController: UIViewController {
                     return
                 }
                 print("Google Login Successful! ✅")
-                self.navigateToHomeScreen()
+                
+                // Check if the user needs to input their name
+                self.checkUserStatus()
             }
         }
-    }
-    
-    func navigateToHomeScreen() {
-        let homeViewController = HomeViewController()
-        homeViewController.modalPresentationStyle = .fullScreen
-        self.present(homeViewController, animated: true, completion: nil)
     }
 }
