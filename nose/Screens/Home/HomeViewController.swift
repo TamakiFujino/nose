@@ -341,7 +341,7 @@ class HomeViewController: UIViewController, UISearchBarDelegate, GMSMapViewDeleg
             view.backgroundColor = .white
             
             backButton = UIButton(type: .system)
-            backButton.setImage(UIImage(systemName: "arrow.left"), for: .normal)
+            backButton.setImage(UIImage(systemName: "chevron.left"), for: .normal)
             backButton.tintColor = .black
             backButton.addTarget(self, action: #selector(backButtonTapped), for: .touchUpInside)
             backButton.translatesAutoresizingMaskIntoConstraints = false

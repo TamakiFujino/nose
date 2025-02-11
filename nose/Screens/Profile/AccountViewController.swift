@@ -7,11 +7,16 @@ class AccountViewController: UIViewController, UITableViewDelegate, UITableViewD
 
     // Define setting categories and items
     let settingsData: [(category: String, items: [String])] = [
-        ("", ["Log out", "Delete Account"]),
+        ("", ["Logout", "Delete Account"]),
     ]
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        let backButton = UIBarButtonItem()
+            backButton.title = ""  // Hide the "Back" text
+            self.navigationItem.backBarButtonItem = backButton
+            self.navigationController?.navigationBar.tintColor = .black
 
         view.backgroundColor = .white
         setupUI()
@@ -19,14 +24,6 @@ class AccountViewController: UIViewController, UITableViewDelegate, UITableViewD
     }
     
     func setupUI() {
-        // Back button
-        let backButton = UIButton(type: .system)
-        backButton.setImage(UIImage(systemName: "chevron.left"), for: .normal)
-        backButton.tintColor = .black
-        backButton.translatesAutoresizingMaskIntoConstraints = false
-        backButton.addTarget(self, action: #selector(backButtonTapped), for: .touchUpInside)
-        view.addSubview(backButton)
-        
         // Heading Label
         let headingLabel = UILabel()
         headingLabel.text = "Account"
@@ -36,21 +33,10 @@ class AccountViewController: UIViewController, UITableViewDelegate, UITableViewD
         
         // Layout Constraints
         NSLayoutConstraint.activate([
-            // Back button at the top left
-            backButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            backButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
-            
-            // Heading next to the back button
-            headingLabel.leadingAnchor.constraint(equalTo: backButton.trailingAnchor, constant: 20),
-            headingLabel.centerYAnchor.constraint(equalTo: backButton.centerYAnchor),
+            // Heading left aligned
+            headingLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            headingLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20)
         ])
-    }
-    
-    @objc func backButtonTapped() {
-        navigationController?.popViewController(animated: true)
-        // go to SettingViewController
-        let settingVC = SettingViewController()
-        navigationController?.pushViewController(settingVC, animated: true)
     }
     
     func setupTableView() {

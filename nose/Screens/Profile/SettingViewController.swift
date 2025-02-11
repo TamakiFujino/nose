@@ -13,6 +13,11 @@ class SettingViewController: UIViewController, UITableViewDelegate, UITableViewD
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        let backButton = UIBarButtonItem()
+            backButton.title = ""  // Hide the "Back" text
+            self.navigationItem.backBarButtonItem = backButton
+            self.navigationController?.navigationBar.tintColor = .black
 
         view.backgroundColor = .white
         setupUI()
@@ -20,14 +25,6 @@ class SettingViewController: UIViewController, UITableViewDelegate, UITableViewD
     }
     
     func setupUI() {
-        // Back button
-        let backButton = UIButton(type: .system)
-        backButton.setImage(UIImage(systemName: "chevron.left"), for: .normal)
-        backButton.tintColor = .black
-        backButton.translatesAutoresizingMaskIntoConstraints = false
-        backButton.addTarget(self, action: #selector(backButtonTapped), for: .touchUpInside)
-        view.addSubview(backButton)
-        
         // Heading Label
         let headingLabel = UILabel()
         headingLabel.text = "Settings"
@@ -35,31 +32,12 @@ class SettingViewController: UIViewController, UITableViewDelegate, UITableViewD
         headingLabel.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(headingLabel)
         
-        // Subheading Label
-        let subheadingLabel = UILabel()
-        subheadingLabel.text = "Change your settings here"
-        subheadingLabel.font = UIFont.systemFont(ofSize: 12, weight: .regular)
-        subheadingLabel.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(subheadingLabel)
-        
         // Layout Constraints
         NSLayoutConstraint.activate([
-            // Back button at the top left
-            backButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            backButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
-            
-            // Heading next to the back button
-            headingLabel.leadingAnchor.constraint(equalTo: backButton.trailingAnchor, constant: 20),
-            headingLabel.centerYAnchor.constraint(equalTo: backButton.centerYAnchor),
-            
-            // Subheading below heading
-            subheadingLabel.leadingAnchor.constraint(equalTo: headingLabel.leadingAnchor),
-            subheadingLabel.topAnchor.constraint(equalTo: headingLabel.bottomAnchor, constant: 5)
+            // Heading left aligned
+            headingLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            headingLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20)
         ])
-    }
-    
-    @objc func backButtonTapped() {
-        navigationController?.popViewController(animated: true)
     }
     
     func setupTableView() {
@@ -108,8 +86,10 @@ class SettingViewController: UIViewController, UITableViewDelegate, UITableViewD
         
         if selectedSetting == "Name" {
             let nameVC = NameInputViewController()
-            let navController = UINavigationController(rootViewController: nameVC)
-            present(navController, animated: true, completion: nil)
+            navigationController?.pushViewController(nameVC, animated: true)
+        } else if selectedSetting == "Account" {
+            let accountVC = AccountViewController()
+            navigationController?.pushViewController(accountVC, animated: true)
         }
     }
 }
