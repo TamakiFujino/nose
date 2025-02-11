@@ -33,6 +33,7 @@ class NameInputViewController: UIViewController {
         myButton.translatesAutoresizingMaskIntoConstraints = false
         myButton.heightAnchor.constraint(equalToConstant: 45).isActive = true
         myButton.addTarget(self, action: #selector(saveName), for: .touchUpInside)
+        print("Button action set!")
         myButton.isUserInteractionEnabled = true
         view.addSubview(myButton)
         
@@ -56,6 +57,8 @@ class NameInputViewController: UIViewController {
     
     // when myButton is pressed, save the name input and move to HomeViewController
     @objc func saveName() {
+        print("save button tapped")
+        
         guard let name = nameTextField.text, !name.isEmpty else {
             print("Name is empty")
             return
@@ -66,7 +69,11 @@ class NameInputViewController: UIViewController {
         
         // Move to HomeViewController
         let homeVC = HomeViewController()
-        self.present(homeVC, animated: true)
+        if let navController = navigationController {
+                navController.pushViewController(homeVC, animated: true)  // Use navigation if available
+            } else {
+                present(homeVC, animated: true)  // Otherwise, present modally
+            }
     }
 }
 

@@ -11,6 +11,7 @@ class HomeViewController: UIViewController, UISearchBarDelegate, GMSMapViewDeleg
     var slider: UISlider!
     var hasShownHalfModal = false // Flag to track modal presentation
     var searchButton: UIButton!
+    var profileButton: UIButton!
     
     let mapID = GMSMapID(identifier: "7f9a1d61a6b1809f")
     // let mapView = GMSMapView(frame: .zero, mapID: mapID, camera: camera)
@@ -81,6 +82,19 @@ class HomeViewController: UIViewController, UISearchBarDelegate, GMSMapViewDeleg
         searchButton.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(searchButton)
         
+        // Add profile button after search button
+        profileButton = UIButton(type: .system)
+        profileButton.backgroundColor = .white
+        profileButton.layer.cornerRadius = 20
+        profileButton.layer.shadowColor = UIColor.black.cgColor
+        profileButton.setImage(UIImage(systemName: "person.fill"), for: .normal)
+        profileButton.tintColor = .black
+        profileButton.imageView?.contentMode = .scaleAspectFit
+        profileButton.addTarget(self, action: #selector(goToProfile), for: .touchUpInside)
+        profileButton.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(profileButton)
+        
+        
         // Set up constraints
         NSLayoutConstraint.activate([
             // Slider constraints
@@ -92,7 +106,13 @@ class HomeViewController: UIViewController, UISearchBarDelegate, GMSMapViewDeleg
             searchButton.topAnchor.constraint(equalTo: slider.bottomAnchor, constant: 10),
             searchButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
             searchButton.widthAnchor.constraint(equalToConstant: 40),
-            searchButton.heightAnchor.constraint(equalToConstant: 40)
+            searchButton.heightAnchor.constraint(equalToConstant: 40),
+            
+            // put profile button after search button vertically
+            profileButton.topAnchor.constraint(equalTo: searchButton.bottomAnchor, constant: 10),
+            profileButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            profileButton.widthAnchor.constraint(equalToConstant: 40),
+            profileButton.heightAnchor.constraint(equalToConstant: 40)
         ])
     }
     
@@ -101,6 +121,12 @@ class HomeViewController: UIViewController, UISearchBarDelegate, GMSMapViewDeleg
         searchVC.modalPresentationStyle = .fullScreen
         searchVC.mainViewController = self
         present(searchVC, animated: true, completion: nil)
+    }
+    
+    // when profileButton is pressed, move to ProfileViewController
+    @objc func goToProfile() {
+        let profileVC = ProfileViewController()
+        navigationController?.pushViewController(profileVC, animated: true)
     }
     
     // Function to handle slider value changes with snapping
