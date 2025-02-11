@@ -3,86 +3,83 @@ import GoogleMaps
 import GooglePlaces
 import CoreLocation
 
-class HomeViewController: UIViewController, UISearchBarDelegate, GMSMapViewDelegate, CLLocationManagerDelegate {
+class HomeViewController: UIViewController {
     
     var mapView: GMSMapView!
     var locationManager = CLLocationManager()
     var placesClient: GMSPlacesClient!
     var slider: UISlider!
-    var hasShownHalfModal = false // Flag to track modal presentation
+    var hasShownHalfModal = false
     var searchButton: UIButton!
     var profileButton: UIButton!
     
     let mapID = GMSMapID(identifier: "7f9a1d61a6b1809f")
-    // let mapView = GMSMapView(frame: .zero, mapID: mapID, camera: camera)
-    
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        
-        // Remove any existing dots before adding new ones (to prevent duplicates)
-        view.subviews.forEach { if $0.tag == 999 { $0.removeFromSuperview() } }
-        
-        // Get slider track start & end points
-        let trackWidth = slider.frame.width - slider.thumbRect(forBounds: slider.bounds, trackRect: slider.bounds, value: 0).width
-        let startX = slider.frame.origin.x + (slider.thumbRect(forBounds: slider.bounds, trackRect: slider.bounds, value: 0).width / 2)
-        
-        // Add dots at the correct positions
-        addDot(at: startX, for: slider)                   // 0%
-        addDot(at: startX + (trackWidth / 2), for: slider) // 50%
-        addDot(at: startX + trackWidth, for: slider)       // 100%
-    }
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        // Initialize Google Places Client
+        setupGooglePlacesClient()
+        setupMapView()
+        setupLocationManager()
+        setupSlider()
+        setupSearchButton()
+        setupProfileButton()
+        setupConstraints()
+    }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        addDotsToSlider()
+    }
+    
+    private func setupGooglePlacesClient() {
         placesClient = GMSPlacesClient.shared()
-        
-        // Set default camera position (San Francisco)
+    }
+    
+    private func setupMapView() {
         let camera = GMSCameraPosition.camera(withLatitude: 37.7749, longitude: -122.4194, zoom: 12.0)
         mapView = GMSMapView(frame: self.view.bounds, mapID: mapID, camera: camera)
-        mapView.settings.myLocationButton = true  // Show "My Location" button
-        mapView.isMyLocationEnabled = true        // Enable blue dot for user location
-        mapView.delegate = self                   // Set mapView delegate to self
+        mapView.settings.myLocationButton = true
+        mapView.isMyLocationEnabled = true
+        mapView.delegate = self
         view.addSubview(mapView)
-        
-        // Setup Location Manager
+    }
+    
+    private func setupLocationManager() {
         locationManager.delegate = self
-        locationManager.requestWhenInUseAuthorization() // Request permission
-        locationManager.startUpdatingLocation()         // Start location tracking
-        
-        // Add slider
+        locationManager.requestWhenInUseAuthorization()
+        locationManager.startUpdatingLocation()
+    }
+    
+    private func setupSlider() {
         slider = UISlider()
         slider.minimumValue = 0
         slider.maximumValue = 100
-        slider.value = 50 // Default value
+        slider.value = 50
         slider.translatesAutoresizingMaskIntoConstraints = false
         slider.addTarget(self, action: #selector(sliderValueChanged), for: .valueChanged)
-        slider.minimumTrackTintColor = .black // Color of the left side (before the thumb)
+        slider.minimumTrackTintColor = .black
         slider.maximumTrackTintColor = .black
-        slider.transform = CGAffineTransform(scaleX: 1.0, y: 1.0) // Shrinks the height
+        slider.transform = CGAffineTransform(scaleX: 1.0, y: 1.0)
         slider.setThumbImage(UIImage(systemName: "circle.fill"), for: .normal)
         slider.thumbTintColor = UIColor(red: 0.792, green: 1.0, blue: 0.341, alpha: 0.8)
         view.addSubview(slider)
-        
-        // Add search button
+    }
+    
+    private func setupSearchButton() {
         searchButton = UIButton(type: .system)
-        // set background color to white and round the corners
         searchButton.backgroundColor = .white
         searchButton.layer.cornerRadius = 20
-        // add padding to the button
         searchButton.contentEdgeInsets = UIEdgeInsets(top: 10, left: 10, bottom: 10, right: 10)
-        // add drop shadow to the button
         searchButton.layer.shadowColor = UIColor.black.cgColor
-        // set the image to magnifying glass, color to black and size to 40
         searchButton.setImage(UIImage(systemName: "magnifyingglass"), for: .normal)
         searchButton.tintColor = .black
         searchButton.imageView?.contentMode = .scaleAspectFit
         searchButton.addTarget(self, action: #selector(searchButtonTapped), for: .touchUpInside)
         searchButton.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(searchButton)
-        
-        // Add profile button after search button
+    }
+    
+    private func setupProfileButton() {
         profileButton = UIButton(type: .system)
         profileButton.backgroundColor = .white
         profileButton.layer.cornerRadius = 20
@@ -93,9 +90,9 @@ class HomeViewController: UIViewController, UISearchBarDelegate, GMSMapViewDeleg
         profileButton.addTarget(self, action: #selector(goToProfile), for: .touchUpInside)
         profileButton.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(profileButton)
-        
-        
-        // Set up constraints
+    }
+    
+    private func setupConstraints() {
         NSLayoutConstraint.activate([
             // Slider constraints
             slider.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
@@ -108,7 +105,7 @@ class HomeViewController: UIViewController, UISearchBarDelegate, GMSMapViewDeleg
             searchButton.widthAnchor.constraint(equalToConstant: 40),
             searchButton.heightAnchor.constraint(equalToConstant: 40),
             
-            // put profile button after search button vertically
+            // Profile button constraints
             profileButton.topAnchor.constraint(equalTo: searchButton.bottomAnchor, constant: 10),
             profileButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
             profileButton.widthAnchor.constraint(equalToConstant: 40),
@@ -116,131 +113,92 @@ class HomeViewController: UIViewController, UISearchBarDelegate, GMSMapViewDeleg
         ])
     }
     
-    @objc func searchButtonTapped() {
+    private func addDotsToSlider() {
+        view.subviews.forEach { if $0.tag == 999 { $0.removeFromSuperview() } }
+        
+        let trackWidth = slider.frame.width - slider.thumbRect(forBounds: slider.bounds, trackRect: slider.bounds, value: 0).width
+        let startX = slider.frame.origin.x + (slider.thumbRect(forBounds: slider.bounds, trackRect: slider.bounds, value: 0).width / 2)
+        
+        addDot(at: startX, for: slider)
+        addDot(at: startX + (trackWidth / 2), for: slider)
+        addDot(at: startX + trackWidth, for: slider)
+    }
+    
+    @objc private func searchButtonTapped() {
         let searchVC = SearchViewController()
         searchVC.modalPresentationStyle = .fullScreen
         searchVC.mainViewController = self
         present(searchVC, animated: true, completion: nil)
     }
     
-    // when profileButton is pressed, move to ProfileViewController
-    @objc func goToProfile() {
+    @objc private func goToProfile() {
         let profileVC = ProfileViewController()
         navigationController?.pushViewController(profileVC, animated: true)
     }
     
-    // Function to handle slider value changes with snapping
-    @objc func sliderValueChanged(_ sender: UISlider) {
+    @objc private func sliderValueChanged(_ sender: UISlider) {
         let step: Float = 50
         let newValue = round(sender.value / step) * step
         
-        // Animate the transition to the new value
         UIView.animate(withDuration: 0.3) {
             sender.setValue(newValue, animated: true)
         }
         
-        // Show half modal when the slider value is 100
         if newValue == 100 && !hasShownHalfModal {
             hasShownHalfModal = true
             showSavedBookmarkLists()
             showSavedPOIMarkers()
-            // hide a search button
             searchButton.isHidden = true
         } else if newValue != 100 {
             hasShownHalfModal = false
-            mapView.clear() // Clear all markers
-            // show a search button
+            mapView.clear()
             searchButton.isHidden = false
         }
     }
     
-    // Function to show the saved bookmark lists in a half modal
-    func showSavedBookmarkLists() {
+    private func showSavedBookmarkLists() {
         let savedBookmarksVC = SavedBookmarksViewController()
         let navController = UINavigationController(rootViewController: savedBookmarksVC)
         navController.modalPresentationStyle = .pageSheet
         if let sheet = navController.sheetPresentationController {
-            sheet.detents = [.medium()] // Present as a half modal
+            sheet.detents = [.medium()]
         }
         present(navController, animated: true, completion: nil)
     }
     
-    @objc func bookmarksButtonTapped() {
-        let bookmarkedPOIsVC = BookmarkedPOIsViewController()
-        bookmarkedPOIsVC.modalPresentationStyle = .fullScreen
-        present(bookmarkedPOIsVC, animated: true, completion: nil)
-    }
-    
-    // Handle search input
-    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
-        searchBar.resignFirstResponder() // Hide keyboard
-        if let query = searchBar.text {
-            searchForPlace(query: query)
-        }
-    }
-    
-    // Search for a place using Google Places API
-    func searchForPlace(query: String) {
-        let filter = GMSAutocompleteFilter()
-        filter.type = .noFilter // You can set type to .geocode for addresses only
+    private func addDot(at xPosition: CGFloat, for slider: UISlider) {
+        let dotSize: CGFloat = 10
+        let trackStart = slider.frame.minX
+        let trackEnd = slider.frame.maxX
         
-        placesClient.findAutocompletePredictions(fromQuery: query, filter: filter, sessionToken: nil) { (results, error) in
-            if let error = error {
-                print("Error finding place: \(error.localizedDescription)")
-                return
-            }
-            
-            if let result = results?.first {
-                self.getPlaceDetails(placeID: result.placeID)
-            }
-        }
+        guard xPosition > trackStart, xPosition < trackEnd else { return }
+        
+        let dot = UIView(frame: CGRect(x: xPosition - (dotSize / 2),
+                                       y: slider.frame.midY - (dotSize / 2),
+                                       width: dotSize,
+                                       height: dotSize))
+        dot.backgroundColor = .black
+        dot.layer.cornerRadius = dotSize / 2
+        dot.tag = 999
+        view.addSubview(dot)
     }
-    
-    // Get place details and move map to that location
-    func getPlaceDetails(placeID: String) {
-        placesClient.lookUpPlaceID(placeID) { (place, error) in
-            if let error = error {
-                print("Error getting place details: \(error.localizedDescription)")
-                return
-            }
-            
-            if let place = place {
-                let camera = GMSCameraPosition.camera(withLatitude: place.coordinate.latitude, longitude: place.coordinate.longitude, zoom: 15.0)
-                self.mapView.animate(to: camera)
-            }
-        }
-    }
-    
-    // Update map to follow user location
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        if let location = locations.last {
-            let camera = GMSCameraPosition.camera(withLatitude: location.coordinate.latitude, longitude: location.coordinate.longitude, zoom: 15.0)
-            mapView.animate(to: camera) // Move camera to user location
-        }
-    }
-    
-    // Handle location permission denied
-    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
-        if status == .denied {
-            print("Location access denied")
-        }
-    }
-    
-    // Delegate method: Handle POI taps
+}
+
+// MARK: - GMSMapViewDelegate
+extension HomeViewController: GMSMapViewDelegate {
     func mapView(_ mapView: GMSMapView, didTapPOIWithPlaceID placeID: String, name: String, location: CLLocationCoordinate2D) {
-        print("POI Tapped: \(name), Place ID: \(placeID), Location: \(location)")
         fetchPlaceDetailsAndPresent(placeID: placeID, name: name, location: location)
     }
     
     func fetchPlaceDetailsAndPresent(placeID: String, name: String, location: CLLocationCoordinate2D?) {
-        placesClient.lookUpPlaceID(placeID) { (place, error) in
+        placesClient.lookUpPlaceID(placeID) { [weak self] (place, error) in
             if let error = error {
                 print("Error getting place details: \(error.localizedDescription)")
                 return
             }
             
             if let place = place {
-                self.fetchPhotos(forPlaceID: placeID) { photos in
+                self?.fetchPhotos(forPlaceID: placeID) { photos in
                     DispatchQueue.main.async {
                         let detailVC = POIDetailViewController()
                         detailVC.placeID = placeID
@@ -254,29 +212,26 @@ class HomeViewController: UIViewController, UISearchBarDelegate, GMSMapViewDeleg
                         if let location = location {
                             detailVC.latitude = location.latitude
                             detailVC.longitude = location.longitude
-                            // Move the map to the location of the POI
                             let camera = GMSCameraPosition.camera(withLatitude: location.latitude, longitude: location.longitude, zoom: 15.0)
-                            self.mapView.animate(to: camera)
+                            self?.mapView.animate(to: camera)
                         } else {
                             detailVC.latitude = place.coordinate.latitude
                             detailVC.longitude = place.coordinate.longitude
-                            // Move the map to the location of the POI
                             let camera = GMSCameraPosition.camera(withLatitude: place.coordinate.latitude, longitude: place.coordinate.longitude, zoom: 15.0)
-                            self.mapView.animate(to: camera)
+                            self?.mapView.animate(to: camera)
                         }
                         detailVC.modalPresentationStyle = .pageSheet
                         if let sheet = detailVC.sheetPresentationController {
                             sheet.detents = [.medium()]
                         }
-                        self.present(detailVC, animated: true, completion: nil)
+                        self?.present(detailVC, animated: true, completion: nil)
                     }
                 }
             }
         }
     }
     
-    // Fetch photos for a place
-    func fetchPhotos(forPlaceID placeID: String, completion: @escaping ([UIImage]) -> Void) {
+    private func fetchPhotos(forPlaceID placeID: String, completion: @escaping ([UIImage]) -> Void) {
         placesClient.lookUpPhotos(forPlaceID: placeID) { (photosMetadata, error) in
             if let error = error {
                 print("Error fetching photos: \(error.localizedDescription)")
@@ -326,106 +281,149 @@ class HomeViewController: UIViewController, UISearchBarDelegate, GMSMapViewDeleg
         
         print("Displayed \(savedPOIs.count) saved POIs on the map.")
     }
+}
+
+// MARK: - CLLocationManagerDelegate
+extension HomeViewController: CLLocationManagerDelegate {
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        if let location = locations.last {
+            let camera = GMSCameraPosition.camera(withLatitude: location.coordinate.latitude, longitude: location.coordinate.longitude, zoom: 15.0)
+            mapView.animate(to: camera)
+        }
+    }
     
-    class SearchViewController: UIViewController, UISearchBarDelegate, UITableViewDelegate, UITableViewDataSource {
-        var searchBar: UISearchBar!
-        var tableView: UITableView!
-        var placesClient = GMSPlacesClient.shared()
-        var predictions: [GMSAutocompletePrediction] = []
-        var backButton: UIButton!
-        
-        weak var mainViewController: HomeViewController?
-        
-        override func viewDidLoad() {
-            super.viewDidLoad()
-            view.backgroundColor = .white
-            
-            backButton = UIButton(type: .system)
-            backButton.setImage(UIImage(systemName: "chevron.left"), for: .normal)
-            backButton.tintColor = .black
-            backButton.addTarget(self, action: #selector(backButtonTapped), for: .touchUpInside)
-            backButton.translatesAutoresizingMaskIntoConstraints = false
-            view.addSubview(backButton)
-            
-            searchBar = UISearchBar()
-            searchBar.placeholder = "Search for a place"
-            searchBar.delegate = self
-            searchBar.translatesAutoresizingMaskIntoConstraints = false
-            view.addSubview(searchBar)
-            
-            tableView = UITableView()
-            tableView.delegate = self
-            tableView.dataSource = self
-            tableView.translatesAutoresizingMaskIntoConstraints = false
-            view.addSubview(tableView)
-            
-            NSLayoutConstraint.activate([
-                backButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
-                backButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 10),
-                searchBar.topAnchor.constraint(equalTo: backButton.bottomAnchor, constant: 10),
-                searchBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-                searchBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-                tableView.topAnchor.constraint(equalTo: searchBar.bottomAnchor, constant: 10),
-                tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-                tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-                tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
-            ])
+    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+        if status == .denied {
+            print("Location access denied")
         }
-        
-        @objc func backButtonTapped() {
-            dismiss(animated: true, completion: nil)
+    }
+}
+
+// MARK: - UISearchBarDelegate
+extension HomeViewController: UISearchBarDelegate {
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        searchBar.resignFirstResponder()
+        if let query = searchBar.text {
+            searchForPlace(query: query)
         }
+    }
+    
+    private func searchForPlace(query: String) {
+        let filter = GMSAutocompleteFilter()
+        filter.type = .noFilter
         
-        func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
-            let filter = GMSAutocompleteFilter()
-            placesClient.findAutocompletePredictions(fromQuery: searchText, filter: filter, sessionToken: nil) { (results, error) in
-                if let error = error {
-                    print("Autocomplete error: \(error.localizedDescription)")
-                    return
-                }
-                self.predictions = results ?? []
-                self.tableView.reloadData()
+        placesClient.findAutocompletePredictions(fromQuery: query, filter: filter, sessionToken: nil) { [weak self] (results, error) in
+            if let error = error {
+                print("Error finding place: \(error.localizedDescription)")
+                return
             }
-        }
-        
-        func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-            return predictions.count
-        }
-        
-        func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-            let cell = tableView.dequeueReusableCell(withIdentifier: "cell") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "cell")
-            let prediction = predictions[indexPath.row]
-            cell.textLabel?.text = prediction.attributedPrimaryText.string
-            cell.detailTextLabel?.text = prediction.attributedSecondaryText?.string
-            return cell
-        }
-        
-        func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-            let prediction = predictions[indexPath.row]
-            print("Selected POI: \(prediction.attributedPrimaryText.string)")
-            dismiss(animated: true) {
-                self.mainViewController?.fetchPlaceDetailsAndPresent(placeID: prediction.placeID, name: prediction.attributedPrimaryText.string, location: nil)
+            
+            if let result = results?.first {
+                self?.getPlaceDetails(placeID: result.placeID)
             }
         }
     }
     
-    func addDot(at xPosition: CGFloat, for slider: UISlider) {
-        let dotSize: CGFloat = 10  // Dot diameter
+    private func getPlaceDetails(placeID: String) {
+        placesClient.lookUpPlaceID(placeID) { [weak self] (place, error) in
+            if let error = error {
+                print("Error getting place details: \(error.localizedDescription)")
+                return
+            }
+            
+            if let place = place {
+                let camera = GMSCameraPosition.camera(withLatitude: place.coordinate.latitude, longitude: place.coordinate.longitude, zoom: 15.0)
+                self?.mapView.animate(to: camera)
+            }
+        }
+    }
+}
+
+// MARK: - SearchViewController
+class SearchViewController: UIViewController, UISearchBarDelegate, UITableViewDelegate, UITableViewDataSource {
+    var searchBar: UISearchBar!
+    var tableView: UITableView!
+    var placesClient = GMSPlacesClient.shared()
+    var predictions: [GMSAutocompletePrediction] = []
+    var backButton: UIButton!
+    
+    weak var mainViewController: HomeViewController?
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        setupUI()
+        setupConstraints()
+    }
+    
+    private func setupUI() {
+        view.backgroundColor = .white
         
-        // Define slider track start and end positions
-        let trackStart = slider.frame.minX
-        let trackEnd = slider.frame.maxX
+        backButton = UIButton(type: .system)
+        backButton.setImage(UIImage(systemName: "chevron.left"), for: .normal)
+        backButton.tintColor = .black
+        backButton.addTarget(self, action: #selector(backButtonTapped), for: .touchUpInside)
+        backButton.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(backButton)
         
-        // Ensure dot is not placed at the extreme ends
-        guard xPosition > trackStart, xPosition < trackEnd else { return }
+        searchBar = UISearchBar()
+        searchBar.placeholder = "Search for a place"
+        searchBar.delegate = self
+        searchBar.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(searchBar)
         
-        let dot = UIView(frame: CGRect(x: xPosition - (dotSize / 2),
-                                       y: slider.frame.midY - (dotSize / 2), // Align to track
-                                       width: dotSize,
-                                       height: dotSize))
-        dot.backgroundColor = .black
-        dot.layer.cornerRadius = dotSize / 2  // Make it a circle
-        dot.tag = 999 // Assign a tag for easy removal
-        view.addSubview(dot)
+        tableView = UITableView()
+        tableView.delegate = self
+        tableView.dataSource = self
+        tableView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(tableView)
+    }
+    
+    private func setupConstraints() {
+        NSLayoutConstraint.activate([
+            backButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
+            backButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 10),
+            searchBar.topAnchor.constraint(equalTo: backButton.bottomAnchor, constant: 10),
+            searchBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            searchBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            tableView.topAnchor.constraint(equalTo: searchBar.bottomAnchor, constant: 10),
+            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+    }
+    
+    @objc private func backButtonTapped() {
+        dismiss(animated: true, completion: nil)
+    }
+    
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        let filter = GMSAutocompleteFilter()
+        placesClient.findAutocompletePredictions(fromQuery: searchText, filter: filter, sessionToken: nil) { [weak self] (results, error) in
+            if let error = error {
+                print("Autocomplete error: \(error.localizedDescription)")
+                return
+            }
+            self?.predictions = results ?? []
+            self?.tableView.reloadData()
+        }
+    }
+    
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return predictions.count
+    }
+    
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "cell") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "cell")
+        let prediction = predictions[indexPath.row]
+        cell.textLabel?.text = prediction.attributedPrimaryText.string
+        cell.detailTextLabel?.text = prediction.attributedSecondaryText?.string
+        return cell
+    }
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        let prediction = predictions[indexPath.row]
+        dismiss(animated: true) {
+            self.mainViewController?.fetchPlaceDetailsAndPresent(placeID: prediction.placeID, name: prediction.attributedPrimaryText.string, location: nil)
+        }
     }
 }
