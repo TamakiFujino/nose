@@ -6,6 +6,8 @@ class NameInputViewController: UIViewController {
     let headerLabel = UILabel()
     let nameTextField = UITextField()
     let myButton = CustomButton()
+    
+    var isNewUser: Bool = true // Indicates if the user is new or just editing the name
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -13,13 +15,24 @@ class NameInputViewController: UIViewController {
         view.addSubview(gradientView)
         view.sendSubviewToBack(gradientView)
 
-        // Set up UI)
+        // Set up UI
+        setupHeaderLabel()
+        setupNameTextField()
+        setupSubmitButton()
+        
+        // Layout
+        setupConstraints()
+    }
+    
+    private func setupHeaderLabel() {
         headerLabel.text = "名前"
         headerLabel.font = UIFont.systemFont(ofSize: 32, weight: .bold)
         headerLabel.textColor = .white
         headerLabel.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(headerLabel)
-        
+    }
+    
+    private func setupNameTextField() {
         nameTextField.placeholder = "Enter your name"
         nameTextField.borderStyle = .roundedRect
         nameTextField.translatesAutoresizingMaskIntoConstraints = false
@@ -27,35 +40,36 @@ class NameInputViewController: UIViewController {
         nameTextField.delegate = self
         nameTextField.heightAnchor.constraint(equalToConstant: 45).isActive = true
         view.addSubview(nameTextField)
-        
+    }
+    
+    private func setupSubmitButton() {
         myButton.setTitle("Submit", for: .normal)
-        // set frame at the button of screen and also 80% width of screen
         myButton.translatesAutoresizingMaskIntoConstraints = false
         myButton.heightAnchor.constraint(equalToConstant: 45).isActive = true
         myButton.addTarget(self, action: #selector(saveName), for: .touchUpInside)
-        print("Button action set!")
         myButton.isUserInteractionEnabled = true
         view.addSubview(myButton)
-        
-        // Layout
+    }
+    
+    private func setupConstraints() {
         NSLayoutConstraint.activate([
-            // set left-aligned
+            // Header label constraints
             headerLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             headerLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
             
-            // set name text field after the header label
+            // Name text field constraints
             nameTextField.leadingAnchor.constraint(equalTo: headerLabel.leadingAnchor),
             nameTextField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
             nameTextField.topAnchor.constraint(equalTo: headerLabel.bottomAnchor, constant: 20),
             
-            // set the button at the bottom of the screen
+            // Submit button constraints
             myButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             myButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
             myButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20)
         ])
     }
     
-    // when myButton is pressed, save the name input and move to HomeViewController
+    // When myButton is pressed, save the name input and either move to HomeViewController or show a flash message
     @objc func saveName() {
         print("save button tapped")
         
@@ -67,13 +81,30 @@ class NameInputViewController: UIViewController {
         // Save name to UserDefaults
         UserDefaults.standard.set(name, forKey: "name")
         
-        // Move to HomeViewController
-        let homeVC = HomeViewController()
-        if let navController = navigationController {
+        if isNewUser {
+            // Move to HomeViewController if the user is new
+            let homeVC = HomeViewController()
+            if let navController = navigationController {
                 navController.pushViewController(homeVC, animated: true)  // Use navigation if available
             } else {
                 present(homeVC, animated: true)  // Otherwise, present modally
             }
+        } else {
+            // Show flash message if the user is just updating the name
+            showFlashMessage("Name updated successfully!")
+        }
+    }
+    
+    private func showFlashMessage(_ message: String) {
+        let alert = UIAlertController(title: nil, message: message, preferredStyle: .alert)
+        self.present(alert, animated: true, completion: nil)
+        
+        // Duration in seconds
+        let duration: Double = 1.5
+        
+        DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + duration) {
+            alert.dismiss(animated: true, completion: nil)
+        }
     }
 }
 
