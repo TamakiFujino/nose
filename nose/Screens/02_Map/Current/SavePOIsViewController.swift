@@ -171,7 +171,7 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "cell")
         let list = bookmarkLists[indexPath.row]
         cell.textLabel?.text = list.name
-        cell.detailTextLabel?.text = "\(list.bookmarks.count) POIs saved"
+        cell.detailTextLabel?.text = "\(list.bookmarks.count) saved"
         cell.accessoryType = list == selectedBookmarkList ? .checkmark : .none
         return cell
     }

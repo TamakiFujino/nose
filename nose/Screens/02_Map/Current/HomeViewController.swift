@@ -110,13 +110,24 @@ class HomeViewController: UIViewController {
         
         if newValue == 100 && !hasShownHalfModal {
             hasShownHalfModal = true
-            handleSliderValueAt100()
+            showSavedBookmarkLists()
+            showSavedPOIMarkers()
             searchButton.isHidden = true
         } else if newValue != 100 {
             hasShownHalfModal = false
             mapView.clear()
             searchButton.isHidden = false
         }
+    }
+    
+    private func showSavedBookmarkLists() {
+        let savedBookmarksVC = SavedBookmarksViewController()
+        let navController = UINavigationController(rootViewController: savedBookmarksVC)
+        navController.modalPresentationStyle = .pageSheet
+        if let sheet = navController.sheetPresentationController {
+            sheet.detents = [.medium()]
+        }
+        present(navController, animated: true, completion: nil)
     }
 }
 

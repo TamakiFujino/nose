@@ -1,4 +1,3 @@
-// this script is to show the saved bookmark lists in the future map
 import UIKit
 
 class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
@@ -29,6 +28,7 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
         tableView = UITableView(frame: .zero, style: .plain)
         tableView.dataSource = self
         tableView.delegate = self
+        tableView.register(BookmarkListCell.self, forCellReuseIdentifier: "BookmarkListCell")
         tableView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(tableView)
         
@@ -57,11 +57,11 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "cell") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "cell")
+        let cell = tableView.dequeueReusableCell(withIdentifier: "BookmarkListCell", for: indexPath) as! BookmarkListCell
         let list = bookmarkLists[indexPath.row]
-        cell.textLabel?.text = list.name
-        cell.detailTextLabel?.text = "\(list.bookmarks.count) saved" // Show number of POIs saved
-        debugPrint("list name: \(list.name)")
+        cell.configure(with: list)
+        cell.menuButton.tag = indexPath.row
+        cell.menuButton.addTarget(self, action: #selector(menuButtonTapped(_:)), for: .touchUpInside)
         return cell
     }
     
@@ -78,16 +78,79 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
         navigationController?.pushViewController(poisVC, animated: true)
     }
     
-    // Swipe to delete bookmark list
-    func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
-        let deleteAction = UIContextualAction(style: .destructive, title: "Delete") { _, _, completionHandler in
-            let listToDelete = self.bookmarkLists[indexPath.row]
-            BookmarksManager.shared.deleteBookmarkList(listToDelete)
-            self.bookmarkLists.remove(at: indexPath.row)
-            tableView.deleteRows(at: [indexPath], with: .automatic)
-            self.updateMessageVisibility()
-            completionHandler(true)
+    // MARK: - Actions
+    
+    @objc func menuButtonTapped(_ sender: UIButton) {
+        let bookmarkList = bookmarkLists[sender.tag]
+        
+        let alertController = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
+        let shareAction = UIAlertAction(title: "Share the bookmark list", style: .default) { _ in
+            self.shareBookmarkList(bookmarkList)
         }
-        return UISwipeActionsConfiguration(actions: [deleteAction])
+        let deleteAction = UIAlertAction(title: "Delete", style: .destructive) { _ in
+            self.deleteBookmarkList(at: sender.tag)
+        }
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
+        
+        alertController.addAction(shareAction)
+        alertController.addAction(deleteAction)
+        alertController.addAction(cancelAction)
+        
+        if let popoverController = alertController.popoverPresentationController {
+            popoverController.sourceView = sender
+            popoverController.sourceRect = sender.bounds
+        }
+        
+        present(alertController, animated: true, completion: nil)
+    }
+    
+    private func shareBookmarkList(_ list: BookmarkList) {
+        let shareText = "Check out my bookmark list: \(list.name)"
+        let activityViewController = UIActivityViewController(activityItems: [shareText], applicationActivities: nil)
+        present(activityViewController, animated: true, completion: nil)
+    }
+    
+    private func deleteBookmarkList(at index: Int) {
+        let listToDelete = bookmarkLists[index]
+        BookmarksManager.shared.deleteBookmarkList(listToDelete)
+        bookmarkLists.remove(at: index)
+        tableView.deleteRows(at: [IndexPath(row: index, section: 0)], with: .automatic)
+        updateMessageVisibility()
+    }
+}
+
+class BookmarkListCell: UITableViewCell {
+    
+    let menuButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.setImage(UIImage(systemName: "ellipsis"), for: .normal)
+        button.tintColor = .black
+        button.translatesAutoresizingMaskIntoConstraints = false
+        return button
+    }()
+    
+    override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
+        super.init(style: .subtitle, reuseIdentifier: reuseIdentifier)
+        setupUI()
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    private func setupUI() {
+        contentView.addSubview(menuButton)
+        
+        NSLayoutConstraint.activate([
+            menuButton.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            menuButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16)
+        ])
+    }
+    
+    func configure(with list: BookmarkList) {
+        textLabel?.text = list.name
+        textLabel?.textColor = .black
+        detailTextLabel?.text = "\(list.bookmarks.count) saved"
+        detailTextLabel?.textColor = .black
     }
 }
