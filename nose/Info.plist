@@ -12,15 +12,20 @@
 				<string>com.googleusercontent.apps.489383670741-rv2v85atn42kgfv1d8ot96r06omhoogg</string>
 			</array>
 		</dict>
-		<dict/>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>nose</string>
+			</array>
+		</dict>
 		<dict/>
 	</array>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>google</string>
 	</array>
-	<key>com.apple.developer.applesignin</key>
-	<string>Default</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -40,5 +45,7 @@
 			</array>
 		</dict>
 	</dict>
+	<key>com.apple.developer.applesignin</key>
+	<string>Default</string>
 </dict>
 </plist>

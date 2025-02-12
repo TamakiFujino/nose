@@ -105,7 +105,7 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
     }
     
     private func shareBookmarkList(_ list: BookmarkList) {
-        let shareText = "Check out my bookmark list: \(list.name)"
+        let shareText = "Check out my bookmark list: \(list.name)\nnose://bookmark?id=\(list.id)"
         let activityViewController = UIActivityViewController(activityItems: [shareText], applicationActivities: nil)
         present(activityViewController, animated: true, completion: nil)
     }
@@ -116,6 +116,16 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
         bookmarkLists.remove(at: index)
         tableView.deleteRows(at: [IndexPath(row: index, section: 0)], with: .automatic)
         updateMessageVisibility()
+    }
+    
+    // Show the bookmark list with the given ID
+    func showBookmarkList(withId id: String) {
+        if let index = bookmarkLists.firstIndex(where: { $0.id == id }) {
+            let selectedList = bookmarkLists[index]
+            let poisVC = POIsViewController()
+            poisVC.bookmarkList = selectedList
+            navigationController?.pushViewController(poisVC, animated: true)
+        }
     }
 }
 
