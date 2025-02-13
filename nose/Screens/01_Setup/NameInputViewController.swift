@@ -77,6 +77,11 @@ class NameInputViewController: UIViewController {
         }
     }
     
+    // Generate a unique 9-digit user ID
+    private func generateUserID() -> String {
+        return String(format: "%09d", arc4random_uniform(1000000000))
+    }
+    
     // When myButton is pressed, save the name input and either move to HomeViewController or show a flash message
     @objc func saveName() {
         print("save button tapped")
@@ -89,9 +94,19 @@ class NameInputViewController: UIViewController {
         // Save name to UserDefaults
         UserDefaults.standard.set(name, forKey: "name")
         
+        // Check if user ID already exists
+        if UserDefaults.standard.string(forKey: "userID") == nil {
+            // Generate and save user ID if it doesn't exist
+            let userID = generateUserID()
+            UserDefaults.standard.set(userID, forKey: "userID")
+            print("Generated and saved user ID: \(userID)")
+        }
+        
         if UserDefaults.standard.string(forKey: "name") != nil {
             // Show flash message if a name was already saved
             showFlashMessage("Name updated successfully!")
+            // print user ID
+            print("User ID: \(UserDefaults.standard.string(forKey: "userID")!)")
         } else {
             // Move to HomeViewController if no name was saved previously
             let homeVC = HomeViewController()
