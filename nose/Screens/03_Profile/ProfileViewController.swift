@@ -58,8 +58,8 @@ class ProfileViewController: UIViewController {
     }
     
     @objc func friendButtonTapped() {
-        let friendVC = AddFriendViewController()
-        navigationController?.pushViewController(friendVC, animated: true)
+        let friendListVC = FriendListViewController()
+        navigationController?.pushViewController(friendListVC, animated: true)
     }
 }
 

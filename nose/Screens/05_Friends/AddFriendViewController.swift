@@ -127,7 +127,7 @@ class AddFriendViewController: UIViewController, UITextFieldDelegate {
         guard let friendID = friendID else { return }
         
         // Add friend to the friend list
-        addFriend(friendID)
+        addFriend(friendID, name: friendNameLabel.text?.replacingOccurrences(of: "ともだちの名前: ", with: "") ?? "")
         showFlashMessage("ともだちを追加しました: \(friendNameLabel.text ?? "")")
         
         // Reset UI
@@ -136,11 +136,14 @@ class AddFriendViewController: UIViewController, UITextFieldDelegate {
         IDTextField.text = ""
     }
     
-    private func addFriend(_ friendID: String) {
-        // Logic to add friend to the friend list
-        // This is a mock implementation. Replace with your actual implementation.
-        var friendList = UserDefaults.standard.stringArray(forKey: "friendList") ?? []
-        friendList.append(friendID)
+    private func addFriend(_ friendID: String, name: String) {
+        // Retrieve the current friend list from UserDefaults
+        var friendList = UserDefaults.standard.array(forKey: "friendList") as? [[String: String]] ?? []
+        
+        // Add the new friend to the list
+        friendList.append(["id": friendID, "name": name])
+        
+        // Save the updated friend list back to UserDefaults
         UserDefaults.standard.set(friendList, forKey: "friendList")
     }
     
