@@ -7,8 +7,6 @@ class NameInputViewController: UIViewController {
     let nameTextField = UITextField()
     let myButton = CustomButton()
     
-    var isNewUser: Bool = true // Indicates if the user is new or just editing the name
-
     override func viewDidLoad() {
         super.viewDidLoad()
         let gradientView = CustomGradientView(frame: view.bounds)
@@ -22,6 +20,9 @@ class NameInputViewController: UIViewController {
         
         // Layout
         setupConstraints()
+        
+        // Load the saved name if available
+        loadSavedName()
     }
     
     private func setupHeaderLabel() {
@@ -69,6 +70,13 @@ class NameInputViewController: UIViewController {
         ])
     }
     
+    // Load the saved name from UserDefaults if available
+    private func loadSavedName() {
+        if let savedName = UserDefaults.standard.string(forKey: "name") {
+            nameTextField.text = savedName
+        }
+    }
+    
     // When myButton is pressed, save the name input and either move to HomeViewController or show a flash message
     @objc func saveName() {
         print("save button tapped")
@@ -81,17 +89,17 @@ class NameInputViewController: UIViewController {
         // Save name to UserDefaults
         UserDefaults.standard.set(name, forKey: "name")
         
-        if isNewUser {
-            // Move to HomeViewController if the user is new
+        if UserDefaults.standard.string(forKey: "name") != nil {
+            // Show flash message if a name was already saved
+            showFlashMessage("Name updated successfully!")
+        } else {
+            // Move to HomeViewController if no name was saved previously
             let homeVC = HomeViewController()
             if let navController = navigationController {
                 navController.pushViewController(homeVC, animated: true)  // Use navigation if available
             } else {
                 present(homeVC, animated: true)  // Otherwise, present modally
             }
-        } else {
-            // Show flash message if the user is just updating the name
-            showFlashMessage("Name updated successfully!")
         }
     }
     

@@ -31,7 +31,7 @@ class HomeViewController: UIViewController {
         
         // Profile button
         profileButton = IconButton(image: UIImage(systemName: "person.fill"),
-                                   action: #selector(goToProfile),
+                                   action: #selector(profileButtonTapped),
                                    target: self)
         view.addSubview(profileButton)
         
@@ -95,7 +95,8 @@ class HomeViewController: UIViewController {
         present(searchVC, animated: true, completion: nil)
     }
     
-    @objc private func goToProfile() {
+    @objc private func profileButtonTapped() {
+        print("Profile button tapped")
         let profileVC = ProfileViewController()
         navigationController?.pushViewController(profileVC, animated: true)
     }
