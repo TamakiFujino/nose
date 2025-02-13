@@ -8,6 +8,8 @@ class AddFriendViewController: UIViewController, UITextFieldDelegate {
     let confirmButton = CustomButton()
     let userIDLabel = UILabel()
     let copyButton = UIButton(type: .system)
+    let friendNameLabel = UILabel()
+    var friendID: String?
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -22,6 +24,9 @@ class AddFriendViewController: UIViewController, UITextFieldDelegate {
         
         // Load the saved user ID and display it
         loadUserID()
+        
+        // Initially hide the confirm button
+        confirmButton.isHidden = true
     }
     
     func setupUI() {
@@ -43,7 +48,7 @@ class AddFriendViewController: UIViewController, UITextFieldDelegate {
         confirmButton.setTitle("決定", for: .normal)
         confirmButton.translatesAutoresizingMaskIntoConstraints = false
         confirmButton.heightAnchor.constraint(equalToConstant: 45).isActive = true
-        // confirmButton.addTarget(self, action: #selector(saveName), for: .touchUpInside)
+        confirmButton.addTarget(self, action: #selector(confirmButtonTapped), for: .touchUpInside)
         confirmButton.isUserInteractionEnabled = true
         view.addSubview(confirmButton)
         
@@ -55,12 +60,19 @@ class AddFriendViewController: UIViewController, UITextFieldDelegate {
         view.addSubview(userIDLabel)
         
         // Copy Button
-        let configuration = UIImage.SymbolConfiguration(pointSize: 10, weight: .regular)
+        let configuration = UIImage.SymbolConfiguration(pointSize: 12, weight: .regular)
         let iconImage = UIImage(systemName: "doc.on.doc", withConfiguration: configuration)?.withTintColor(.darkGray, renderingMode: .alwaysOriginal)
         copyButton.setImage(iconImage, for: .normal)
         copyButton.addTarget(self, action: #selector(copyUserID), for: .touchUpInside)
         copyButton.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(copyButton)
+        
+        // Friend Name Label
+        friendNameLabel.text = ""
+        friendNameLabel.font = UIFont.systemFont(ofSize: 18, weight: .regular)
+        friendNameLabel.textColor = .black
+        friendNameLabel.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(friendNameLabel)
     }
     
     private func setupConstraints() {
@@ -81,8 +93,13 @@ class AddFriendViewController: UIViewController, UITextFieldDelegate {
             // Copy button constraints
             copyButton.leadingAnchor.constraint(equalTo: userIDLabel.trailingAnchor, constant: 10),
             copyButton.centerYAnchor.constraint(equalTo: userIDLabel.centerYAnchor),
-            copyButton.widthAnchor.constraint(equalToConstant: 30),
-            copyButton.heightAnchor.constraint(equalToConstant: 30),
+            copyButton.widthAnchor.constraint(equalToConstant: 20),
+            copyButton.heightAnchor.constraint(equalToConstant: 20),
+            
+            // Friend name label constraints
+            friendNameLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            friendNameLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            friendNameLabel.topAnchor.constraint(equalTo: userIDLabel.bottomAnchor, constant: 20),
             
             // Confirm button constraints
             confirmButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
@@ -106,6 +123,41 @@ class AddFriendViewController: UIViewController, UITextFieldDelegate {
         }
     }
     
+    @objc func confirmButtonTapped() {
+        guard let friendID = friendID else { return }
+        
+        // Add friend to the friend list
+        addFriend(friendID)
+        showFlashMessage("ともだちを追加しました: \(friendNameLabel.text ?? "")")
+        
+        // Reset UI
+        friendNameLabel.text = ""
+        confirmButton.isHidden = true
+        IDTextField.text = ""
+    }
+    
+    private func addFriend(_ friendID: String) {
+        // Logic to add friend to the friend list
+        // This is a mock implementation. Replace with your actual implementation.
+        var friendList = UserDefaults.standard.stringArray(forKey: "friendList") ?? []
+        friendList.append(friendID)
+        UserDefaults.standard.set(friendList, forKey: "friendList")
+    }
+    
+    private func getUserNameByID(_ userID: String, completion: @escaping (String?) -> Void) {
+        // Mock data
+        let mockUserDatabase = [
+            "123456789": "山田 太郎",
+            "987654321": "鈴木 一郎"
+        ]
+        
+        // Simulate network request
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            let userName = mockUserDatabase[userID]
+            completion(userName)
+        }
+    }
+    
     private func showFlashMessage(_ message: String) {
         let alert = UIAlertController(title: nil, message: message, preferredStyle: .alert)
         self.present(alert, animated: true, completion: nil)
@@ -116,5 +168,32 @@ class AddFriendViewController: UIViewController, UITextFieldDelegate {
         DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + duration) {
             alert.dismiss(animated: true, completion: nil)
         }
+    }
+    
+    // UITextFieldDelegate method
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        textField.resignFirstResponder() // Dismiss keyboard when return key is pressed
+        
+        guard let friendID = IDTextField.text, !friendID.isEmpty else {
+            showFlashMessage("IDを入力してください")
+            return true
+        }
+        
+        // Search for the user by ID
+        getUserNameByID(friendID) { [weak self] userName in
+            guard let self = self else { return }
+            if let userName = userName {
+                self.friendID = friendID
+                self.friendNameLabel.text = "ともだちの名前: \(userName)"
+                self.confirmButton.isHidden = false
+            } else {
+                self.friendID = nil
+                self.friendNameLabel.text = ""
+                self.confirmButton.isHidden = true
+                self.showFlashMessage("ユーザーが見つかりません")
+            }
+        }
+        
+        return true
     }
 }
