@@ -10,10 +10,12 @@ class AddFriendViewController: UIViewController, UITextFieldDelegate {
     let copyButton = UIButton(type: .system)
     let friendNameLabel = UILabel()
     var friendID: String?
+    var blockedFriends: Set<String> = []
+    var blockedByFriends: Set<String> = []
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        // set background white
+        // Set background white
         view.backgroundColor = .white
 
         // Set up UI
@@ -24,6 +26,12 @@ class AddFriendViewController: UIViewController, UITextFieldDelegate {
         
         // Load the saved user ID and display it
         loadUserID()
+        
+        // Load blocked friends
+        loadBlockedFriends()
+        
+        // Load friends who have blocked the current user
+        loadBlockedByFriends()
         
         // Initially hide the confirm button
         confirmButton.isHidden = true
@@ -116,6 +124,19 @@ class AddFriendViewController: UIViewController, UITextFieldDelegate {
         }
     }
     
+    private func loadBlockedFriends() {
+        if let savedBlockedFriends = UserDefaults.standard.array(forKey: "blockedFriends") as? [String] {
+            blockedFriends = Set(savedBlockedFriends)
+        }
+    }
+    
+    private func loadBlockedByFriends() {
+        // Mock implementation - replace this with actual implementation to load friends who blocked the current user
+        if let savedBlockedByFriends = UserDefaults.standard.array(forKey: "blockedByFriends") as? [String] {
+            blockedByFriends = Set(savedBlockedByFriends)
+        }
+    }
+    
     @objc func copyUserID() {
         if let userID = UserDefaults.standard.string(forKey: "userID") {
             UIPasteboard.general.string = userID
@@ -151,7 +172,8 @@ class AddFriendViewController: UIViewController, UITextFieldDelegate {
         // Mock data
         let mockUserDatabase = [
             "123456789": "山田 太郎",
-            "987654321": "鈴木 一郎"
+            "987654321": "鈴木 一郎",
+            "111111111": "佐藤 健"
         ]
         
         // Simulate network request
@@ -179,6 +201,17 @@ class AddFriendViewController: UIViewController, UITextFieldDelegate {
         
         guard let friendID = IDTextField.text, !friendID.isEmpty else {
             showFlashMessage("IDを入力してください")
+            return true
+        }
+        
+        // Check if the user is blocked or being blocked
+        if blockedFriends.contains(friendID) {
+            showFlashMessage("このユーザーはブロックされています")
+            return true
+        }
+        
+        if blockedByFriends.contains(friendID) {
+            showFlashMessage("このユーザーにブロックされています")
             return true
         }
         
