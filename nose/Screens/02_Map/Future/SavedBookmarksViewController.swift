@@ -1,7 +1,7 @@
 import UIKit
 
 class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
-
+    
     var tableView: UITableView!
     var bookmarkLists: [BookmarkList] = []
     var messageLabel: UILabel!
@@ -19,11 +19,6 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
         messageLabel.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(messageLabel)
         
-        NSLayoutConstraint.activate([
-            messageLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            messageLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor)
-        ])
-        
         // Initialize the table view
         tableView = UITableView(frame: .zero, style: .plain)
         tableView.dataSource = self
@@ -32,12 +27,15 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
         tableView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(tableView)
         
-        // Set up constraints for table view
+        // Set up constraints
         NSLayoutConstraint.activate([
             tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            
+            messageLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            messageLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor)
         ])
         
         // Load bookmark lists
@@ -85,7 +83,7 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
         
         let alertController = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
         let shareAction = UIAlertAction(title: "Share the bookmark list", style: .default) { _ in
-            self.shareBookmarkList(bookmarkList)
+            self.presentShareModal(for: bookmarkList)
         }
         let deleteAction = UIAlertAction(title: "Delete", style: .destructive) { _ in
             self.deleteBookmarkList(at: sender.tag)
@@ -104,10 +102,14 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
         present(alertController, animated: true, completion: nil)
     }
     
-    private func shareBookmarkList(_ list: BookmarkList) {
-        let shareText = "Check out my bookmark list: \(list.name)\nnose://bookmark?id=\(list.id)"
-        let activityViewController = UIActivityViewController(activityItems: [shareText], applicationActivities: nil)
-        present(activityViewController, animated: true, completion: nil)
+    private func presentShareModal(for list: BookmarkList) {
+        let shareModalVC = ShareModalViewController()
+        shareModalVC.bookmarkList = list
+        shareModalVC.modalPresentationStyle = .pageSheet
+        if let sheet = shareModalVC.sheetPresentationController {
+            sheet.detents = [.medium()]
+        }
+        present(shareModalVC, animated: true, completion: nil)
     }
     
     private func deleteBookmarkList(at index: Int) {
@@ -140,7 +142,7 @@ class BookmarkListCell: UITableViewCell {
     }()
     
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
-        super.init(style: .subtitle, reuseIdentifier: reuseIdentifier)
+        super.init(style: style, reuseIdentifier: reuseIdentifier)
         setupUI()
     }
     
@@ -160,7 +162,8 @@ class BookmarkListCell: UITableViewCell {
     func configure(with list: BookmarkList) {
         textLabel?.text = list.name
         textLabel?.textColor = .black
-        detailTextLabel?.text = "\(list.bookmarks.count) saved"
+        let sharedText = list.sharedWithFriends.count > 0 ? "shared with \(list.sharedWithFriends.count) friends" : ""
+        detailTextLabel?.text = "\(list.bookmarks.count) saved \(sharedText)"
         detailTextLabel?.textColor = .black
     }
 }

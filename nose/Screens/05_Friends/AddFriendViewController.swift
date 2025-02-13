@@ -17,7 +17,7 @@ class AddFriendViewController: UIViewController, UITextFieldDelegate {
         super.viewDidLoad()
         // Set background white
         view.backgroundColor = .white
-
+        
         // Set up UI
         setupUI()
         
