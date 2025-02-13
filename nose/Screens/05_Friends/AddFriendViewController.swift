@@ -1,0 +1,120 @@
+import UIKit
+import FirebaseAuth
+
+class AddFriendViewController: UIViewController, UITextFieldDelegate {
+    
+    let headerLabel = UILabel()
+    let IDTextField = UITextField()
+    let confirmButton = CustomButton()
+    let userIDLabel = UILabel()
+    let copyButton = UIButton(type: .system)
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        // set background white
+        view.backgroundColor = .white
+
+        // Set up UI
+        setupUI()
+        
+        // Layout
+        setupConstraints()
+        
+        // Load the saved user ID and display it
+        loadUserID()
+    }
+    
+    func setupUI() {
+        // Heading Label
+        headerLabel.text = "ともだちを追加"
+        headerLabel.font = UIFont.systemFont(ofSize: 32, weight: .bold)
+        headerLabel.textColor = .black
+        headerLabel.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(headerLabel)
+        
+        IDTextField.placeholder = "ともだちのIDを入力してください"
+        IDTextField.borderStyle = .roundedRect
+        IDTextField.translatesAutoresizingMaskIntoConstraints = false
+        IDTextField.isUserInteractionEnabled = true
+        IDTextField.delegate = self
+        IDTextField.heightAnchor.constraint(equalToConstant: 45).isActive = true
+        view.addSubview(IDTextField)
+        
+        confirmButton.setTitle("決定", for: .normal)
+        confirmButton.translatesAutoresizingMaskIntoConstraints = false
+        confirmButton.heightAnchor.constraint(equalToConstant: 45).isActive = true
+        // confirmButton.addTarget(self, action: #selector(saveName), for: .touchUpInside)
+        confirmButton.isUserInteractionEnabled = true
+        view.addSubview(confirmButton)
+        
+        // User ID Label
+        userIDLabel.text = "あなたのID: "
+        userIDLabel.font = UIFont.systemFont(ofSize: 12, weight: .regular)
+        userIDLabel.textColor = .darkGray
+        userIDLabel.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(userIDLabel)
+        
+        // Copy Button
+        let configuration = UIImage.SymbolConfiguration(pointSize: 10, weight: .regular)
+        let iconImage = UIImage(systemName: "doc.on.doc", withConfiguration: configuration)?.withTintColor(.darkGray, renderingMode: .alwaysOriginal)
+        copyButton.setImage(iconImage, for: .normal)
+        copyButton.addTarget(self, action: #selector(copyUserID), for: .touchUpInside)
+        copyButton.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(copyButton)
+    }
+    
+    private func setupConstraints() {
+        NSLayoutConstraint.activate([
+            // Header label constraints
+            headerLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            headerLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
+            
+            // ID text field constraints
+            IDTextField.leadingAnchor.constraint(equalTo: headerLabel.leadingAnchor),
+            IDTextField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            IDTextField.topAnchor.constraint(equalTo: headerLabel.bottomAnchor, constant: 20),
+            
+            // User ID label constraints
+            userIDLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            userIDLabel.topAnchor.constraint(equalTo: IDTextField.bottomAnchor, constant: 20),
+            
+            // Copy button constraints
+            copyButton.leadingAnchor.constraint(equalTo: userIDLabel.trailingAnchor, constant: 10),
+            copyButton.centerYAnchor.constraint(equalTo: userIDLabel.centerYAnchor),
+            copyButton.widthAnchor.constraint(equalToConstant: 30),
+            copyButton.heightAnchor.constraint(equalToConstant: 30),
+            
+            // Confirm button constraints
+            confirmButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            confirmButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            confirmButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20)
+        ])
+    }
+    
+    private func loadUserID() {
+        if let userID = UserDefaults.standard.string(forKey: "userID") {
+            userIDLabel.text = "あなたのID: \(userID)"
+        } else {
+            userIDLabel.text = "あなたのID: 未設定"
+        }
+    }
+    
+    @objc func copyUserID() {
+        if let userID = UserDefaults.standard.string(forKey: "userID") {
+            UIPasteboard.general.string = userID
+            showFlashMessage("IDをコピーしました")
+        }
+    }
+    
+    private func showFlashMessage(_ message: String) {
+        let alert = UIAlertController(title: nil, message: message, preferredStyle: .alert)
+        self.present(alert, animated: true, completion: nil)
+        
+        // Duration in seconds
+        let duration: Double = 1.5
+        
+        DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + duration) {
+            alert.dismiss(animated: true, completion: nil)
+        }
+    }
+}

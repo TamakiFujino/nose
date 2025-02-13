@@ -1,6 +1,10 @@
 import UIKit
 
 class ProfileViewController: UIViewController {
+    
+    private var settingButton: IconButton!
+    private var friendButton: IconButton!
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -20,13 +24,18 @@ class ProfileViewController: UIViewController {
         headingLabel.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(headingLabel)
         
-        // add a setting icon button
-        let settingButton = UIButton(type: .system)
-        settingButton.setImage(UIImage(systemName: "gearshape.fill"), for: .normal)
-        settingButton.tintColor = .black
-        settingButton.translatesAutoresizingMaskIntoConstraints = false
-        settingButton.addTarget(self, action: #selector(settingButtonTapped), for: .touchUpInside)
+        // setting button
+        settingButton = IconButton(image: UIImage(systemName: "gearshape.fill"),
+                                  action: #selector(settingButtonTapped),
+                                  target: self)
         view.addSubview(settingButton)
+        
+        // friend button same icon width as setting button
+        friendButton = IconButton(image: UIImage(systemName: "person.badge.plus.fill"),
+                                    action: #selector(friendButtonTapped),
+                                    target: self)
+        // set the same width as setting button
+        view.addSubview(friendButton)
         
         // Layout
         NSLayoutConstraint.activate([
@@ -34,15 +43,23 @@ class ProfileViewController: UIViewController {
             headingLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             headingLabel.centerYAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
             
-            // set a setting button at the bottom right
+            // set a setting button at the bottom right corner and friend button next left
             settingButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-            settingButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20)    
+            settingButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
+            
+            friendButton.trailingAnchor.constraint(equalTo: settingButton.leadingAnchor, constant: -20),
+            friendButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20)
         ])
     }
     
     @objc func settingButtonTapped() {
         let settingVC = SettingViewController()
         navigationController?.pushViewController(settingVC, animated: true)
+    }
+    
+    @objc func friendButtonTapped() {
+        let friendVC = AddFriendViewController()
+        navigationController?.pushViewController(friendVC, animated: true)
     }
 }
 
