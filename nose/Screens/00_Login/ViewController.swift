@@ -2,12 +2,27 @@ import UIKit
 import Firebase
 import GoogleSignIn
 import AuthenticationServices
+import FirebaseFirestore
 
 class ViewController: UIViewController, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        setupUI()
+        
+        // Ensure Firebase restores session
+        Auth.auth().addStateDidChangeListener { auth, user in
+            if let user = user {
+                print("User is already logged in: \(user.uid)")
+                self.checkUserStatus()
+            } else {
+                print("No user session found, waiting for login.")
+            }
+        }
+    }
+    
+    func setupUI() {
         let gradientView = CustomGradientView(frame: view.bounds)
         view.addSubview(gradientView)
         view.sendSubviewToBack(gradientView)
@@ -16,25 +31,24 @@ class ViewController: UIViewController, ASAuthorizationControllerDelegate, ASAut
         let headingLabel = UILabel()
         headingLabel.text = "自分だけの地図をつくろう"
         headingLabel.font = UIFont.systemFont(ofSize: 28, weight: .bold)
-        headingLabel.textColor = .white
+        headingLabel.textColor = .fourthColor
         headingLabel.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(headingLabel)
         
         // Create Google sign-in button
-       let googleButton = UIButton(type: .system)
-       googleButton.frame = CGRect(x: (view.bounds.width - (view.bounds.width * 0.8)) / 2, y: view.bounds.height - 70, width: view.bounds.width * 0.8, height: 45)
-       googleButton.backgroundColor = .white
-       googleButton.layer.cornerRadius = 20
-       googleButton.setTitle("   Sign in with Google", for: .normal)
-       googleButton.setTitleColor(.black, for: .normal)
-       googleButton.titleLabel?.font = UIFont.systemFont(ofSize: 17, weight: .medium)
-       googleButton.setImage(UIImage(systemName: "g.circle.fill"), for: .normal) // Google icon
-       googleButton.tintColor = .black
-       googleButton.imageView?.contentMode = .scaleAspectFit
-       googleButton.imageEdgeInsets = UIEdgeInsets(top: 0, left: 10, bottom: 0, right: 0)
-       googleButton.addTarget(self, action: #selector(googleSignInTapped), for: .touchUpInside)
-       view.addSubview(googleButton)
-        
+        let googleButton = UIButton(type: .system)
+        googleButton.frame = CGRect(x: (view.bounds.width - (view.bounds.width * 0.8)) / 2, y: view.bounds.height - 70, width: view.bounds.width * 0.8, height: 45)
+        googleButton.backgroundColor = .white
+        googleButton.layer.cornerRadius = 20
+        googleButton.setTitle("   Sign in with Google", for: .normal)
+        googleButton.setTitleColor(.black, for: .normal)
+        googleButton.titleLabel?.font = UIFont.systemFont(ofSize: 17, weight: .medium)
+        googleButton.setImage(UIImage(systemName: "g.circle.fill"), for: .normal) // Google icon
+        googleButton.tintColor = .black
+        googleButton.imageView?.contentMode = .scaleAspectFit
+        googleButton.imageEdgeInsets = UIEdgeInsets(top: 0, left: 10, bottom: 0, right: 0)
+        googleButton.addTarget(self, action: #selector(googleSignInTapped), for: .touchUpInside)
+        view.addSubview(googleButton)
         
         // Set up Apple Sign-In button
         let appleButton = UIButton(type: .system)
@@ -48,7 +62,7 @@ class ViewController: UIViewController, ASAuthorizationControllerDelegate, ASAut
         appleButton.tintColor = .black
         appleButton.imageView?.contentMode = .scaleAspectFit
         appleButton.imageEdgeInsets = UIEdgeInsets(top: 0, left: 10, bottom: 0, right: 0)
-        // appleButton.addTarget(self, action: #selector(appleSignIn), for: .touchUpInside)
+        appleButton.addTarget(self, action: #selector(appleSignInTapped), for: .touchUpInside)
         view.addSubview(appleButton)
         
         // Layout constraints for heading and buttons
@@ -69,16 +83,6 @@ class ViewController: UIViewController, ASAuthorizationControllerDelegate, ASAut
             appleButton.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.8),
             appleButton.heightAnchor.constraint(equalToConstant: 45)
         ])
-        
-        // Ensure Firebase restores session
-        Auth.auth().addStateDidChangeListener { auth, user in
-            if let user = user {
-                print("User is already logged in: \(user.uid)")
-                self.checkUserStatus()
-            } else {
-                print("No user session found, waiting for login.")
-            }
-        }
     }
     
     func checkUserStatus() {
@@ -137,7 +141,7 @@ class ViewController: UIViewController, ASAuthorizationControllerDelegate, ASAut
                 print("Google Login Successful! ✅")
                 
                 // Check if the user needs to input their name
-                self.checkUserStatus()
+                self.checkOrCreateUserProfile()
             }
         }
     }
@@ -178,7 +182,7 @@ class ViewController: UIViewController, ASAuthorizationControllerDelegate, ASAut
                 print("Apple Login Successful! ✅")
                 
                 // Check if the user needs to input their name
-                self.checkUserStatus()
+                self.checkOrCreateUserProfile()
             }
         }
     }
@@ -220,5 +224,49 @@ class ViewController: UIViewController, ASAuthorizationControllerDelegate, ASAut
         }
         
         return result
+    }
+    
+    private func checkOrCreateUserProfile() {
+        guard let user = Auth.auth().currentUser else {
+            print("No user logged in.")
+            return
+        }
+        
+        let db = Firestore.firestore()
+        let userDocRef = db.collection("users").document(user.uid)
+        
+        userDocRef.getDocument { (document, error) in
+            if let document = document, document.exists {
+                // User document exists, proceed to main screen
+                self.goToMainScreen()
+            } else {
+                // User document does not exist, proceed to name input screen
+                self.createUserProfile()
+            }
+        }
+    }
+    
+    private func createUserProfile() {
+        guard let user = Auth.auth().currentUser else {
+            print("No user logged in.")
+            return
+        }
+        
+        let db = Firestore.firestore()
+        let userDocRef = db.collection("users").document(user.uid)
+        
+        userDocRef.setData([
+            "uid": user.uid,
+            "email": user.email ?? "",
+            "displayName": user.displayName ?? "",
+            "createdAt": FieldValue.serverTimestamp()
+        ]) { error in
+            if let error = error {
+                print("Error creating user profile: \(error.localizedDescription)")
+            } else {
+                print("User profile created successfully.")
+                self.showNameInputScreen()
+            }
+        }
     }
 }
