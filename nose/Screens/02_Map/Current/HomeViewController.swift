@@ -10,7 +10,7 @@ class HomeViewController: UIViewController {
     var placesClient: GMSPlacesClient!
     var slider: CustomSlider!
     var hasShownHalfModal = false
-    
+    private let shadowBackground = BackShadowView()
     private var profileButton: IconButton!
     private var searchButton: IconButton!
     
@@ -21,6 +21,8 @@ class HomeViewController: UIViewController {
         setupGooglePlacesClient()
         setupMapView()
         setupLocationManager()
+        
+        setupShadowBackground()
         setupSlider()
         
         // Search button
@@ -49,6 +51,7 @@ class HomeViewController: UIViewController {
         mapView.isMyLocationEnabled = true
         mapView.delegate = self
         view.addSubview(mapView)
+        view.sendSubviewToBack(mapView) // Ensure the mapView is at the back
     }
     
     private func setupLocationManager() {
@@ -67,24 +70,34 @@ class HomeViewController: UIViewController {
         view.addSubview(slider)
     }
     
+    private func setupShadowBackground() {
+        shadowBackground.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(shadowBackground)
+        
+        // Set up constraints to make it cover 1/5 of the screen height
+        NSLayoutConstraint.activate([
+            shadowBackground.topAnchor.constraint(equalTo: view.topAnchor),
+            shadowBackground.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            shadowBackground.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            shadowBackground.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.2) // 1/5 of the screen height
+        ])
+    }
+    
     private func setupConstraints() {
         NSLayoutConstraint.activate([
-            // Slider constraints
-            slider.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
+            // Search button at the top-right corner
+            searchButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
+            searchButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -15),
+            
+            // Profile button closer to the search button
+            profileButton.topAnchor.constraint(equalTo: searchButton.topAnchor),
+            profileButton.trailingAnchor.constraint(equalTo: searchButton.leadingAnchor, constant: -10),
+            
+            // Slider closer to the buttons
+            slider.topAnchor.constraint(equalTo: searchButton.bottomAnchor, constant: 10),
+            slider.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             slider.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            slider.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-            
-            // Search button constraints
-            searchButton.topAnchor.constraint(equalTo: slider.bottomAnchor, constant: 10),
-            searchButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-            searchButton.widthAnchor.constraint(equalToConstant: 40),
-            searchButton.heightAnchor.constraint(equalToConstant: 40),
-            
-            // Profile button constraints
-            profileButton.topAnchor.constraint(equalTo: searchButton.bottomAnchor, constant: 10),
-            profileButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-            profileButton.widthAnchor.constraint(equalToConstant: 40),
-            profileButton.heightAnchor.constraint(equalToConstant: 40)
+            slider.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20)
         ])
     }
     
@@ -241,5 +254,11 @@ extension HomeViewController: CLLocationManagerDelegate {
         if status == .denied {
             print("Location access denied")
         }
+    }
+    
+    // Hide navigation bar including back button
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        navigationController?.setNavigationBarHidden(true, animated: true)
     }
 }

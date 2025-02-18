@@ -14,11 +14,9 @@ class IconButton: UIButton {
     }
     
     private func setupButton(with image: UIImage?) {
-        backgroundColor = .white
-        layer.cornerRadius = 20
-        layer.shadowColor = UIColor.black.cgColor
         setImage(image, for: .normal)
-        tintColor = .black
+        tintColor = .sixthColor
+        
         imageView?.contentMode = .scaleAspectFit
         contentEdgeInsets = UIEdgeInsets(top: 10, left: 10, bottom: 10, right: 10)
         translatesAutoresizingMaskIntoConstraints = false

@@ -4,7 +4,6 @@
     <dependencies>
         <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="23506"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
-        <capability name="System colors in document resources" minToolsVersion="11.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <scenes>
@@ -16,22 +15,17 @@
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="Gradient" translatesAutoresizingMaskIntoConstraints="NO" id="oHd-OO-4Mw">
-                                <rect key="frame" x="-30" y="-30" width="453" height="912"/>
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" fixedFrame="YES" image="background" translatesAutoresizingMaskIntoConstraints="NO" id="4ya-DT-j4c">
+                                <rect key="frame" x="-20" y="0.0" width="433" height="852"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                             </imageView>
-                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" fixedFrame="YES" image="Logo" translatesAutoresizingMaskIntoConstraints="NO" id="O5Z-lw-WHU">
-                                <rect key="frame" x="114" y="383" width="164" height="86"/>
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" fixedFrame="YES" image="logo" translatesAutoresizingMaskIntoConstraints="NO" id="HZ6-VX-XDn">
+                                <rect key="frame" x="113" y="414" width="166" height="24"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                             </imageView>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
-                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
-                        <constraints>
-                            <constraint firstItem="oHd-OO-4Mw" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="3bT-5E-CRS"/>
-                            <constraint firstAttribute="bottom" secondItem="oHd-OO-4Mw" secondAttribute="bottom" constant="-30" id="DhK-5E-Q9I"/>
-                            <constraint firstItem="oHd-OO-4Mw" firstAttribute="top" secondItem="Ze5-6b-2t3" secondAttribute="top" constant="-30" id="m9s-BY-KVp"/>
-                            <constraint firstItem="oHd-OO-4Mw" firstAttribute="leading" secondItem="Ze5-6b-2t3" secondAttribute="leadingMargin" constant="-46" id="x5G-Kf-pXT"/>
-                        </constraints>
+                        <color key="backgroundColor" red="0.92549020049999997" green="0.93725490570000003" blue="0.95686274770000002" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                     </view>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="iYj-Kq-Ea1" userLabel="First Responder" sceneMemberID="firstResponder"/>
@@ -40,10 +34,7 @@
         </scene>
     </scenes>
     <resources>
-        <image name="Gradient" width="529" height="1012"/>
-        <image name="Logo" width="331" height="175"/>
-        <systemColor name="systemBackgroundColor">
-            <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-        </systemColor>
+        <image name="background" width="433" height="852"/>
+        <image name="logo" width="166" height="24"/>
     </resources>
 </document>
