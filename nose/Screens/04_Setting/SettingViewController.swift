@@ -80,8 +80,8 @@ class SettingViewController: UIViewController, UITableViewDelegate, UITableViewD
         let selectedSetting = settingsData[indexPath.section].items[indexPath.row]
         
         if selectedSetting == "Name" {
-            let nameVC = NameInputViewController()
-            navigationController?.pushViewController(nameVC, animated: true)
+            let nameupdateVC = NameUpdateViewController()
+            navigationController?.pushViewController(nameupdateVC, animated: true)
         } else if selectedSetting == "Account" {
             let accountVC = AccountViewController()
             navigationController?.pushViewController(accountVC, animated: true)

@@ -1,7 +1,8 @@
 import UIKit
 import FirebaseAuth
+import FirebaseFirestore
 
-class NameInputViewController: UIViewController {
+class NameUpdateViewController: UIViewController {
     
     let headerLabel = UILabel()
     let nameTextField = UITextField()
@@ -25,6 +26,7 @@ class NameInputViewController: UIViewController {
         loadSavedName()
     }
     
+    // MARK: - UI set up
     private func setupHeaderLabel() {
         headerLabel.text = "名前"
         headerLabel.font = UIFont.systemFont(ofSize: 32, weight: .bold)
@@ -70,19 +72,23 @@ class NameInputViewController: UIViewController {
         ])
     }
     
-    // Load the saved name from UserDefaults if available
+    // MARK: - Update user name
+    // Load the saved name from Firestore if available
     private func loadSavedName() {
-        if let savedName = UserDefaults.standard.string(forKey: "name") {
-            nameTextField.text = savedName
+        guard let user = Auth.auth().currentUser else {
+            return
+        }
+        
+        let db = Firestore.firestore()
+        db.collection("users").document(user.uid).getDocument { (document, error) in
+            if let document = document, document.exists {
+                self.nameTextField.text = document.data()?["displayName"] as? String
+            }
         }
     }
     
-    // Generate a unique 9-digit user ID
-    private func generateUserID() -> String {
-        return String(format: "%09d", arc4random_uniform(1000000000))
-    }
-    
-    // When myButton is pressed, save the name input and either move to HomeViewController or show a flash message
+    // MARK: - Save & Update name
+    // When myButton is pressed, save the name input and stay in the screen
     @objc func saveName() {
         print("save button tapped")
         
@@ -91,29 +97,31 @@ class NameInputViewController: UIViewController {
             return
         }
         
-        // Save name to UserDefaults
-        UserDefaults.standard.set(name, forKey: "name")
-        
-        // Check if user ID already exists
-        if UserDefaults.standard.string(forKey: "userID") == nil {
-            // Generate and save user ID if it doesn't exist
-            let userID = generateUserID()
-            UserDefaults.standard.set(userID, forKey: "userID")
-            print("Generated and saved user ID: \(userID)")
+        // Save name to Firestore
+        saveNameToFirestore(name: name) { success in
+            if success {
+                // Show flash message if updating the name
+                self.showFlashMessage("Name updated successfully!")
+            } else {
+                self.showFlashMessage("Failed to save name. Please try again.")
+            }
+        }
+    }
+    
+    private func saveNameToFirestore(name: String, completion: @escaping (Bool) -> Void) {
+        guard let user = Auth.auth().currentUser else {
+            completion(false)
+            return
         }
         
-        if UserDefaults.standard.string(forKey: "name") != nil {
-            // Show flash message if a name was already saved
-            showFlashMessage("Name updated successfully!")
-            // print user ID
-            print("User ID: \(UserDefaults.standard.string(forKey: "userID")!)")
-        } else {
-            // Move to HomeViewController if no name was saved previously
-            let homeVC = HomeViewController()
-            if let navController = navigationController {
-                navController.pushViewController(homeVC, animated: true)  // Use navigation if available
+        let db = Firestore.firestore()
+        db.collection("users").document(user.uid).updateData(["displayName": name]) { error in
+            if let error = error {
+                print("Error updating name in Firestore: \(error.localizedDescription)")
+                completion(false)
             } else {
-                present(homeVC, animated: true)  // Otherwise, present modally
+                print("Name updated successfully in Firestore")
+                completion(true)
             }
         }
     }
@@ -131,7 +139,7 @@ class NameInputViewController: UIViewController {
     }
 }
 
-extension NameInputViewController: UITextFieldDelegate {
+extension NameUpdateViewController: UITextFieldDelegate {
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
         textField.resignFirstResponder() // Dismiss keyboard when return key is pressed
         return true

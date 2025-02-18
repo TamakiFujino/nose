@@ -1,5 +1,6 @@
 import UIKit
 import FirebaseAuth
+import FirebaseFirestore
 
 class AccountViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
     
@@ -105,12 +106,24 @@ class AccountViewController: UIViewController, UITableViewDelegate, UITableViewD
             return
         }
 
-        user.delete { error in
+        let db = Firestore.firestore()
+        let userDocRef = db.collection("users").document(user.uid)
+        
+        // Mark user as deleted in Firestore
+        userDocRef.updateData(["status": "deleted"]) { error in
             if let error = error {
-                self.showAlert(title: "Error", message: "Failed to delete account: \(error.localizedDescription)")
-            } else {
-                self.showAlert(title: "Account Deleted", message: "Your account has been successfully deleted.") {
-                    self.navigateToLoginScreen()
+                self.showAlert(title: "Error", message: "Failed to update user status: \(error.localizedDescription)")
+                return
+            }
+            
+            // Proceed to delete Firebase Authentication user
+            user.delete { error in
+                if let error = error {
+                    self.showAlert(title: "Error", message: "Failed to delete account: \(error.localizedDescription)")
+                } else {
+                    self.showAlert(title: "Account Deleted", message: "Your account has been successfully deleted.") {
+                        self.navigateToLoginScreen()
+                    }
                 }
             }
         }

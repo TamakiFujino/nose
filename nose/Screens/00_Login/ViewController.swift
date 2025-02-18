@@ -2,7 +2,6 @@ import UIKit
 import Firebase
 import GoogleSignIn
 import AuthenticationServices
-import FirebaseFirestore
 
 class ViewController: UIViewController, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
     
@@ -86,26 +85,48 @@ class ViewController: UIViewController, ASAuthorizationControllerDelegate, ASAut
     }
     
     func checkUserStatus() {
-        if let user = Auth.auth().currentUser {
-            if user.displayName == nil || user.displayName!.isEmpty {
-                showNameInputScreen()  // Show name input screen for first-time users
+        guard let user = Auth.auth().currentUser else {
+            showNameInputScreen()
+            return
+        }
+        
+        let db = Firestore.firestore()
+        let userDocRef = db.collection("users").document(user.uid)
+        
+        userDocRef.getDocument { (document, error) in
+            if let document = document, document.exists {
+                if let status = document.data()?["status"] as? String, status == "deleted" {
+                    self.showNameInputScreen()
+                } else {
+                    self.goToMainScreen()
+                }
             } else {
-                goToMainScreen()  // Proceed to main app
+                self.showNameInputScreen()
             }
         }
     }
     
     func showNameInputScreen() {
-        let nameInputVC = NameInputViewController()
-        nameInputVC.modalPresentationStyle = .fullScreen
-        present(nameInputVC, animated: true)
+        let nameregisterVC = NameRegisterViewController()
+        if let navController = self.navigationController {
+            navController.pushViewController(nameregisterVC, animated: true)
+        } else {
+            let navController = UINavigationController(rootViewController: nameregisterVC)
+            navController.modalPresentationStyle = .fullScreen
+            self.present(navController, animated: true, completion: nil)
+        }
     }
     
     func goToMainScreen() {
         print("User has a name, proceeding to main app")
         let homeViewController = HomeViewController()
-        homeViewController.modalPresentationStyle = .fullScreen
-        self.present(homeViewController, animated: true, completion: nil)
+        if let navController = self.navigationController {
+            navController.pushViewController(homeViewController, animated: true)
+        } else {
+            let navController = UINavigationController(rootViewController: homeViewController)
+            navController.modalPresentationStyle = .fullScreen
+            self.present(navController, animated: true, completion: nil)
+        }
     }
     
     @objc func googleSignInTapped(_ sender: Any) {
@@ -237,10 +258,12 @@ class ViewController: UIViewController, ASAuthorizationControllerDelegate, ASAut
         
         userDocRef.getDocument { (document, error) in
             if let document = document, document.exists {
-                // User document exists, proceed to main screen
-                self.goToMainScreen()
+                if let status = document.data()?["status"] as? String, status == "deleted" {
+                    self.showNameInputScreen()
+                } else {
+                    self.goToMainScreen()
+                }
             } else {
-                // User document does not exist, proceed to name input screen
                 self.createUserProfile()
             }
         }
@@ -259,7 +282,8 @@ class ViewController: UIViewController, ASAuthorizationControllerDelegate, ASAut
             "uid": user.uid,
             "email": user.email ?? "",
             "displayName": user.displayName ?? "",
-            "createdAt": FieldValue.serverTimestamp()
+            "createdAt": FieldValue.serverTimestamp(),
+            "status": "active"
         ]) { error in
             if let error = error {
                 print("Error creating user profile: \(error.localizedDescription)")
