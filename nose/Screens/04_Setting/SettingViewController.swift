@@ -5,10 +5,10 @@ class SettingViewController: UIViewController, UITableViewDelegate, UITableViewD
     let tableView = UITableView()
 
     // Define setting categories and items
-    let settingsData: [(category: String, items: [String])] = [
+    var settingsData: [(category: String, items: [String])] = [
         ("Profile", ["Name", "Account"]),
         ("Preferences", ["Notifications", "Language"]),
-        ("About", ["Privacy Policy", "Terms of Service"])
+        ("About", ["Privacy Policy", "Terms of Service", "App Version"])
     ]
     
     override func viewDidLoad() {
@@ -61,9 +61,22 @@ class SettingViewController: UIViewController, UITableViewDelegate, UITableViewD
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
-        cell.textLabel?.text = settingsData[indexPath.section].items[indexPath.row]
-        cell.accessoryType = .disclosureIndicator  // Add arrow to indicate navigation
+        let item = settingsData[indexPath.section].items[indexPath.row]
+        let cell: UITableViewCell
+
+        if item == "App Version" {
+            cell = UITableViewCell(style: .value1, reuseIdentifier: "versionCell")
+            cell.textLabel?.text = item
+            if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
+                cell.detailTextLabel?.text = version
+            }
+            cell.selectionStyle = .none  // Disable selection for app version cell
+        } else {
+            cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
+            cell.textLabel?.text = item
+            cell.accessoryType = .disclosureIndicator  // Add arrow to indicate navigation
+        }
+        
         cell.backgroundColor = .clear // Remove the background color of each cell
         return cell
     }
