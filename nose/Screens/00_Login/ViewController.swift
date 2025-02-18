@@ -34,41 +34,75 @@ class ViewController: UIViewController, ASAuthorizationControllerDelegate, ASAut
         headingLabel.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(headingLabel)
         
+        // Add Terms of Service and Privacy Policy text
+        let termsLabel = UILabel()
+        termsLabel.numberOfLines = 0
+        termsLabel.textAlignment = .center
+        termsLabel.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(termsLabel)
+        
         // Create Google sign-in button
         let googleButton = UIButton(type: .system)
-        googleButton.frame = CGRect(x: (view.bounds.width - (view.bounds.width * 0.8)) / 2, y: view.bounds.height - 70, width: view.bounds.width * 0.8, height: 45)
-        googleButton.backgroundColor = .white
+        googleButton.backgroundColor = .fourthColor
         googleButton.layer.cornerRadius = 20
         googleButton.setTitle("   Sign in with Google", for: .normal)
-        googleButton.setTitleColor(.black, for: .normal)
+        googleButton.setTitleColor(.firstColor, for: .normal)
         googleButton.titleLabel?.font = UIFont.systemFont(ofSize: 17, weight: .medium)
         googleButton.setImage(UIImage(systemName: "g.circle.fill"), for: .normal) // Google icon
-        googleButton.tintColor = .black
+        googleButton.tintColor = .firstColor
         googleButton.imageView?.contentMode = .scaleAspectFit
         googleButton.imageEdgeInsets = UIEdgeInsets(top: 0, left: 10, bottom: 0, right: 0)
         googleButton.addTarget(self, action: #selector(googleSignInTapped), for: .touchUpInside)
+        googleButton.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(googleButton)
         
         // Set up Apple Sign-In button
         let appleButton = UIButton(type: .system)
-        appleButton.frame = CGRect(x: (view.bounds.width - (view.bounds.width * 0.8)) / 2, y: view.bounds.height - 130, width: view.bounds.width * 0.8, height: 45)
-        appleButton.backgroundColor = .white
+        appleButton.backgroundColor = .fourthColor
         appleButton.layer.cornerRadius = 20
         appleButton.setTitle("   Sign in with Apple", for: .normal)
-        appleButton.setTitleColor(.black, for: .normal)
+        appleButton.setTitleColor(.firstColor, for: .normal)
         appleButton.titleLabel?.font = UIFont.systemFont(ofSize: 17, weight: .medium)
         appleButton.setImage(UIImage(systemName: "applelogo"), for: .normal) // Apple icon
-        appleButton.tintColor = .black
+        appleButton.tintColor = .firstColor
         appleButton.imageView?.contentMode = .scaleAspectFit
         appleButton.imageEdgeInsets = UIEdgeInsets(top: 0, left: 10, bottom: 0, right: 0)
         appleButton.addTarget(self, action: #selector(appleSignInTapped), for: .touchUpInside)
+        appleButton.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(appleButton)
         
-        // Layout constraints for heading and buttons
+        // Make Terms of Service and Privacy Policy clickable
+        let termsText = NSMutableAttributedString(string: "By signing up, you agree to our ")
+        let tosAttributes: [NSAttributedString.Key: Any] = [
+            .foregroundColor: UIColor.systemBlue,
+            .underlineStyle: NSUnderlineStyle.single.rawValue
+        ]
+        let ppAttributes: [NSAttributedString.Key: Any] = [
+            .foregroundColor: UIColor.systemBlue,
+            .underlineStyle: NSUnderlineStyle.single.rawValue
+        ]
+        let tosString = NSAttributedString(string: "Terms of Service", attributes: tosAttributes)
+        let andString = NSAttributedString(string: " and ", attributes: nil)
+        let ppString = NSAttributedString(string: "Privacy Policy.", attributes: ppAttributes)
+        termsText.append(tosString)
+        termsText.append(andString)
+        termsText.append(ppString)
+        termsLabel.attributedText = termsText
+        termsLabel.isUserInteractionEnabled = true
+        
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(termsTapped(_:)))
+        termsLabel.addGestureRecognizer(tapGesture)
+        
+        // Layout constraints for heading, terms label, and buttons
         NSLayoutConstraint.activate([
             // Heading left aligned
             headingLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             headingLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
+            
+            // Terms label constraints
+            termsLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            termsLabel.bottomAnchor.constraint(equalTo: googleButton.topAnchor, constant: -20),
+            termsLabel.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.8),
             
             // Google Button constraints
             googleButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -82,6 +116,20 @@ class ViewController: UIViewController, ASAuthorizationControllerDelegate, ASAut
             appleButton.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.8),
             appleButton.heightAnchor.constraint(equalToConstant: 45)
         ])
+    }
+    
+    @objc func termsTapped(_ sender: UITapGestureRecognizer) {
+        let text = (sender.view as! UILabel).text ?? ""
+        let termsRange = (text as NSString).range(of: "Terms of Service")
+        let privacyRange = (text as NSString).range(of: "Privacy Policy")
+        
+        if sender.didTapAttributedTextInLabel(label: sender.view as! UILabel, inRange: termsRange) {
+            let tosVC = ToSViewController()
+            self.navigationController?.pushViewController(tosVC, animated: true)
+        } else if sender.didTapAttributedTextInLabel(label: sender.view as! UILabel, inRange: privacyRange) {
+            let privacyVC = PrivacyPolicyViewController()
+            self.navigationController?.pushViewController(privacyVC, animated: true)
+        }
     }
     
     func checkUserStatus() {
@@ -292,5 +340,37 @@ class ViewController: UIViewController, ASAuthorizationControllerDelegate, ASAut
                 self.showNameInputScreen()
             }
         }
+    }
+}
+
+private extension UITapGestureRecognizer {
+    func didTapAttributedTextInLabel(label: UILabel, inRange targetRange: NSRange) -> Bool {
+        guard let attributedText = label.attributedText else { return false }
+        
+        let mutableString = NSMutableAttributedString(attributedString: attributedText)
+        mutableString.addAttributes([.font: label.font!], range: NSRange(location: 0, length: attributedText.length))
+        
+        let layoutManager = NSLayoutManager()
+        let textStorage = NSTextStorage(attributedString: mutableString)
+        let textContainer = NSTextContainer(size: label.bounds.size)
+        textContainer.lineFragmentPadding = 0
+        textContainer.lineBreakMode = label.lineBreakMode
+        textContainer.maximumNumberOfLines = label.numberOfLines
+        layoutManager.addTextContainer(textContainer)
+        textStorage.addLayoutManager(layoutManager)
+        
+        let locationOfTouchInLabel = self.location(in: label)
+        let textBoundingBox = layoutManager.usedRect(for: textContainer)
+        let textContainerOffset = CGPoint(
+            x: (label.bounds.size.width - textBoundingBox.size.width) * 0.5 - textBoundingBox.origin.x,
+            y: (label.bounds.size.height - textBoundingBox.size.height) * 0.5 - textBoundingBox.origin.y
+        )
+        let locationOfTouchInTextContainer = CGPoint(
+            x: locationOfTouchInLabel.x - textContainerOffset.x,
+            y: locationOfTouchInLabel.y - textContainerOffset.y
+        )
+        let indexOfCharacter = layoutManager.characterIndex(for: locationOfTouchInTextContainer, in: textContainer, fractionOfDistanceBetweenInsertionPoints: nil)
+        
+        return NSLocationInRange(indexOfCharacter, targetRange)
     }
 }

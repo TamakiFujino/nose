@@ -85,6 +85,12 @@ class SettingViewController: UIViewController, UITableViewDelegate, UITableViewD
         } else if selectedSetting == "Account" {
             let accountVC = AccountViewController()
             navigationController?.pushViewController(accountVC, animated: true)
+        } else if selectedSetting == "Privacy Policy" {
+            let privacypolicyVC = PrivacyPolicyViewController()
+            navigationController?.pushViewController(privacypolicyVC, animated: true)
+        } else if selectedSetting == "Terms of Service" {
+            let termsVC = ToSViewController()
+            navigationController?.pushViewController(termsVC, animated: true)
         }
     }
 }
