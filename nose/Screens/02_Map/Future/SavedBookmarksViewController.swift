@@ -1,15 +1,21 @@
 import UIKit
+import GoogleMaps
+import GooglePlaces
 
 class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
     
     var tableView: UITableView!
     var bookmarkLists: [BookmarkList] = []
     var messageLabel: UILabel!
+    weak var mapView: GMSMapView?
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
         view.backgroundColor = .white
+        
+        // Set up navigation bar
+        setupNavigationBar()
         
         // Initialize message label
         messageLabel = UILabel()
@@ -41,8 +47,16 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
         // Load bookmark lists
         bookmarkLists = BookmarksManager.shared.bookmarkLists
         updateMessageVisibility()
+        
+        // Show saved POIs on the map
+        showSavedPOIMarkers()
     }
     
+    private func setupNavigationBar() {
+        navigationItem.title = "Saved Bookmarks"
+        self.navigationController?.navigationBar.tintColor = .black
+    }
+
     func updateMessageVisibility() {
         messageLabel.isHidden = !bookmarkLists.isEmpty
         tableView.isHidden = bookmarkLists.isEmpty
@@ -85,12 +99,16 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
         let shareAction = UIAlertAction(title: "Share the bookmark list", style: .default) { _ in
             self.presentShareModal(for: bookmarkList)
         }
+        let completeAction = UIAlertAction(title: "Complete this bookmark", style: .default) { _ in
+            self.completeBookmarkList(at: sender.tag)
+        }
         let deleteAction = UIAlertAction(title: "Delete", style: .destructive) { _ in
             self.deleteBookmarkList(at: sender.tag)
         }
         let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
         
         alertController.addAction(shareAction)
+        alertController.addAction(completeAction)
         alertController.addAction(deleteAction)
         alertController.addAction(cancelAction)
         
@@ -112,6 +130,13 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
         present(shareModalVC, animated: true, completion: nil)
     }
     
+    private func completeBookmarkList(at index: Int) {
+        let completedList = bookmarkLists[index]
+        // Implement the logic to complete the bookmark list
+        print("Completed bookmark list: \(completedList.name)")
+        // You can update the UI or show a confirmation message here
+    }
+    
     private func deleteBookmarkList(at index: Int) {
         let listToDelete = bookmarkLists[index]
         BookmarksManager.shared.deleteBookmarkList(listToDelete)
@@ -127,6 +152,26 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
             let poisVC = POIsViewController()
             poisVC.bookmarkList = selectedList
             navigationController?.pushViewController(poisVC, animated: true)
+        }
+    }
+    
+    // MARK: - Showing POIs on Map
+    
+    func showSavedPOIMarkers() {
+        guard let mapView = mapView else { return }
+        
+        let savedPOIs = bookmarkLists.flatMap { $0.bookmarks }
+        
+        guard !savedPOIs.isEmpty else {
+            print("No saved POIs to display.")
+            return
+        }
+        
+        for poi in savedPOIs {
+            let marker = GMSMarker()
+            marker.position = CLLocationCoordinate2D(latitude: poi.latitude, longitude: poi.longitude)
+            marker.title = poi.name
+            marker.map = mapView
         }
     }
 }
@@ -162,8 +207,20 @@ class BookmarkListCell: UITableViewCell {
     func configure(with list: BookmarkList) {
         textLabel?.text = list.name
         textLabel?.textColor = .black
-        let sharedText = list.sharedWithFriends.count > 0 ? "shared with \(list.sharedWithFriends.count) friends" : ""
-        detailTextLabel?.text = "\(list.bookmarks.count) saved \(sharedText)"
+        
+        let bookmarkIcon = UIImage(systemName: "bookmark.fill")?.withTintColor(.black, renderingMode: .alwaysOriginal)
+        let friendsIcon = UIImage(systemName: "person.2.fill")?.withTintColor(.black, renderingMode: .alwaysOriginal)
+        
+        let bookmarkIconAttachment = NSTextAttachment(image: bookmarkIcon!)
+        let friendsIconAttachment = NSTextAttachment(image: friendsIcon!)
+        
+        let attributedText = NSMutableAttributedString()
+        attributedText.append(NSAttributedString(attachment: bookmarkIconAttachment))
+        attributedText.append(NSAttributedString(string: " \(list.bookmarks.count)  "))
+        attributedText.append(NSAttributedString(attachment: friendsIconAttachment))
+        attributedText.append(NSAttributedString(string: " \(list.sharedWithFriends.count)"))
+        
+        detailTextLabel?.attributedText = attributedText
         detailTextLabel?.textColor = .black
     }
 }

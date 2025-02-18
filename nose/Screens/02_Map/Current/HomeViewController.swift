@@ -5,53 +5,34 @@ import CoreLocation
 
 class HomeViewController: UIViewController {
     
-    var mapView: GMSMapView!
+    var mapContainerViewController: MapContainerViewController!
     var locationManager = CLLocationManager()
     var placesClient: GMSPlacesClient!
-    var slider: CustomSlider!
-    var hasShownHalfModal = false
-    private let shadowBackground = BackShadowView()
-    private var profileButton: IconButton!
-    private var searchButton: IconButton!
     
-    let mapID = GMSMapID(identifier: "7f9a1d61a6b1809f")
+    var hasShownHalfModal = false
     
     override func viewDidLoad() {
         super.viewDidLoad()
         setupGooglePlacesClient()
-        setupMapView()
         setupLocationManager()
+        setupMapContainer()
         
-        setupShadowBackground()
-        setupSlider()
-        
-        // Search button
-        searchButton = IconButton(image: UIImage(systemName: "magnifyingglass"),
-                                  action: #selector(searchButtonTapped),
-                                  target: self)
-        view.addSubview(searchButton)
-        
-        // Profile button
-        profileButton = IconButton(image: UIImage(systemName: "person.fill"),
-                                   action: #selector(profileButtonTapped),
-                                   target: self)
-        view.addSubview(profileButton)
-        
-        setupConstraints()
+        mapContainerViewController.slider.addTarget(self, action: #selector(sliderValueChanged), for: .valueChanged)
+        mapContainerViewController.searchButton.addTarget(self, action: #selector(searchButtonTapped), for: .touchUpInside)
+        mapContainerViewController.profileButton.addTarget(self, action: #selector(profileButtonTapped), for: .touchUpInside)
     }
     
     private func setupGooglePlacesClient() {
         placesClient = GMSPlacesClient.shared()
     }
     
-    private func setupMapView() {
-        let camera = GMSCameraPosition.camera(withLatitude: 37.7749, longitude: -122.4194, zoom: 12.0)
-        mapView = GMSMapView(frame: self.view.bounds, mapID: mapID, camera: camera)
-        mapView.settings.myLocationButton = true
-        mapView.isMyLocationEnabled = true
-        mapView.delegate = self
-        view.addSubview(mapView)
-        view.sendSubviewToBack(mapView) // Ensure the mapView is at the back
+    private func setupMapContainer() {
+        mapContainerViewController = MapContainerViewController()
+        addChild(mapContainerViewController)
+        view.addSubview(mapContainerViewController.view)
+        mapContainerViewController.view.frame = view.bounds
+        mapContainerViewController.didMove(toParent: self)
+        view.sendSubviewToBack(mapContainerViewController.view)
     }
     
     private func setupLocationManager() {
@@ -60,47 +41,18 @@ class HomeViewController: UIViewController {
         locationManager.startUpdatingLocation()
     }
     
-    private func setupSlider() {
-        slider = CustomSlider()
-        slider.minimumValue = 0
-        slider.maximumValue = 100
-        slider.value = 50
-        slider.translatesAutoresizingMaskIntoConstraints = false
-        slider.addTarget(self, action: #selector(sliderValueChanged), for: .valueChanged)
-        view.addSubview(slider)
+    // Hide navigation bar including back button
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        navigationController?.setNavigationBarHidden(true, animated: animated)
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        navigationController?.setNavigationBarHidden(false, animated: animated)
     }
     
-    private func setupShadowBackground() {
-        shadowBackground.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(shadowBackground)
-        
-        // Set up constraints to make it cover 1/5 of the screen height
-        NSLayoutConstraint.activate([
-            shadowBackground.topAnchor.constraint(equalTo: view.topAnchor),
-            shadowBackground.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            shadowBackground.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            shadowBackground.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.2) // 1/5 of the screen height
-        ])
-    }
-    
-    private func setupConstraints() {
-        NSLayoutConstraint.activate([
-            // Search button at the top-right corner
-            searchButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
-            searchButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -15),
-            
-            // Profile button closer to the search button
-            profileButton.topAnchor.constraint(equalTo: searchButton.topAnchor),
-            profileButton.trailingAnchor.constraint(equalTo: searchButton.leadingAnchor, constant: -10),
-            
-            // Slider closer to the buttons
-            slider.topAnchor.constraint(equalTo: searchButton.bottomAnchor, constant: 10),
-            slider.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            slider.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            slider.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20)
-        ])
-    }
-    
+    // MARK: - Button actions
     @objc private func searchButtonTapped() {
         let searchVC = SearchViewController()
         searchVC.modalPresentationStyle = .fullScreen
@@ -124,35 +76,28 @@ class HomeViewController: UIViewController {
         
         if newValue == 100 && !hasShownHalfModal {
             hasShownHalfModal = true
-            showSavedBookmarkLists()
-            showSavedPOIMarkers()
-            searchButton.isHidden = true
-        } else if newValue != 100 {
+            let savedBookmarksVC = SavedBookmarksViewController()
+            savedBookmarksVC.mapView = mapContainerViewController.mapView
+            savedBookmarksVC.modalPresentationStyle = .pageSheet
+            if let sheet = savedBookmarksVC.sheetPresentationController {
+                sheet.detents = [.medium()]
+            }
+            present(savedBookmarksVC, animated: true, completion: nil)
+            mapContainerViewController.searchButton.isHidden = true
+        } else if newValue == 0 && !hasShownHalfModal {
+            hasShownHalfModal = true
+            let zeroSliderModalVC = ZeroSliderModalViewController()
+            zeroSliderModalVC.modalPresentationStyle = .pageSheet
+            if let sheet = zeroSliderModalVC.sheetPresentationController {
+                sheet.detents = [.medium()]
+            }
+            present(zeroSliderModalVC, animated: true, completion: nil)
+            mapContainerViewController.searchButton.isHidden = true
+        } else if newValue != 0 && newValue != 100 {
             hasShownHalfModal = false
-            mapView.clear()
-            searchButton.isHidden = false
+            mapContainerViewController.mapView.clear()
+            mapContainerViewController.searchButton.isHidden = false
         }
-    }
-    
-    private func showSavedBookmarkLists() {
-        let savedBookmarksVC = SavedBookmarksViewController()
-        let navController = UINavigationController(rootViewController: savedBookmarksVC)
-        navController.modalPresentationStyle = .pageSheet
-        if let sheet = navController.sheetPresentationController {
-            sheet.detents = [.medium()]
-        }
-        present(navController, animated: true, completion: nil)
-    }
-    
-    // Hide navigation bar including back button
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        navigationController?.setNavigationBarHidden(true, animated: animated)
-    }
-
-    override func viewWillDisappear(_ animated: Bool) {
-        super.viewWillDisappear(animated)
-        navigationController?.setNavigationBarHidden(false, animated: animated)
     }
 }
 
@@ -185,12 +130,12 @@ extension HomeViewController: GMSMapViewDelegate {
                             detailVC.latitude = location.latitude
                             detailVC.longitude = location.longitude
                             let camera = GMSCameraPosition.camera(withLatitude: location.latitude, longitude: location.longitude, zoom: 15.0)
-                            self?.mapView.animate(to: camera)
+                            self?.mapContainerViewController.mapView.animate(to: camera)
                         } else {
                             detailVC.latitude = place.coordinate.latitude
                             detailVC.longitude = place.coordinate.longitude
                             let camera = GMSCameraPosition.camera(withLatitude: place.coordinate.latitude, longitude: place.coordinate.longitude, zoom: 15.0)
-                            self?.mapView.animate(to: camera)
+                            self?.mapContainerViewController.mapView.animate(to: camera)
                         }
                         detailVC.modalPresentationStyle = .pageSheet
                         if let sheet = detailVC.sheetPresentationController {
@@ -234,22 +179,6 @@ extension HomeViewController: GMSMapViewDelegate {
             }
         }
     }
-    
-    func showSavedPOIMarkers() {
-        let savedPOIs = BookmarksManager.shared.bookmarkLists.flatMap { $0.bookmarks }
-        
-        guard !savedPOIs.isEmpty else {
-            print("No saved POIs to display.")
-            return
-        }
-        
-        for poi in savedPOIs {
-            let marker = GMSMarker()
-            marker.position = CLLocationCoordinate2D(latitude: poi.latitude, longitude: poi.longitude)
-            marker.title = poi.name
-            marker.map = mapView
-        }
-    }
 }
 
 // MARK: - CLLocationManagerDelegate
@@ -257,7 +186,7 @@ extension HomeViewController: CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         if let location = locations.last {
             let camera = GMSCameraPosition.camera(withLatitude: location.coordinate.latitude, longitude: location.coordinate.longitude, zoom: 15.0)
-            mapView.animate(to: camera)
+            mapContainerViewController.mapView.animate(to: camera)
         }
     }
     

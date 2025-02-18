@@ -14,29 +14,15 @@ class AccountViewController: UIViewController, UITableViewDelegate, UITableViewD
         super.viewDidLoad()
         
         let backButton = UIBarButtonItem()
-            backButton.title = ""  // Hide the "Back" text
-            self.navigationItem.backBarButtonItem = backButton
-            self.navigationController?.navigationBar.tintColor = .black
+        backButton.title = ""  // Hide the "Back" text
+        self.navigationItem.backBarButtonItem = backButton
+        self.navigationController?.navigationBar.tintColor = .black
+        self.navigationItem.title = "Account"  // Set title in the navigation bar
 
-        view.backgroundColor = .white
-        setupUI()
-        setupTableView()
-    }
-    
-    func setupUI() {
-        // Heading Label
-        let headingLabel = UILabel()
-        headingLabel.text = "Account"
-        headingLabel.font = UIFont.systemFont(ofSize: 32, weight: .bold)
-        headingLabel.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(headingLabel)
+        let gradientView = CustomGradientView(frame: view.bounds)
+        view.addSubview(gradientView)
         
-        // Layout Constraints
-        NSLayoutConstraint.activate([
-            // Heading left aligned
-            headingLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            headingLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20)
-        ])
+        setupTableView()
     }
     
     func setupTableView() {
@@ -44,11 +30,12 @@ class AccountViewController: UIViewController, UITableViewDelegate, UITableViewD
         tableView.dataSource = self
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
         tableView.translatesAutoresizingMaskIntoConstraints = false
+        tableView.backgroundColor = .clear  // Remove background of table view
         view.addSubview(tableView)
         
         // Constraints for TableView
         NSLayoutConstraint.activate([
-            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 80),
+            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
@@ -67,13 +54,15 @@ class AccountViewController: UIViewController, UITableViewDelegate, UITableViewD
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
-        cell.textLabel?.text = settingsData[indexPath.section].items[indexPath.row]
+        let item = settingsData[indexPath.section].items[indexPath.row]
+        cell.textLabel?.text = item
+        cell.backgroundColor = .clear  // Remove background of each cell
+        
+        if item == "Delete Account" {
+            cell.textLabel?.textColor = .red  // Make "Delete Account" text red
+        }
+
         return cell
-    }
-    
-    // Set section headers
-    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        return settingsData[section].category
     }
     
     // Handle selection of a setting option
