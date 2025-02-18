@@ -15,9 +15,10 @@ class CustomGradientView: UIView {
     private func setupGradient() {
         let gradientLayer = CAGradientLayer()
         gradientLayer.frame = bounds
+        // set the colors for the gradient
         gradientLayer.colors = [
-            UIColor(red: 221/255, green: 195/255, blue: 255/255, alpha: 1).cgColor, // Light Purple
-            UIColor(red: 195/255, green: 216/255, blue: 253/255, alpha: 1).cgColor // Light Blue
+            UIColor.thirdColor.cgColor,
+            UIColor.firstColor.cgColor
         ]
         gradientLayer.startPoint = CGPoint(x: 0.5, y: 0)
         gradientLayer.endPoint = CGPoint(x: 0.5, y: 1)

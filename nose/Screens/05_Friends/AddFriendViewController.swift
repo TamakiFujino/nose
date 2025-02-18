@@ -15,8 +15,9 @@ class AddFriendViewController: UIViewController, UITextFieldDelegate {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Set background white
-        view.backgroundColor = .white
+        
+        let gradientView = CustomGradientView(frame: view.bounds)
+        view.addSubview(gradientView)
         
         // Set up UI
         setupUI()

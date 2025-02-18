@@ -28,7 +28,7 @@ class NameInputViewController: UIViewController {
     private func setupHeaderLabel() {
         headerLabel.text = "名前"
         headerLabel.font = UIFont.systemFont(ofSize: 32, weight: .bold)
-        headerLabel.textColor = .white
+        headerLabel.textColor = .sixthColor
         headerLabel.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(headerLabel)
     }

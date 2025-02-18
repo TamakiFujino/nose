@@ -8,6 +8,10 @@ class ProfileViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        // Set the navigation bar title to "Profile"
+        self.title = "Profile"
+        
+        // Hide the "Back" text in the back button
         let backButton = UIBarButtonItem()
             backButton.title = ""  // Hide the "Back" text
             self.navigationItem.backBarButtonItem = backButton
@@ -16,14 +20,7 @@ class ProfileViewController: UIViewController {
         let gradientView = CustomGradientView(frame: view.bounds)
         view.addSubview(gradientView)
         
-        // set up UI
-        // add a heading
-        let headingLabel = UILabel()
-        headingLabel.text = "Profile"
-        headingLabel.font = UIFont.systemFont(ofSize: 32, weight: .bold)
-        headingLabel.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(headingLabel)
-        
+        // Set up UI
         // setting button
         settingButton = IconButton(image: UIImage(systemName: "gearshape.fill"),
                                   action: #selector(settingButtonTapped),
@@ -39,10 +36,6 @@ class ProfileViewController: UIViewController {
         
         // Layout
         NSLayoutConstraint.activate([
-            // set a heading next to the back button left-aligned
-            headingLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            headingLabel.centerYAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
-            
             // set a setting button at the bottom right corner and friend button next left
             settingButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
             settingButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
@@ -62,4 +55,3 @@ class ProfileViewController: UIViewController {
         navigationController?.pushViewController(friendListVC, animated: true)
     }
 }
-

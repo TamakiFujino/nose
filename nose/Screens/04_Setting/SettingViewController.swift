@@ -19,7 +19,9 @@ class SettingViewController: UIViewController, UITableViewDelegate, UITableViewD
             self.navigationItem.backBarButtonItem = backButton
             self.navigationController?.navigationBar.tintColor = .black
 
-        view.backgroundColor = .white
+        let gradientView = CustomGradientView(frame: view.bounds)
+        view.addSubview(gradientView)
+        
         setupUI()
         setupTableView()
     }

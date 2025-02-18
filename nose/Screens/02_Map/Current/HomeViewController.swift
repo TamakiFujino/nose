@@ -143,6 +143,17 @@ class HomeViewController: UIViewController {
         }
         present(navController, animated: true, completion: nil)
     }
+    
+    // Hide navigation bar including back button
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        navigationController?.setNavigationBarHidden(true, animated: animated)
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        navigationController?.setNavigationBarHidden(false, animated: animated)
+    }
 }
 
 // MARK: - GMSMapViewDelegate
@@ -254,11 +265,5 @@ extension HomeViewController: CLLocationManagerDelegate {
         if status == .denied {
             print("Location access denied")
         }
-    }
-    
-    // Hide navigation bar including back button
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        navigationController?.setNavigationBarHidden(true, animated: true)
     }
 }
