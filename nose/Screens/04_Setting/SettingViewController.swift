@@ -15,31 +15,22 @@ class SettingViewController: UIViewController, UITableViewDelegate, UITableViewD
         super.viewDidLoad()
         
         let backButton = UIBarButtonItem()
-            backButton.title = ""  // Hide the "Back" text
-            self.navigationItem.backBarButtonItem = backButton
-            self.navigationController?.navigationBar.tintColor = .black
+        backButton.title = ""  // Hide the "Back" text
+        self.navigationItem.backBarButtonItem = backButton
+        self.navigationController?.navigationBar.tintColor = .black
 
         let gradientView = CustomGradientView(frame: view.bounds)
         view.addSubview(gradientView)
+
+        // Set up navigation bar
+        setupNavigationBar()
         
-        setupUI()
         setupTableView()
     }
-    
-    func setupUI() {
-        // Heading Label
-        let headingLabel = UILabel()
-        headingLabel.text = "Settings"
-        headingLabel.font = UIFont.systemFont(ofSize: 32, weight: .bold)
-        headingLabel.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(headingLabel)
-        
-        // Layout Constraints
-        NSLayoutConstraint.activate([
-            // Heading left aligned
-            headingLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            headingLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20)
-        ])
+
+    private func setupNavigationBar() {
+        navigationItem.title = "Settings"
+        self.navigationController?.navigationBar.tintColor = .black
     }
     
     func setupTableView() {
@@ -47,11 +38,12 @@ class SettingViewController: UIViewController, UITableViewDelegate, UITableViewD
         tableView.dataSource = self
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
         tableView.translatesAutoresizingMaskIntoConstraints = false
+        tableView.backgroundColor = .clear // Remove the background color
         view.addSubview(tableView)
         
         // Constraints for TableView
         NSLayoutConstraint.activate([
-            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 80),
+            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
@@ -72,6 +64,7 @@ class SettingViewController: UIViewController, UITableViewDelegate, UITableViewD
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
         cell.textLabel?.text = settingsData[indexPath.section].items[indexPath.row]
         cell.accessoryType = .disclosureIndicator  // Add arrow to indicate navigation
+        cell.backgroundColor = .clear // Remove the background color of each cell
         return cell
     }
     
