@@ -8,7 +8,7 @@ class SettingViewController: UIViewController, UITableViewDelegate, UITableViewD
     var settingsData: [(category: String, items: [String])] = [
         ("Profile", ["Name", "Account"]),
         ("Preferences", ["Notifications", "Language"]),
-        ("About", ["Privacy Policy", "Terms of Service", "App Version"])
+        ("About", ["Privacy Policy", "Terms of Service", "App Version", "Licenses"])
     ]
     
     override func viewDidLoad() {
@@ -104,6 +104,9 @@ class SettingViewController: UIViewController, UITableViewDelegate, UITableViewD
         } else if selectedSetting == "Terms of Service" {
             let termsVC = ToSViewController()
             navigationController?.pushViewController(termsVC, animated: true)
+        } else if selectedSetting == "Licenses" {
+            let licensesVC = LicensesViewController()
+            navigationController?.pushViewController(licensesVC, animated: true)
         }
     }
 }
