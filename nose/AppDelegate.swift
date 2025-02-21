@@ -1,10 +1,3 @@
-//
-//  AppDelegate.swift
-//  nose
-//
-//  Created by Tamaki Fujino on 2025/01/18.
-//
-
 import UIKit
 import GoogleMaps
 import GooglePlaces

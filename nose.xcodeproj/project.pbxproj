@@ -31,6 +31,19 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		4905FC472D663428000EDA11 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		082318FB18C5692355AD54C3 /* Pods_nose_noseUITests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_nose_noseUITests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		3F5309EA4FDBC2FC7AE17B4D /* Pods-noseTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseTests.release.xcconfig"; path = "Target Support Files/Pods-noseTests/Pods-noseTests.release.xcconfig"; sourceTree = "<group>"; };
@@ -167,6 +180,7 @@
 				49E99BF42D3BE432000F3CE5 /* Resources */,
 				E246C560345B1D8DF767534B /* [CP] Embed Pods Frameworks */,
 				85FCED4BCD8E713701DFE607 /* [CP] Copy Pods Resources */,
+				4905FC472D663428000EDA11 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -481,6 +495,11 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = D5C8N3PU9J;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				EXCLUDED_ARCHS = "";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)",
+				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = nose/Info.plist;
 				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "アプリに常に位置情報の連携を許可する";
@@ -499,6 +518,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.tamakifujino.nose;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -514,6 +534,11 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = D5C8N3PU9J;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				EXCLUDED_ARCHS = "";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)",
+				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = nose/Info.plist;
 				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "アプリに常に位置情報の連携を許可する";
@@ -532,6 +557,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.tamakifujino.nose;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};

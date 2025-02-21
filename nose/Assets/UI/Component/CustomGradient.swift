@@ -25,4 +25,3 @@ class CustomGradientView: UIView {
         layer.insertSublayer(gradientLayer, at: 0)
     }
 }
-
