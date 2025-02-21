@@ -4,7 +4,8 @@ class BottomSheetContentView: UIView {
     
     weak var avatar3DViewController: Avatar3DViewController?
     
-    private var tabBar: UISegmentedControl!
+    private var parentTabBar: UISegmentedControl!
+    private var childTabBar: UISegmentedControl!
     private var contentView: UIView!
     
     override init(frame: CGRect) {
@@ -22,24 +23,43 @@ class BottomSheetContentView: UIView {
         self.layer.cornerRadius = 16
         self.clipsToBounds = true
         
-        setupTabBar()
+        setupParentTabBar()
+        setupChildTabBar()
         setupContentView()
         loadContentForSelectedTab()
     }
     
-    private func setupTabBar() {
-        let tabItems = ["Hair", "Tops", "Bottoms", "Socks", "Shoes"]
-        tabBar = UISegmentedControl(items: tabItems)
-        tabBar.selectedSegmentIndex = 2
-        tabBar.addTarget(self, action: #selector(tabChanged), for: .valueChanged)
-        tabBar.translatesAutoresizingMaskIntoConstraints = false
-        self.addSubview(tabBar)
+    private func setupParentTabBar() {
+        let parentTabItems = ["Base", "Clothes"]
+        parentTabBar = UISegmentedControl(items: parentTabItems)
+        parentTabBar.selectedSegmentIndex = 0
+        parentTabBar.addTarget(self, action: #selector(parentTabChanged), for: .valueChanged)
+        parentTabBar.translatesAutoresizingMaskIntoConstraints = false
+        self.addSubview(parentTabBar)
         
-        // Set up constraints for the tab bar
+        // Set up constraints for the parent tab bar
         NSLayoutConstraint.activate([
-            tabBar.topAnchor.constraint(equalTo: self.topAnchor, constant: 16),
-            tabBar.leadingAnchor.constraint(equalTo: self.leadingAnchor, constant: 16),
-            tabBar.trailingAnchor.constraint(equalTo: self.trailingAnchor, constant: -16)
+            parentTabBar.topAnchor.constraint(equalTo: self.topAnchor, constant: 16),
+            parentTabBar.leadingAnchor.constraint(equalTo: self.leadingAnchor, constant: 16),
+            parentTabBar.trailingAnchor.constraint(equalTo: self.trailingAnchor, constant: -16)
+        ])
+    }
+    
+    private func setupChildTabBar() {
+        let baseTabItems = ["Skin", "Eye", "Eyebrow", "Nose", "Hair"]
+        let clothesTabItems = ["Tops", "Bottoms", "Socks", "Shoes", "Accessories"]
+        
+        childTabBar = UISegmentedControl(items: baseTabItems)
+        childTabBar.selectedSegmentIndex = 0
+        childTabBar.addTarget(self, action: #selector(childTabChanged), for: .valueChanged)
+        childTabBar.translatesAutoresizingMaskIntoConstraints = false
+        self.addSubview(childTabBar)
+        
+        // Set up constraints for the child tab bar
+        NSLayoutConstraint.activate([
+            childTabBar.topAnchor.constraint(equalTo: parentTabBar.bottomAnchor, constant: 16),
+            childTabBar.leadingAnchor.constraint(equalTo: self.leadingAnchor, constant: 16),
+            childTabBar.trailingAnchor.constraint(equalTo: self.trailingAnchor, constant: -16)
         ])
     }
     
@@ -50,28 +70,102 @@ class BottomSheetContentView: UIView {
         
         // Set up constraints for the content view
         NSLayoutConstraint.activate([
-            contentView.topAnchor.constraint(equalTo: tabBar.bottomAnchor, constant: 16),
+            contentView.topAnchor.constraint(equalTo: childTabBar.bottomAnchor, constant: 16),
             contentView.leadingAnchor.constraint(equalTo: self.leadingAnchor),
             contentView.trailingAnchor.constraint(equalTo: self.trailingAnchor),
             contentView.bottomAnchor.constraint(equalTo: self.bottomAnchor)
         ])
     }
     
-    @objc private func tabChanged() {
+    @objc private func parentTabChanged() {
+        updateChildTabBar()
         loadContentForSelectedTab()
+    }
+    
+    @objc private func childTabChanged() {
+        loadContentForSelectedTab()
+    }
+    
+    private func updateChildTabBar() {
+        let baseTabItems = ["Skin", "Eye", "Eyebrow", "Nose", "Hair"]
+        let clothesTabItems = ["Tops", "Bottoms", "Socks", "Shoes", "Accessories"]
+        
+        if parentTabBar.selectedSegmentIndex == 0 {
+            childTabBar.removeAllSegments()
+            for (index, item) in baseTabItems.enumerated() {
+                childTabBar.insertSegment(withTitle: item, at: index, animated: false)
+            }
+        } else {
+            childTabBar.removeAllSegments()
+            for (index, item) in clothesTabItems.enumerated() {
+                childTabBar.insertSegment(withTitle: item, at: index, animated: false)
+            }
+        }
+        childTabBar.selectedSegmentIndex = 0
     }
     
     private func loadContentForSelectedTab() {
         // Remove all subviews from the content view
         contentView.subviews.forEach { $0.removeFromSuperview() }
         
-        switch tabBar.selectedSegmentIndex {
-        case 2: // Bottoms tab
-            setupBottomsContent()
+        switch parentTabBar.selectedSegmentIndex {
+        case 0: // Base tab
+            switch childTabBar.selectedSegmentIndex {
+            case 0: // Skin tab
+                setupSkinContent()
+            case 1: // Eye tab
+                setupEyeContent()
+            case 2: // Eyebrow tab
+                setupEyebrowContent()
+            case 3: // Nose tab
+                setupNoseContent()
+            case 4: // Hair tab
+                setupHairContent()
+            default:
+                break
+            }
+        case 1: // Clothes tab
+            switch childTabBar.selectedSegmentIndex {
+            case 0: // Tops tab
+                setupTopsContent()
+            case 1: // Bottoms tab
+                setupBottomsContent()
+            case 2: // Socks tab
+                setupSocksContent()
+            case 3: // Shoes tab
+                setupShoesContent()
+            case 4: // Accessories tab
+                setupAccessoriesContent()
+            default:
+                break
+            }
         default:
-            // Other tabs can be configured here
             break
         }
+    }
+    
+    private func setupSkinContent() {
+        // Add your code to set up the Skin content here
+    }
+    
+    private func setupEyeContent() {
+        // Add your code to set up the Eye content here
+    }
+    
+    private func setupEyebrowContent() {
+        // Add your code to set up the Eyebrow content here
+    }
+    
+    private func setupNoseContent() {
+        // Add your code to set up the Nose content here
+    }
+    
+    private func setupHairContent() {
+        // Add your code to set up the Hair content here
+    }
+    
+    private func setupTopsContent() {
+        // Add your code to set up the Tops content here
     }
     
     private func setupBottomsContent() {
@@ -93,6 +187,18 @@ class BottomSheetContentView: UIView {
         }
     }
 
+    private func setupSocksContent() {
+        // Add your code to set up the Socks content here
+    }
+    
+    private func setupShoesContent() {
+        // Add your code to set up the Shoes content here
+    }
+    
+    private func setupAccessoriesContent() {
+        // Add your code to set up the Accessories content here
+    }
+    
     @objc private func thumbnailTapped(_ sender: UIButton) {
         let bottomModels = ["bottom_1", "bottom_2", "bottom_3", "bottom_4"] // Add more as needed
         let modelName = bottomModels[sender.tag]

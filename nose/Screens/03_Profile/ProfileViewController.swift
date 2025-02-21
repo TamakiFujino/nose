@@ -4,6 +4,7 @@ class ProfileViewController: UIViewController {
     
     private var settingButton: IconButton!
     private var friendButton: IconButton!
+    private var avatarButton: IconButton!
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -34,6 +35,13 @@ class ProfileViewController: UIViewController {
         // set the same width as setting button
         view.addSubview(friendButton)
         
+        // friend button same icon width as setting button
+        avatarButton = IconButton(image: UIImage(systemName: "tshirt.fill"),
+                                    action: #selector(avatarButtonTapped),
+                                    target: self)
+        // set the same width as setting button
+        view.addSubview(avatarButton)
+        
         // Layout
         NSLayoutConstraint.activate([
             // set a setting button at the bottom right corner and friend button next left
@@ -41,7 +49,10 @@ class ProfileViewController: UIViewController {
             settingButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
             
             friendButton.trailingAnchor.constraint(equalTo: settingButton.leadingAnchor, constant: -20),
-            friendButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20)
+            friendButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
+            
+            avatarButton.trailingAnchor.constraint(equalTo: friendButton.leadingAnchor, constant: -20),
+            avatarButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20)
         ])
     }
     
@@ -53,5 +64,10 @@ class ProfileViewController: UIViewController {
     @objc func friendButtonTapped() {
         let friendListVC = FriendListViewController()
         navigationController?.pushViewController(friendListVC, animated: true)
+    }
+    
+    @objc func avatarButtonTapped() {
+        let avatarCustomVC = AvatarCustomViewController()
+        navigationController?.pushViewController(avatarCustomVC, animated: true)
     }
 }

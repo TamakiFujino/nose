@@ -6,6 +6,7 @@ class Avatar3DViewController: UIViewController {
     var arView: ARView!
     var baseEntity: Entity!
     var bottomEntity: Entity?
+    var chosenModels: [String: String] = [:]
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -16,14 +17,18 @@ class Avatar3DViewController: UIViewController {
     }
 
     func setupARView() {
-            arView = ARView(frame: view.bounds)
-            view.addSubview(arView)
-            
-            // Set the background color to yellow
+        arView = ARView(frame: view.bounds)
+        arView.backgroundColor = .clear // Ensure ARView background is transparent
+        view.addSubview(arView)
+        
+        // Set the background color to yellow
         arView.environment.background = .color(.secondColor)
-        }
+    }
 
     func loadAvatarModel() {
+        // Load the saved model name, or use the default if none is saved
+        let savedBottomModel = UserDefaults.standard.string(forKey: "chosenBottomModel") ?? "bottom_1"
+        
         // Load the base avatar model
         do {
             baseEntity = try Entity.loadModel(named: "body")
@@ -41,8 +46,8 @@ class Avatar3DViewController: UIViewController {
             anchor.addChild(baseEntity)
             arView.scene.anchors.append(anchor)
             
-            // Load the bottom model
-            loadClothingItem(named: "bottom_1")
+            // Load the saved or default bottom model
+            loadClothingItem(named: savedBottomModel)
             
         } catch {
             print("Error loading base avatar model: \(error)")
@@ -65,7 +70,9 @@ class Avatar3DViewController: UIViewController {
             print("newBottom size (forced scale): \(newBottom.visualBounds(relativeTo: nil).extents)")
 
             bottomEntity = newBottom
-
+            
+            // Save the chosen bottom model
+            chosenModels["bottom"] = modelName
         } catch {
             print("Error loading clothing item: \(error)")
         }
@@ -82,5 +89,13 @@ class Avatar3DViewController: UIViewController {
         
         // Add the camera anchor to the scene
         arView.scene.anchors.append(cameraAnchor)
+    }
+    
+    func saveChosenModels() {
+        // Save the chosen models to UserDefaults
+        if let chosenBottomModel = chosenModels["bottom"] {
+            UserDefaults.standard.set(chosenBottomModel, forKey: "chosenBottomModel")
+        }
+        print("Chosen models saved: \(chosenModels)")
     }
 }
