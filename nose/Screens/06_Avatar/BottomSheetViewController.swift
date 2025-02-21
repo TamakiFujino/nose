@@ -30,7 +30,7 @@ class BottomSheetContentView: UIView {
     private func setupTabBar() {
         let tabItems = ["Hair", "Tops", "Bottoms", "Socks", "Shoes"]
         tabBar = UISegmentedControl(items: tabItems)
-        tabBar.selectedSegmentIndex = 0
+        tabBar.selectedSegmentIndex = 2
         tabBar.addTarget(self, action: #selector(tabChanged), for: .valueChanged)
         tabBar.translatesAutoresizingMaskIntoConstraints = false
         self.addSubview(tabBar)
@@ -75,14 +75,27 @@ class BottomSheetContentView: UIView {
     }
     
     private func setupBottomsContent() {
-        let changeShirtButton = UIButton(frame: CGRect(x: 20, y: 20, width: 150, height: 50))
-        changeShirtButton.setTitle("Change Bottom", for: .normal)
-        changeShirtButton.backgroundColor = .systemBlue
-        changeShirtButton.addTarget(self, action: #selector(changeBottom), for: .touchUpInside)
-        contentView.addSubview(changeShirtButton)
+        let bottomModels = ["bottom_1", "bottom_2", "bottom_3", "bottom_4"] // Add more as needed
+        let padding: CGFloat = 10
+        let buttonSize: CGFloat = (self.bounds.width - (padding * 5)) / 4 // Calculate button size to fit 4 per row with padding
+        
+        for (index, modelName) in bottomModels.enumerated() {
+            let row = index / 4
+            let column = index % 4
+            let xPosition = padding + CGFloat(column) * (buttonSize + padding)
+            let yPosition = padding + CGFloat(row) * (buttonSize + padding)
+            
+            let thumbnailButton = UIButton(frame: CGRect(x: xPosition, y: yPosition, width: buttonSize, height: buttonSize))
+            thumbnailButton.tag = index
+            thumbnailButton.setImage(UIImage(named: modelName), for: .normal) // Assuming thumbnails are named same as models
+            thumbnailButton.addTarget(self, action: #selector(thumbnailTapped(_:)), for: .touchUpInside)
+            contentView.addSubview(thumbnailButton)
+        }
     }
 
-    @objc private func changeBottom() {
-        avatar3DViewController?.loadClothingItem(named: "bottom_2") // Swap to new bottom model
+    @objc private func thumbnailTapped(_ sender: UIButton) {
+        let bottomModels = ["bottom_1", "bottom_2", "bottom_3", "bottom_4"] // Add more as needed
+        let modelName = bottomModels[sender.tag]
+        avatar3DViewController?.loadClothingItem(named: modelName)
     }
 }
