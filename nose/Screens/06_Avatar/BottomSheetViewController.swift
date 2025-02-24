@@ -243,7 +243,7 @@ class BottomSheetContentView: UIView {
             
             // Highlight the selected model
             if let selectedModel = selectedModels[category], selectedModel == model.name {
-                thumbnailButton.layer.borderColor = UIColor.blue.cgColor
+                thumbnailButton.layer.borderColor = UIColor.fourthColor.cgColor
                 thumbnailButton.layer.borderWidth = 2
             } else {
                 thumbnailButton.layer.borderColor = UIColor.clear.cgColor
@@ -312,10 +312,18 @@ class BottomSheetContentView: UIView {
         default:
             return
         }
-        
+
         let model = models[sender.tag]
-        selectedModels[category] = model.name
-        avatar3DViewController?.loadClothingItem(named: model.name, category: category)
+        
+        if selectedModels[category] == model.name {
+            // Deselect the model if it is already selected
+            selectedModels[category] = nil
+            avatar3DViewController?.removeClothingItem(for: category)
+        } else {
+            // Select the model
+            selectedModels[category] = model.name
+            avatar3DViewController?.loadClothingItem(named: model.name, category: category)
+        }
         
         // Reload thumbnails to update the selection highlight
         setupThumbnails(for: category)

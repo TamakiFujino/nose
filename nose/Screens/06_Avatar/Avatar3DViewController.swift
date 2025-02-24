@@ -28,23 +28,31 @@ class Avatar3DViewController: UIViewController {
     }
 
     func loadAvatarModel() {
-        // Load saved models and colors for each category or use defaults if none are saved
-        var savedModels = [String: String]()
-        savedModels["bottoms"] = UserDefaults.standard.string(forKey: "chosenBottomModel") ?? "bottom_1"
-        savedModels["tops"] = UserDefaults.standard.string(forKey: "chosenTopModel") ?? "top_1"
-        savedModels["hair_base"] = UserDefaults.standard.string(forKey: "chosenHairBaseModel") ?? "hair_base_1"
-        savedModels["hair_front"] = UserDefaults.standard.string(forKey: "chosenHairFrontModel") ?? "hair_front_1"
-        savedModels["hair_back"] = UserDefaults.standard.string(forKey: "chosenHairBackModel") ?? "hair_back_1"
-        savedModels["jackets"] = UserDefaults.standard.string(forKey: "chosenJacketModel") ?? "jacket_1"
-        savedModels["skin"] = UserDefaults.standard.string(forKey: "chosenSkinModel") ?? "skin_1"
-        savedModels["eye"] = UserDefaults.standard.string(forKey: "chosenEyeModel") ?? "eye_1"
-        savedModels["eyebrow"] = UserDefaults.standard.string(forKey: "chosenEyebrowModel") ?? "eyebrow_1"
-        savedModels["nose"] = UserDefaults.standard.string(forKey: "chosenNoseModel") ?? "nose_1"
-        savedModels["socks"] = UserDefaults.standard.string(forKey: "chosenSocksModel") ?? "socks_1"
-        savedModels["shoes"] = UserDefaults.standard.string(forKey: "chosenShoesModel") ?? "shoes_1"
-        savedModels["head"] = UserDefaults.standard.string(forKey: "chosenHeadModel") ?? "head_1"
-        savedModels["neck"] = UserDefaults.standard.string(forKey: "chosenNeckModel") ?? "neck_1"
-        savedModels["hand"] = UserDefaults.standard.string(forKey: "chosenHandModel") ?? "hand_1"
+        // Initialize chosenModels with empty strings for each category
+        var savedModels = [
+            "bottoms": "",
+            "tops": "",
+            "hair_base": "",
+            "hair_front": "",
+            "hair_back": "",
+            "jackets": "",
+            "skin": "",
+            "eye": "",
+            "eyebrow": "",
+            "nose": "",
+            "socks": "",
+            "shoes": "",
+            "head": "",
+            "neck": "",
+            "hand": ""
+        ]
+        
+        // Load saved models and colors for each category if they exist
+        for (category, _) in savedModels {
+            if let savedModel = UserDefaults.standard.string(forKey: "chosen\(category.capitalized)Model") {
+                savedModels[category] = savedModel
+            }
+        }
         
         chosenModels = savedModels
 
@@ -59,7 +67,7 @@ class Avatar3DViewController: UIViewController {
             baseEntity = try Entity.loadModel(named: "body")
             baseEntity?.name = "Avatar"
             // print the origin position of baseEntity
-            print("baseEntity origin: \(baseEntity?.position)")
+            print("baseEntity origin: \(String(describing: baseEntity?.position))")
             // print the size of the baseEntity entity
             if let bounds = baseEntity?.visualBounds(relativeTo: nil) {
                 print("baseEntity size: \(bounds.extents)")
@@ -76,7 +84,9 @@ class Avatar3DViewController: UIViewController {
             
             // Load the saved or default models and apply colors for each category
             for (category, modelName) in savedModels {
-                loadClothingItem(named: modelName, category: category)
+                if !modelName.isEmpty {
+                    loadClothingItem(named: modelName, category: category)
+                }
                 if let color = chosenColors[category] {
                     changeClothingItemColor(for: category, to: color)
                 }
@@ -117,10 +127,18 @@ class Avatar3DViewController: UIViewController {
         }
     }
 
+    func removeClothingItem(for category: String) {
+        // Remove the previous model for the category if it exists
+        if let previousModelName = chosenModels[category], let existingEntity = baseEntity?.findEntity(named: previousModelName) {
+            existingEntity.removeFromParent()
+            chosenModels[category] = ""
+        }
+    }
+
     func setupCamera() {
         // Create a camera entity
         let cameraEntity = PerspectiveCamera()
-        cameraEntity.transform.translation = SIMD3<Float>(0.0, -4.0, 20.0) // Position the camera
+        cameraEntity.transform.translation = SIMD3<Float>(0.0, -4.0, 16.0) // Position the camera
         
         // Create a camera anchor to hold the camera entity
         let cameraAnchor = AnchorEntity()
@@ -169,7 +187,7 @@ class Avatar3DViewController: UIViewController {
         saveChosenModelsAndColors()
 
         // Print final materials to verify the change
-        print("Updated materials: \(modelEntity.model?.materials ?? [])")
+        print("Updated materials: \(String(describing: modelEntity.model?.materials))")
     }
     
     private func loadSelectionState() {

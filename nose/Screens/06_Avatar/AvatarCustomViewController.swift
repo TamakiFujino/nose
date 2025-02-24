@@ -14,6 +14,8 @@ class AvatarCustomViewController: UIViewController {
         
         // Add save button to the navigation bar
         let saveButton = UIBarButtonItem(title: "Save", style: .plain, target: self, action: #selector(saveButtonTapped))
+        // set button text color
+        saveButton.tintColor = .black
         self.navigationItem.rightBarButtonItem = saveButton
         
         // Initialize and add the Avatar3DViewController
