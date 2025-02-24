@@ -28,13 +28,16 @@ class AvatarCustomViewController: UIViewController {
         // Add gesture for rotation
         let panGesture = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
         view.addGestureRecognizer(panGesture)
+        
+        // Set no item selected if there is no data saved previously
+        checkForSavedData()
     }
-
+    
     @objc func handlePan(_ gesture: UIPanGestureRecognizer) {
         let translation = gesture.translation(in: view)
         let rotationAngle = Float(translation.x / view.bounds.width) * .pi
         
-        avatar3DViewController.baseEntity.transform.rotation *= simd_quatf(angle: rotationAngle, axis: [0, 1, 0])
+        avatar3DViewController.baseEntity?.transform.rotation *= simd_quatf(angle: rotationAngle, axis: [0, 1, 0])
         
         // Reset the translation to avoid compounding the rotation
         gesture.setTranslation(.zero, in: view)
@@ -43,5 +46,14 @@ class AvatarCustomViewController: UIViewController {
     @objc func saveButtonTapped() {
         // Save the chosen 3D models
         avatar3DViewController.saveChosenModelsAndColors()
+    }
+    
+    private func checkForSavedData() {
+        // Check if there is any saved data
+        if UserDefaults.standard.object(forKey: "selectedItem") == nil {
+            // No saved data, set no item selected
+            avatar3DViewController.selectedItem = nil
+            avatar3DViewController.updateUIForNoSelection()
+        }
     }
 }

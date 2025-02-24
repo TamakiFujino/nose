@@ -4,9 +4,10 @@ import RealityKit
 class Avatar3DViewController: UIViewController {
     
     var arView: ARView!
-    var baseEntity: Entity!
+    var baseEntity: Entity?
     var chosenModels: [String: String] = [:]
     var chosenColors: [String: UIColor] = [:]
+    var selectedItem: Any? // Replace `Any` with the appropriate type for your selected item
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -14,6 +15,7 @@ class Avatar3DViewController: UIViewController {
         setupARView()
         loadAvatarModel()
         setupCamera()
+        loadSelectionState()
     }
 
     func setupARView() {
@@ -55,18 +57,21 @@ class Avatar3DViewController: UIViewController {
         // Load the base avatar model
         do {
             baseEntity = try Entity.loadModel(named: "body")
-            baseEntity.name = "Avatar"
+            baseEntity?.name = "Avatar"
             // print the origin position of baseEntity
-            print("baseEntity origin: \(baseEntity.position)")
+            print("baseEntity origin: \(baseEntity?.position)")
             // print the size of the baseEntity entity
-            let bounds = baseEntity.visualBounds(relativeTo: nil)
-            print("baseEntity size: \(bounds.extents)")
+            if let bounds = baseEntity?.visualBounds(relativeTo: nil) {
+                print("baseEntity size: \(bounds.extents)")
+            }
             
             // Rotate the model (Y-axis for turning left/right, X for tilting forward/back)
-            baseEntity.transform.rotation = simd_quatf(angle: .pi / 6, axis: [0, -0.8, 0])
+            baseEntity?.transform.rotation = simd_quatf(angle: .pi / 6, axis: [0, -0.8, 0])
 
             let anchor = AnchorEntity(world: [0, 0, 0]) // Place in world space
-            anchor.addChild(baseEntity)
+            if let baseEntity = baseEntity {
+                anchor.addChild(baseEntity)
+            }
             arView.scene.anchors.append(anchor)
             
             // Load the saved or default models and apply colors for each category
@@ -85,7 +90,7 @@ class Avatar3DViewController: UIViewController {
     func loadClothingItem(named modelName: String, category: String) {
         do {
             // Remove the previous model for the category if it exists
-            if let previousModelName = chosenModels[category], let existingEntity = baseEntity.findEntity(named: previousModelName) {
+            if let previousModelName = chosenModels[category], let existingEntity = baseEntity?.findEntity(named: previousModelName) {
                 existingEntity.removeFromParent()
             }
             
@@ -95,7 +100,7 @@ class Avatar3DViewController: UIViewController {
             // Force scale to 1.0
             newModel.scale = SIMD3<Float>(1.0, 1.0, 1.0)
 
-            baseEntity.addChild(newModel) // Attach to the base avatar
+            baseEntity?.addChild(newModel) // Attach to the base avatar
 
             print("newModel origin: \(newModel.position)")
             print("newModel size (forced scale): \(newModel.visualBounds(relativeTo: nil).extents)")
@@ -141,7 +146,7 @@ class Avatar3DViewController: UIViewController {
     
     func changeClothingItemColor(for category: String, to color: UIColor) {
         guard let modelName = chosenModels[category],
-              let entity = baseEntity.findEntity(named: modelName),
+              let entity = baseEntity?.findEntity(named: modelName),
               let modelEntity = entity as? ModelEntity else {
             print("Model entity not found for category: \(category)")
             return
@@ -165,5 +170,30 @@ class Avatar3DViewController: UIViewController {
 
         // Print final materials to verify the change
         print("Updated materials: \(modelEntity.model?.materials ?? [])")
+    }
+    
+    private func loadSelectionState() {
+        // Check if there is any saved data
+        if let savedSelection = UserDefaults.standard.object(forKey: "selectedItem") {
+            // Handle the case where there is saved data
+            self.selectedItem = savedSelection
+            // Update the UI to reflect the saved selection state
+            updateUIForSelectedItem()
+        } else {
+            // Handle the case where there is no saved data
+            self.selectedItem = nil
+            // Update the UI to reflect that no item is selected
+            updateUIForNoSelection()
+        }
+    }
+    
+    private func updateUIForSelectedItem() {
+        // Implement the logic to update the UI for the selected item
+        // For example, highlight the selected item in the 3D view
+    }
+    
+    func updateUIForNoSelection() {
+        // Implement the logic to update the UI for no selection
+        // For example, clear any highlights in the 3D view
     }
 }
