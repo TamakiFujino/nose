@@ -4,7 +4,7 @@ import RealityKit
 class Avatar3DViewController: UIViewController {
     
     var arView: ARView!
-    var baseEntity: Entity?
+    var baseEntity: ModelEntity?
     var chosenModels: [String: String] = [:]
     var chosenColors: [String: UIColor] = [:]
     var selectedItem: Any? // Replace `Any` with the appropriate type for your selected item
@@ -64,7 +64,7 @@ class Avatar3DViewController: UIViewController {
         
         // Load the base avatar model
         do {
-            baseEntity = try Entity.loadModel(named: "body")
+            baseEntity = try Entity.loadModel(named: "body") as? ModelEntity
             baseEntity?.name = "Avatar"
             // print the origin position of baseEntity
             print("baseEntity origin: \(String(describing: baseEntity?.position))")
@@ -104,16 +104,18 @@ class Avatar3DViewController: UIViewController {
                 existingEntity.removeFromParent()
             }
             
-            let newModel = try Entity.loadModel(named: modelName)
-            newModel.name = modelName
+            let newModel = try Entity.loadModel(named: modelName) as? ModelEntity
+            newModel?.name = modelName
 
             // Force scale to 1.0
-            newModel.scale = SIMD3<Float>(1.0, 1.0, 1.0)
+            newModel?.scale = SIMD3<Float>(1.0, 1.0, 1.0)
 
-            baseEntity?.addChild(newModel) // Attach to the base avatar
+            if let newModel = newModel {
+                baseEntity?.addChild(newModel) // Attach to the base avatar
+            }
 
-            print("newModel origin: \(newModel.position)")
-            print("newModel size (forced scale): \(newModel.visualBounds(relativeTo: nil).extents)")
+            print("newModel origin: \(String(describing: newModel?.position))")
+            print("newModel size (forced scale): \(String(describing: newModel?.visualBounds(relativeTo: nil).extents))")
 
             // Save the chosen model for the category
             chosenModels[category] = modelName
@@ -164,8 +166,7 @@ class Avatar3DViewController: UIViewController {
     
     func changeClothingItemColor(for category: String, to color: UIColor) {
         guard let modelName = chosenModels[category],
-              let entity = baseEntity?.findEntity(named: modelName),
-              let modelEntity = entity as? ModelEntity else {
+              let entity = baseEntity?.findEntity(named: modelName) as? ModelEntity else {
             print("Model entity not found for category: \(category)")
             return
         }
@@ -180,14 +181,37 @@ class Avatar3DViewController: UIViewController {
         material.metallic = MaterialScalarParameter(floatLiteral: 0.0) // Decrease metallic
 
         // Assign the new material to the model entity
-        modelEntity.model?.materials = [material]
+        entity.model?.materials = [material]
         
         // Save the chosen color for the category
         chosenColors[category] = color
         saveChosenModelsAndColors()
 
         // Print final materials to verify the change
-        print("Updated materials: \(String(describing: modelEntity.model?.materials))")
+        print("Updated materials: \(String(describing: entity.model?.materials))")
+    }
+    
+    func changeSkinColor(to color: UIColor) {
+        guard let baseEntity = baseEntity else {
+            print("Base entity not found")
+            return
+        }
+
+        // Create a new SimpleMaterial with the specified color for the skin
+        var material = SimpleMaterial()
+        material.baseColor = .color(color)
+        material.roughness = MaterialScalarParameter(floatLiteral: 1.0)
+        material.metallic = MaterialScalarParameter(floatLiteral: 0.0)
+
+        // Assign the new material to the base entity
+        baseEntity.model?.materials = [material]
+
+        // Save the chosen color for the skin
+        chosenColors["skin"] = color
+        saveChosenModelsAndColors()
+
+        // Print final materials to verify the change
+        print("Updated skin color: \(String(describing: baseEntity.model?.materials))")
     }
     
     private func loadSelectionState() {

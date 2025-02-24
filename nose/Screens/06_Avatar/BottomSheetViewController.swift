@@ -243,7 +243,7 @@ class BottomSheetContentView: UIView {
             
             // Highlight the selected model
             if let selectedModel = selectedModels[category], selectedModel == model.name {
-                thumbnailButton.layer.borderColor = UIColor.fourthColor.cgColor
+                thumbnailButton.layer.borderColor = UIColor.blue.cgColor
                 thumbnailButton.layer.borderWidth = 2
             } else {
                 thumbnailButton.layer.borderColor = UIColor.clear.cgColor
@@ -386,6 +386,10 @@ class BottomSheetContentView: UIView {
             return
         }
         
-        avatar3DViewController?.changeClothingItemColor(for: category, to: color)
+        if category == "skin" {
+            avatar3DViewController?.changeSkinColor(to: color)
+        } else {
+            avatar3DViewController?.changeClothingItemColor(for: category, to: color)
+        }
     }
 }
