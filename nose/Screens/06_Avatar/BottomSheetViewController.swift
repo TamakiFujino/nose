@@ -1,12 +1,20 @@
 import UIKit
 
+struct Model: Codable {
+    let name: String
+    let thumbnail: String
+}
+
 class BottomSheetContentView: UIView {
     
     weak var avatar3DViewController: Avatar3DViewController?
     
     private var parentTabBar: UISegmentedControl!
     private var childTabBar: UISegmentedControl!
+    private var scrollView: UIScrollView!
     private var contentView: UIView!
+    private var models: [Model] = []
+    private var selectedModels: [String: String] = [:]
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -25,12 +33,14 @@ class BottomSheetContentView: UIView {
         
         setupParentTabBar()
         setupChildTabBar()
+        setupScrollView()
         setupContentView()
+        loadModels(for: "base")
         loadContentForSelectedTab()
     }
     
     private func setupParentTabBar() {
-        let parentTabItems = ["Base", "Clothes"]
+        let parentTabItems = ["Base", "Hair", "Clothes", "Accessories"]
         parentTabBar = UISegmentedControl(items: parentTabItems)
         parentTabBar.selectedSegmentIndex = 0
         parentTabBar.addTarget(self, action: #selector(parentTabChanged), for: .valueChanged)
@@ -46,8 +56,10 @@ class BottomSheetContentView: UIView {
     }
     
     private func setupChildTabBar() {
-        let baseTabItems = ["Skin", "Eye", "Eyebrow", "Nose", "Hair"]
-        let clothesTabItems = ["Tops", "Bottoms", "Socks", "Shoes", "Accessories"]
+        let baseTabItems = ["Skin", "Eye", "Eyebrow", "Nose"]
+        let hairTabItems = ["Base", "Front", "Back"]
+        let clothesTabItems = ["Tops", "Jackets", "Bottoms", "Socks", "Shoes"]
+        let accessoriesTabItems = ["Head", "Neck", "Hand"]
         
         childTabBar = UISegmentedControl(items: baseTabItems)
         childTabBar.selectedSegmentIndex = 0
@@ -63,18 +75,47 @@ class BottomSheetContentView: UIView {
         ])
     }
     
+    private func setupScrollView() {
+        scrollView = UIScrollView()
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        self.addSubview(scrollView)
+        
+        // Set up constraints for the scroll view
+        NSLayoutConstraint.activate([
+            scrollView.topAnchor.constraint(equalTo: childTabBar.bottomAnchor, constant: 16),
+            scrollView.leadingAnchor.constraint(equalTo: self.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: self.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: self.bottomAnchor)
+        ])
+    }
+    
     private func setupContentView() {
         contentView = UIView()
         contentView.translatesAutoresizingMaskIntoConstraints = false
-        self.addSubview(contentView)
+        scrollView.addSubview(contentView)
         
         // Set up constraints for the content view
         NSLayoutConstraint.activate([
-            contentView.topAnchor.constraint(equalTo: childTabBar.bottomAnchor, constant: 16),
-            contentView.leadingAnchor.constraint(equalTo: self.leadingAnchor),
-            contentView.trailingAnchor.constraint(equalTo: self.trailingAnchor),
-            contentView.bottomAnchor.constraint(equalTo: self.bottomAnchor)
+            contentView.topAnchor.constraint(equalTo: scrollView.topAnchor),
+            contentView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
+            contentView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
+            contentView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
+            contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor)
         ])
+    }
+    
+    private func loadModels(for category: String) {
+        guard let url = Bundle.main.url(forResource: category, withExtension: "json") else {
+            print("Failed to locate \(category).json in bundle.")
+            return
+        }
+        
+        do {
+            let data = try Data(contentsOf: url)
+            models = try JSONDecoder().decode([Model].self, from: data)
+        } catch {
+            print("Failed to load or decode \(category).json: \(error)")
+        }
     }
     
     @objc private func parentTabChanged() {
@@ -87,17 +128,29 @@ class BottomSheetContentView: UIView {
     }
     
     private func updateChildTabBar() {
-        let baseTabItems = ["Skin", "Eye", "Eyebrow", "Nose", "Hair"]
-        let clothesTabItems = ["Tops", "Bottoms", "Socks", "Shoes", "Accessories"]
+        let baseTabItems = ["Skin", "Eye", "Eyebrow", "Nose"]
+        let hairTabItems = ["Base", "Front", "Back"]
+        let clothesTabItems = ["Tops", "Jackets", "Bottoms", "Socks", "Shoes"]
+        let accessoriesTabItems = ["Head", "Neck", "Hand"]
         
         if parentTabBar.selectedSegmentIndex == 0 {
             childTabBar.removeAllSegments()
             for (index, item) in baseTabItems.enumerated() {
                 childTabBar.insertSegment(withTitle: item, at: index, animated: false)
             }
-        } else {
+        } else if parentTabBar.selectedSegmentIndex == 1 {
+            childTabBar.removeAllSegments()
+            for (index, item) in hairTabItems.enumerated() {
+                childTabBar.insertSegment(withTitle: item, at: index, animated: false)
+            }
+        } else if parentTabBar.selectedSegmentIndex == 2 {
             childTabBar.removeAllSegments()
             for (index, item) in clothesTabItems.enumerated() {
+                childTabBar.insertSegment(withTitle: item, at: index, animated: false)
+            }
+        } else if parentTabBar.selectedSegmentIndex == 3 {
+            childTabBar.removeAllSegments()
+            for (index, item) in accessoriesTabItems.enumerated() {
                 childTabBar.insertSegment(withTitle: item, at: index, animated: false)
             }
         }
@@ -108,72 +161,73 @@ class BottomSheetContentView: UIView {
         // Remove all subviews from the content view
         contentView.subviews.forEach { $0.removeFromSuperview() }
         
+        let category: String
         switch parentTabBar.selectedSegmentIndex {
         case 0: // Base tab
             switch childTabBar.selectedSegmentIndex {
             case 0: // Skin tab
-                setupSkinContent()
+                category = "skin"
             case 1: // Eye tab
-                setupEyeContent()
+                category = "eye"
             case 2: // Eyebrow tab
-                setupEyebrowContent()
+                category = "eyebrow"
             case 3: // Nose tab
-                setupNoseContent()
-            case 4: // Hair tab
-                setupHairContent()
+                category = "nose"
             default:
-                break
+                return
             }
-        case 1: // Clothes tab
+        case 1: // Hair tab
+            switch childTabBar.selectedSegmentIndex {
+            case 0: // Base tab
+                category = "hair_base"
+            case 1: // Front tab
+                category = "hair_front"
+            case 2: // Back tab
+                category = "hair_back"
+            default:
+                return
+            }
+        case 2: // Clothes tab
             switch childTabBar.selectedSegmentIndex {
             case 0: // Tops tab
-                setupTopsContent()
-            case 1: // Bottoms tab
-                setupBottomsContent()
-            case 2: // Socks tab
-                setupSocksContent()
-            case 3: // Shoes tab
-                setupShoesContent()
-            case 4: // Accessories tab
-                setupAccessoriesContent()
+                category = "tops"
+            case 1: // Jackets tab
+                category = "jackets"
+            case 2: // Bottoms tab
+                category = "bottoms"
+            case 3: // Socks tab
+                category = "socks"
+            case 4: // Shoes tab
+                category = "shoes"
             default:
-                break
+                return
+            }
+        case 3: // Accessories tab
+            switch childTabBar.selectedSegmentIndex {
+            case 0: // Head tab
+                category = "head"
+            case 1: // Neck tab
+                category = "neck"
+            case 2: // Hand tab
+                category = "hand"
+            default:
+                return
             }
         default:
-            break
+            return
         }
+        
+        loadModels(for: category)
+        setupThumbnails(for: category)
     }
     
-    private func setupSkinContent() {
-        // Add your code to set up the Skin content here
-    }
-    
-    private func setupEyeContent() {
-        // Add your code to set up the Eye content here
-    }
-    
-    private func setupEyebrowContent() {
-        // Add your code to set up the Eyebrow content here
-    }
-    
-    private func setupNoseContent() {
-        // Add your code to set up the Nose content here
-    }
-    
-    private func setupHairContent() {
-        // Add your code to set up the Hair content here
-    }
-    
-    private func setupTopsContent() {
-        // Add your code to set up the Tops content here
-    }
-    
-    private func setupBottomsContent() {
-        let bottomModels = ["bottom_1", "bottom_2", "bottom_3", "bottom_4"] // Add more as needed
+    private func setupThumbnails(for category: String) {
         let padding: CGFloat = 10
         let buttonSize: CGFloat = (self.bounds.width - (padding * 5)) / 4 // Calculate button size to fit 4 per row with padding
         
-        for (index, modelName) in bottomModels.enumerated() {
+        var lastButton: UIButton?
+        
+        for (index, model) in models.enumerated() {
             let row = index / 4
             let column = index % 4
             let xPosition = padding + CGFloat(column) * (buttonSize + padding)
@@ -181,27 +235,89 @@ class BottomSheetContentView: UIView {
             
             let thumbnailButton = UIButton(frame: CGRect(x: xPosition, y: yPosition, width: buttonSize, height: buttonSize))
             thumbnailButton.tag = index
-            thumbnailButton.setImage(UIImage(named: modelName), for: .normal) // Assuming thumbnails are named same as models
+            thumbnailButton.setImage(UIImage(named: model.thumbnail), for: .normal)
             thumbnailButton.addTarget(self, action: #selector(thumbnailTapped(_:)), for: .touchUpInside)
             contentView.addSubview(thumbnailButton)
+            
+            lastButton = thumbnailButton
+            
+            // Highlight the selected model
+            if let selectedModel = selectedModels[category], selectedModel == model.name {
+                thumbnailButton.layer.borderColor = UIColor.blue.cgColor
+                thumbnailButton.layer.borderWidth = 2
+            } else {
+                thumbnailButton.layer.borderColor = UIColor.clear.cgColor
+                thumbnailButton.layer.borderWidth = 0
+            }
         }
-    }
-
-    private func setupSocksContent() {
-        // Add your code to set up the Socks content here
-    }
-    
-    private func setupShoesContent() {
-        // Add your code to set up the Shoes content here
-    }
-    
-    private func setupAccessoriesContent() {
-        // Add your code to set up the Accessories content here
+        
+        if let lastButton = lastButton {
+            contentView.bottomAnchor.constraint(equalTo: lastButton.bottomAnchor, constant: padding).isActive = true
+        }
     }
     
     @objc private func thumbnailTapped(_ sender: UIButton) {
-        let bottomModels = ["bottom_1", "bottom_2", "bottom_3", "bottom_4"] // Add more as needed
-        let modelName = bottomModels[sender.tag]
-        avatar3DViewController?.loadClothingItem(named: modelName)
+        let category: String
+        switch parentTabBar.selectedSegmentIndex {
+        case 0: // Base tab
+            switch childTabBar.selectedSegmentIndex {
+            case 0: // Skin tab
+                category = "skin"
+            case 1: // Eye tab
+                category = "eye"
+            case 2: // Eyebrow tab
+                category = "eyebrow"
+            case 3: // Nose tab
+                category = "nose"
+            default:
+                return
+            }
+        case 1: // Hair tab
+            switch childTabBar.selectedSegmentIndex {
+            case 0: // Base tab
+                category = "hair_base"
+            case 1: // Front tab
+                category = "hair_front"
+            case 2: // Back tab
+                category = "hair_back"
+            default:
+                return
+            }
+        case 2: // Clothes tab
+            switch childTabBar.selectedSegmentIndex {
+            case 0: // Tops tab
+                category = "tops"
+            case 1: // Jackets tab
+                category = "jackets"
+            case 2: // Bottoms tab
+                category = "bottoms"
+            case 3: // Socks tab
+                category = "socks"
+            case 4: // Shoes tab
+                category = "shoes"
+            default:
+                return
+            }
+        case 3: // Accessories tab
+            switch childTabBar.selectedSegmentIndex {
+            case 0: // Head tab
+                category = "head"
+            case 1: // Neck tab
+                category = "neck"
+            case 2: // Hand tab
+                category = "hand"
+            default:
+                return
+            }
+        default:
+            return
+        }
+        
+        let model = models[sender.tag]
+        selectedModels[category] = model.name
+        avatar3DViewController?.loadClothingItem(named: model.name, category: category)
+        
+        // Reload thumbnails to update the selection highlight
+        setupThumbnails(for: category)
     }
 }

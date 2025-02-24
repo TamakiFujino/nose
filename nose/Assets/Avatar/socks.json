@@ -1,0 +1,9 @@
+[
+    {"name": "socks_short", "thumbnail": "thumb_empty"},
+    {"name": "socks_med", "thumbnail": "thumb_empty"},
+    {"name": "socks_high", "thumbnail": "thumb_empty"},
+    {"name": "socks_kneehigh", "thumbnail": "thumb_empty"},
+    {"name": "socks_tight", "thumbnail": "thumb_empty"},
+    {"name": "socks_legcover", "thumbnail": "thumb_empty"},
+    {"name": "socks_loose", "thumbnail": "thumb_empty"}
+]
