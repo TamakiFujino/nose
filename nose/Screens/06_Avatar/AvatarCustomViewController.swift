@@ -42,6 +42,6 @@ class AvatarCustomViewController: UIViewController {
     
     @objc func saveButtonTapped() {
         // Save the chosen 3D models
-        avatar3DViewController.saveChosenModels()
+        avatar3DViewController.saveChosenModelsAndColors()
     }
 }

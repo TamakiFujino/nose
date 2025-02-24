@@ -320,4 +320,64 @@ class BottomSheetContentView: UIView {
         // Reload thumbnails to update the selection highlight
         setupThumbnails(for: category)
     }
+    
+    func changeSelectedCategoryColor(to color: UIColor) {
+        let category: String
+        switch parentTabBar.selectedSegmentIndex {
+        case 0: // Base tab
+            switch childTabBar.selectedSegmentIndex {
+            case 0: // Skin tab
+                category = "skin"
+            case 1: // Eye tab
+                category = "eye"
+            case 2: // Eyebrow tab
+                category = "eyebrow"
+            case 3: // Nose tab
+                category = "nose"
+            default:
+                return
+            }
+        case 1: // Hair tab
+            switch childTabBar.selectedSegmentIndex {
+            case 0: // Base tab
+                category = "hair_base"
+            case 1: // Front tab
+                category = "hair_front"
+            case 2: // Back tab
+                category = "hair_back"
+            default:
+                return
+            }
+        case 2: // Clothes tab
+            switch childTabBar.selectedSegmentIndex {
+            case 0: // Tops tab
+                category = "tops"
+            case 1: // Jackets tab
+                category = "jackets"
+            case 2: // Bottoms tab
+                category = "bottoms"
+            case 3: // Socks tab
+                category = "socks"
+            case 4: // Shoes tab
+                category = "shoes"
+            default:
+                return
+            }
+        case 3: // Accessories tab
+            switch childTabBar.selectedSegmentIndex {
+            case 0: // Head tab
+                category = "head"
+            case 1: // Neck tab
+                category = "neck"
+            case 2: // Hand tab
+                category = "hand"
+            default:
+                return
+            }
+        default:
+            return
+        }
+        
+        avatar3DViewController?.changeClothingItemColor(for: category, to: color)
+    }
 }

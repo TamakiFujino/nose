@@ -6,6 +6,7 @@ class Avatar3DViewController: UIViewController {
     var arView: ARView!
     var baseEntity: Entity!
     var chosenModels: [String: String] = [:]
+    var chosenColors: [String: UIColor] = [:]
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -25,7 +26,7 @@ class Avatar3DViewController: UIViewController {
     }
 
     func loadAvatarModel() {
-        // Load saved models for each category or use defaults if none are saved
+        // Load saved models and colors for each category or use defaults if none are saved
         var savedModels = [String: String]()
         savedModels["bottoms"] = UserDefaults.standard.string(forKey: "chosenBottomModel") ?? "bottom_1"
         savedModels["tops"] = UserDefaults.standard.string(forKey: "chosenTopModel") ?? "top_1"
@@ -44,6 +45,12 @@ class Avatar3DViewController: UIViewController {
         savedModels["hand"] = UserDefaults.standard.string(forKey: "chosenHandModel") ?? "hand_1"
         
         chosenModels = savedModels
+
+        // Load saved colors for each category
+        if let savedColorsData = UserDefaults.standard.data(forKey: "chosenColors"),
+           let savedColors = try? NSKeyedUnarchiver.unarchiveTopLevelObjectWithData(savedColorsData) as? [String: UIColor] {
+            chosenColors = savedColors
+        }
         
         // Load the base avatar model
         do {
@@ -62,9 +69,12 @@ class Avatar3DViewController: UIViewController {
             anchor.addChild(baseEntity)
             arView.scene.anchors.append(anchor)
             
-            // Load the saved or default models for each category
+            // Load the saved or default models and apply colors for each category
             for (category, modelName) in savedModels {
                 loadClothingItem(named: modelName, category: category)
+                if let color = chosenColors[category] {
+                    changeClothingItemColor(for: category, to: color)
+                }
             }
             
         } catch {
@@ -92,6 +102,11 @@ class Avatar3DViewController: UIViewController {
 
             // Save the chosen model for the category
             chosenModels[category] = modelName
+
+            // Apply the chosen color if it exists
+            if let color = chosenColors[category] {
+                changeClothingItemColor(for: category, to: color)
+            }
         } catch {
             print("Error loading clothing item: \(error)")
         }
@@ -110,11 +125,45 @@ class Avatar3DViewController: UIViewController {
         arView.scene.anchors.append(cameraAnchor)
     }
     
-    func saveChosenModels() {
+    func saveChosenModelsAndColors() {
         // Save the chosen models to UserDefaults
         for (category, modelName) in chosenModels {
             UserDefaults.standard.set(modelName, forKey: "chosen\(category.capitalized)Model")
         }
-        print("Chosen models saved: \(chosenModels)")
+
+        // Save the chosen colors to UserDefaults
+        if let colorsData = try? NSKeyedArchiver.archivedData(withRootObject: chosenColors, requiringSecureCoding: false) {
+            UserDefaults.standard.set(colorsData, forKey: "chosenColors")
+        }
+        
+        print("Chosen models and colors saved: \(chosenModels), \(chosenColors)")
+    }
+    
+    func changeClothingItemColor(for category: String, to color: UIColor) {
+        guard let modelName = chosenModels[category],
+              let entity = baseEntity.findEntity(named: modelName),
+              let modelEntity = entity as? ModelEntity else {
+            print("Model entity not found for category: \(category)")
+            return
+        }
+        
+        // Print debug information
+        print("Changing color for category: \(category), model: \(modelName), color: \(color)")
+
+        // Create a new SimpleMaterial with the specified color and adjust properties to reduce shininess
+        var material = SimpleMaterial()
+        material.baseColor = .color(color)
+        material.roughness = MaterialScalarParameter(floatLiteral: 1.0) // Increase roughness
+        material.metallic = MaterialScalarParameter(floatLiteral: 0.0) // Decrease metallic
+
+        // Assign the new material to the model entity
+        modelEntity.model?.materials = [material]
+        
+        // Save the chosen color for the category
+        chosenColors[category] = color
+        saveChosenModelsAndColors()
+
+        // Print final materials to verify the change
+        print("Updated materials: \(modelEntity.model?.materials ?? [])")
     }
 }
