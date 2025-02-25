@@ -1,4 +1,8 @@
 [
+    {"name": "sneaker_regular", "thumbnail": "thumb_empty"},
+    {"name": "sneaker_running", "thumbnail": "thumb_empty"},
+    {"name": "sneaker_highcut", "thumbnail": "thumb_empty"},
+    {"name": "sneaker_slipon", "thumbnail": "thumb_empty"},
     {"name": "boots_normal_kneehigh", "thumbnail": "thumb_empty"},
     {"name": "boots_normal_high", "thumbnail": "thumb_empty"},
     {"name": "boots_normal_med", "thumbnail": "thumb_empty"},
@@ -14,5 +18,17 @@
     {"name": "boots_heel_kneehigh", "thumbnail": "thumb_empty"},
     {"name": "boots_heel_high", "thumbnail": "thumb_empty"},
     {"name": "boots_heel_med", "thumbnail": "thumb_empty"},
-    {"name": "boots_heel_short", "thumbnail": "thumb_empty"}
+    {"name": "boots_heel_short", "thumbnail": "thumb_empty"},
+    {"name": "dress_loafar", "thumbnail": "thumb_empty"},
+    {"name": "dress_ballet", "thumbnail": "thumb_empty"},
+    {"name": "dress_pumps", "thumbnail": "thumb_empty"},
+    {"name": "dress_mule", "thumbnail": "thumb_empty"},
+    {"name": "relax_slipper_closed", "thumbnail": "thumb_empty"},
+    {"name": "relax_slipper_open", "thumbnail": "thumb_empty"},
+    {"name": "relax_crocs", "thumbnail": "thumb_empty"},
+    {"name": "relax_flipflop", "thumbnail": "thumb_empty"},
+    {"name": "rollarskate", "thumbnail": "thumb_empty"},
+    {"name": "paw", "thumbnail": "thumb_empty"},
+    {"name": "tabi", "thumbnail": "thumb_empty"},
+    {"name": "geta", "thumbnail": "thumb_empty"}
 ]

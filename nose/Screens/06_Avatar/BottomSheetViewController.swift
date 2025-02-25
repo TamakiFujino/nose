@@ -59,7 +59,7 @@ class BottomSheetContentView: UIView {
         let baseTabItems = ["Skin", "Eye", "Eyebrow", "Nose"]
         let hairTabItems = ["Base", "Front", "Back"]
         let clothesTabItems = ["Tops", "Jackets", "Bottoms", "Socks", "Shoes"]
-        let accessoriesTabItems = ["Head", "Neck", "Hand"]
+        let accessoriesTabItems = ["Head", "Neck", "Eyewear"]
         
         childTabBar = UISegmentedControl(items: baseTabItems)
         childTabBar.selectedSegmentIndex = 0
@@ -131,7 +131,7 @@ class BottomSheetContentView: UIView {
         let baseTabItems = ["Skin", "Eye", "Eyebrow", "Nose"]
         let hairTabItems = ["Base", "Front", "Back"]
         let clothesTabItems = ["Tops", "Jackets", "Bottoms", "Socks", "Shoes"]
-        let accessoriesTabItems = ["Head", "Neck", "Hand"]
+        let accessoriesTabItems = ["Head", "Neck", "Eyewear"]
         
         if parentTabBar.selectedSegmentIndex == 0 {
             childTabBar.removeAllSegments()
@@ -209,7 +209,7 @@ class BottomSheetContentView: UIView {
             case 1: // Neck tab
                 category = "neck"
             case 2: // Hand tab
-                category = "hand"
+                category = "eyewear"
             default:
                 return
             }
@@ -305,7 +305,7 @@ class BottomSheetContentView: UIView {
             case 1: // Neck tab
                 category = "neck"
             case 2: // Hand tab
-                category = "hand"
+                category = "eyewear"
             default:
                 return
             }
@@ -378,7 +378,7 @@ class BottomSheetContentView: UIView {
             case 1: // Neck tab
                 category = "neck"
             case 2: // Hand tab
-                category = "hand"
+                category = "eye"
             default:
                 return
             }

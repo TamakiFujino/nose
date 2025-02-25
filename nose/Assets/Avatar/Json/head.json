@@ -1,0 +1,10 @@
+[
+    {"name": "cap_front", "thumbnail": "thumb_empty"},
+    {"name": "cap_back", "thumbnail": "thumb_empty"},
+    {"name": "knit_long", "thumbnail": "thumb_empty"},
+    {"name": "knit_short", "thumbnail": "thumb_empty"},
+    {"name": "hat_round_long", "thumbnail": "thumb_empty"},
+    {"name": "hat_round_short", "thumbnail": "thumb_empty"},
+    {"name": "cat", "thumbnail": "thumb_empty"},
+    {"name": "rabbit", "thumbnail": "thumb_empty"}
+]
