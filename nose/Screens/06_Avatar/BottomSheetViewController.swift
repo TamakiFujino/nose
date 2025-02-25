@@ -378,7 +378,7 @@ class BottomSheetContentView: UIView {
             case 1: // Neck tab
                 category = "neck"
             case 2: // Hand tab
-                category = "eye"
+                category = "eyewear"
             default:
                 return
             }

@@ -46,7 +46,7 @@ class Avatar3DViewController: UIViewController {
             "shoes": "",
             "head": "",
             "neck": "",
-            "hand": ""
+            "eyewear": ""
         ]
         
         // Load saved models and colors for each category if they exist
