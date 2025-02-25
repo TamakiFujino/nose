@@ -64,11 +64,6 @@
 		49E99C1E2D3BE433000F3CE5 /* Exceptions for "nose" folder in "nose" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Assets/Avatar/3D/bottoms/bottoms.json,
-				Assets/Avatar/3D/hair/base/hair_base.json,
-				Assets/Avatar/3D/hair/front/hair_front.json,
-				Assets/Avatar/3D/socks/socks.json,
-				Assets/Avatar/3D/tops/tops.json,
 				Assets/Avatar/thumb_empty.png,
 				Info.plist,
 				Resources/Config.plist,
