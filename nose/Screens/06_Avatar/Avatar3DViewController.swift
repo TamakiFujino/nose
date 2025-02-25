@@ -15,6 +15,8 @@ class Avatar3DViewController: UIViewController {
         setupARView()
         loadAvatarModel()
         setupCamera()
+        addGroundPlaneWithShadow()
+        addDirectionalLight()
         loadSelectionState()
     }
 
@@ -164,7 +166,7 @@ class Avatar3DViewController: UIViewController {
         print("Chosen models and colors saved: \(chosenModels), \(chosenColors)")
     }
     
-    func changeClothingItemColor(for category: String, to color: UIColor) {
+    func changeClothingItemColor(for category: String, to color: UIColor, materialIndex: Int = 0) {
         guard let modelName = chosenModels[category],
               let entity = baseEntity?.findEntity(named: modelName) as? ModelEntity else {
             print("Model entity not found for category: \(category)")
@@ -172,7 +174,13 @@ class Avatar3DViewController: UIViewController {
         }
         
         // Print debug information
-        print("Changing color for category: \(category), model: \(modelName), color: \(color)")
+        print("Changing color for category: \(category), model: \(modelName), color: \(color), material index: \(materialIndex)")
+
+        // Ensure the material index is within bounds
+        guard materialIndex < entity.model?.materials.count ?? 0 else {
+            print("Material index out of bounds for category: \(category)")
+            return
+        }
 
         // Create a new SimpleMaterial with the specified color and adjust properties to reduce shininess
         var material = SimpleMaterial()
@@ -180,8 +188,11 @@ class Avatar3DViewController: UIViewController {
         material.roughness = MaterialScalarParameter(floatLiteral: 1.0) // Increase roughness
         material.metallic = MaterialScalarParameter(floatLiteral: 0.0) // Decrease metallic
 
-        // Assign the new material to the model entity
-        entity.model?.materials = [material]
+        // Replace the material at the specified index
+        if var materials = entity.model?.materials {
+            materials[materialIndex] = material
+            entity.model?.materials = materials
+        }
         
         // Save the chosen color for the category
         chosenColors[category] = color
@@ -191,9 +202,15 @@ class Avatar3DViewController: UIViewController {
         print("Updated materials: \(String(describing: entity.model?.materials))")
     }
     
-    func changeSkinColor(to color: UIColor) {
+    func changeSkinColor(to color: UIColor, materialIndex: Int = 0) {
         guard let baseEntity = baseEntity else {
             print("Base entity not found")
+            return
+        }
+
+        // Ensure the material index is within bounds
+        guard materialIndex < baseEntity.model?.materials.count ?? 0 else {
+            print("Material index out of bounds for skin")
             return
         }
 
@@ -203,8 +220,11 @@ class Avatar3DViewController: UIViewController {
         material.roughness = MaterialScalarParameter(floatLiteral: 1.0)
         material.metallic = MaterialScalarParameter(floatLiteral: 0.0)
 
-        // Assign the new material to the base entity
-        baseEntity.model?.materials = [material]
+        // Replace the material at the specified index
+        if var materials = baseEntity.model?.materials {
+            materials[materialIndex] = material
+            baseEntity.model?.materials = materials
+        }
 
         // Save the chosen color for the skin
         chosenColors["skin"] = color
@@ -213,6 +233,40 @@ class Avatar3DViewController: UIViewController {
         // Print final materials to verify the change
         print("Updated skin color: \(String(describing: baseEntity.model?.materials))")
     }
+    
+    private func addGroundPlaneWithShadow() {
+        // Create a plane entity to represent the ground
+        let planeMesh = MeshResource.generatePlane(width: 1.0, depth: 1.0)
+        var material = SimpleMaterial()
+        material.baseColor = .color(.clear)
+        
+        let planeEntity = ModelEntity(mesh: planeMesh, materials: [material])
+        planeEntity.position = SIMD3<Float>(0, -0.5, 0) // Position the plane below the avatar
+        
+        // Create an anchor for the ground plane
+        let groundAnchor = AnchorEntity(world: [0, 0, 0])
+        groundAnchor.addChild(planeEntity)
+        
+        // Add the ground anchor to the scene
+        arView.scene.anchors.append(groundAnchor)
+    }
+    
+    private func addDirectionalLight() {
+        // Create a directional light
+        let lightAnchor = AnchorEntity(world: [0, 1.0, 0])
+        let light = DirectionalLight()
+        light.light.intensity = 1000
+
+        // Set shadow properties correctly
+        light.shadow = DirectionalLightComponent.Shadow(maximumDistance: 5.0, depthBias: 1.0)
+
+        light.orientation = simd_quatf(angle: -.pi / 4, axis: [1, 0, 0])
+        lightAnchor.addChild(light)
+        
+        // Add the light anchor to the scene
+        arView.scene.anchors.append(lightAnchor)
+    }
+
     
     private func loadSelectionState() {
         // Check if there is any saved data
