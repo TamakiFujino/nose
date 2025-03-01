@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		0300E928ECAB389D97773526 /* Pods_nose_noseUITests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 082318FB18C5692355AD54C3 /* Pods_nose_noseUITests.framework */; };
 		05151A6CE999C4AEDE23D817 /* Pods_noseTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 59D2028056FB920904C8613A /* Pods_noseTests.framework */; };
+		4984E6CB2D731BC600A6288A /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 4984E6CA2D731BC600A6288A /* Localizable.xcstrings */; };
 		C7FEBE54FEE7517DD2578D30 /* Pods_nose.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7DE7E120ED1F3CC03EA4E852 /* Pods_nose.framework */; };
 		F48FCEE9B776081042DD07E7 /* Pods-nose-noseUITests-metadata.plist in Resources */ = {isa = PBXBuildFile; fileRef = 76DC80AC657D4235EC30D629 /* Pods-nose-noseUITests-metadata.plist */; };
 /* End PBXBuildFile section */
@@ -46,6 +47,7 @@
 /* Begin PBXFileReference section */
 		082318FB18C5692355AD54C3 /* Pods_nose_noseUITests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_nose_noseUITests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		3F5309EA4FDBC2FC7AE17B4D /* Pods-noseTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseTests.release.xcconfig"; path = "Target Support Files/Pods-noseTests/Pods-noseTests.release.xcconfig"; sourceTree = "<group>"; };
+		4984E6CA2D731BC600A6288A /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		49E99BF62D3BE432000F3CE5 /* nose.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = nose.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		49E99C0C2D3BE433000F3CE5 /* noseTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = noseTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		49E99C162D3BE433000F3CE5 /* noseUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = noseUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -66,7 +68,6 @@
 			membershipExceptions = (
 				Assets/Avatar/thumb_empty.png,
 				Info.plist,
-				Resources/Config.plist,
 			);
 			target = 49E99BF52D3BE432000F3CE5 /* nose */;
 		};
@@ -134,6 +135,7 @@
 		49E99BED2D3BE432000F3CE5 = {
 			isa = PBXGroup;
 			children = (
+				4984E6CA2D731BC600A6288A /* Localizable.xcstrings */,
 				49E99BF82D3BE432000F3CE5 /* nose */,
 				49E99C0F2D3BE433000F3CE5 /* noseTests */,
 				49E99C192D3BE433000F3CE5 /* noseUITests */,
@@ -270,6 +272,7 @@
 			knownRegions = (
 				en,
 				Base,
+				ja,
 			);
 			mainGroup = 49E99BED2D3BE432000F3CE5;
 			minimizedProjectReferenceProxies = 1;
@@ -290,6 +293,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4984E6CB2D731BC600A6288A /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -502,6 +506,8 @@
 				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = nose/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "";
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "アプリに常に位置情報の連携を許可する";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "アプリ利用中だけ位置情報の連携を許可する";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -541,6 +547,8 @@
 				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = nose/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "";
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "アプリに常に位置情報の連携を許可する";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "アプリ利用中だけ位置情報の連携を許可する";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -568,6 +576,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -622,6 +631,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
 			name = Debug;
@@ -631,6 +641,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -678,6 +689,7 @@
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;

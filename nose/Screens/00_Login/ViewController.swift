@@ -28,12 +28,14 @@ class ViewController: UIViewController, ASAuthorizationControllerDelegate, ASAut
         
         // Add heading
         let headingLabel = UILabel()
-        headingLabel.text = "自分だけの地図をつくろう"
+        headingLabel.text = NSLocalizedString("slogan_firstline", comment: "slogan first line") + "\n" + NSLocalizedString("slogan_secondline", comment: "slogan second line")
         headingLabel.font = UIFont.systemFont(ofSize: 28, weight: .bold)
         headingLabel.textColor = .fourthColor
+        headingLabel.numberOfLines = 0  // Allow multiple lines
+        headingLabel.lineBreakMode = .byWordWrapping  // Break the line at words, not in the middle of words
         headingLabel.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(headingLabel)
-        
+
         // Add Terms of Service and Privacy Policy text
         let termsLabel = UILabel()
         termsLabel.numberOfLines = 0
@@ -45,7 +47,7 @@ class ViewController: UIViewController, ASAuthorizationControllerDelegate, ASAut
         let googleButton = UIButton(type: .system)
         googleButton.backgroundColor = .fourthColor
         googleButton.layer.cornerRadius = 20
-        googleButton.setTitle("   Sign in with Google", for: .normal)
+        googleButton.setTitle(NSLocalizedString("google_login", comment: "Google login button text"), for: .normal)
         googleButton.setTitleColor(.firstColor, for: .normal)
         googleButton.titleLabel?.font = UIFont.systemFont(ofSize: 17, weight: .medium)
         googleButton.setImage(UIImage(systemName: "g.circle.fill"), for: .normal) // Google icon
@@ -60,7 +62,7 @@ class ViewController: UIViewController, ASAuthorizationControllerDelegate, ASAut
         let appleButton = UIButton(type: .system)
         appleButton.backgroundColor = .fourthColor
         appleButton.layer.cornerRadius = 20
-        appleButton.setTitle("   Sign in with Apple", for: .normal)
+        appleButton.setTitle(NSLocalizedString("apple_login", comment: "Apple login button text"), for: .normal)
         appleButton.setTitleColor(.firstColor, for: .normal)
         appleButton.titleLabel?.font = UIFont.systemFont(ofSize: 17, weight: .medium)
         appleButton.setImage(UIImage(systemName: "applelogo"), for: .normal) // Apple icon

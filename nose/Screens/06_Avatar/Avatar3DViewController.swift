@@ -1,5 +1,6 @@
 import UIKit
 import RealityKit
+import Combine
 
 class Avatar3DViewController: UIViewController {
     
@@ -8,7 +9,8 @@ class Avatar3DViewController: UIViewController {
     var chosenModels: [String: String] = [:]
     var chosenColors: [String: UIColor] = [:]
     var selectedItem: Any? // Replace `Any` with the appropriate type for your selected item
-    
+    var cancellables: [AnyCancellable] = []
+
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -25,7 +27,6 @@ class Avatar3DViewController: UIViewController {
         arView.backgroundColor = .clear // Ensure ARView background is transparent
         view.addSubview(arView)
         
-        // Set the background color to yellow
         arView.environment.background = .color(.secondColor)
     }
 
@@ -201,7 +202,7 @@ class Avatar3DViewController: UIViewController {
         // Print final materials to verify the change
         print("Updated materials: \(String(describing: entity.model?.materials))")
     }
-    
+
     func changeSkinColor(to color: UIColor, materialIndex: Int = 0) {
         guard let baseEntity = baseEntity else {
             print("Base entity not found")
@@ -233,7 +234,31 @@ class Avatar3DViewController: UIViewController {
         // Print final materials to verify the change
         print("Updated skin color: \(String(describing: baseEntity.model?.materials))")
     }
-    
+
+    func applyMaskToModel(named modelName: String, isMasked: Bool, category: String) {
+        guard let entity = baseEntity?.findEntity(named: modelName) as? ModelEntity else {
+            print("Entity not found for model: \(modelName)")
+            return
+        }
+
+        // Apply the mask by making the entity invisible or visible based on isMasked
+        if isMasked {
+            // Apply transparency (invisible)
+            var material = SimpleMaterial()
+            material.baseColor = .color(.clear) // Full transparency
+            entity.model?.materials = [material]
+        } else {
+            // Restore original material (visible)
+            if let savedModelName = chosenModels[category], let originalMaterial = entity.model?.materials.first {
+                entity.model?.materials = [originalMaterial]
+            }
+        }
+
+        // Save the mask state
+        chosenModels[category] = modelName
+        saveChosenModelsAndColors()
+    }
+
     private func addGroundPlaneWithShadow() {
         // Create a plane entity to represent the ground
         let planeMesh = MeshResource.generatePlane(width: 1.0, depth: 1.0)
@@ -267,7 +292,6 @@ class Avatar3DViewController: UIViewController {
         arView.scene.anchors.append(lightAnchor)
     }
 
-    
     private func loadSelectionState() {
         // Check if there is any saved data
         if let savedSelection = UserDefaults.standard.object(forKey: "selectedItem") {
@@ -282,7 +306,7 @@ class Avatar3DViewController: UIViewController {
             updateUIForNoSelection()
         }
     }
-    
+
     private func updateUIForSelectedItem() {
         // Implement the logic to update the UI for the selected item
         // For example, highlight the selected item in the 3D view
