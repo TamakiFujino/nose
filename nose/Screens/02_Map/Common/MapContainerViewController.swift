@@ -3,12 +3,14 @@ import GoogleMaps
 import GooglePlaces
 
 class MapContainerViewController: UIViewController {
-    
+
     var mapView: GMSMapView!
     var slider: CustomSlider!
     private let shadowBackground = BackShadowView()
     var profileButton: IconButton!
     var searchButton: IconButton!
+    private let feedbackGenerator = UIImpactFeedbackGenerator(style: .heavy)
+    private var isFirstTouch = true
     
     var mapID = GMSMapID(identifier: "7f9a1d61a6b1809f")
     
@@ -20,6 +22,9 @@ class MapContainerViewController: UIViewController {
         setupProfileButton()
         setupSearchButton()
         setupConstraints()
+        
+        // Prepare the feedback generator
+        feedbackGenerator.prepare()
     }
     
     private func setupMapView() {
@@ -50,6 +55,10 @@ class MapContainerViewController: UIViewController {
         slider.value = 50
         slider.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(slider)
+        
+        // Add target-action pair to the slider
+        slider.addTarget(self, action: #selector(sliderValueChanged(_:)), for: .valueChanged)
+        slider.addTarget(self, action: #selector(sliderTouchDown(_:)), for: .touchDown)
     }
     
     private func setupProfileButton() {
@@ -82,5 +91,25 @@ class MapContainerViewController: UIViewController {
     
     @objc private func dummyAction() {
         // Dummy action to satisfy selector requirement
+    }
+    
+    @objc private func sliderValueChanged(_ sender: UISlider) {
+        // Using threshold comparison instead of exact value checking
+        let epsilon: Float = 0.5 // Small threshold for floating point comparison
+        
+        if abs(sender.value - 0) < epsilon ||
+           abs(sender.value - 50) < epsilon ||
+           abs(sender.value - 100) < epsilon {
+            feedbackGenerator.impactOccurred()
+            feedbackGenerator.prepare() // Prepare for the next impact
+        }
+    }
+    
+    @objc private func sliderTouchDown(_ sender: UISlider) {
+        if isFirstTouch {
+            feedbackGenerator.impactOccurred()
+            feedbackGenerator.prepare() // Prepare for the next impact
+            isFirstTouch = false
+        }
     }
 }
