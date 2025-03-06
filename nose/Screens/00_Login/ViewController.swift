@@ -46,7 +46,7 @@ class ViewController: UIViewController, ASAuthorizationControllerDelegate, ASAut
         // Create Google sign-in button
         let googleButton = UIButton(type: .system)
         googleButton.backgroundColor = .fourthColor
-        googleButton.layer.cornerRadius = 20
+        googleButton.layer.cornerRadius = 8
         googleButton.setTitle(NSLocalizedString("google_login", comment: "Google login button text"), for: .normal)
         googleButton.setTitleColor(.firstColor, for: .normal)
         googleButton.titleLabel?.font = UIFont.systemFont(ofSize: 17, weight: .medium)
@@ -61,7 +61,7 @@ class ViewController: UIViewController, ASAuthorizationControllerDelegate, ASAut
         // Set up Apple Sign-In button
         let appleButton = UIButton(type: .system)
         appleButton.backgroundColor = .fourthColor
-        appleButton.layer.cornerRadius = 20
+        appleButton.layer.cornerRadius = 8
         appleButton.setTitle(NSLocalizedString("apple_login", comment: "Apple login button text"), for: .normal)
         appleButton.setTitleColor(.firstColor, for: .normal)
         appleButton.titleLabel?.font = UIFont.systemFont(ofSize: 17, weight: .medium)
@@ -104,18 +104,18 @@ class ViewController: UIViewController, ASAuthorizationControllerDelegate, ASAut
             // Terms label constraints
             termsLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             termsLabel.bottomAnchor.constraint(equalTo: googleButton.topAnchor, constant: -20),
-            termsLabel.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.8),
+            termsLabel.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.9),
             
             // Google Button constraints
             googleButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            googleButton.bottomAnchor.constraint(equalTo: appleButton.topAnchor, constant: -20),
-            googleButton.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.8),
+            googleButton.bottomAnchor.constraint(equalTo: appleButton.topAnchor, constant: -15),
+            googleButton.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.9),
             googleButton.heightAnchor.constraint(equalToConstant: 45),
             
             // Apple Button constraints
             appleButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             appleButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
-            appleButton.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.8),
+            appleButton.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.9),
             appleButton.heightAnchor.constraint(equalToConstant: 45)
         ])
     }
