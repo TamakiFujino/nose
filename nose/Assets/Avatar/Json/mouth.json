@@ -1,3 +1,14 @@
 [
-    {"name": "pants_tight_mini", "thumbnail": "thumb_empty"},
+    {"name": "circle", "thumbnail": "thumb_empty"},
+    {"name": "horizontal_short", "thumbnail": "thumb_empty"},
+    {"name": "horizontal_long", "thumbnail": "thumb_empty"},
+    {"name": "vertical", "thumbnail": "thumb_empty"},
+    {"name": "curve_up", "thumbnail": "thumb_empty"},
+    {"name": "curve_down", "thumbnail": "thumb_empty"},
+    {"name": "angular_up", "thumbnail": "thumb_empty"},
+    {"name": "angular_down", "thumbnail": "thumb_empty"},
+    {"name": "straight", "thumbnail": "thumb_empty"},
+    {"name": "smirk", "thumbnail": "thumb_empty"},
+    {"name": "confident", "thumbnail": "thumb_empty"},
+    {"name": "ham", "thumbnail": "thumb_empty"}
 ]

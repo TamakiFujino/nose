@@ -56,7 +56,7 @@ class BottomSheetContentView: UIView {
     }
     
     private func setupChildTabBar() {
-        let baseTabItems = ["Skin", "Eye", "Eyebrow", "Nose"]
+        let baseTabItems = ["Skin", "Eye", "Eyebrow", "Nose", "Mouth"]
         let hairTabItems = ["Base", "Front", "Back"]
         let clothesTabItems = ["Tops", "Jackets", "Bottoms", "Socks", "Shoes"]
         let accessoriesTabItems = ["Head", "Neck", "Eyewear"]
@@ -128,7 +128,7 @@ class BottomSheetContentView: UIView {
     }
     
     private func updateChildTabBar() {
-        let baseTabItems = ["Skin", "Eye", "Eyebrow", "Nose"]
+        let baseTabItems = ["Skin", "Eye", "Eyebrow", "Nose", "Mouth"]
         let hairTabItems = ["Base", "Front", "Back"]
         let clothesTabItems = ["Tops", "Jackets", "Bottoms", "Socks", "Shoes"]
         let accessoriesTabItems = ["Head", "Neck", "Eyewear"]
@@ -173,6 +173,8 @@ class BottomSheetContentView: UIView {
                 category = "eyebrow"
             case 3: // Nose tab
                 category = "nose"
+            case 4: // Mouth tab
+                category = "mouth"
             default:
                 return
             }
@@ -269,6 +271,8 @@ class BottomSheetContentView: UIView {
                 category = "eyebrow"
             case 3: // Nose tab
                 category = "nose"
+            case 4: // Mouth tab
+                category = "mouth"
             default:
                 return
             }
@@ -342,6 +346,8 @@ class BottomSheetContentView: UIView {
                 category = "eyebrow"
             case 3: // Nose tab
                 category = "nose"
+            case 4: // Mouth tab
+                category = "mouth"
             default:
                 return
             }

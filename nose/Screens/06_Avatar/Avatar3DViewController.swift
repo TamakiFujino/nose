@@ -43,6 +43,7 @@ class Avatar3DViewController: UIViewController {
             "eye": "",
             "eyebrow": "",
             "nose": "",
+            "mouth": "",
             "socks": "",
             "shoes": "",
             "head": "",
