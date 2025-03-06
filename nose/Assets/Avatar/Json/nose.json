@@ -1,0 +1,10 @@
+[
+    {"name": "A_small", "thumbnail": "thumb_empty"},
+    {"name": "A_big", "thumbnail": "thumb_empty"},
+    {"name": "B_small", "thumbnail": "thumb_empty"},
+    {"name": "B_big", "thumbnail": "thumb_empty"},
+    {"name": "C_small", "thumbnail": "thumb_empty"},
+    {"name": "C_big", "thumbnail": "thumb_empty"},
+    {"name": "E_short", "thumbnail": "thumb_empty"},
+    {"name": "E_vertical", "thumbnail": "thumb_empty"}
+]
