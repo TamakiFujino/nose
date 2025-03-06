@@ -185,9 +185,11 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
         if isPOIBookmarked() {
             print("POI is bookmarked")
             button.setImage(UIImage(systemName: "bookmark.fill"), for: .normal) // Filled bookmark icon
+            button.tintColor = .fourthColor
         } else {
             print("POI is not bookmarked")
             button.setImage(UIImage(systemName: "bookmark"), for: .normal) // Outline bookmark icon
+            button.tintColor = .fourthColor
         }
     }
 
