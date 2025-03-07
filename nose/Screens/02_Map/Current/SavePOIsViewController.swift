@@ -1,4 +1,3 @@
-// This script is to create bookmark lists and save POIs to them
 import UIKit
 
 class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
@@ -32,9 +31,8 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
         navBar.translatesAutoresizingMaskIntoConstraints = false
         let navItem = UINavigationItem(title: "Bookmark Lists")
         let backItem = UIBarButtonItem(barButtonSystemItem: .close, target: self, action: #selector(backButtonTapped))
+        backItem.tintColor = .black
         navItem.leftBarButtonItem = backItem
-        backItem.tintColor = .none
-        backItem.image = UIImage(systemName: "arrow.left")
         navBar.setItems([navItem], animated: false)
         view.addSubview(navBar)
         
@@ -60,7 +58,9 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
         
         // Add "Create Bookmark List" button
         let createListButton = UIButton(type: .system)
-        createListButton.setTitle("Create Bookmark List", for: .normal)
+        createListButton.setImage(UIImage(systemName: "plus"), for: .normal) // Change to + icon
+        // set color
+        createListButton.tintColor = .black
         createListButton.translatesAutoresizingMaskIntoConstraints = false
         createListButton.addTarget(self, action: #selector(createListButtonTapped), for: .touchUpInside)
         view.addSubview(createListButton)
@@ -68,6 +68,7 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
         // Add "Confirm" button
         let confirmButton = UIButton(type: .system)
         confirmButton.setTitle("Confirm", for: .normal)
+        confirmButton.setTitleColor(.black, for: .normal) // Make text color black
         confirmButton.translatesAutoresizingMaskIntoConstraints = false
         confirmButton.addTarget(self, action: #selector(confirmButtonTapped), for: .touchUpInside)
         view.addSubview(confirmButton)

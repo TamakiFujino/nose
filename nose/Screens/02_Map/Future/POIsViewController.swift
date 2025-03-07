@@ -62,10 +62,13 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
     }
 
     private func setupNavigationBar() {
-        let backButton = UIBarButtonItem()
-        backButton.title = ""  // Hide the "Back" text
-        self.navigationItem.backBarButtonItem = backButton
+        let backButton = UIBarButtonItem(title: "Back", style: .plain, target: self, action: #selector(dismissModal))
+        self.navigationItem.leftBarButtonItem = backButton
         self.navigationController?.navigationBar.tintColor = .black
+    }
+    
+    @objc private func dismissModal() {
+        self.dismiss(animated: true, completion: nil)
     }
 
     // MARK: - UITableViewDataSource
@@ -101,7 +104,7 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
         detailVC.rating = poi.rating
         detailVC.openingHours = poi.openingHours
         detailVC.latitude = poi.latitude
-        detailVC.longitude = poi.longitude
+        detailVC.longitude
         
         // Presenting details for POI
         detailVC.modalPresentationStyle = .pageSheet

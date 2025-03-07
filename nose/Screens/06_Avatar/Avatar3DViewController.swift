@@ -32,7 +32,7 @@ class Avatar3DViewController: UIViewController {
     func setupARView() {
         arView = ARView(frame: view.bounds)
         arView.backgroundColor = .clear // Ensure ARView background is transparent
-        arView.environment.background = .color(.secondColor) // Set ARView background to clear
+        view.backgroundColor = .secondColor
         view.addSubview(arView)
     }
     

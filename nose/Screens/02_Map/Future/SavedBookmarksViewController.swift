@@ -84,10 +84,27 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
         
         let selectedList = bookmarkLists[indexPath.row]
         
+        // DEBUG PRINT: Check selectedList before navigation
+        print("Selected Bookmark List: \(selectedList.name), POIs Count: \(selectedList.bookmarks.count)")
+        
+        // Ensure the selectedList has bookmarks
+        guard !selectedList.bookmarks.isEmpty else {
+            print("Selected list has no bookmarks.")
+            return
+        }
+        
         // Present POIsViewController to display saved POIs for the selected bookmark list
         let poisVC = POIsViewController()
         poisVC.bookmarkList = selectedList
-        navigationController?.pushViewController(poisVC, animated: true)
+        
+        // Update to add a navigation bar to the half modal
+        let navigationController = UINavigationController(rootViewController: poisVC)
+        navigationController.modalPresentationStyle = .pageSheet
+        navigationController.navigationBar.topItem?.title = "Collections"
+        if let sheet = navigationController.sheetPresentationController {
+            sheet.detents = [.medium()]
+        }
+        present(navigationController, animated: true, completion: nil)
     }
     
     // MARK: - Actions
