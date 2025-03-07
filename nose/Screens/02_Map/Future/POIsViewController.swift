@@ -51,6 +51,7 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
         tableView.backgroundColor = .clear // Remove the background color
         tableView.rowHeight = UITableView.automaticDimension
         tableView.estimatedRowHeight = 60
+        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
         view.addSubview(tableView)
         
         // Set up constraints for info label and table view
@@ -69,7 +70,7 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
     }
 
     private func setupNavigationBar() {
-        let backButton = UIBarButtonItem(title: "Back", style: .plain, target: self, action: #selector(dismissModal))
+        let backButton = UIBarButtonItem(image: UIImage(systemName: "chevron.left"), style: .plain, target: self, action: #selector(dismissModal))
         self.navigationItem.leftBarButtonItem = backButton
         self.navigationController?.navigationBar.tintColor = .black
         
@@ -105,15 +106,49 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "cell") ?? UITableViewCell(style: .default, reuseIdentifier: "cell")
+        let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
         let poi = bookmarkList.bookmarks[indexPath.row]
-        cell.textLabel?.text = poi.name
+        
+        cell.textLabel?.numberOfLines = 2
+        
+        // Unwrap rating safely
+        let rating = poi.rating ?? 0.0
+        
+        let ratingText = getRatingText(rating: rating)
+        let text = "\(poi.name)\n\(ratingText)"
+        let attributedText = NSMutableAttributedString(string: text)
+        
+        // Make rating display smaller
+        let nameRange = (text as NSString).range(of: poi.name)
+        let ratingRange = (text as NSString).range(of: ratingText)
+        attributedText.addAttributes([.font: UIFont.systemFont(ofSize: 17)], range: nameRange)
+        attributedText.addAttributes([.font: UIFont.systemFont(ofSize: 12), .foregroundColor: UIColor.gray], range: ratingRange)
+        
+        // Add more padding between lines
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.lineSpacing = 8
+        attributedText.addAttribute(.paragraphStyle, value: paragraphStyle, range: NSMakeRange(0, attributedText.length))
+        
+        cell.textLabel?.attributedText = attributedText
         cell.backgroundColor = .clear // Remove the background color of each cell
         
-        // Remove the display of address
-        cell.detailTextLabel?.text = nil
-        
         return cell
+    }
+    
+    private func getRatingText(rating: Double) -> String {
+        var ratingText = ""
+        let fullStars = Int(rating)
+        for _ in 0..<fullStars {
+            ratingText += "●"
+        }
+        if rating - Double(fullStars) >= 0.5 {
+            ratingText += "◐"
+        }
+        let emptyStars = 5 - fullStars - (ratingText.count > fullStars ? 1 : 0)
+        for _ in 0..<emptyStars {
+            ratingText += "○"
+        }
+        return ratingText
     }
     
     // MARK: - UITableViewDelegate
@@ -131,7 +166,7 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
         detailVC.rating = poi.rating
         detailVC.openingHours = poi.openingHours
         detailVC.latitude = poi.latitude
-        detailVC.longitude
+        detailVC.longitude = poi.longitude
         
         // Presenting details for POI
         detailVC.modalPresentationStyle = .pageSheet
