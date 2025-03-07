@@ -10,7 +10,7 @@ class Avatar3DViewController: UIViewController {
     var chosenColors: [String: UIColor] = [:]
     var selectedItem: Any? // Replace `Any` with the appropriate type for your selected item
     var cancellables: [AnyCancellable] = []
-
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -20,16 +20,22 @@ class Avatar3DViewController: UIViewController {
         addGroundPlaneWithShadow()
         addDirectionalLight()
         loadSelectionState()
+        
+        // Add a button to capture avatar
+        let button = UIButton(frame: CGRect(x: 20, y: 50, width: 200, height: 100))
+        button.setTitle("Capture Avatar", for: .normal)
+        button.backgroundColor = .systemBlue
+        button.addTarget(self, action: #selector(captureSnapshot), for: .touchUpInside)
+        view.addSubview(button)
     }
-
+    
     func setupARView() {
         arView = ARView(frame: view.bounds)
         arView.backgroundColor = .clear // Ensure ARView background is transparent
+        arView.environment.background = .color(.secondColor) // Set ARView background to clear
         view.addSubview(arView)
-        
-        arView.environment.background = .color(.secondColor)
     }
-
+    
     func loadAvatarModel() {
         // Initialize chosenModels with empty strings for each category
         var savedModels = [
@@ -59,7 +65,7 @@ class Avatar3DViewController: UIViewController {
         }
         
         chosenModels = savedModels
-
+        
         // Load saved colors for each category
         if let savedColorsData = UserDefaults.standard.data(forKey: "chosenColors"),
            let savedColors = try? NSKeyedUnarchiver.unarchiveTopLevelObjectWithData(savedColorsData) as? [String: UIColor] {
@@ -79,7 +85,7 @@ class Avatar3DViewController: UIViewController {
             
             // Rotate the model (Y-axis for turning left/right, X for tilting forward/back)
             baseEntity?.transform.rotation = simd_quatf(angle: .pi / 6, axis: [0, -0.8, 0])
-
+            
             let anchor = AnchorEntity(world: [0, 0, 0]) // Place in world space
             if let baseEntity = baseEntity {
                 anchor.addChild(baseEntity)
@@ -100,7 +106,7 @@ class Avatar3DViewController: UIViewController {
             print("Error loading base avatar model: \(error)")
         }
     }
-
+    
     func loadClothingItem(named modelName: String, category: String) {
         do {
             // Remove the previous model for the category if it exists
@@ -110,20 +116,20 @@ class Avatar3DViewController: UIViewController {
             
             let newModel = try Entity.loadModel(named: modelName) as? ModelEntity
             newModel?.name = modelName
-
+            
             // Force scale to 1.0
             newModel?.scale = SIMD3<Float>(1.0, 1.0, 1.0)
-
+            
             if let newModel = newModel {
                 baseEntity?.addChild(newModel) // Attach to the base avatar
             }
-
+            
             print("newModel origin: \(String(describing: newModel?.position))")
             print("newModel size (forced scale): \(String(describing: newModel?.visualBounds(relativeTo: nil).extents))")
-
+            
             // Save the chosen model for the category
             chosenModels[category] = modelName
-
+            
             // Apply the chosen color if it exists
             if let color = chosenColors[category] {
                 changeClothingItemColor(for: category, to: color)
@@ -132,7 +138,7 @@ class Avatar3DViewController: UIViewController {
             print("Error loading clothing item: \(error)")
         }
     }
-
+    
     func removeClothingItem(for category: String) {
         // Remove the previous model for the category if it exists
         if let previousModelName = chosenModels[category], let existingEntity = baseEntity?.findEntity(named: previousModelName) {
@@ -140,7 +146,7 @@ class Avatar3DViewController: UIViewController {
             chosenModels[category] = ""
         }
     }
-
+    
     func setupCamera() {
         // Create a camera entity
         let cameraEntity = PerspectiveCamera()
@@ -159,7 +165,7 @@ class Avatar3DViewController: UIViewController {
         for (category, modelName) in chosenModels {
             UserDefaults.standard.set(modelName, forKey: "chosen\(category.capitalized)Model")
         }
-
+        
         // Save the chosen colors to UserDefaults
         if let colorsData = try? NSKeyedArchiver.archivedData(withRootObject: chosenColors, requiringSecureCoding: false) {
             UserDefaults.standard.set(colorsData, forKey: "chosenColors")
@@ -177,19 +183,19 @@ class Avatar3DViewController: UIViewController {
         
         // Print debug information
         print("Changing color for category: \(category), model: \(modelName), color: \(color), material index: \(materialIndex)")
-
+        
         // Ensure the material index is within bounds
         guard materialIndex < entity.model?.materials.count ?? 0 else {
             print("Material index out of bounds for category: \(category)")
             return
         }
-
+        
         // Create a new SimpleMaterial with the specified color and adjust properties to reduce shininess
         var material = SimpleMaterial()
         material.baseColor = .color(color)
         material.roughness = MaterialScalarParameter(floatLiteral: 1.0) // Increase roughness
         material.metallic = MaterialScalarParameter(floatLiteral: 0.0) // Decrease metallic
-
+        
         // Replace the material at the specified index
         if var materials = entity.model?.materials {
             materials[materialIndex] = material
@@ -199,49 +205,49 @@ class Avatar3DViewController: UIViewController {
         // Save the chosen color for the category
         chosenColors[category] = color
         saveChosenModelsAndColors()
-
+        
         // Print final materials to verify the change
         print("Updated materials: \(String(describing: entity.model?.materials))")
     }
-
+    
     func changeSkinColor(to color: UIColor, materialIndex: Int = 0) {
         guard let baseEntity = baseEntity else {
             print("Base entity not found")
             return
         }
-
+        
         // Ensure the material index is within bounds
         guard materialIndex < baseEntity.model?.materials.count ?? 0 else {
             print("Material index out of bounds for skin")
             return
         }
-
+        
         // Create a new SimpleMaterial with the specified color for the skin
         var material = SimpleMaterial()
         material.baseColor = .color(color)
         material.roughness = MaterialScalarParameter(floatLiteral: 1.0)
         material.metallic = MaterialScalarParameter(floatLiteral: 0.0)
-
+        
         // Replace the material at the specified index
         if var materials = baseEntity.model?.materials {
             materials[materialIndex] = material
             baseEntity.model?.materials = materials
         }
-
+        
         // Save the chosen color for the skin
         chosenColors["skin"] = color
         saveChosenModelsAndColors()
-
+        
         // Print final materials to verify the change
         print("Updated skin color: \(String(describing: baseEntity.model?.materials))")
     }
-
+    
     func applyMaskToModel(named modelName: String, isMasked: Bool, category: String) {
         guard let entity = baseEntity?.findEntity(named: modelName) as? ModelEntity else {
             print("Entity not found for model: \(modelName)")
             return
         }
-
+        
         // Apply the mask by making the entity invisible or visible based on isMasked
         if isMasked {
             // Apply transparency (invisible)
@@ -254,12 +260,12 @@ class Avatar3DViewController: UIViewController {
                 entity.model?.materials = [originalMaterial]
             }
         }
-
+        
         // Save the mask state
         chosenModels[category] = modelName
         saveChosenModelsAndColors()
     }
-
+    
     private func addGroundPlaneWithShadow() {
         // Create a plane entity to represent the ground
         let planeMesh = MeshResource.generatePlane(width: 1.0, depth: 1.0)
@@ -282,17 +288,17 @@ class Avatar3DViewController: UIViewController {
         let lightAnchor = AnchorEntity(world: [0, 1.0, 0])
         let light = DirectionalLight()
         light.light.intensity = 1000
-
+        
         // Set shadow properties correctly
         light.shadow = DirectionalLightComponent.Shadow(maximumDistance: 5.0, depthBias: 1.0)
-
+        
         light.orientation = simd_quatf(angle: -.pi / 4, axis: [1, 0, 0])
         lightAnchor.addChild(light)
         
         // Add the light anchor to the scene
         arView.scene.anchors.append(lightAnchor)
     }
-
+    
     private func loadSelectionState() {
         // Check if there is any saved data
         if let savedSelection = UserDefaults.standard.object(forKey: "selectedItem") {
@@ -307,7 +313,7 @@ class Avatar3DViewController: UIViewController {
             updateUIForNoSelection()
         }
     }
-
+    
     private func updateUIForSelectedItem() {
         // Implement the logic to update the UI for the selected item
         // For example, highlight the selected item in the 3D view
@@ -316,5 +322,52 @@ class Avatar3DViewController: UIViewController {
     func updateUIForNoSelection() {
         // Implement the logic to update the UI for no selection
         // For example, clear any highlights in the 3D view
+    }
+    
+    @objc func captureSnapshot() {
+        // Snapshot the ARView content to an image
+        arView.snapshot(saveToHDR: false) { image in
+            guard let image = image else {
+                print("❌ Failed to capture snapshot.")
+                return
+            }
+            
+            // Save the image to a specific directory
+            self.saveImage(image: image, toDirectory: "capturedAvatars")
+        }
+    }
+    
+    func saveImage(image: UIImage, toDirectory directory: String) {
+        guard let data = image.pngData() else {
+            print("❌ Failed to convert image to PNG data.")
+            return
+        }
+        
+        let fileManager = FileManager.default
+        do {
+            // Get the URL for the specified directory in the user's documents directory
+            let documentsURL = try fileManager.url(
+                for: .documentDirectory,
+                in: .userDomainMask,
+                appropriateFor: nil,
+                create: false
+            )
+            let directoryURL = documentsURL.appendingPathComponent(directory)
+            
+            // Create the directory if it doesn't exist
+            if !fileManager.fileExists(atPath: directoryURL.path) {
+                try fileManager.createDirectory(at: directoryURL, withIntermediateDirectories: true, attributes: nil)
+            }
+            
+            // Create a unique filename for the image
+            let filename = "avatar_\(UUID().uuidString).png"
+            let fileURL = directoryURL.appendingPathComponent(filename)
+            
+            // Write the image data to the file
+            try data.write(to: fileURL)
+            print("✅ Image saved successfully to \(fileURL.path)")
+        } catch {
+            print("❌ Error saving image: \(error)")
+        }
     }
 }
