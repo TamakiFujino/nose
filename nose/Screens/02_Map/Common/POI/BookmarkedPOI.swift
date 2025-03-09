@@ -1,5 +1,7 @@
+import Foundation
+
 // This struct represents a bookmarked point of interest (POI)
-struct BookmarkedPOI {
+struct BookmarkedPOI: Codable {
     var placeID: String
     var name: String
     var address: String?

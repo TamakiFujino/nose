@@ -7,6 +7,7 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
     var tableView: UITableView!
     var bookmarkList: BookmarkList!
     var sharedWithCount: Int = 0 // Assuming you have a way to get this count
+    var loggedInUser: String = "defaultUser" // Replace this with actual logged-in user ID or default user
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -167,6 +168,9 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
         detailVC.openingHours = poi.openingHours
         detailVC.latitude = poi.latitude
         detailVC.longitude = poi.longitude
+        
+        // Save the selected POI
+        BookmarksManager.shared.savePOI(for: loggedInUser, placeID: poi.placeID)
         
         // Presenting details for POI
         detailVC.modalPresentationStyle = .pageSheet

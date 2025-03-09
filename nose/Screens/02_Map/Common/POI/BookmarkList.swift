@@ -1,6 +1,6 @@
 import Foundation
 
-struct BookmarkList: Equatable {
+struct BookmarkList: Codable, Equatable {
     let id: String
     let name: String
     var bookmarks: [BookmarkedPOI]
