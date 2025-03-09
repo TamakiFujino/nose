@@ -13,6 +13,7 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
     var sharedWithCount: Int = 0 // Assuming you have a way to get this count
     var loggedInUser: String = "defaultUser" // Replace this with actual logged-in user ID or default user
     weak var delegate: POIsViewControllerDelegate?
+    var infoLabel: UILabel!
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -24,27 +25,8 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
         setupNavigationBar()
         
         // Add label before the table view
-        let infoLabel = UILabel()
-        let bookmarkIcon = UIImage(systemName: "bookmark.fill")?.withTintColor(.fourthColor, renderingMode: .alwaysOriginal)
-        let friendsIcon = UIImage(systemName: "person.fill")?.withTintColor(.fourthColor, renderingMode: .alwaysOriginal)
-        
-        let bookmarkIconAttachment = NSTextAttachment()
-        bookmarkIconAttachment.image = bookmarkIcon
-        bookmarkIconAttachment.bounds = CGRect(x: 0, y: -2, width: 14, height: 14)
-        
-        let friendsIconAttachment = NSTextAttachment()
-        friendsIconAttachment.image = friendsIcon
-        friendsIconAttachment.bounds = CGRect(x: 0, y: -2, width: 14, height: 14)
-        
-        let attributedText = NSMutableAttributedString()
-        attributedText.append(NSAttributedString(attachment: bookmarkIconAttachment))
-        attributedText.append(NSAttributedString(string: " \(bookmarkList.bookmarks.count)  ", attributes: [NSAttributedString.Key.font: UIFont.systemFont(ofSize: 14)]))
-        attributedText.append(NSAttributedString(attachment: friendsIconAttachment))
-        attributedText.append(NSAttributedString(string: " \(sharedWithCount)", attributes: [NSAttributedString.Key.font: UIFont.systemFont(ofSize: 14)]))
-        // set color of the text
-        attributedText.addAttribute(.foregroundColor, value: UIColor.fourthColor, range: NSMakeRange(0, attributedText.length))
-        
-        infoLabel.attributedText = attributedText
+        infoLabel = UILabel()
+        updateInfoLabel()
         infoLabel.font = UIFont.systemFont(ofSize: 16)
         infoLabel.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(infoLabel)
@@ -207,5 +189,40 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
         }
         print("Presenting details for POI: \(poi.name)")
         self.present(detailVC, animated: true, completion: nil)
+    }
+    
+    // Swipe to delete functionality
+    func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
+        if editingStyle == .delete {
+            let poiToDelete = bookmarkList.bookmarks[indexPath.row]
+            BookmarksManager.shared.deletePOI(for: loggedInUser, placeID: poiToDelete.placeID)
+            bookmarkList.bookmarks.remove(at: indexPath.row)
+            tableView.deleteRows(at: [indexPath], with: .automatic)
+            BookmarksManager.shared.saveBookmarkList(bookmarkList)  // Save updated bookmark list
+            updateInfoLabel() // Update the info label with the new count
+        }
+    }
+    
+    private func updateInfoLabel() {
+        let bookmarkIcon = UIImage(systemName: "bookmark.fill")?.withTintColor(.fourthColor, renderingMode: .alwaysOriginal)
+        let friendsIcon = UIImage(systemName: "person.fill")?.withTintColor(.fourthColor, renderingMode: .alwaysOriginal)
+        
+        let bookmarkIconAttachment = NSTextAttachment()
+        bookmarkIconAttachment.image = bookmarkIcon
+        bookmarkIconAttachment.bounds = CGRect(x: 0, y: -2, width: 14, height: 14)
+        
+        let friendsIconAttachment = NSTextAttachment()
+        friendsIconAttachment.image = friendsIcon
+        friendsIconAttachment.bounds = CGRect(x: 0, y: -2, width: 14, height: 14)
+        
+        let attributedText = NSMutableAttributedString()
+        attributedText.append(NSAttributedString(attachment: bookmarkIconAttachment))
+        attributedText.append(NSAttributedString(string: " \(bookmarkList.bookmarks.count)  ", attributes: [NSAttributedString.Key.font: UIFont.systemFont(ofSize: 14)]))
+        attributedText.append(NSAttributedString(attachment: friendsIconAttachment))
+        attributedText.append(NSAttributedString(string: " \(sharedWithCount)", attributes: [NSAttributedString.Key.font: UIFont.systemFont(ofSize: 14)]))
+        // set color of the text
+        attributedText.addAttribute(.foregroundColor, value: UIColor.fourthColor, range: NSMakeRange(0, attributedText.length))
+        
+        infoLabel.attributedText = attributedText
     }
 }
