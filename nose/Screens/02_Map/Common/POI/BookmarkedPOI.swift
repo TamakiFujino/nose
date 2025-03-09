@@ -9,7 +9,7 @@ struct BookmarkedPOI: Codable {
     var website: String?
     var rating: Double?
     var openingHours: [String]?
-    // longitude and latitude properties
     var latitude: Double
     var longitude: Double
+    var visited: Bool = false // New property to track if the POI is visited
 }

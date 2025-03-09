@@ -39,7 +39,7 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
         tableView.backgroundColor = .clear // Remove the background color
         tableView.rowHeight = UITableView.automaticDimension
         tableView.estimatedRowHeight = 60
-        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
+        tableView.register(POICell.self, forCellReuseIdentifier: "POICell")
         view.addSubview(tableView)
         
         // Set up constraints for info label and table view
@@ -117,33 +117,22 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
+        let cell = tableView.dequeueReusableCell(withIdentifier: "POICell", for: indexPath) as! POICell
         let poi = bookmarkList.bookmarks[indexPath.row]
-        
-        cell.textLabel?.numberOfLines = 2
-        
-        // Unwrap rating safely
-        let rating = poi.rating ?? 0.0
-        
-        let ratingText = getRatingText(rating: rating)
-        let text = "\(poi.name)\n\(ratingText)"
-        let attributedText = NSMutableAttributedString(string: text)
-        
-        // Make rating display smaller
-        let nameRange = (text as NSString).range(of: poi.name)
-        let ratingRange = (text as NSString).range(of: ratingText)
-        attributedText.addAttributes([.font: UIFont.systemFont(ofSize: 17)], range: nameRange)
-        attributedText.addAttributes([.font: UIFont.systemFont(ofSize: 12), .foregroundColor: UIColor.fourthColor], range: ratingRange)
-        
-        // Add more padding between lines
-        let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.lineSpacing = 8
-        attributedText.addAttribute(.paragraphStyle, value: paragraphStyle, range: NSMakeRange(0, attributedText.length))
-        
-        cell.textLabel?.attributedText = attributedText
-        cell.backgroundColor = .clear // Remove the background color of each cell
-        
+        cell.poi = poi
+        cell.checkbox.tag = indexPath.row
+        cell.checkbox.addTarget(self, action: #selector(checkboxTapped(_:)), for: .touchUpInside)
         return cell
+    }
+    
+    @objc private func checkboxTapped(_ sender: UIButton) {
+        let index = sender.tag
+        bookmarkList.bookmarks[index].visited.toggle()
+        sender.setImage(bookmarkList.bookmarks[index].visited ? UIImage(systemName: "checkmark.circle.fill") : UIImage(systemName: "circle"), for: .normal)
+        sender.tintColor = .fourthColor
+        let cell = tableView.cellForRow(at: IndexPath(row: index, section: 0)) as! POICell
+        cell.contentView.backgroundColor = bookmarkList.bookmarks[index].visited ? UIColor.fourthColor.withAlphaComponent(0.1) : .clear
+        BookmarksManager.shared.saveBookmarkList(bookmarkList)  // Save updated bookmark list
     }
     
     private func getRatingText(rating: Double) -> String {
