@@ -2,12 +2,17 @@ import UIKit
 import GoogleMaps
 import GooglePlaces
 
+protocol POIsViewControllerDelegate: AnyObject {
+    func didDeleteBookmarkList()
+}
+
 class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
 
     var tableView: UITableView!
     var bookmarkList: BookmarkList!
     var sharedWithCount: Int = 0 // Assuming you have a way to get this count
     var loggedInUser: String = "defaultUser" // Replace this with actual logged-in user ID or default user
+    weak var delegate: POIsViewControllerDelegate?
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -88,16 +93,39 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
         let shareAction = UIAlertAction(title: "Share", style: .default) { _ in
             // Implement share functionality here
         }
+        let completeCollectionAction = UIAlertAction(title: "Complete collection", style: .default) { _ in
+            // Implement complete collection functionality here
+        }
         let deleteAction = UIAlertAction(title: "Delete", style: .destructive) { _ in
-            // Implement delete functionality here
+            self.showDeleteWarning()
         }
         let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
         
         alertController.addAction(shareAction)
+        alertController.addAction(completeCollectionAction)
         alertController.addAction(deleteAction)
         alertController.addAction(cancelAction)
         
         present(alertController, animated: true, completion: nil)
+    }
+    
+    private func showDeleteWarning() {
+        let alertController = UIAlertController(title: "Warning", message: "Are you sure you want to delete this bookmark list? This action cannot be undone.", preferredStyle: .alert)
+        let deleteAction = UIAlertAction(title: "Delete", style: .destructive) { _ in
+            self.deleteBookmarkList()
+        }
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
+        
+        alertController.addAction(deleteAction)
+        alertController.addAction(cancelAction)
+        
+        present(alertController, animated: true, completion: nil)
+    }
+    
+    private func deleteBookmarkList() {
+        BookmarksManager.shared.deleteBookmarkList(bookmarkList)
+        self.delegate?.didDeleteBookmarkList()
+        self.dismiss(animated: true, completion: nil)
     }
 
     // MARK: - UITableViewDataSource
@@ -123,7 +151,7 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
         let nameRange = (text as NSString).range(of: poi.name)
         let ratingRange = (text as NSString).range(of: ratingText)
         attributedText.addAttributes([.font: UIFont.systemFont(ofSize: 17)], range: nameRange)
-        attributedText.addAttributes([.font: UIFont.systemFont(ofSize: 12), .foregroundColor: UIColor.gray], range: ratingRange)
+        attributedText.addAttributes([.font: UIFont.systemFont(ofSize: 12), .foregroundColor: UIColor.fourthColor], range: ratingRange)
         
         // Add more padding between lines
         let paragraphStyle = NSMutableParagraphStyle()

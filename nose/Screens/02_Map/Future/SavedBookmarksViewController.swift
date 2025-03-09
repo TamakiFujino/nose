@@ -2,7 +2,7 @@ import UIKit
 import GoogleMaps
 import GooglePlaces
 
-class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
+class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, POIsViewControllerDelegate {
     
     var tableView: UITableView!
     var bookmarkLists: [BookmarkList] = []
@@ -85,6 +85,7 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
         // Present POIsViewController to display saved POIs for the selected bookmark list
         let poisVC = POIsViewController()
         poisVC.bookmarkList = selectedList
+        poisVC.delegate = self
         
         // Update to add a navigation bar to the half modal
         let navigationController = UINavigationController(rootViewController: poisVC)
@@ -95,10 +96,21 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
         present(navigationController, animated: true, completion: nil)
     }
     
+    // MARK: - POIsViewControllerDelegate
+    
+    func didDeleteBookmarkList() {
+        bookmarkLists = BookmarksManager.shared.bookmarkLists
+        tableView.reloadData()
+        updateMessageVisibility()
+        showSavedPOIMarkers()
+    }
+    
     // MARK: - Showing POIs on Map
     
     func showSavedPOIMarkers() {
         guard let mapView = mapView else { return }
+        
+        mapView.clear() // Clear existing markers
         
         let savedPOIs = bookmarkLists.flatMap { $0.bookmarks }
         
@@ -121,6 +133,7 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
             let selectedList = bookmarkLists[index]
             let poisVC = POIsViewController()
             poisVC.bookmarkList = selectedList
+            poisVC.delegate = self
             navigationController?.pushViewController(poisVC, animated: true)
         }
     }
