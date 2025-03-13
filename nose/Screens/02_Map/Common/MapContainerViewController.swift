@@ -68,18 +68,25 @@ class MapContainerViewController: UIViewController {
     
     private func setupSearchButton() {
         searchButton = IconButton(image: UIImage(systemName: "magnifyingglass"), action: #selector(dummyAction), target: self)
+        searchButton.setTitle("Search", for: .normal)
+        searchButton.setTitleColor(.black, for: .normal)
+        searchButton.titleLabel?.font = UIFont.systemFont(ofSize: 16) 
+        searchButton.tintColor = .label
+        searchButton.titleEdgeInsets = UIEdgeInsets(top: 0, left: 5, bottom: 0, right: 0)
+        searchButton.contentHorizontalAlignment = .leading
         view.addSubview(searchButton)
     }
     
     private func setupConstraints() {
         NSLayoutConstraint.activate([
+            // Profile button at the top-left corner
+            profileButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
+            profileButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 15),
+            
             // Search button at the top-right corner
             searchButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
             searchButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -15),
-            
-            // Profile button closer to the search button
-            profileButton.topAnchor.constraint(equalTo: searchButton.topAnchor),
-            profileButton.trailingAnchor.constraint(equalTo: searchButton.leadingAnchor, constant: -10),
+            searchButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 100), // Ensure enough width for text
             
             // Slider closer to the buttons
             slider.topAnchor.constraint(equalTo: searchButton.bottomAnchor, constant: 10),
