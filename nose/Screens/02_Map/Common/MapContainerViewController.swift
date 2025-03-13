@@ -8,7 +8,9 @@ class MapContainerViewController: UIViewController {
     var slider: CustomSlider!
     private let shadowBackground = BackShadowView()
     var profileButton: IconButton!
+    var buttonA: IconButton!
     var searchButton: IconButton!
+    var savedButton: IconButton!
     private let feedbackGenerator = UIImpactFeedbackGenerator(style: .heavy)
     private var isFirstTouch = true
     
@@ -20,11 +22,16 @@ class MapContainerViewController: UIViewController {
         setupShadowBackground()
         setupSlider()
         setupProfileButton()
+        setupButtonA()
         setupSearchButton()
+        setupSavedButton()
         setupConstraints()
         
         // Prepare the feedback generator
         feedbackGenerator.prepare()
+        
+        // Ensure the correct button is displayed based on the initial slider value
+        sliderValueChanged(slider)
     }
     
     private func setupMapView() {
@@ -66,15 +73,39 @@ class MapContainerViewController: UIViewController {
         view.addSubview(profileButton)
     }
     
+    private func setupButtonA() {
+        buttonA = IconButton(image: UIImage(systemName: "archivebox.fill"), action: #selector(dummyAction), target: self)
+        buttonA.setTitle("Reflect", for: .normal)
+        buttonA.setTitleColor(.black, for: .normal)
+        buttonA.titleLabel?.font = UIFont.systemFont(ofSize: 16)
+        buttonA.tintColor = .label
+        buttonA.titleEdgeInsets = UIEdgeInsets(top: 0, left: 5, bottom: 0, right: 0)
+        buttonA.contentHorizontalAlignment = .leading
+        view.addSubview(buttonA)
+    }
+    
     private func setupSearchButton() {
         searchButton = IconButton(image: UIImage(systemName: "magnifyingglass"), action: #selector(dummyAction), target: self)
-        searchButton.setTitle("Search", for: .normal)
+        searchButton.setTitle("Explore", for: .normal)
         searchButton.setTitleColor(.black, for: .normal)
-        searchButton.titleLabel?.font = UIFont.systemFont(ofSize: 16) 
+        searchButton.titleLabel?.font = UIFont.systemFont(ofSize: 16)
         searchButton.tintColor = .label
         searchButton.titleEdgeInsets = UIEdgeInsets(top: 0, left: 5, bottom: 0, right: 0)
         searchButton.contentHorizontalAlignment = .leading
+        searchButton.isHidden = true // Initially hidden
         view.addSubview(searchButton)
+    }
+    
+    private func setupSavedButton() {
+        savedButton = IconButton(image: UIImage(systemName: "sparkle"), action: #selector(dummyAction), target: self)
+        savedButton.setTitle("Gear up", for: .normal)
+        savedButton.setTitleColor(.black, for: .normal)
+        savedButton.titleLabel?.font = UIFont.systemFont(ofSize: 16)
+        savedButton.tintColor = .label
+        savedButton.titleEdgeInsets = UIEdgeInsets(top: 0, left: 5, bottom: 0, right: 0)
+        savedButton.contentHorizontalAlignment = .leading
+        savedButton.isHidden = true // Initially hidden
+        view.addSubview(savedButton)
     }
     
     private func setupConstraints() {
@@ -83,13 +114,23 @@ class MapContainerViewController: UIViewController {
             profileButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
             profileButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 15),
             
-            // Search button at the top-right corner
+            // ButtonA at the top-right corner
+            buttonA.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
+            buttonA.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -15),
+            buttonA.widthAnchor.constraint(greaterThanOrEqualToConstant: 100), // Ensure enough width for text
+            
+            // Search button at the top-right corner (same position as buttonA)
             searchButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
             searchButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -15),
             searchButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 100), // Ensure enough width for text
+
+            // Saved button at the top-right corner (same position as buttonA)
+            savedButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
+            savedButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -15),
+            savedButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 105), // Ensure enough width for text
             
             // Slider closer to the buttons
-            slider.topAnchor.constraint(equalTo: searchButton.bottomAnchor, constant: 10),
+            slider.topAnchor.constraint(equalTo: buttonA.bottomAnchor, constant: 10),
             slider.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             slider.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             slider.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20)
@@ -104,12 +145,22 @@ class MapContainerViewController: UIViewController {
         // Using threshold comparison instead of exact value checking
         let epsilon: Float = 0.5 // Small threshold for floating point comparison
         
-        if abs(sender.value - 0) < epsilon ||
-           abs(sender.value - 50) < epsilon ||
-           abs(sender.value - 100) < epsilon {
+        if abs(sender.value - 0) < epsilon || abs(sender.value - 50) < epsilon || abs(sender.value - 100) < epsilon {
             feedbackGenerator.impactOccurred()
             feedbackGenerator.prepare() // Prepare for the next impact
         }
+        
+        UIView.transition(with: buttonA, duration: 0.3, options: .transitionCrossDissolve, animations: {
+            self.buttonA.isHidden = !(sender.value == 0)
+        })
+        
+        UIView.transition(with: searchButton, duration: 0.3, options: .transitionCrossDissolve, animations: {
+            self.searchButton.isHidden = !(sender.value == 50)
+        })
+        
+        UIView.transition(with: savedButton, duration: 0.3, options: .transitionCrossDissolve, animations: {
+            self.savedButton.isHidden = !(sender.value == 100)
+        })
     }
     
     @objc private func sliderTouchDown(_ sender: UISlider) {

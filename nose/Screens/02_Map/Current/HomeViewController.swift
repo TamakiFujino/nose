@@ -74,30 +74,60 @@ class HomeViewController: UIViewController {
             sender.setValue(newValue, animated: true)
         }
         
-        if newValue == 100 && !hasShownHalfModal {
-            hasShownHalfModal = true
-            let savedBookmarksVC = SavedBookmarksViewController()
-            savedBookmarksVC.mapView = mapContainerViewController.mapView
-            savedBookmarksVC.modalPresentationStyle = .pageSheet
-            if let sheet = savedBookmarksVC.sheetPresentationController {
-                sheet.detents = [.medium()]
+        updateUIForSliderValue(newValue)
+    }
+    
+    private func updateUIForSliderValue(_ value: Float) {
+        switch value {
+        case 0:
+            if !hasShownHalfModal {
+                presentZeroSliderModal()
             }
-            present(savedBookmarksVC, animated: true, completion: nil)
+            mapContainerViewController.buttonA.isHidden = false
             mapContainerViewController.searchButton.isHidden = true
-        } else if newValue == 0 && !hasShownHalfModal {
-            hasShownHalfModal = true
-            let zeroSliderModalVC = ZeroSliderModalViewController()
-            zeroSliderModalVC.modalPresentationStyle = .pageSheet
-            if let sheet = zeroSliderModalVC.sheetPresentationController {
-                sheet.detents = [.medium()]
+            mapContainerViewController.savedButton.isHidden = true
+            
+        case 50:
+            mapContainerViewController.buttonA.isHidden = true
+            mapContainerViewController.searchButton.isHidden = false
+            mapContainerViewController.savedButton.isHidden = true
+            
+        case 100:
+            if !hasShownHalfModal {
+                presentSavedBookmarksModal()
             }
-            present(zeroSliderModalVC, animated: true, completion: nil)
+            mapContainerViewController.buttonA.isHidden = true
             mapContainerViewController.searchButton.isHidden = true
-        } else if newValue != 0 && newValue != 100 {
+            mapContainerViewController.savedButton.isHidden = false
+            
+        default:
             hasShownHalfModal = false
             mapContainerViewController.mapView.clear()
-            mapContainerViewController.searchButton.isHidden = false
+            mapContainerViewController.buttonA.isHidden = true
+            mapContainerViewController.searchButton.isHidden = true
+            mapContainerViewController.savedButton.isHidden = true
         }
+    }
+    
+    private func presentZeroSliderModal() {
+        hasShownHalfModal = true
+        let zeroSliderModalVC = ZeroSliderModalViewController()
+        zeroSliderModalVC.modalPresentationStyle = .pageSheet
+        if let sheet = zeroSliderModalVC.sheetPresentationController {
+            sheet.detents = [.medium()]
+        }
+        present(zeroSliderModalVC, animated: true, completion: nil)
+    }
+    
+    private func presentSavedBookmarksModal() {
+        hasShownHalfModal = true
+        let savedBookmarksVC = SavedBookmarksViewController()
+        savedBookmarksVC.mapView = mapContainerViewController.mapView
+        savedBookmarksVC.modalPresentationStyle = .pageSheet
+        if let sheet = savedBookmarksVC.sheetPresentationController {
+            sheet.detents = [.medium()]
+        }
+        present(savedBookmarksVC, animated: true, completion: nil)
     }
 }
 
