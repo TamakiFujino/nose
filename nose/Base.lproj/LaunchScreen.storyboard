@@ -33,6 +33,7 @@
             <point key="canvasLocation" x="52.671755725190835" y="374.64788732394368"/>
         </scene>
     </scenes>
+    <color key="tintColor" red="0.37858589616402116" green="0.37858589616402116" blue="0.37858589616402116" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
     <resources>
         <image name="background" width="433" height="852"/>
         <image name="logo" width="166" height="24"/>

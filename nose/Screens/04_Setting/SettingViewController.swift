@@ -7,7 +7,6 @@ class SettingViewController: UIViewController, UITableViewDelegate, UITableViewD
     // Define setting categories and items
     var settingsData: [(category: String, items: [String])] = [
         ("Profile", ["Name", "Account"]),
-        ("Preferences", ["Notifications", "Language"]),
         ("About", ["Privacy Policy", "Terms of Service", "App Version", "Licenses"])
     ]
     
