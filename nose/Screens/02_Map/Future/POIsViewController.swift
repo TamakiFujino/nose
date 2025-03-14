@@ -4,6 +4,7 @@ import GooglePlaces
 
 protocol POIsViewControllerDelegate: AnyObject {
     func didDeleteBookmarkList()
+    func didCompleteBookmarkList(_ bookmarkList: BookmarkList)
 }
 
 class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
@@ -76,7 +77,7 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
             // Implement share functionality here
         }
         let completeCollectionAction = UIAlertAction(title: "Complete collection", style: .default) { _ in
-            // Implement complete collection functionality here
+            self.completeCollection()
         }
         let deleteAction = UIAlertAction(title: "Delete", style: .destructive) { _ in
             self.showDeleteWarning()
@@ -107,6 +108,12 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
     private func deleteBookmarkList() {
         BookmarksManager.shared.deleteBookmarkList(bookmarkList)
         self.delegate?.didDeleteBookmarkList()
+        self.dismiss(animated: true, completion: nil)
+    }
+
+    private func completeCollection() {
+        BookmarksManager.shared.completeBookmarkList(bookmarkList)
+        self.delegate?.didCompleteBookmarkList(bookmarkList)
         self.dismiss(animated: true, completion: nil)
     }
 

@@ -111,7 +111,7 @@ class HomeViewController: UIViewController {
     
     private func presentZeroSliderModal() {
         hasShownHalfModal = true
-        let zeroSliderModalVC = ZeroSliderModalViewController()
+        let zeroSliderModalVC = PastMapMainViewController()
         zeroSliderModalVC.modalPresentationStyle = .pageSheet
         if let sheet = zeroSliderModalVC.sheetPresentationController {
             sheet.detents = [.medium()]

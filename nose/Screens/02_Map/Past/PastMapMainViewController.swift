@@ -43,7 +43,8 @@ class PastMapMainViewController: UIViewController, UITableViewDataSource, UITabl
             messageLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor)
         ])
         
-        // Update message visibility
+        // Load completed items
+        items = BookmarksManager.shared.completedLists
         updateMessageVisibility()
     }
     
@@ -59,7 +60,6 @@ class PastMapMainViewController: UIViewController, UITableViewDataSource, UITabl
         tableView.isHidden = items.isEmpty
     }
 
-    
     func addItem(_ item: BookmarkList) {
         items.append(item)
         
@@ -70,6 +70,18 @@ class PastMapMainViewController: UIViewController, UITableViewDataSource, UITabl
         updateMessageVisibility()
     }
 
+    func presentCompletedBookmarkList(_ bookmarkList: BookmarkList) {
+        let detailVC = POIsViewController()
+        detailVC.bookmarkList = bookmarkList
+        detailVC.delegate = nil // No need for delegate in this case
+        
+        let navigationController = UINavigationController(rootViewController: detailVC)
+        navigationController.modalPresentationStyle = .pageSheet
+        if let sheet = navigationController.sheetPresentationController {
+            sheet.detents = [.medium()]
+        }
+        present(navigationController, animated: true, completion: nil)
+    }
     
     // MARK: - UITableViewDataSource
     
@@ -89,5 +101,7 @@ class PastMapMainViewController: UIViewController, UITableViewDataSource, UITabl
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         // Handle cell selection
+        let selectedItem = items[indexPath.row]
+        presentCompletedBookmarkList(selectedItem)
     }
 }

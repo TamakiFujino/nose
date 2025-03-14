@@ -13,36 +13,9 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
         super.viewDidLoad()
         
         view.backgroundColor = .white
-        
-        // Set up navigation bar
-        setupNavigationBar()
-        
-        // Initialize message label
-        messageLabel = UILabel()
-        messageLabel.text = "No bookmark lists created yet."
-        messageLabel.textColor = .gray
-        messageLabel.textAlignment = .center
-        messageLabel.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(messageLabel)
-        
-        // Initialize the table view
-        tableView = UITableView(frame: .zero, style: .plain)
-        tableView.dataSource = self
-        tableView.delegate = self
-        tableView.register(BookmarkListCell.self, forCellReuseIdentifier: "BookmarkListCell")
-        tableView.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(tableView)
-        
-        // Set up constraints
-        NSLayoutConstraint.activate([
-            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            
-            messageLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            messageLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor)
-        ])
+        setupTableView()
+        setupMessageLabel()
+        setupConstraints()
         
         // Load bookmark lists
         bookmarkLists = BookmarksManager.shared.bookmarkLists
@@ -52,31 +25,79 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
         showSavedPOIMarkers()
     }
     
-    private func setupNavigationBar() {
-        navigationItem.title = "Saved Bookmarks"
-        self.navigationController?.navigationBar.tintColor = .black
+    private func setupTableView() {
+        tableView = UITableView(frame: .zero, style: .plain)
+        tableView.dataSource = self
+        tableView.delegate = self
+        tableView.register(BookmarkListCell.self, forCellReuseIdentifier: "BookmarkListCell")
+        tableView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(tableView)
+    }
+    
+    private func setupMessageLabel() {
+        messageLabel = UILabel()
+        messageLabel.text = "No bookmark lists created yet."
+        messageLabel.textColor = .gray
+        messageLabel.textAlignment = .center
+        messageLabel.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(messageLabel)
+    }
+    
+    private func setupConstraints() {
+        NSLayoutConstraint.activate([
+            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            
+            messageLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            messageLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+        ])
     }
 
     func updateMessageVisibility() {
         messageLabel.isHidden = !bookmarkLists.isEmpty
         tableView.isHidden = bookmarkLists.isEmpty
     }
-    
+
+    @objc func backButtonTapped() {
+        dismiss(animated: true, completion: nil)
+    }
+
+    @objc func createListButtonTapped() {
+        let alertController = UIAlertController(title: "Create Bookmark List", message: "Enter a name for your new bookmark list.", preferredStyle: .alert)
+        alertController.addTextField { textField in
+            textField.placeholder = "List Name"
+        }
+        let createAction = UIAlertAction(title: "Create", style: .default) { _ in
+            if let listName = alertController.textFields?.first?.text, !listName.isEmpty {
+                BookmarksManager.shared.createBookmarkList(name: listName)
+                self.bookmarkLists = BookmarksManager.shared.bookmarkLists // Refresh the list
+                self.tableView.reloadData()
+                self.updateMessageVisibility()
+            }
+        }
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
+        alertController.addAction(createAction)
+        alertController.addAction(cancelAction)
+        present(alertController, animated: true, completion: nil)
+    }
+
     // MARK: - UITableViewDataSource
-    
+
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return bookmarkLists.count
     }
-    
+
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "BookmarkListCell", for: indexPath) as! BookmarkListCell
         let list = bookmarkLists[indexPath.row]
         cell.configure(with: list)
         return cell
     }
-    
+
     // MARK: - UITableViewDelegate
-    
+
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         
@@ -103,6 +124,25 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
         tableView.reloadData()
         updateMessageVisibility()
         showSavedPOIMarkers()
+    }
+    
+    func didCompleteBookmarkList(_ bookmarkList: BookmarkList) {
+        // Remove the completed bookmark list
+        BookmarksManager.shared.completeBookmarkList(bookmarkList)
+        bookmarkLists = BookmarksManager.shared.bookmarkLists
+        tableView.reloadData()
+        updateMessageVisibility()
+        showSavedPOIMarkers()
+        
+        // Present the completed bookmark list in the half modal of PastMapMainViewController
+        if let navigationController = navigationController {
+            for viewController in navigationController.viewControllers {
+                if let pastMapVC = viewController as? PastMapMainViewController {
+                    pastMapVC.addItem(bookmarkList)
+                    break
+                }
+            }
+        }
     }
     
     // MARK: - Showing POIs on Map
@@ -136,50 +176,5 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
             poisVC.delegate = self
             navigationController?.pushViewController(poisVC, animated: true)
         }
-    }
-}
-
-class BookmarkListCell: UITableViewCell {
-    
-    override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
-        super.init(style: style, reuseIdentifier: reuseIdentifier)
-        setupUI()
-    }
-    
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-    
-    private func setupUI() {
-        // Customize cell UI if needed
-        textLabel?.numberOfLines = 2 // Allow textLabel to have multiple lines
-    }
-    
-    func configure(with list: BookmarkList) {
-        let nameText = NSAttributedString(string: "\(list.name)\n", attributes: [NSAttributedString.Key.font: UIFont.boldSystemFont(ofSize: 16)])
-        
-        let bookmarkIcon = UIImage(systemName: "bookmark.fill")?.withTintColor(.fourthColor, renderingMode: .alwaysOriginal)
-        let friendsIcon = UIImage(systemName: "person.fill")?.withTintColor(.fourthColor, renderingMode: .alwaysOriginal)
-        
-        let bookmarkIconAttachment = NSTextAttachment()
-        bookmarkIconAttachment.image = bookmarkIcon
-        bookmarkIconAttachment.bounds = CGRect(x: 0, y: -2, width: 14, height: 14)
-        
-        let friendsIconAttachment = NSTextAttachment()
-        friendsIconAttachment.image = friendsIcon
-        friendsIconAttachment.bounds = CGRect(x: 0, y: -2, width: 14, height: 14)
-        
-        let infoText = NSMutableAttributedString()
-        infoText.append(NSAttributedString(attachment: bookmarkIconAttachment))
-        infoText.append(NSAttributedString(string: " \(list.bookmarks.count)  ", attributes: [NSAttributedString.Key.font: UIFont.systemFont(ofSize: 14)]))
-        infoText.append(NSAttributedString(attachment: friendsIconAttachment))
-        infoText.append(NSAttributedString(string: " \(list.sharedWithFriends.count)", attributes: [NSAttributedString.Key.font: UIFont.systemFont(ofSize: 14)]))
-        infoText.addAttribute(.foregroundColor, value: UIColor.fourthColor, range: NSMakeRange(0, infoText.length))
-        
-        let attributedText = NSMutableAttributedString()
-        attributedText.append(nameText)
-        attributedText.append(infoText)
-        
-        textLabel?.attributedText = attributedText
     }
 }

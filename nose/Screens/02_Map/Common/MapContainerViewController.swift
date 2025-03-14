@@ -74,7 +74,7 @@ class MapContainerViewController: UIViewController {
     }
     
     private func setupButtonA() {
-        buttonA = IconButton(image: UIImage(systemName: "archivebox.fill"), action: #selector(dummyAction), target: self)
+        buttonA = IconButton(image: UIImage(systemName: "archivebox.fill"), action: #selector(reflectButtonTapped), target: self)
         buttonA.setTitle("Reflect", for: .normal)
         buttonA.setTitleColor(.black, for: .normal)
         buttonA.titleLabel?.font = UIFont.systemFont(ofSize: 16)
@@ -97,7 +97,7 @@ class MapContainerViewController: UIViewController {
     }
     
     private func setupSavedButton() {
-        savedButton = IconButton(image: UIImage(systemName: "sparkle"), action: #selector(dummyAction), target: self)
+        savedButton = IconButton(image: UIImage(systemName: "sparkle"), action: #selector(savedButtonTapped), target: self)
         savedButton.setTitle("Gear up", for: .normal)
         savedButton.setTitleColor(.black, for: .normal)
         savedButton.titleLabel?.font = UIFont.systemFont(ofSize: 16)
@@ -169,5 +169,25 @@ class MapContainerViewController: UIViewController {
             feedbackGenerator.prepare() // Prepare for the next impact
             isFirstTouch = false
         }
+    }
+    
+    @objc private func savedButtonTapped() {
+        let savedBookmarksVC = SavedBookmarksViewController()
+        let navigationController = UINavigationController(rootViewController: savedBookmarksVC)
+        navigationController.modalPresentationStyle = .pageSheet
+        if let sheet = navigationController.sheetPresentationController {
+            sheet.detents = [.medium()]
+        }
+        present(navigationController, animated: true, completion: nil)
+    }
+
+    @objc private func reflectButtonTapped() {
+        let pastMapVC = PastMapMainViewController()
+        let navigationController = UINavigationController(rootViewController: pastMapVC)
+        navigationController.modalPresentationStyle = .pageSheet
+        if let sheet = navigationController.sheetPresentationController {
+            sheet.detents = [.medium()]
+        }
+        present(navigationController, animated: true, completion: nil)
     }
 }
