@@ -27,6 +27,7 @@ class Avatar3DViewController: UIViewController {
         arView.backgroundColor = .clear // Ensure ARView background is transparent
         view.backgroundColor = .secondColor
         view.addSubview(arView)
+        arView.environment.background = .color(.secondColor)
     }
     
     func loadAvatarModel() {
@@ -277,18 +278,16 @@ class Avatar3DViewController: UIViewController {
     }
     
     private func addDirectionalLight() {
-        // Create a directional light
-        let lightAnchor = AnchorEntity(world: [0, 1.0, 0])
+        let lightAnchor = AnchorEntity(world: [0, 2.0, 0]) // Higher placement
         let light = DirectionalLight()
-        light.light.intensity = 1000
         
-        // Set shadow properties correctly
-        light.shadow = DirectionalLightComponent.Shadow(maximumDistance: 5.0, depthBias: 1.0)
-        
-        light.orientation = simd_quatf(angle: -.pi / 4, axis: [1, 0, 0])
+        light.light.intensity = 1000 // Increase brightness
+        light.light.color = .fourthColor // Adjust color if needed
+        light.shadow = DirectionalLightComponent.Shadow(maximumDistance: 10.0, depthBias: 0.005) // Softer shadows
+
+        light.orientation = simd_quatf(angle: -.pi / 6, axis: [1, 0, 0]) // Slightly angled
         lightAnchor.addChild(light)
-        
-        // Add the light anchor to the scene
+
         arView.scene.anchors.append(lightAnchor)
     }
     
