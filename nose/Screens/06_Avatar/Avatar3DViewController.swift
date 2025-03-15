@@ -20,13 +20,6 @@ class Avatar3DViewController: UIViewController {
         addGroundPlaneWithShadow()
         addDirectionalLight()
         loadSelectionState()
-        
-        // Add a button to capture avatar
-        let button = UIButton(frame: CGRect(x: 20, y: 50, width: 200, height: 100))
-        button.setTitle("Capture Avatar", for: .normal)
-        button.backgroundColor = .systemBlue
-        button.addTarget(self, action: #selector(captureSnapshot), for: .touchUpInside)
-        view.addSubview(button)
     }
     
     func setupARView() {
@@ -355,7 +348,7 @@ class Avatar3DViewController: UIViewController {
             let directoryURL = documentsURL.appendingPathComponent(directory)
             
             // Create the directory if it doesn't exist
-            if !fileManager.fileExists(atPath: directoryURL.path) {
+            if (!fileManager.fileExists(atPath: directoryURL.path)) {
                 try fileManager.createDirectory(at: directoryURL, withIntermediateDirectories: true, attributes: nil)
             }
             

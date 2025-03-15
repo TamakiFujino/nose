@@ -48,6 +48,9 @@ class AvatarCustomViewController: UIViewController {
     @objc func saveButtonTapped() {
         // Save the chosen 3D models
         avatar3DViewController.saveChosenModelsAndColors()
+        
+        // Capture the avatar as PNG
+        avatar3DViewController.captureSnapshot()
     }
     
     private func checkForSavedData() {
