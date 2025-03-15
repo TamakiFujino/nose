@@ -15,6 +15,7 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
     var loggedInUser: String = "defaultUser" // Replace this with actual logged-in user ID or default user
     weak var delegate: POIsViewControllerDelegate?
     var infoLabel: UILabel!
+    var isFromPastMap: Bool = false
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -63,8 +64,10 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
         self.navigationItem.leftBarButtonItem = backButton
         self.navigationController?.navigationBar.tintColor = .black
         
-        let menuButton = UIBarButtonItem(image: UIImage(systemName: "ellipsis"), style: .plain, target: self, action: #selector(showMenu))
-        self.navigationItem.rightBarButtonItem = menuButton
+        if !isFromPastMap {
+            let menuButton = UIBarButtonItem(image: UIImage(systemName: "ellipsis"), style: .plain, target: self, action: #selector(showMenu))
+            self.navigationItem.rightBarButtonItem = menuButton
+        }
     }
     
     @objc private func dismissModal() {
@@ -136,9 +139,9 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
         let index = sender.tag
         bookmarkList.bookmarks[index].visited.toggle()
         sender.setImage(bookmarkList.bookmarks[index].visited ? UIImage(systemName: "checkmark.circle.fill") : UIImage(systemName: "circle"), for: .normal)
-        sender.tintColor = .fourthColor
+        sender.tintColor = .blue
         let cell = tableView.cellForRow(at: IndexPath(row: index, section: 0)) as! POICell
-        cell.contentView.backgroundColor = bookmarkList.bookmarks[index].visited ? UIColor.fourthColor.withAlphaComponent(0.1) : .clear
+        cell.contentView.backgroundColor = bookmarkList.bookmarks[index].visited ? UIColor.blue.withAlphaComponent(0.1) : .clear
         BookmarksManager.shared.saveBookmarkList(bookmarkList)  // Save updated bookmark list
     }
     
@@ -200,8 +203,8 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
     }
     
     private func updateInfoLabel() {
-        let bookmarkIcon = UIImage(systemName: "bookmark.fill")?.withTintColor(.fourthColor, renderingMode: .alwaysOriginal)
-        let friendsIcon = UIImage(systemName: "person.fill")?.withTintColor(.fourthColor, renderingMode: .alwaysOriginal)
+        let bookmarkIcon = UIImage(systemName: "bookmark.fill")?.withTintColor(.blue, renderingMode: .alwaysOriginal)
+        let friendsIcon = UIImage(systemName: "person.fill")?.withTintColor(.blue, renderingMode: .alwaysOriginal)
         
         let bookmarkIconAttachment = NSTextAttachment()
         bookmarkIconAttachment.image = bookmarkIcon
@@ -216,8 +219,7 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
         attributedText.append(NSAttributedString(string: " \(bookmarkList.bookmarks.count)  ", attributes: [NSAttributedString.Key.font: UIFont.systemFont(ofSize: 14)]))
         attributedText.append(NSAttributedString(attachment: friendsIconAttachment))
         attributedText.append(NSAttributedString(string: " \(sharedWithCount)", attributes: [NSAttributedString.Key.font: UIFont.systemFont(ofSize: 14)]))
-        // set color of the text
-        attributedText.addAttribute(.foregroundColor, value: UIColor.fourthColor, range: NSMakeRange(0, attributedText.length))
+        attributedText.addAttribute(.foregroundColor, value: UIColor.black, range: NSMakeRange(0, attributedText.length))
         
         infoLabel.attributedText = attributedText
     }

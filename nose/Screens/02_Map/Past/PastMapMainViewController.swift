@@ -73,6 +73,7 @@ class PastMapMainViewController: UIViewController, UITableViewDataSource, UITabl
     func presentCompletedBookmarkList(_ bookmarkList: BookmarkList) {
         let detailVC = POIsViewController()
         detailVC.bookmarkList = bookmarkList
+        detailVC.isFromPastMap = true
         detailVC.delegate = nil // No need for delegate in this case
         
         let navigationController = UINavigationController(rootViewController: detailVC)
