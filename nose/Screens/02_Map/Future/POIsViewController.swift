@@ -139,9 +139,9 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
         let index = sender.tag
         bookmarkList.bookmarks[index].visited.toggle()
         sender.setImage(bookmarkList.bookmarks[index].visited ? UIImage(systemName: "checkmark.circle.fill") : UIImage(systemName: "circle"), for: .normal)
-        sender.tintColor = .blue
+        sender.tintColor = .fourthColor
         let cell = tableView.cellForRow(at: IndexPath(row: index, section: 0)) as! POICell
-        cell.contentView.backgroundColor = bookmarkList.bookmarks[index].visited ? UIColor.blue.withAlphaComponent(0.1) : .clear
+        cell.contentView.backgroundColor = bookmarkList.bookmarks[index].visited ? UIColor.fourthColor.withAlphaComponent(0.1) : .clear
         BookmarksManager.shared.saveBookmarkList(bookmarkList)  // Save updated bookmark list
     }
     
@@ -203,8 +203,8 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
     }
     
     private func updateInfoLabel() {
-        let bookmarkIcon = UIImage(systemName: "bookmark.fill")?.withTintColor(.blue, renderingMode: .alwaysOriginal)
-        let friendsIcon = UIImage(systemName: "person.fill")?.withTintColor(.blue, renderingMode: .alwaysOriginal)
+        let bookmarkIcon = UIImage(systemName: "bookmark.fill")?.withTintColor(.fourthColor, renderingMode: .alwaysOriginal)
+        let friendsIcon = UIImage(systemName: "person.fill")?.withTintColor(.fourthColor, renderingMode: .alwaysOriginal)
         
         let bookmarkIconAttachment = NSTextAttachment()
         bookmarkIconAttachment.image = bookmarkIcon

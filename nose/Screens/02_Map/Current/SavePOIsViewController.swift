@@ -171,9 +171,19 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "cell")
         let list = bookmarkLists[indexPath.row]
+        
         cell.textLabel?.text = list.name
         cell.detailTextLabel?.text = "\(list.bookmarks.count) saved"
-        cell.accessoryType = list == selectedBookmarkList ? .checkmark : .none
+        
+        if list == selectedBookmarkList {
+            let checkmarkImage = UIImage(systemName: "checkmark")?.withRenderingMode(.alwaysTemplate)
+            let checkmarkImageView = UIImageView(image: checkmarkImage)
+            checkmarkImageView.tintColor = .fourthColor
+            cell.accessoryView = checkmarkImageView
+        } else {
+            cell.accessoryView = nil
+        }
+        
         return cell
     }
 
