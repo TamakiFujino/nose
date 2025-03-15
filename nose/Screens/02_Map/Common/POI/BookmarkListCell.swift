@@ -19,8 +19,8 @@ class BookmarkListCell: UITableViewCell {
     func configure(with list: BookmarkList) {
         let nameText = NSAttributedString(string: "\(list.name)\n", attributes: [NSAttributedString.Key.font: UIFont.boldSystemFont(ofSize: 16)])
         
-        let bookmarkIcon = UIImage(systemName: "bookmark.fill")?.withTintColor(.blue, renderingMode: .alwaysOriginal)
-        let friendsIcon = UIImage(systemName: "person.fill")?.withTintColor(.blue, renderingMode: .alwaysOriginal)
+        let bookmarkIcon = UIImage(systemName: "bookmark.fill")?.withTintColor(.fourthColor, renderingMode: .alwaysOriginal)
+        let friendsIcon = UIImage(systemName: "person.fill")?.withTintColor(.fourthColor, renderingMode: .alwaysOriginal)
         
         let bookmarkIconAttachment = NSTextAttachment()
         bookmarkIconAttachment.image = bookmarkIcon
