@@ -203,8 +203,8 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
     }
     
     private func updateInfoLabel() {
-        let bookmarkIcon = UIImage(systemName: "bookmark.fill")?.withTintColor(.blue, renderingMode: .alwaysOriginal)
-        let friendsIcon = UIImage(systemName: "person.fill")?.withTintColor(.blue, renderingMode: .alwaysOriginal)
+        let bookmarkIcon = UIImage(systemName: "bookmark.fill")?.withTintColor(.fourthColor, renderingMode: .alwaysOriginal)
+        let friendsIcon = UIImage(systemName: "person.fill")?.withTintColor(.fourthColor, renderingMode: .alwaysOriginal)
         
         let bookmarkIconAttachment = NSTextAttachment()
         bookmarkIconAttachment.image = bookmarkIcon
