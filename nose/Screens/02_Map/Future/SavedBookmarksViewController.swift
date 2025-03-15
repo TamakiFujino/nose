@@ -145,6 +145,9 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
         }
     }
     
+    func centerMapOnPOI(latitude: Double, longitude: Double) {
+    }
+    
     // MARK: - Showing POIs on Map
     
     func showSavedPOIMarkers() {

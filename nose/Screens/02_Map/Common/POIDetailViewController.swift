@@ -14,6 +14,7 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
     var photos: [UIImage] = [] // Array to hold POI photos
     var latitude: Double?
     var longitude: Double?
+    var showBookmarkIcon: Bool = true // New property to control bookmark icon visibility
 
     var tableView: UITableView!
     var collectionView: UICollectionView!
@@ -57,16 +58,18 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
         ])
         
         // Add content to StackView
-        // Create the icon button
-        let iconButton = UIButton(type: .system)
-        // set the icon button to right-aligned
-        iconButton.contentHorizontalAlignment = .right
-        iconButton.tintColor = .systemBlue
-        iconButton.translatesAutoresizingMaskIntoConstraints = false
-        iconButton.addTarget(self, action: #selector(iconButtonTapped), for: .touchUpInside)
-        stackView.addArrangedSubview(iconButton)
-        
-        updateIconButtonImage(iconButton)
+        if showBookmarkIcon {
+            // Create the icon button
+            let iconButton = UIButton(type: .system)
+            // set the icon button to right-aligned
+            iconButton.contentHorizontalAlignment = .right
+            iconButton.tintColor = .systemBlue
+            iconButton.translatesAutoresizingMaskIntoConstraints = false
+            iconButton.addTarget(self, action: #selector(iconButtonTapped), for: .touchUpInside)
+            stackView.addArrangedSubview(iconButton)
+            
+            updateIconButtonImage(iconButton)
+        }
         
         let nameLabel = UILabel()
         nameLabel.text = placeName

@@ -1,10 +1,9 @@
 import UIKit
-import GoogleMaps
-import GooglePlaces
 
 protocol POIsViewControllerDelegate: AnyObject {
     func didDeleteBookmarkList()
     func didCompleteBookmarkList(_ bookmarkList: BookmarkList)
+    func centerMapOnPOI(latitude: Double, longitude: Double) // Delegate method
 }
 
 class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
@@ -16,7 +15,7 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
     weak var delegate: POIsViewControllerDelegate?
     var infoLabel: UILabel!
     var isFromPastMap: Bool = false
-    
+
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -178,8 +177,14 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
         detailVC.latitude = poi.latitude
         detailVC.longitude = poi.longitude
         
+        // Set the showBookmarkIcon property to false
+        detailVC.showBookmarkIcon = false
+        
         // Save the selected POI
         BookmarksManager.shared.savePOI(for: loggedInUser, placeID: poi.placeID)
+        
+        // Center the map to the selected POI
+        delegate?.centerMapOnPOI(latitude: poi.latitude, longitude: poi.longitude)
         
         // Presenting details for POI
         detailVC.modalPresentationStyle = .pageSheet
