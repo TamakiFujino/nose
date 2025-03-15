@@ -4,22 +4,40 @@ class BookmarksManager {
     static let shared = BookmarksManager()
     
     private(set) var bookmarkLists: [BookmarkList] = []
+    private(set) var sharedBookmarkLists: [BookmarkList] = []
     private(set) var completedLists: [BookmarkList] = []
     
     private init() {
         loadBookmarkLists()
+        loadSharedBookmarkLists()
         loadCompletedLists()
     }
     
+    // MARK: - Bookmark List Management
+    
     func createBookmarkList(name: String) {
-        let newList = BookmarkList(name: name, bookmarks: [], sharedWithFriends: [])
+        let newList = BookmarkList(name: name, bookmarks: [])
         bookmarkLists.append(newList)
+        saveBookmarkLists()
+    }
+    
+    func saveBookmarkList(_ list: BookmarkList) {
+        if let index = bookmarkLists.firstIndex(where: { $0.id == list.id }) {
+            bookmarkLists[index] = list
+        } else {
+            bookmarkLists.append(list)
+        }
         saveBookmarkLists()
     }
     
     func deleteBookmarkList(_ list: BookmarkList) {
         bookmarkLists.removeAll { $0.id == list.id }
         saveBookmarkLists()
+    }
+    
+    func deleteSharedBookmarkList(_ list: BookmarkList) {
+        sharedBookmarkLists.removeAll { $0.id == list.id }
+        saveSharedBookmarkLists()
     }
     
     func completeBookmarkList(_ list: BookmarkList) {
@@ -31,36 +49,66 @@ class BookmarksManager {
         }
     }
     
-    func saveBookmarkList(_ list: BookmarkList) {
-        if let index = bookmarkLists.firstIndex(where: { $0.id == list.id }) {
-            bookmarkLists[index] = list
-            saveBookmarkLists()
+    // MARK: - Data Persistence
+    
+    private func saveBookmarkLists() {
+        if let data = try? JSONEncoder().encode(bookmarkLists) {
+            UserDefaults.standard.set(data, forKey: "bookmarkLists")
         }
     }
     
-    func saveBookmarkLists() {
-        // Implement saving logic here
+    private func saveSharedBookmarkLists() {
+        if let data = try? JSONEncoder().encode(sharedBookmarkLists) {
+            UserDefaults.standard.set(data, forKey: "sharedBookmarkLists")
+        }
     }
     
-    func saveCompletedLists() {
-        // Implement saving logic here
+    private func saveCompletedLists() {
+        if let data = try? JSONEncoder().encode(completedLists) {
+            UserDefaults.standard.set(data, forKey: "completedLists")
+        }
     }
     
-    func loadBookmarkLists() {
-        // Implement loading logic here
-        bookmarkLists = [] // Replace with actual loading logic
+    private func loadBookmarkLists() {
+        if let data = UserDefaults.standard.data(forKey: "bookmarkLists"),
+           let lists = try? JSONDecoder().decode([BookmarkList].self, from: data) {
+            bookmarkLists = lists
+        }
     }
     
-    func loadCompletedLists() {
-        // Implement loading logic here
-        completedLists = [] // Replace with actual loading logic
+    private func loadSharedBookmarkLists() {
+        if let data = UserDefaults.standard.data(forKey: "sharedBookmarkLists"),
+           let lists = try? JSONDecoder().decode([BookmarkList].self, from: data) {
+            sharedBookmarkLists = lists
+        }
     }
+    
+    private func loadCompletedLists() {
+        if let data = UserDefaults.standard.data(forKey: "completedLists"),
+           let lists = try? JSONDecoder().decode([BookmarkList].self, from: data) {
+            completedLists = lists
+        }
+    }
+    
+    // MARK: - POI Management
     
     func savePOI(for user: String, placeID: String) {
-        // Implement saving logic here
+        var userPOIs = UserDefaults.standard.array(forKey: user) as? [String] ?? []
+        if !userPOIs.contains(placeID) {
+            userPOIs.append(placeID)
+            UserDefaults.standard.set(userPOIs, forKey: user)
+        }
+    }
+    
+    func loadPOIs(for user: String) -> [String] {
+        return UserDefaults.standard.array(forKey: user) as? [String] ?? []
     }
     
     func deletePOI(for user: String, placeID: String) {
-        // Implement deleting logic here
+        var userPOIs = UserDefaults.standard.array(forKey: user) as? [String] ?? []
+        if let index = userPOIs.firstIndex(of: placeID) {
+            userPOIs.remove(at: index)
+            UserDefaults.standard.set(userPOIs, forKey: user)
+        }
     }
 }
