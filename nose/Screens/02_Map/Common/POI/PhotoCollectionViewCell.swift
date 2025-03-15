@@ -1,17 +1,16 @@
-// this sript is to display photos of POIs
 import UIKit
 
 class PhotoCollectionViewCell: UICollectionViewCell {
-    
-    let imageView: UIImageView
+    var imageView: UIImageView!
     
     override init(frame: CGRect) {
+        super.init(frame: frame)
         imageView = UIImageView(frame: .zero)
         imageView.contentMode = .scaleAspectFill
         imageView.clipsToBounds = true
-        super.init(frame: frame)
-        contentView.addSubview(imageView)
         imageView.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(imageView)
+        
         NSLayoutConstraint.activate([
             imageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
             imageView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),

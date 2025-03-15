@@ -1,4 +1,6 @@
 import UIKit
+import GooglePlaces
+import GoogleMaps
 
 class POIDetailViewController: UIViewController, UITableViewDelegate, UITableViewDataSource, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
 
@@ -137,6 +139,9 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
         NSLayoutConstraint.activate([
             tableView.heightAnchor.constraint(equalToConstant: 200) // Adjust as needed
         ])
+        
+        // Fetch photos
+        fetchPhotos()
     }
     
     func createAttributedTextWithIcon(text: String, icon: UIImage?) -> NSAttributedString {
@@ -208,6 +213,39 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
         }
         print("POI not found in any list")
         return false
+    }
+
+    // MARK: - Fetch Photos
+
+    private func fetchPhotos() {
+        guard let placeID = placeID else { return }
+        let placesClient = GMSPlacesClient.shared()
+        placesClient.lookUpPhotos(forPlaceID: placeID) { [weak self] (photosMetadataList: GMSPlacePhotoMetadataList?, error: Error?) in
+            guard let strongSelf = self else { return }
+            if let error = error {
+                print("Error fetching photos: \(error)")
+                return
+            }
+            
+            guard let photosMetadataList = photosMetadataList else {
+                print("No photos found")
+                return
+            }
+            
+            for photoMetadata in photosMetadataList.results {
+                placesClient.loadPlacePhoto(photoMetadata) { (photo: UIImage?, error: Error?) in
+                    if let error = error {
+                        print("Error loading photo: \(error)")
+                        return
+                    }
+                    
+                    if let photo = photo {
+                        strongSelf.photos.append(photo)
+                        strongSelf.collectionView.reloadData()
+                    }
+                }
+            }
+        }
     }
 
     // MARK: - UITableViewDataSource
