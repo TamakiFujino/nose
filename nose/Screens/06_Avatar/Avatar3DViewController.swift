@@ -16,7 +16,8 @@ class Avatar3DViewController: UIViewController {
         
         setupARView()
         loadAvatarModel()
-        setupCamera()
+        setupCameraPosition()
+        setupBaseEntity()
         addGroundPlaneWithShadow()
         addDirectionalLight()
         loadSelectionState()
@@ -77,14 +78,7 @@ class Avatar3DViewController: UIViewController {
                 print("baseEntity size: \(bounds.extents)")
             }
             
-            // Rotate the model (Y-axis for turning left/right, X for tilting forward/back)
-            baseEntity?.transform.rotation = simd_quatf(angle: .pi / 6, axis: [0, -0.8, 0])
-            
-            let anchor = AnchorEntity(world: [0, 0, 0]) // Place in world space
-            if let baseEntity = baseEntity {
-                anchor.addChild(baseEntity)
-            }
-            arView.scene.anchors.append(anchor)
+            setupBaseEntity()
             
             // Load the saved or default models and apply colors for each category
             for (category, modelName) in savedModels {
@@ -141,10 +135,10 @@ class Avatar3DViewController: UIViewController {
         }
     }
     
-    func setupCamera() {
+    func setupCameraPosition(position: SIMD3<Float> = SIMD3<Float>(0.0, -4.0, 16.0)) {
         // Create a camera entity
         let cameraEntity = PerspectiveCamera()
-        cameraEntity.transform.translation = SIMD3<Float>(0.0, -4.0, 16.0) // Position the camera
+        cameraEntity.transform.translation = position // Position the camera
         
         // Create a camera anchor to hold the camera entity
         let cameraAnchor = AnchorEntity()
@@ -152,6 +146,17 @@ class Avatar3DViewController: UIViewController {
         
         // Add the camera anchor to the scene
         arView.scene.anchors.append(cameraAnchor)
+    }
+    
+    func setupBaseEntity() {
+        guard let baseEntity = baseEntity else { return }
+
+        // Rotate the model (Y-axis for turning left/right, X for tilting forward/back)
+        baseEntity.transform.rotation = simd_quatf(angle: .pi / 6, axis: [0, -0.8, 0])
+        
+        let anchor = AnchorEntity(world: [0, 0, 0]) // Place in world space
+        anchor.addChild(baseEntity)
+        arView.scene.anchors.append(anchor)
     }
     
     func saveChosenModelsAndColors() {
