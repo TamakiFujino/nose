@@ -11,6 +11,10 @@ class Avatar3DViewController: UIViewController {
     var selectedItem: Any? // Replace `Any` with the appropriate type for your selected item
     var cancellables: [AnyCancellable] = []
     
+    var skinColor: UIColor? {
+        return chosenColors["skin"]
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -136,17 +140,17 @@ class Avatar3DViewController: UIViewController {
     }
     
     func setupCameraPosition(position: SIMD3<Float> = SIMD3<Float>(0.0, -4.0, 16.0)) {
-        // Create a camera entity
-        let cameraEntity = PerspectiveCamera()
-        cameraEntity.transform.translation = position // Position the camera
-        
-        // Create a camera anchor to hold the camera entity
-        let cameraAnchor = AnchorEntity()
-        cameraAnchor.addChild(cameraEntity)
-        
-        // Add the camera anchor to the scene
-        arView.scene.anchors.append(cameraAnchor)
-    }
+            // Create a camera entity
+            let cameraEntity = PerspectiveCamera()
+            cameraEntity.transform.translation = position // Position the camera
+            
+            // Create a camera anchor to hold the camera entity
+            let cameraAnchor = AnchorEntity()
+            cameraAnchor.addChild(cameraEntity)
+            
+            // Add the camera anchor to the scene
+            arView.scene.anchors.append(cameraAnchor)
+        }
     
     func setupBaseEntity() {
         guard let baseEntity = baseEntity else { return }

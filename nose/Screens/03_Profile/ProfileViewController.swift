@@ -77,8 +77,9 @@ class ProfileViewController: UIViewController {
         view.bringSubviewToFront(friendButton)
         view.bringSubviewToFront(avatarButton)
         
-        // Modify camera position and base entity if needed
+        // Modify camera position and base entity, and apply skin color
         setupCustomCameraAndEntity()
+        applySkinColor()
     }
     
     @objc func settingButtonTapped() {
@@ -98,11 +99,20 @@ class ProfileViewController: UIViewController {
     
     private func setupCustomCameraAndEntity() {
         // Custom camera position for ProfileViewController
-        let customCameraPosition = SIMD3<Float>(0.1, -0.5, 10)
-        avatar3DViewController.setupCameraPosition(position: customCameraPosition)
+        let customCameraPosition = SIMD3<Float>(0.0, -0.5, 10)
+        
+        DispatchQueue.main.async {
+            self.avatar3DViewController.setupCameraPosition(position: customCameraPosition)
+        }
         
         // Customize baseEntity if needed
-        // For example, different rotation or position
-        avatar3DViewController.baseEntity?.transform.rotation = simd_quatf(angle: .pi / 4, axis: [0, -0.6, 0])
+        self.avatar3DViewController.baseEntity?.transform.rotation = simd_quatf(angle: .pi / 4, axis: [0, -0.4, 0])
+    }
+    
+    private func applySkinColor() {
+        // Apply the skin color from avatar3DViewController
+        if let skinColor = avatar3DViewController.skinColor {
+            avatar3DViewController.changeSkinColor(to: skinColor)
+        }
     }
 }
