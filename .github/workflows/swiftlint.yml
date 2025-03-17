@@ -15,6 +15,10 @@ jobs:
       - name: Run SwiftLint　Auto-fix
         run: swiftlint --fix
 
+      - name: Check for Changes
+        id: git_status
+        run: echo "::set-output name=changed::$(git status --porcelain | wc -l)"
+
       - name: Commit and Push Fixes
         run: |
           git config --global user.name 'github-actions[bot]'
