@@ -27,7 +27,7 @@ jobs:
           xcodebuild test \
           -workspace YourApp.xcworkspace \
           -scheme YourApp \
-          -destination 'platform=iOS Simulator,name=iPhone 14' \
+          -destination 'platform=iOS Simulator,name=iPhone 18' \
           | xcpretty
 
       - name: Run UI Tests
@@ -35,7 +35,7 @@ jobs:
           xcodebuild test \
           -workspace YourApp.xcworkspace \
           -scheme YourApp \
-          -destination 'platform=iOS Simulator,name=iPhone 14' \
+          -destination 'platform=iOS Simulator,name=iPhone 18' \
           | xcpretty
 
       - name: Build and Archive
@@ -47,7 +47,7 @@ jobs:
           -archivePath $GITHUB_WORKSPACE/build/YourApp.xcarchive
 
       - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: app-build
           path: build/YourApp.xcarchive
