@@ -8,12 +8,31 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        
+      - name: Install Dependencies
+        run: pod install
 
       - name: Install SwiftLint
         run: brew install swiftlint
 
       - name: Run SwiftLint　Auto-fix
         run: swiftlint --fix
+        
+      - name: Run Unit Tests
+        run: |
+          xcodebuild test \
+          -workspace nose.xcworkspace \
+          -scheme nose \
+          -destination 'platform=iOS Simulator,name=iPhone 18' \
+          | xcpretty
+
+      - name: Run UI Tests
+        run: |
+          xcodebuild test \
+          -workspace nose.xcworkspace \
+          -scheme nose \
+          -destination 'platform=iOS Simulator,name=iPhone 18' \
+          | xcpretty
 
       - name: Check for Changes
         id: git_status
@@ -26,3 +45,17 @@ jobs:
           git add .
           git commit -m "Fix SwiftLint issues"
           git push
+          
+    - name: Build and Archive
+        run: |
+          xcodebuild clean archive \
+          -workspace YourApp.xcworkspace \
+          -scheme YourApp \
+          -destination 'generic/platform=iOS' \
+          -archivePath $GITHUB_WORKSPACE/build/YourApp.xcarchive
+          
+    - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-build
+          path: build/*.ipa
