@@ -1,7 +1,7 @@
 import UIKit
 
 class SettingViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
-    
+
     let tableView = UITableView()
 
     // Define setting categories and items
@@ -9,10 +9,10 @@ class SettingViewController: UIViewController, UITableViewDelegate, UITableViewD
         ("Profile", ["Name", "Account"]),
         ("About", ["Privacy Policy", "Terms of Service", "App Version", "Licenses"])
     ]
-    
+
     override func viewDidLoad() {
         super.viewDidLoad()
-        
+
         let backButton = UIBarButtonItem()
         backButton.title = ""  // Hide the "Back" text
         self.navigationItem.backBarButtonItem = backButton
@@ -23,7 +23,7 @@ class SettingViewController: UIViewController, UITableViewDelegate, UITableViewD
 
         // Set up navigation bar
         setupNavigationBar()
-        
+
         setupTableView()
     }
 
@@ -31,7 +31,7 @@ class SettingViewController: UIViewController, UITableViewDelegate, UITableViewD
         navigationItem.title = "Settings"
         self.navigationController?.navigationBar.tintColor = .black
     }
-    
+
     func setupTableView() {
         tableView.delegate = self
         tableView.dataSource = self
@@ -39,7 +39,7 @@ class SettingViewController: UIViewController, UITableViewDelegate, UITableViewD
         tableView.translatesAutoresizingMaskIntoConstraints = false
         tableView.backgroundColor = .clear // Remove the background color
         view.addSubview(tableView)
-        
+
         // Constraints for TableView
         NSLayoutConstraint.activate([
             tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
@@ -48,17 +48,17 @@ class SettingViewController: UIViewController, UITableViewDelegate, UITableViewD
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
     }
-    
+
     // MARK: - TableView DataSource
-    
+
     func numberOfSections(in tableView: UITableView) -> Int {
         return settingsData.count
     }
-    
+
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return settingsData[section].items.count
     }
-    
+
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let item = settingsData[indexPath.section].items[indexPath.row]
         let cell: UITableViewCell
@@ -75,22 +75,22 @@ class SettingViewController: UIViewController, UITableViewDelegate, UITableViewD
             cell.textLabel?.text = item
             cell.accessoryType = .disclosureIndicator  // Add arrow to indicate navigation
         }
-        
+
         cell.backgroundColor = .clear // Remove the background color of each cell
         return cell
     }
-    
+
     // Set section headers
     func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
         return settingsData[section].category
     }
-    
+
     // Handle selection of a setting option
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
 
         let selectedSetting = settingsData[indexPath.section].items[indexPath.row]
-        
+
         if selectedSetting == "Name" {
             let nameupdateVC = NameUpdateViewController()
             navigationController?.pushViewController(nameupdateVC, animated: true)

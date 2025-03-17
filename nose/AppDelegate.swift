@@ -7,13 +7,13 @@ import GoogleSignIn
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
-    
+
     var window: UIWindow?
-    
+
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        
+
         FirebaseApp.configure()
-        
+
         // Initialize Google sign-in
         GIDSignIn.sharedInstance.restorePreviousSignIn { user, error in
             if error != nil || user == nil {
@@ -22,28 +22,28 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 // Show the app's signed-in state.
             }
         }
-        
+
         do {
             try Auth.auth().useUserAccessGroup(nil) // Ensures persistence
         } catch let error {
             print("Error enabling Auth persistence: \(error.localizedDescription)")
         }
-        
+
         // Attempt to load the API key from Config.plist
         if let path = Bundle.main.path(forResource: "Config", ofType: "plist"),
            let config = NSDictionary(contentsOfFile: path),
            let apiKey = config["GoogleMapsAPIKey"] as? String, !apiKey.isEmpty {
-            
+
             // Provide API Key to Google Maps and Places SDK
             GMSServices.provideAPIKey(apiKey)
             GMSPlacesClient.provideAPIKey(apiKey)
-            
+
             print("Google Maps API Key Loaded Successfully!")
-            
+
         } else {
             print("Failed to load Google Maps API Key. Check Config.plist.")
         }
-        
+
         return true
     }
 
@@ -51,12 +51,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         if GIDSignIn.sharedInstance.handle(url) {
             return true
         }
-        
+
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
               let host = components.host else {
             return false
         }
-        
+
         if host == "bookmark" {
             if let queryItems = components.queryItems,
                let id = queryItems.first(where: { $0.name == "id" })?.value {
@@ -64,7 +64,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 return true
             }
         }
-        
+
         return false
     }
 

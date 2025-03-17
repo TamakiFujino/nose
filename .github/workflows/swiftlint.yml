@@ -1,0 +1,24 @@
+name: SwiftLint Check
+
+on: [push, pull_request]
+
+jobs:
+  lint:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install SwiftLint
+        run: brew install swiftlint
+
+      - name: Run SwiftLint　Auto-fix
+        run: swiftlint --fix
+
+      - name: Commit and Push Fixes
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add .
+          git commit -m "Fix SwiftLint issues"
+          git push

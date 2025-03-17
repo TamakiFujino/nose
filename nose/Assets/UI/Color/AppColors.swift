@@ -3,7 +3,7 @@ import UIKit
 extension UIColor {
     static func fromHex(_ hex: String) -> UIColor {
         var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-        
+
         if hexSanitized.hasPrefix("#") {
             hexSanitized.remove(at: hexSanitized.startIndex)
         }

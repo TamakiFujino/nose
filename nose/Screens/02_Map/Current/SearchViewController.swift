@@ -7,38 +7,38 @@ class SearchViewController: UIViewController, UISearchBarDelegate, UITableViewDe
     var placesClient = GMSPlacesClient.shared()
     var predictions: [GMSAutocompletePrediction] = []
     var backButton: UIButton!
-    
+
     weak var mainViewController: HomeViewController?
-    
+
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
         setupConstraints()
     }
-    
+
     private func setupUI() {
         view.backgroundColor = .white
-        
+
         backButton = UIButton(type: .system)
         backButton.setImage(UIImage(systemName: "chevron.left"), for: .normal)
         backButton.tintColor = .black
         backButton.addTarget(self, action: #selector(backButtonTapped), for: .touchUpInside)
         backButton.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(backButton)
-        
+
         searchBar = UISearchBar()
         searchBar.placeholder = "Search for a place"
         searchBar.delegate = self
         searchBar.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(searchBar)
-        
+
         tableView = UITableView()
         tableView.delegate = self
         tableView.dataSource = self
         tableView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(tableView)
     }
-    
+
     private func setupConstraints() {
         NSLayoutConstraint.activate([
             backButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
@@ -52,11 +52,11 @@ class SearchViewController: UIViewController, UISearchBarDelegate, UITableViewDe
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
     }
-    
+
     @objc private func backButtonTapped() {
         dismiss(animated: true, completion: nil)
     }
-    
+
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
         let filter = GMSAutocompleteFilter()
         placesClient.findAutocompletePredictions(fromQuery: searchText, filter: filter, sessionToken: nil) { [weak self] (results, error) in
@@ -68,11 +68,11 @@ class SearchViewController: UIViewController, UISearchBarDelegate, UITableViewDe
             self?.tableView.reloadData()
         }
     }
-    
+
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return predictions.count
     }
-    
+
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "cell")
         let prediction = predictions[indexPath.row]
@@ -80,7 +80,7 @@ class SearchViewController: UIViewController, UISearchBarDelegate, UITableViewDe
         cell.detailTextLabel?.text = prediction.attributedSecondaryText?.string
         return cell
     }
-    
+
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let prediction = predictions[indexPath.row]
         dismiss(animated: true) {

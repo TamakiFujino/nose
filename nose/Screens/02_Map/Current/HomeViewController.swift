@@ -4,28 +4,28 @@ import GooglePlaces
 import CoreLocation
 
 class HomeViewController: UIViewController {
-    
+
     var mapContainerViewController: MapContainerViewController!
     var locationManager = CLLocationManager()
     var placesClient: GMSPlacesClient!
-    
+
     var hasShownHalfModal = false
-    
+
     override func viewDidLoad() {
         super.viewDidLoad()
         setupGooglePlacesClient()
         setupLocationManager()
         setupMapContainer()
-        
+
         mapContainerViewController.slider.addTarget(self, action: #selector(sliderValueChanged), for: .valueChanged)
         mapContainerViewController.searchButton.addTarget(self, action: #selector(searchButtonTapped), for: .touchUpInside)
         mapContainerViewController.profileButton.addTarget(self, action: #selector(profileButtonTapped), for: .touchUpInside)
     }
-    
+
     private func setupGooglePlacesClient() {
         placesClient = GMSPlacesClient.shared()
     }
-    
+
     private func setupMapContainer() {
         mapContainerViewController = MapContainerViewController()
         addChild(mapContainerViewController)
@@ -34,13 +34,13 @@ class HomeViewController: UIViewController {
         mapContainerViewController.didMove(toParent: self)
         view.sendSubviewToBack(mapContainerViewController.view)
     }
-    
+
     private func setupLocationManager() {
         locationManager.delegate = self
         locationManager.requestWhenInUseAuthorization()
         locationManager.startUpdatingLocation()
     }
-    
+
     // Hide navigation bar including back button
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
@@ -51,7 +51,7 @@ class HomeViewController: UIViewController {
         super.viewWillDisappear(animated)
         navigationController?.setNavigationBarHidden(false, animated: animated)
     }
-    
+
     // MARK: - Button actions
     @objc private func searchButtonTapped() {
         let searchVC = SearchViewController()
@@ -59,24 +59,24 @@ class HomeViewController: UIViewController {
         searchVC.mainViewController = self
         present(searchVC, animated: true, completion: nil)
     }
-    
+
     @objc private func profileButtonTapped() {
         print("Profile button tapped")
         let profileVC = ProfileViewController()
         navigationController?.pushViewController(profileVC, animated: true)
     }
-    
+
     @objc private func sliderValueChanged(_ sender: CustomSlider) {
         let step: Float = 50
         let newValue = round(sender.value / step) * step
-        
+
         UIView.animate(withDuration: 0.3) {
             sender.setValue(newValue, animated: true)
         }
-        
+
         updateUIForSliderValue(newValue)
     }
-    
+
     private func updateUIForSliderValue(_ value: Float) {
         switch value {
         case 0:
@@ -86,12 +86,12 @@ class HomeViewController: UIViewController {
             mapContainerViewController.buttonA.isHidden = false
             mapContainerViewController.searchButton.isHidden = true
             mapContainerViewController.savedButton.isHidden = true
-            
+
         case 50:
             mapContainerViewController.buttonA.isHidden = true
             mapContainerViewController.searchButton.isHidden = false
             mapContainerViewController.savedButton.isHidden = true
-            
+
         case 100:
             if !hasShownHalfModal {
                 presentSavedBookmarksModal()
@@ -99,7 +99,7 @@ class HomeViewController: UIViewController {
             mapContainerViewController.buttonA.isHidden = true
             mapContainerViewController.searchButton.isHidden = true
             mapContainerViewController.savedButton.isHidden = false
-            
+
         default:
             hasShownHalfModal = false
             mapContainerViewController.mapView.clear()
@@ -108,7 +108,7 @@ class HomeViewController: UIViewController {
             mapContainerViewController.savedButton.isHidden = true
         }
     }
-    
+
     private func presentZeroSliderModal() {
         hasShownHalfModal = true
         let zeroSliderModalVC = PastMapMainViewController()
@@ -118,7 +118,7 @@ class HomeViewController: UIViewController {
         }
         present(zeroSliderModalVC, animated: true, completion: nil)
     }
-    
+
     private func presentSavedBookmarksModal() {
         hasShownHalfModal = true
         let savedBookmarksVC = SavedBookmarksViewController()
@@ -136,14 +136,14 @@ extension HomeViewController: GMSMapViewDelegate {
     func mapView(_ mapView: GMSMapView, didTapPOIWithPlaceID placeID: String, name: String, location: CLLocationCoordinate2D) {
         fetchPlaceDetailsAndPresent(placeID: placeID, name: name, location: location)
     }
-    
+
     func fetchPlaceDetailsAndPresent(placeID: String, name: String, location: CLLocationCoordinate2D?) {
         placesClient.lookUpPlaceID(placeID) { [weak self] (place, error) in
             if let error = error {
                 print("Error getting place details: \(error.localizedDescription)")
                 return
             }
-            
+
             if let place = place {
                 self?.fetchPhotos(forPlaceID: placeID) { photos in
                     DispatchQueue.main.async {
@@ -177,7 +177,7 @@ extension HomeViewController: GMSMapViewDelegate {
             }
         }
     }
-    
+
     private func fetchPhotos(forPlaceID placeID: String, completion: @escaping ([UIImage]) -> Void) {
         placesClient.lookUpPhotos(forPlaceID: placeID) { (photosMetadata, error) in
             if let error = error {
@@ -185,25 +185,25 @@ extension HomeViewController: GMSMapViewDelegate {
                 completion([])
                 return
             }
-            
+
             guard let photosMetadata = photosMetadata else {
                 completion([])
                 return
             }
-            
+
             var photos: [UIImage] = []
             let dispatchGroup = DispatchGroup()
-            
+
             for photoMetadata in photosMetadata.results {
                 dispatchGroup.enter()
-                self.placesClient.loadPlacePhoto(photoMetadata) { (photo, error) in
+                self.placesClient.loadPlacePhoto(photoMetadata) { (photo, _) in
                     if let photo = photo {
                         photos.append(photo)
                     }
                     dispatchGroup.leave()
                 }
             }
-            
+
             dispatchGroup.notify(queue: .main) {
                 completion(photos)
             }
@@ -219,7 +219,7 @@ extension HomeViewController: CLLocationManagerDelegate {
             mapContainerViewController.mapView.animate(to: camera)
         }
     }
-    
+
     func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
         if status == .denied {
             print("Location access denied")

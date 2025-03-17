@@ -74,6 +74,11 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		4984014E2D886D9F00A6288A /* .github */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = .github;
+			sourceTree = "<group>";
+		};
 		49E99BF82D3BE432000F3CE5 /* nose */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -135,6 +140,7 @@
 		49E99BED2D3BE432000F3CE5 = {
 			isa = PBXGroup;
 			children = (
+				4984014E2D886D9F00A6288A /* .github */,
 				4984E6CA2D731BC600A6288A /* Localizable.xcstrings */,
 				49E99BF82D3BE432000F3CE5 /* nose */,
 				49E99C0F2D3BE433000F3CE5 /* noseTests */,
@@ -178,18 +184,20 @@
 			buildConfigurationList = 49E99C1F2D3BE433000F3CE5 /* Build configuration list for PBXNativeTarget "nose" */;
 			buildPhases = (
 				9B447F3E062ECE441867FA10 /* [CP] Check Pods Manifest.lock */,
+				4984FE652D87CD8800A6288A /* Run SwiftLint */,
 				49E99BF22D3BE432000F3CE5 /* Sources */,
 				49E99BF32D3BE432000F3CE5 /* Frameworks */,
 				49E99BF42D3BE432000F3CE5 /* Resources */,
 				E246C560345B1D8DF767534B /* [CP] Embed Pods Frameworks */,
-				85FCED4BCD8E713701DFE607 /* [CP] Copy Pods Resources */,
 				4905FC472D663428000EDA11 /* Embed Frameworks */,
+				85FCED4BCD8E713701DFE607 /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
+				4984014E2D886D9F00A6288A /* .github */,
 				49E99BF82D3BE432000F3CE5 /* nose */,
 			);
 			name = nose;
@@ -353,6 +361,25 @@
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-nose-noseUITests/Pods-nose-noseUITests-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
+		};
+		4984FE652D87CD8800A6288A /* Run SwiftLint */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Run SwiftLint";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "export PATH=\"/opt/homebrew/bin:$PATH\"\nif which swiftlint >/dev/null; then\n    swiftlint --quiet --reporter xcode\nelse\n    echo \"warning: SwiftLint not installed, run 'brew install swiftlint'\"\nfi\n";
 		};
 		85FCED4BCD8E713701DFE607 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;

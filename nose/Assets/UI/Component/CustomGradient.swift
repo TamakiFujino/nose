@@ -1,17 +1,17 @@
 import UIKit
 
 class CustomGradientView: UIView {
-    
+
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupGradient()
     }
-    
+
     required init?(coder: NSCoder) {
         super.init(coder: coder)
         setupGradient()
     }
-    
+
     private func setupGradient() {
         let gradientLayer = CAGradientLayer()
         gradientLayer.frame = bounds

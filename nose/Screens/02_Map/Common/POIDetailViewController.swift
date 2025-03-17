@@ -25,38 +25,38 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .white
-        
+
         // Debug print to check initial state
         print("POIDetailViewController loaded with placeID: \(placeID ?? "nil")")
         print("Bookmark lists count: \(bookmarkLists.count)")
         for list in bookmarkLists {
             print("Bookmark list: \(list.name) with \(list.bookmarks.count) POIs")
         }
-        
+
         // Initialize ScrollView and StackView
         scrollView = UIScrollView()
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(scrollView)
-        
+
         stackView = UIStackView()
         stackView.axis = .vertical
         stackView.spacing = 10
         stackView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.addSubview(stackView)
-        
+
         NSLayoutConstraint.activate([
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.topAnchor.constraint(equalTo: view.topAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            
+
             stackView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor, constant: 20),
             stackView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor, constant: -20),
             stackView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: 20),
             stackView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -20),
             stackView.widthAnchor.constraint(equalTo: scrollView.widthAnchor, constant: -40) // Adjust width to account for left and right margins
         ])
-        
+
         // Add content to StackView
         if showBookmarkIcon {
             // Create the icon button
@@ -67,10 +67,10 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
             iconButton.translatesAutoresizingMaskIntoConstraints = false
             iconButton.addTarget(self, action: #selector(iconButtonTapped), for: .touchUpInside)
             stackView.addArrangedSubview(iconButton)
-            
+
             updateIconButtonImage(iconButton)
         }
-        
+
         let nameLabel = UILabel()
         nameLabel.text = placeName
         nameLabel.textAlignment = .left
@@ -113,12 +113,12 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
         openingHoursLabel.numberOfLines = 0
         openingHoursLabel.translatesAutoresizingMaskIntoConstraints = false
         stackView.addArrangedSubview(openingHoursLabel)
-        
+
         // Create the collection view layout
         let layout = UICollectionViewFlowLayout()
         layout.itemSize = CGSize(width: 100, height: 100)
         layout.scrollDirection = .horizontal
-        
+
         // Initialize the collection view
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.dataSource = self
@@ -142,11 +142,11 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
         NSLayoutConstraint.activate([
             tableView.heightAnchor.constraint(equalToConstant: 200) // Adjust as needed
         ])
-        
+
         // Fetch photos
         fetchPhotos()
     }
-    
+
     func createAttributedTextWithIcon(text: String, icon: UIImage?) -> NSAttributedString {
         let attachment = NSTextAttachment()
         attachment.image = icon?.withTintColor(.label) // Adjust the icon color if needed
@@ -178,12 +178,12 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
         bookmarkedPOIsVC.openingHours = openingHours
         bookmarkedPOIsVC.latitude = latitude
         bookmarkedPOIsVC.longitude = longitude
-        
+
         // Debug prints to verify properties
         print("Transitioning to BookmarkedPOIsViewController with:")
         print("placeID: \(placeID ?? "nil")")
         print("placeName: \(placeName ?? "nil")")
-        
+
         bookmarkedPOIsVC.modalPresentationStyle = .fullScreen
         present(bookmarkedPOIsVC, animated: true, completion: nil)
     }
@@ -229,19 +229,19 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
                 print("Error fetching photos: \(error)")
                 return
             }
-            
+
             guard let photosMetadataList = photosMetadataList else {
                 print("No photos found")
                 return
             }
-            
+
             for photoMetadata in photosMetadataList.results {
                 placesClient.loadPlacePhoto(photoMetadata) { (photo: UIImage?, error: Error?) in
                     if let error = error {
                         print("Error loading photo: \(error)")
                         return
                     }
-                    
+
                     if let photo = photo {
                         strongSelf.photos.append(photo)
                         strongSelf.collectionView.reloadData()

@@ -3,28 +3,28 @@ import GoogleMaps
 import GooglePlaces
 
 class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, POIsViewControllerDelegate {
-    
+
     var tableView: UITableView!
     var bookmarkLists: [BookmarkList] = []
     var messageLabel: UILabel!
     weak var mapView: GMSMapView?
-    
+
     override func viewDidLoad() {
         super.viewDidLoad()
-        
+
         view.backgroundColor = .white
         setupTableView()
         setupMessageLabel()
         setupConstraints()
-        
+
         // Load bookmark lists
         bookmarkLists = BookmarksManager.shared.bookmarkLists
         updateMessageVisibility()
-        
+
         // Show saved POIs on the map
         showSavedPOIMarkers()
     }
-    
+
     private func setupTableView() {
         tableView = UITableView(frame: .zero, style: .plain)
         tableView.dataSource = self
@@ -33,7 +33,7 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
         tableView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(tableView)
     }
-    
+
     private func setupMessageLabel() {
         messageLabel = UILabel()
         messageLabel.text = "No bookmark lists created yet."
@@ -42,14 +42,14 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
         messageLabel.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(messageLabel)
     }
-    
+
     private func setupConstraints() {
         NSLayoutConstraint.activate([
             tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            
+
             messageLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             messageLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor)
         ])
@@ -100,14 +100,14 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        
+
         let selectedList = bookmarkLists[indexPath.row]
-        
+
         // Present POIsViewController to display saved POIs for the selected bookmark list
         let poisVC = POIsViewController()
         poisVC.bookmarkList = selectedList
         poisVC.delegate = self
-        
+
         // Update to add a navigation bar to the half modal
         let navigationController = UINavigationController(rootViewController: poisVC)
         navigationController.modalPresentationStyle = .pageSheet
@@ -116,16 +116,16 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
         }
         present(navigationController, animated: true, completion: nil)
     }
-    
+
     // MARK: - POIsViewControllerDelegate
-    
+
     func didDeleteBookmarkList() {
         bookmarkLists = BookmarksManager.shared.bookmarkLists
         tableView.reloadData()
         updateMessageVisibility()
         showSavedPOIMarkers()
     }
-    
+
     func didCompleteBookmarkList(_ bookmarkList: BookmarkList) {
         // Remove the completed bookmark list
         BookmarksManager.shared.completeBookmarkList(bookmarkList)
@@ -133,7 +133,7 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
         tableView.reloadData()
         updateMessageVisibility()
         showSavedPOIMarkers()
-        
+
         // Present the completed bookmark list in the half modal of PastMapMainViewController
         if let navigationController = navigationController {
             for viewController in navigationController.viewControllers {
@@ -144,24 +144,24 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
             }
         }
     }
-    
+
     func centerMapOnPOI(latitude: Double, longitude: Double) {
     }
-    
+
     // MARK: - Showing POIs on Map
-    
+
     func showSavedPOIMarkers() {
         guard let mapView = mapView else { return }
-        
+
         mapView.clear() // Clear existing markers
-        
+
         let savedPOIs = bookmarkLists.flatMap { $0.bookmarks }
-        
+
         guard !savedPOIs.isEmpty else {
             print("No saved POIs to display.")
             return
         }
-        
+
         for poi in savedPOIs {
             let marker = GMSMarker()
             marker.position = CLLocationCoordinate2D(latitude: poi.latitude, longitude: poi.longitude)

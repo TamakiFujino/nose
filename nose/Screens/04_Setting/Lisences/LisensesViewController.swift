@@ -18,7 +18,7 @@ class LicensesViewController: UIViewController, UITableViewDelegate, UITableView
 
         // Set up navigation bar
         setupNavigationBar()
-        
+
         setupTableView()
         loadLicenses()
     }

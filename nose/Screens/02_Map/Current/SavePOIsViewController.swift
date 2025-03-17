@@ -5,7 +5,7 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
     var tableView: UITableView!
     var bookmarkLists: [BookmarkList] = []
     var messageLabel: UILabel!
-    
+
     // Properties to hold POI information
     var placeID: String?
     var placeName: String?
@@ -16,15 +16,15 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
     var openingHours: [String]?
     var latitude: Double?
     var longitude: Double?
-    
+
     // Property to keep track of the selected bookmark list
     var selectedBookmarkList: BookmarkList?
-    
+
     override func viewDidLoad() {
         super.viewDidLoad()
-        
+
         view.backgroundColor = .white
-        
+
         // Add navigation bar
         let navBar = UINavigationBar()
         navBar.barTintColor = .white
@@ -35,14 +35,14 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
         navItem.leftBarButtonItem = backItem
         navBar.setItems([navItem], animated: false)
         view.addSubview(navBar)
-        
+
         // Initialize the table view
         tableView = UITableView(frame: .zero, style: .plain)
         tableView.dataSource = self
         tableView.delegate = self
         tableView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(tableView)
-        
+
         // Initialize message label
         messageLabel = UILabel()
         messageLabel.text = "No bookmark lists created yet."
@@ -50,12 +50,12 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
         messageLabel.textAlignment = .center
         messageLabel.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(messageLabel)
-        
+
         NSLayoutConstraint.activate([
             messageLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             messageLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor)
         ])
-        
+
         // Add "Create Bookmark List" button
         let createListButton = UIButton(type: .system)
         createListButton.setImage(UIImage(systemName: "plus"), for: .normal) // Change to + icon
@@ -64,7 +64,7 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
         createListButton.translatesAutoresizingMaskIntoConstraints = false
         createListButton.addTarget(self, action: #selector(createListButtonTapped), for: .touchUpInside)
         view.addSubview(createListButton)
-        
+
         // Add "Confirm" button
         let confirmButton = UIButton(type: .system)
         confirmButton.setTitle("Confirm", for: .normal)
@@ -72,25 +72,25 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
         confirmButton.translatesAutoresizingMaskIntoConstraints = false
         confirmButton.addTarget(self, action: #selector(confirmButtonTapped), for: .touchUpInside)
         view.addSubview(confirmButton)
-        
+
         // Set up constraints
         NSLayoutConstraint.activate([
             navBar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             navBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             navBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            
+
             tableView.topAnchor.constraint(equalTo: navBar.bottomAnchor),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: createListButton.topAnchor, constant: -10),
-            
+
             createListButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             createListButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
-            
+
             confirmButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
             confirmButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20)
         ])
-        
+
         // Load bookmark lists
         bookmarkLists = BookmarksManager.shared.bookmarkLists
         updateMessageVisibility()
@@ -124,7 +124,7 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
         alertController.addAction(cancelAction)
         present(alertController, animated: true, completion: nil)
     }
-    
+
     @objc func confirmButtonTapped() {
         print("Confirm button tapped")
 
@@ -132,12 +132,12 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
             print("No bookmark list selected")
             return
         }
-        
+
         guard let placeID = placeID, let placeName = placeName else {
             print("POI information is incomplete")
             return
         }
-        
+
         let bookmarkedPOI = BookmarkedPOI(
             placeID: placeID,
             name: placeName,
@@ -149,12 +149,12 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
             latitude: latitude ?? 0.0,
             longitude: longitude ?? 0.0
         )
-        
+
         if let index = bookmarkLists.firstIndex(of: selectedList) {
             bookmarkLists[index].bookmarks.append(bookmarkedPOI)
             BookmarksManager.shared.saveBookmarkList(bookmarkLists[index])
         }
-        
+
         if let navigationController = navigationController {
             navigationController.popToRootViewController(animated: true)
         } else {
@@ -171,10 +171,10 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "cell")
         let list = bookmarkLists[indexPath.row]
-        
+
         cell.textLabel?.text = list.name
         cell.detailTextLabel?.text = "\(list.bookmarks.count) saved"
-        
+
         if list == selectedBookmarkList {
             let checkmarkImage = UIImage(systemName: "checkmark")?.withRenderingMode(.alwaysTemplate)
             let checkmarkImageView = UIImageView(image: checkmarkImage)
@@ -183,7 +183,7 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
         } else {
             cell.accessoryView = nil
         }
-        
+
         return cell
     }
 
@@ -194,7 +194,7 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
         selectedBookmarkList = bookmarkLists[indexPath.row]
         tableView.reloadData()
     }
-    
+
     func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
         let deleteAction = UIContextualAction(style: .destructive, title: "Delete") { (_, _, completionHandler) in
             let listToDelete = self.bookmarkLists.remove(at: indexPath.row)
