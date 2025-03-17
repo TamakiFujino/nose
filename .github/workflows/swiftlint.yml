@@ -16,7 +16,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
         
-      - name: Run SwiftLint
+      - name: Run SwiftLint Auto-fix
         run: swiftlint --fix
 
       - name: Run Unit Tests
