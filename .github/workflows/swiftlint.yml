@@ -1,61 +1,53 @@
-name: SwiftLint Check
+name: iOS CI/CD
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
-  lint:
+  build:
     runs-on: macos-latest
+
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v3
-        
+
       - name: Install Dependencies
         run: pod install
 
-      - name: Install SwiftLint
-        run: brew install swiftlint
-
-      - name: Run SwiftLint　Auto-fix
+      - name: Run SwiftLint
         run: swiftlint --fix
-        
+
       - name: Run Unit Tests
         run: |
           xcodebuild test \
-          -workspace nose.xcworkspace \
-          -scheme nose \
-          -destination 'platform=iOS Simulator,name=iPhone 18' \
+          -workspace YourApp.xcworkspace \
+          -scheme YourApp \
+          -destination 'platform=iOS Simulator,name=iPhone 14' \
           | xcpretty
 
       - name: Run UI Tests
         run: |
           xcodebuild test \
-          -workspace nose.xcworkspace \
-          -scheme nose \
-          -destination 'platform=iOS Simulator,name=iPhone 18' \
+          -workspace YourApp.xcworkspace \
+          -scheme YourApp \
+          -destination 'platform=iOS Simulator,name=iPhone 14' \
           | xcpretty
 
-      - name: Check for Changes
-        id: git_status
-        run: echo "::set-output name=changed::$(git status --porcelain | wc -l)"
-
-      - name: Commit and Push Fixes
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add .
-          git commit -m "Fix SwiftLint issues"
-          git push
-          
-    - name: Build and Archive
+      - name: Build and Archive
         run: |
           xcodebuild clean archive \
           -workspace YourApp.xcworkspace \
           -scheme YourApp \
           -destination 'generic/platform=iOS' \
           -archivePath $GITHUB_WORKSPACE/build/YourApp.xcarchive
-          
-    - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v4
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v3
         with:
           name: app-build
-          path: build/*.ipa
+          path: build/YourApp.xcarchive
