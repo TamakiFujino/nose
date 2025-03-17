@@ -15,10 +15,7 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
-
-      - name: Install CocoaPods Dependencies
-        run: pod install
-
+        
       - name: Run SwiftLint
         run: swiftlint --fix
 
