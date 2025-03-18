@@ -27,6 +27,14 @@ jobs:
         
       - name: Install CocoaPods Plugins
         run: gem install cocoapods-acknowledgements
+    
+      - name: Cache CocoaPods
+        uses: actions/cache@v3
+        with:
+          path: ~/.cocoapods
+          key: ${{ runner.os }}-pod-${{ hashFiles('**/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pod-
         
       - name: Install CocoaPods
         run: pod install --repo-update
