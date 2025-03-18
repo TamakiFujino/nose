@@ -8,6 +8,9 @@ on:
     branches:
       - main
 
+env:
+  DERIVED_DATA_PATH: ${{ github.workspace }}/DerivedData
+
 jobs:
   build:
     runs-on: macos-latest
@@ -54,6 +57,7 @@ jobs:
           -scheme nose \
           -destination 'platform=iOS Simulator,name=iPhone 16' \
           | xcpretty
+          -derivedDataPath $DERIVED_DATA_PATH
 
       - name: Build and Archive
         run: |
