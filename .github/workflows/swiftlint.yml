@@ -27,7 +27,7 @@ jobs:
           xcodebuild test \
           -workspace nose.xcworkspace \
           -scheme nose \
-          -destination 'platform=iOS Simulator,name=iPhone 18' \
+          -destination 'platform=iOS Simulator,name=iPhone 16' \
           | xcpretty
 
       - name: Run UI Tests
@@ -35,7 +35,7 @@ jobs:
           xcodebuild test \
           -workspace nose.xcworkspace \
           -scheme nose \
-          -destination 'platform=iOS Simulator,name=iPhone 18' \
+          -destination 'platform=iOS Simulator,name=iPhone 16' \
           | xcpretty
 
       - name: Build and Archive
