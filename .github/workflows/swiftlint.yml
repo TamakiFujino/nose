@@ -16,9 +16,12 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-#      - name: Run SwiftLint Auto-fix
-#        run: swiftlint --fix
+      - name: Install SwiftLint
+        run: brew install swiftlint
 
+      - name: Run SwiftLint　Auto-fix
+        run: swiftlint --fix
+        
       - name: Run Unit Tests
         run: |
           xcodebuild test \
@@ -41,7 +44,7 @@ jobs:
           -workspace nose.xcworkspace \
           -scheme nose \
           -destination 'generic/platform=iOS' \
-          -archivePath $GITHUB_WORKSPACE/build/YourApp.xcarchive
+          -archivePath $GITHUB_WORKSPACE/build/nose.xcarchive
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
