@@ -25,6 +25,9 @@ jobs:
       - name: Run SwiftLint　Auto-fix
         run: swiftlint --fix
         
+      - name: Install CocoaPods Plugins
+        run: gem install cocoapods-acknowledgements
+        
       - name: Install CocoaPods
         run: pod install --repo-update
 
