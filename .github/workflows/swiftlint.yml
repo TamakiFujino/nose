@@ -22,24 +22,24 @@ jobs:
       - name: Run Unit Tests
         run: |
           xcodebuild test \
-          -workspace YourApp.xcworkspace \
-          -scheme YourApp \
+          -workspace nose.xcworkspace \
+          -scheme nose \
           -destination 'platform=iOS Simulator,name=iPhone 18' \
           | xcpretty
 
       - name: Run UI Tests
         run: |
           xcodebuild test \
-          -workspace YourApp.xcworkspace \
-          -scheme YourApp \
+          -workspace nose.xcworkspace \
+          -scheme nose \
           -destination 'platform=iOS Simulator,name=iPhone 18' \
           | xcpretty
 
       - name: Build and Archive
         run: |
           xcodebuild clean archive \
-          -workspace YourApp.xcworkspace \
-          -scheme YourApp \
+          -workspace nose.xcworkspace \
+          -scheme nose \
           -destination 'generic/platform=iOS' \
           -archivePath $GITHUB_WORKSPACE/build/YourApp.xcarchive
 
