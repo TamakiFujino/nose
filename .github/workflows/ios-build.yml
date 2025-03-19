@@ -51,8 +51,8 @@ jobs:
           | xcpretty
           -derivedDataPath $DERIVED_DATA_PATH
           
-　　　　- name: Check available space
-  　　　　run: df -h
+      - name: Check available space
+        run: df -h
 
       - name: Run UI Tests
         run: |
