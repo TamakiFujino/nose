@@ -49,6 +49,10 @@ jobs:
           -scheme nose \
           -destination 'platform=iOS Simulator,name=iPhone 16' \
           | xcpretty
+          -derivedDataPath $DERIVED_DATA_PATH
+          
+　　　　- name: Check available space
+  　　　　run: df -h
 
       - name: Run UI Tests
         run: |
