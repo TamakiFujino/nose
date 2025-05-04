@@ -7,7 +7,6 @@ class ViewController: UIViewController, ASAuthorizationControllerDelegate, ASAut
 
     override func viewDidLoad() {
         super.viewDidLoad()
-
         setupUI()
 
         // Ensure Firebase restores session
@@ -22,103 +21,108 @@ class ViewController: UIViewController, ASAuthorizationControllerDelegate, ASAut
     }
 
     func setupUI() {
+        view.backgroundColor = .white
+
+        // Background gradient
         let gradientView = CustomGradientView(frame: view.bounds)
         view.addSubview(gradientView)
         view.sendSubviewToBack(gradientView)
 
-        // Add heading
+        // Heading
         let headingLabel = UILabel()
-        headingLabel.text = NSLocalizedString("slogan_firstline", comment: "slogan first line") + "\n" + NSLocalizedString("slogan_secondline", comment: "slogan second line")
-        headingLabel.font = UIFont.systemFont(ofSize: 28, weight: .bold)
+        headingLabel.text = NSLocalizedString("slogan_firstline", comment: "") +
+                            "\n" +
+                            NSLocalizedString("slogan_secondline", comment: "")
+        headingLabel.font = .systemFont(ofSize: 28, weight: .bold)
         headingLabel.textColor = .fourthColor
-        headingLabel.numberOfLines = 0  // Allow multiple lines
-        headingLabel.lineBreakMode = .byWordWrapping  // Break the line at words, not in the middle of words
+        headingLabel.numberOfLines = 0
         headingLabel.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(headingLabel)
 
-        // Add Terms of Service and Privacy Policy text
-        let termsLabel = UILabel()
-        termsLabel.numberOfLines = 0
-        termsLabel.textAlignment = .center
-        termsLabel.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(termsLabel)
+        // Terms & Privacy label
+                let termsLabel = UILabel()
+                termsLabel.numberOfLines = 0
+                termsLabel.textAlignment = .center
+                termsLabel.textColor = .label
+                termsLabel.font = .systemFont(ofSize: 12)
+                termsLabel.translatesAutoresizingMaskIntoConstraints = false
+                view.addSubview(termsLabel)
 
-        // Create Google sign-in button
-        let googleButton = UIButton(type: .system)
-        googleButton.backgroundColor = .fourthColor
-        googleButton.layer.cornerRadius = 8
-        googleButton.setTitle(NSLocalizedString("google_login", comment: "Google login button text"), for: .normal)
-        googleButton.setTitleColor(.firstColor, for: .normal)
-        googleButton.titleLabel?.font = UIFont.systemFont(ofSize: 17, weight: .medium)
-        googleButton.setImage(UIImage(systemName: "g.circle.fill"), for: .normal) // Google icon
-        googleButton.tintColor = .firstColor
-        googleButton.imageView?.contentMode = .scaleAspectFit
-        googleButton.imageEdgeInsets = UIEdgeInsets(top: 0, left: 10, bottom: 0, right: 0)
-        googleButton.addTarget(self, action: #selector(googleSignInTapped), for: .touchUpInside)
-        googleButton.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(googleButton)
+                // Build attributed string with line break after "you agree to"
+                let baseText = "By signing up, you agree to\nour "
+                let termsText = NSMutableAttributedString(string: baseText)
 
-        // Set up Apple Sign-In button
-        let appleButton = UIButton(type: .system)
-        appleButton.backgroundColor = .fourthColor
-        appleButton.layer.cornerRadius = 8
-        appleButton.setTitle(NSLocalizedString("apple_login", comment: "Apple login button text"), for: .normal)
-        appleButton.setTitleColor(.firstColor, for: .normal)
-        appleButton.titleLabel?.font = UIFont.systemFont(ofSize: 17, weight: .medium)
-        appleButton.setImage(UIImage(systemName: "applelogo"), for: .normal) // Apple icon
-        appleButton.tintColor = .firstColor
-        appleButton.imageView?.contentMode = .scaleAspectFit
-        appleButton.imageEdgeInsets = UIEdgeInsets(top: 0, left: 10, bottom: 0, right: 0)
-        appleButton.addTarget(self, action: #selector(appleSignInTapped), for: .touchUpInside)
-        appleButton.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(appleButton)
+                // Underline only, inherit .label color
+                let underlineStyle = NSUnderlineStyle.single.rawValue
+                let linkAttributes: [NSAttributedString.Key: Any] = [
+                    .underlineStyle: underlineStyle,
+                    .underlineColor: termsLabel.textColor!
+                ]
 
-        // Make Terms of Service and Privacy Policy clickable
-        let termsText = NSMutableAttributedString(string: "By signing up, you agree to our ")
-        let tosAttributes: [NSAttributedString.Key: Any] = [
-            .foregroundColor: UIColor.systemBlue,
-            .underlineStyle: NSUnderlineStyle.single.rawValue
-        ]
-        let ppAttributes: [NSAttributedString.Key: Any] = [
-            .foregroundColor: UIColor.systemBlue,
-            .underlineStyle: NSUnderlineStyle.single.rawValue
-        ]
-        let tosString = NSAttributedString(string: "Terms of Service", attributes: tosAttributes)
-        let andString = NSAttributedString(string: " and ", attributes: nil)
-        let ppString = NSAttributedString(string: "Privacy Policy.", attributes: ppAttributes)
-        termsText.append(tosString)
-        termsText.append(andString)
-        termsText.append(ppString)
-        termsLabel.attributedText = termsText
-        termsLabel.isUserInteractionEnabled = true
+                let tosString = NSAttributedString(string: "Terms of Service", attributes: linkAttributes)
+                let andString = NSAttributedString(string: " and")
+                let ppString  = NSAttributedString(string: " Privacy Policy.", attributes: linkAttributes)
 
-        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(termsTapped(_:)))
-        termsLabel.addGestureRecognizer(tapGesture)
+                termsText.append(tosString)
+                termsText.append(andString)
+                termsText.append(ppString)
+                termsLabel.attributedText = termsText
+                termsLabel.isUserInteractionEnabled = true
+                let tapGesture = UITapGestureRecognizer(target: self, action: #selector(termsTapped(_:)))
+                termsLabel.addGestureRecognizer(tapGesture)
+        
+        // Google button
+                let googleButton = makeSignInButton(
+                    title: NSLocalizedString("google_login", comment: ""),
+                    systemImage: "g.circle.fill",
+                    action: #selector(googleSignInTapped)
+                )
+                view.addSubview(googleButton)
 
-        // Layout constraints for heading, terms label, and buttons
-        NSLayoutConstraint.activate([
-            // Heading left aligned
-            headingLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            headingLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
+                // Apple button
+                let appleButton = makeSignInButton(
+                    title: NSLocalizedString("apple_login", comment: ""),
+                    systemImage: "applelogo",
+                    action: #selector(appleSignInTapped)
+                )
+                view.addSubview(appleButton)
 
-            // Terms label constraints
-            termsLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            termsLabel.bottomAnchor.constraint(equalTo: googleButton.topAnchor, constant: -20),
-            termsLabel.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.9),
+        // Layout
+                NSLayoutConstraint.activate([
+                    headingLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+                    headingLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
 
-            // Google Button constraints
-            googleButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            googleButton.bottomAnchor.constraint(equalTo: appleButton.topAnchor, constant: -15),
-            googleButton.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.9),
-            googleButton.heightAnchor.constraint(equalToConstant: 45),
+                    termsLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+                    termsLabel.bottomAnchor.constraint(equalTo: googleButton.topAnchor, constant: -20),
+                    termsLabel.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.9),
 
-            // Apple Button constraints
-            appleButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            appleButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
-            appleButton.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.9),
-            appleButton.heightAnchor.constraint(equalToConstant: 45)
-        ])
+                    googleButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+                    googleButton.bottomAnchor.constraint(equalTo: appleButton.topAnchor, constant: -15),
+                    googleButton.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.9),
+                    googleButton.heightAnchor.constraint(equalToConstant: 45),
+
+                    appleButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+                    appleButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
+                    appleButton.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.9),
+                    appleButton.heightAnchor.constraint(equalToConstant: 45),
+                ])
     }
+    
+        private func makeSignInButton(title: String, systemImage: String, action: Selector) -> UIButton {
+            let btn = UIButton(type: .system)
+            btn.backgroundColor = .fourthColor
+            btn.layer.cornerRadius = 8
+            btn.setTitle(title, for: .normal)
+            btn.setTitleColor(.firstColor, for: .normal)
+            btn.titleLabel?.font = .systemFont(ofSize: 17, weight: .medium)
+            btn.setImage(UIImage(systemName: systemImage), for: .normal)
+            btn.tintColor = .firstColor
+            btn.imageView?.contentMode = .scaleAspectFit
+            btn.imageEdgeInsets = UIEdgeInsets(top: 0, left: 10, bottom: 0, right: 0)
+            btn.addTarget(self, action: action, for: .touchUpInside)
+            btn.translatesAutoresizingMaskIntoConstraints = false
+            return btn
+        }
 
     @objc func termsTapped(_ sender: UITapGestureRecognizer) {
         let text = (sender.view as! UILabel).text ?? ""

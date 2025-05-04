@@ -9,18 +9,4 @@
     {"name": "round_lower_straight", "thumbnail": "thumb_empty"},
     {"name": "round_lower_cat_down", "thumbnail": "thumb_empty"},
     {"name": "round_cat_down", "thumbnail": "thumb_empty"},
-    {"name": "half_closed_up", "thumbnail": "thumb_empty"},
-    {"name": "slanted_up", "thumbnail": "thumb_empty"},
-    {"name": "droopy_up", "thumbnail": "thumb_empty"},
-    {"name": "half_closed_down", "thumbnail": "thumb_empty"},
-    {"name": "slanted_down", "thumbnail": "thumb_empty"},
-    {"name": "droopy_down", "thumbnail": "thumb_empty"},
-    {"name": "half_slanted_up", "thumbnail": "thumb_empty"},
-    {"name": "half_slanted_down", "thumbnail": "thumb_empty"},
-    {"name": "half_droopy_down", "thumbnail": "thumb_empty"},
-    {"name": "double_closed", "thumbnail": "thumb_empty"},
-    {"name": "double_droopy", "thumbnail": "thumb_empty"},
-    {"name": "double_slanted", "thumbnail": "thumb_empty"},
-    {"name": "closed_up", "thumbnail": "thumb_empty"},
-    {"name": "closed_down", "thumbnail": "thumb_empty"}
 ]
