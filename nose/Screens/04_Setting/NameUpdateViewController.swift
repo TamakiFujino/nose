@@ -100,10 +100,9 @@ class NameUpdateViewController: UIViewController {
         // Save name to Firestore
         saveNameToFirestore(name: name) { success in
             if success {
-                // Show flash message if updating the name
-                self.showFlashMessage("Name updated successfully!")
+                ToastManager.showToast(message: ToastMessages.nameUpdated, type: .success)
             } else {
-                self.showFlashMessage("Failed to save name. Please try again.")
+                ToastManager.showToast(message: ToastMessages.nameUpdateFailed, type: .error)
             }
         }
     }

@@ -176,18 +176,22 @@ class Avatar3DViewController: UIViewController {
         arView.scene.anchors.append(anchor)
     }
 
-    func saveChosenModelsAndColors() {
+    func saveChosenModelsAndColors() -> Bool {
         // Save the chosen models to UserDefaults
         for (category, modelName) in chosenModels {
             UserDefaults.standard.set(modelName, forKey: "chosen\(category.capitalized)Model")
         }
 
         // Save the chosen colors to UserDefaults
-        if let colorsData = try? NSKeyedArchiver.archivedData(withRootObject: chosenColors, requiringSecureCoding: false) {
+        do {
+            let colorsData = try NSKeyedArchiver.archivedData(withRootObject: chosenColors, requiringSecureCoding: false)
             UserDefaults.standard.set(colorsData, forKey: "chosenColors")
+            print("✅ Chosen models and colors saved: \(chosenModels), \(chosenColors)")
+            return true
+        } catch {
+            print("❌ Failed to archive chosenColors: \(error)")
+            return false
         }
-
-        print("Chosen models and colors saved: \(chosenModels), \(chosenColors)")
     }
 
     func changeClothingItemColor(for category: String, to color: UIColor, materialIndex: Int = 0) {
@@ -338,18 +342,18 @@ class Avatar3DViewController: UIViewController {
         // For example, clear any highlights in the 3D view
     }
 
-    @objc func captureSnapshot() {
-        // Snapshot the ARView content to an image
+    func captureSnapshot(completion: @escaping (Bool) -> Void) {
         arView.snapshot(saveToHDR: false) { image in
             guard let image = image else {
                 print("❌ Failed to capture snapshot.")
+                completion(false)
                 return
             }
-
-            // Save the image to a specific directory
             self.saveImage(image: image, toDirectory: "capturedAvatars")
+            completion(true)
         }
     }
+
 
     func saveImage(image: UIImage, toDirectory directory: String) {
         guard let data = image.pngData() else {

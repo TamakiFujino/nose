@@ -16,28 +16,41 @@ enum ToastType {
 
 struct ToastMessages {
     // maps - success
-    static let collectionCreated = "Collection created successfully!" // done
-    static let spotSavedtoCollection = "Spot saved to collection!" // done
-    static let collectionDeleted = "Collection deleted" // done
-    static let markSpotVisited = "Spot marked as visited!" // done
-    static let completedCollection = "Collection completed!" // done
-    static let collectionShared = "Collection shared successfully!"
+    static let collectionCreated = "Collection created successfully!"
+    static let spotSavedtoCollection = "Spot saved to collection!"
+    static let collectionDeleted = "Collection deleted"
+    static let markSpotVisited = "Spot marked as visited!"
+    static let completedCollection = "Collection completed!"
+    static let collectionShared = "Collection shared successfully!" // to be implemented
     
     // maps - info
-    static let collectionNotSelected = "No collections selected. Select at least one." // done
-    static let removeSpotFromCollection = "Spot removed from collection" // done
+    static let collectionNotSelected = "No collections selected. Select at least one."
+    static let removeSpotFromCollection = "Spot removed from collection"
     
     // maps - error
     static let collectionAlreadyExists = "Collection creation failed" // not implemented
-    static let FailedToGetSpotInfo = "Failed to get spot information. Please try again." // done
+    static let FailedToGetSpotInfo = "Failed to get spot information. Please try again."
     
-    // settings
+    // settings - success
     static let nameUpdated = "Name updated successfully!"
-    static let userBlocked = "User blocked successfully!"
-    static let userUnblocked = "User unblocked successfully!"
-    static let friendAdded = "Friend added successfully!"
-    static let userUnfrined = "User Unfriended successfully!"
     
-    // avatar
+    // settings - error
+    static let nameUpdateFailed = "Name update failed. Please try again."
+    
+    // friends - success
+    static let friendAdded = "Friend added successfully!"
+    static let userBlocked = "User blocked"
+    static let userUnblocked = "User unblocked"
+    static let userUnfrined = "User Unfriended"
+    
+    // friends - error
+    static let userBlockFailed = "User block failed. Please try again."
+    static let userUnblockFailed = "User unblock failed. Please try again."
+    static let userUnfriendFailed = "User Unfriend failed. Please try again."
+    
+    // avatar - success
     static let avatarUpdated = "Avatar updated successfully!"
+    
+    // avatar - error
+    static let avatarUpdateFailed = "Avatar update failed. Please try again."
 }

@@ -146,7 +146,7 @@ class AddFriendViewController: UIViewController, UITextFieldDelegate {
 
         // Add friend to the friend list
         addFriend(friendID, name: friendNameLabel.text?.replacingOccurrences(of: "Friend's Name: ", with: "") ?? "")
-        showFlashMessage("Friend added: \(friendNameLabel.text ?? "")")
+        ToastManager.showToast(message: ToastMessages.friendAdded, type: .success)
 
         // Reset UI
         friendNameLabel.text = ""

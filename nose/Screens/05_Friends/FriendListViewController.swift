@@ -153,7 +153,7 @@ class FriendListViewController: UIViewController, UITableViewDelegate, UITableVi
 extension FriendListViewController: FriendTableViewCellDelegate {
     func didTapOptionsButton(at indexPath: IndexPath) {
         let data = customTabBar.segmentedControl.selectedSegmentIndex == 0 ? friendList[indexPath.row] : blockedList[indexPath.row]
-
+        
         let actionSheet = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
         if customTabBar.segmentedControl.selectedSegmentIndex == 0 {
             let blockAction = UIAlertAction(title: "Block User", style: .destructive) { _ in
@@ -171,12 +171,12 @@ extension FriendListViewController: FriendTableViewCellDelegate {
             actionSheet.addAction(unblockAction)
         }
         let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
-
+        
         actionSheet.addAction(cancelAction)
-
+        
         present(actionSheet, animated: true, completion: nil)
     }
-
+    
     private func blockUser(at indexPath: IndexPath) {
         let friend = friendList[indexPath.row]
         if let friendID = friend["id"] {
@@ -184,9 +184,12 @@ extension FriendListViewController: FriendTableViewCellDelegate {
             saveBlockedFriends()
             friendList.remove(at: indexPath.row)
             tableView.deleteRows(at: [indexPath], with: .automatic)
+            ToastManager.showToast(message: ToastMessages.userBlocked, type: .success)
+        } else {
+            ToastManager.showToast(message: ToastMessages.userBlockFailed, type: .error)
         }
     }
-
+    
     private func unblockUser(at indexPath: IndexPath) {
         let blocked = blockedList[indexPath.row]
         if let blockedID = blocked["id"] {
@@ -196,16 +199,25 @@ extension FriendListViewController: FriendTableViewCellDelegate {
             tableView.deleteRows(at: [indexPath], with: .automatic)
             // Add back to friend list
             friendList.append(blocked)
+            ToastManager.showToast(message: ToastMessages.userUnblocked, type: .success)
+        } else {
+            ToastManager.showToast(message: ToastMessages.userUnblockFailed, type: .error)
         }
     }
-
+    
     private func unfriendUser(at indexPath: IndexPath) {
+        guard indexPath.row < friendList.count else {
+            ToastManager.showToast(message: ToastMessages.userUnfriendFailed, type: .error)
+            return
+        }
+        
         friendList.remove(at: indexPath.row)
         tableView.deleteRows(at: [indexPath], with: .automatic)
-        // Save the updated friend list
         UserDefaults.standard.set(friendList, forKey: "friendList")
+        ToastManager.showToast(message: ToastMessages.userUnfrined, type: .success)
     }
 }
+
 
 protocol FriendTableViewCellDelegate: AnyObject {
     func didTapOptionsButton(at indexPath: IndexPath)
