@@ -1,3 +1,4 @@
+// this script is to display the saved bookmarks in a table view
 import UIKit
 import GoogleMaps
 import GooglePlaces

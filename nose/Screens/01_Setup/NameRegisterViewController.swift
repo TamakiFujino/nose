@@ -33,7 +33,7 @@ class NameRegisterViewController: UIViewController {
     }
 
     private func setupNameTextField() {
-        nameTextField.placeholder = "Enter your name"
+        nameTextField.placeholder = "Enter your name that will be used in this app"
         nameTextField.borderStyle = .roundedRect
         nameTextField.translatesAutoresizingMaskIntoConstraints = false
         nameTextField.isUserInteractionEnabled = true

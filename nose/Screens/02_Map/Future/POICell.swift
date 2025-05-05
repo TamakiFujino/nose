@@ -1,3 +1,4 @@
+// this script is to create a custom table view cell for displaying POI (Point of Interest) information
 import UIKit
 
 class POICell: UITableViewCell {

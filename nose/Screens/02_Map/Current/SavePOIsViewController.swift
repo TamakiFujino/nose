@@ -117,6 +117,7 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
                 self.bookmarkLists = BookmarksManager.shared.bookmarkLists // Refresh the list
                 self.tableView.reloadData()
                 self.updateMessageVisibility()
+                ToastManager.showToast(message: ToastMessages.collectionCreated, type: .success)
             }
         }
         let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
@@ -126,18 +127,18 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
     }
 
     @objc func confirmButtonTapped() {
-        print("Confirm button tapped")
-
+        // MARK: - Validate Inputs
         guard let selectedList = selectedBookmarkList else {
-            print("No bookmark list selected")
+            ToastManager.showToast(message: ToastMessages.collectionNotSelected, type: .info)
             return
         }
 
         guard let placeID = placeID, let placeName = placeName else {
-            print("POI information is incomplete")
+            ToastManager.showToast(message: ToastMessages.FailedToGetSpotInfo, type: .error)
             return
         }
 
+        // MARK: - Create and Save Bookmark
         let bookmarkedPOI = BookmarkedPOI(
             placeID: placeID,
             name: placeName,
@@ -155,10 +156,22 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
             BookmarksManager.shared.saveBookmarkList(bookmarkLists[index])
         }
 
+        // MARK: - Dismiss or Navigate with Toast
+        let showToast = {
+            ToastManager.showToast(message: ToastMessages.spotSavedtoCollection, type: .success)
+        }
+
         if let navigationController = navigationController {
+            CATransaction.begin()
+            CATransaction.setCompletionBlock {
+                showToast()
+            }
             navigationController.popToRootViewController(animated: true)
+            CATransaction.commit()
         } else {
-            dismiss(animated: true, completion: nil)
+            dismiss(animated: true) {
+                showToast()
+            }
         }
     }
 
@@ -202,6 +215,7 @@ class BookmarkedPOIsViewController: UIViewController, UITableViewDataSource, UIT
             tableView.deleteRows(at: [indexPath], with: .automatic)
             self.updateMessageVisibility()
             completionHandler(true)
+            ToastManager.showToast(message: ToastMessages.collectionDeleted, type: .success)
         }
         return UISwipeActionsConfiguration(actions: [deleteAction])
     }

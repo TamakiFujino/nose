@@ -139,6 +139,7 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
         }
         let completeCollectionAction = UIAlertAction(title: "Complete collection", style: .default) { _ in
             self.completeCollection()
+            ToastManager.showToast(message: ToastMessages.completedCollection, type: .success)
         }
         let deleteAction = UIAlertAction(title: "Delete", style: .destructive) { _ in
             self.showDeleteWarning()
@@ -164,6 +165,7 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
         let alertController = UIAlertController(title: "Warning", message: "Are you sure you want to delete this bookmark list? This action cannot be undone.", preferredStyle: .alert)
         let deleteAction = UIAlertAction(title: "Delete", style: .destructive) { _ in
             self.deleteBookmarkList()
+            ToastManager.showToast(message: ToastMessages.collectionDeleted, type: .success)
         }
         let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
 
@@ -203,11 +205,23 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
     @objc private func checkboxTapped(_ sender: UIButton) {
         let index = sender.tag
         bookmarkList.bookmarks[index].visited.toggle()
-        sender.setImage(bookmarkList.bookmarks[index].visited ? UIImage(systemName: "checkmark.circle.fill") : UIImage(systemName: "circle"), for: .normal)
+        
+        let isVisited = bookmarkList.bookmarks[index].visited
+        sender.setImage(
+            UIImage(systemName: isVisited ? "checkmark.circle.fill" : "circle"),
+            for: .normal
+        )
         sender.tintColor = .fourthColor
-        let cell = tableView.cellForRow(at: IndexPath(row: index, section: 0)) as! POICell
-        cell.contentView.backgroundColor = bookmarkList.bookmarks[index].visited ? UIColor.fourthColor.withAlphaComponent(0.1) : .clear
-        BookmarksManager.shared.saveBookmarkList(bookmarkList)  // Save updated bookmark list
+
+        if let cell = tableView.cellForRow(at: IndexPath(row: index, section: 0)) as? POICell {
+            cell.contentView.backgroundColor = isVisited ? UIColor.fourthColor.withAlphaComponent(0.1) : .clear
+        }
+
+        BookmarksManager.shared.saveBookmarkList(bookmarkList)
+
+        if isVisited {
+            ToastManager.showToast(message: ToastMessages.markSpotVisited, type: .success)
+        }
     }
 
     private func getRatingText(rating: Double) -> String {
@@ -270,6 +284,7 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
             tableView.deleteRows(at: [indexPath], with: .automatic)
             BookmarksManager.shared.saveBookmarkList(bookmarkList)  // Save updated bookmark list
             updateInfoLabel() // Update the info label with the new count
+            ToastManager.showToast(message: ToastMessages.removeSpotFromCollection, type: .info)
         }
     }
 
