@@ -1,6 +1,12 @@
 import UIKit
 import RealityKit
 
+struct FriendAvatar {
+    let id: String
+    let name: String
+    let modelName: String // e.g., "robot", "astronaut"
+}
+
 protocol POIsViewControllerDelegate: AnyObject {
     func didDeleteBookmarkList()
     func didCompleteBookmarkList(_ bookmarkList: BookmarkList)
@@ -21,6 +27,13 @@ class POIsViewController: UIViewController {
     var scrollView: UIScrollView!
     var arView: ARView!
     var stackView: UIStackView!
+    
+    // temporary friend avatar
+    let mockFriends: [FriendAvatar] = [
+            FriendAvatar(id: "123456789", name: "Taro Yamada", modelName: "body"),
+            FriendAvatar(id: "987654321", name: "Ichiro Suzuki", modelName: "body"),
+            FriendAvatar(id: "111111111", name: "Ken Sato", modelName: "body")
+        ]
 
     // MARK: - Lifecycle
     override func viewDidLoad() {
@@ -36,6 +49,13 @@ class POIsViewController: UIViewController {
         let key = "sharedFriends_\(bookmarkList.id)"
         if let savedFriends = UserDefaults.standard.array(forKey: key) as? [String] {
             sharedWithCount = savedFriends.count
+        }
+        
+        let sharedIDs = UserDefaults.standard.array(forKey: key) as? [String] ?? []
+        let sharedFriends = mockFriends.filter { sharedIDs.contains($0.id) }
+
+        for (index, friend) in sharedFriends.enumerated() {
+            loadAvatar(for: friend, index: index)
         }
 
         updateInfoLabel()
@@ -132,7 +152,43 @@ class POIsViewController: UIViewController {
     }
 
     private func loadAvatarModel() {
-        AvatarRenderer.renderSavedAvatar(in: arView)
+        arView.scene.anchors.removeAll()
+
+        let key = "sharedFriends_\(bookmarkList.id)"
+        let sharedIDs = UserDefaults.standard.array(forKey: key) as? [String] ?? []
+        let sharedFriends = mockFriends.filter { sharedIDs.contains($0.id) }
+
+        for (index, friend) in sharedFriends.enumerated() {
+            loadAvatar(for: friend, index: index)
+        }
+    }
+    
+    private func loadAvatar(for friend: FriendAvatar, index: Int) {
+        Task {
+            do {
+                let entity = try await Entity.load(named: friend.modelName)
+                print("✅ Loaded entity: \(entity.name), type: \(type(of: entity))")
+
+                // Recursively apply scale to all ModelEntities inside
+                applyFixedScale(to: entity, scale: 0.4)
+
+                let anchor = AnchorEntity(world: [Float(index) * 0.4, 0, -0.5])
+                anchor.addChild(entity)
+                arView.scene.addAnchor(anchor)
+
+            } catch {
+                print("❌ Failed to load avatar for \(friend.name): \(error)")
+            }
+        }
+    }
+    
+    private func applyFixedScale(to entity: Entity, scale: Float) {
+        if let model = entity as? ModelEntity {
+            model.scale = SIMD3<Float>(repeating: scale)
+        }
+        for child in entity.children {
+            applyFixedScale(to: child, scale: scale)
+        }
     }
 
     // MARK: - Actions

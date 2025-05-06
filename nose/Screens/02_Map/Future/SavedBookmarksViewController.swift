@@ -14,8 +14,6 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
         super.viewDidLoad()
         
         navigationItem.title = "Collections"
-        //navigationItem.largeTitleDisplayMode = .never
-
         view.backgroundColor = .white
         setupTableView()
         setupMessageLabel()
