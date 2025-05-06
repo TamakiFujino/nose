@@ -25,6 +25,9 @@ class ShareModalViewController: UIViewController, UITableViewDataSource, UITable
         let confirmButton = UIButton(type: .system)
         confirmButton.setTitle("Confirm", for: .normal)
         confirmButton.setTitleColor(.fifthColor, for: .normal)
+        confirmButton.contentEdgeInsets = UIEdgeInsets(top: 0, left: 12, bottom: 0, right: 12)
+        confirmButton.contentHorizontalAlignment = .right
+        confirmButton.setTitleColor(.fifthColor, for: .normal)
         confirmButton.addTarget(self, action: #selector(confirmSharing), for: .touchUpInside)
         confirmButton.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(confirmButton)

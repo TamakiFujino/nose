@@ -21,14 +21,14 @@ struct ToastMessages {
     static let collectionDeleted = "Collection deleted"
     static let markSpotVisited = "Spot marked as visited!"
     static let completedCollection = "Collection completed!"
-    static let collectionShared = "Collection shared successfully!" // to be implemented
+    static let collectionShared = "Collection shared successfully!"
     
     // maps - info
     static let collectionNotSelected = "No collections selected. Select at least one."
     static let removeSpotFromCollection = "Spot removed from collection"
     
     // maps - error
-    static let collectionAlreadyExists = "Collection creation failed" // not implemented
+    // static let collectionAlreadyExists = "Collection creation failed"
     static let FailedToGetSpotInfo = "Failed to get spot information. Please try again."
     
     // settings - success

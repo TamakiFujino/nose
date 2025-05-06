@@ -123,11 +123,14 @@ class HomeViewController: UIViewController {
         hasShownHalfModal = true
         let savedBookmarksVC = SavedBookmarksViewController()
         savedBookmarksVC.mapView = mapContainerViewController.mapView
-        savedBookmarksVC.modalPresentationStyle = .pageSheet
-        if let sheet = savedBookmarksVC.sheetPresentationController {
+
+        let navController = UINavigationController(rootViewController: savedBookmarksVC)
+        navController.modalPresentationStyle = .pageSheet
+        if let sheet = navController.sheetPresentationController {
             sheet.detents = [.medium()]
         }
-        present(savedBookmarksVC, animated: true, completion: nil)
+
+        present(navController, animated: true, completion: nil)
     }
 }
 

@@ -14,17 +14,15 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
         super.viewDidLoad()
         
         navigationItem.title = "Collections"
+        //navigationItem.largeTitleDisplayMode = .never
 
         view.backgroundColor = .white
         setupTableView()
         setupMessageLabel()
         setupConstraints()
 
-        // Load bookmark lists
         bookmarkLists = BookmarksManager.shared.bookmarkLists
         updateMessageVisibility()
-
-        // Show saved POIs on the map
         showSavedPOIMarkers()
     }
 
@@ -101,6 +99,15 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
     }
 
     // MARK: - POIsViewControllerDelegate
+
+    func didUpdateSharedFriends(for bookmarkList: BookmarkList) {
+        if let index = bookmarkLists.firstIndex(where: { $0.id == bookmarkList.id }) {
+            bookmarkLists[index] = bookmarkList
+            tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .automatic)
+        }
+    }
+
+// MARK: - POIsViewControllerDelegate
 
     func didDeleteBookmarkList() {
         bookmarkLists = BookmarksManager.shared.bookmarkLists

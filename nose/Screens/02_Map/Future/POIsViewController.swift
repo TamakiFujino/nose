@@ -5,6 +5,7 @@ protocol POIsViewControllerDelegate: AnyObject {
     func didDeleteBookmarkList()
     func didCompleteBookmarkList(_ bookmarkList: BookmarkList)
     func centerMapOnPOI(latitude: Double, longitude: Double)
+    func didUpdateSharedFriends(for bookmarkList: BookmarkList)
 }
 
 class POIsViewController: UIViewController {
@@ -40,8 +41,13 @@ class POIsViewController: UIViewController {
         updateInfoLabel()
         loadAvatarModel()
     }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        delegate?.didUpdateSharedFriends(for: self.bookmarkList)
+    }
 
-    // MARK: - Setup Methods
+// MARK: - Setup Methods
     private func setupView() {
         view.backgroundColor = .white
         title = bookmarkList.name
