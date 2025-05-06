@@ -3,7 +3,7 @@ import UIKit
 import GoogleMaps
 import GooglePlaces
 
-class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, POIsViewControllerDelegate, UIPageViewControllerDelegate, UITabBarControllerDelegate {
+class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, POIsViewControllerDelegate {
 
     var tableView: UITableView!
     var bookmarkLists: [BookmarkList] = []
@@ -12,6 +12,8 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        navigationItem.title = "Collections"
 
         view.backgroundColor = .white
         setupTableView()
@@ -61,29 +63,6 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
         tableView.isHidden = bookmarkLists.isEmpty
     }
 
-    @objc func backButtonTapped() {
-        dismiss(animated: true, completion: nil)
-    }
-
-    @objc func createListButtonTapped() {
-        let alertController = UIAlertController(title: "Create Bookmark List", message: "Enter a name for your new bookmark list.", preferredStyle: .alert)
-        alertController.addTextField { textField in
-            textField.placeholder = "List Name"
-        }
-        let createAction = UIAlertAction(title: "Create", style: .default) { _ in
-            if let listName = alertController.textFields?.first?.text, !listName.isEmpty {
-                BookmarksManager.shared.createBookmarkList(name: listName)
-                self.bookmarkLists = BookmarksManager.shared.bookmarkLists // Refresh the list
-                self.tableView.reloadData()
-                self.updateMessageVisibility()
-            }
-        }
-        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
-        alertController.addAction(createAction)
-        alertController.addAction(cancelAction)
-        present(alertController, animated: true, completion: nil)
-    }
-
     // MARK: - UITableViewDataSource
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -93,7 +72,9 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "BookmarkListCell", for: indexPath) as! BookmarkListCell
         let list = bookmarkLists[indexPath.row]
-        cell.configure(with: list)
+        let key = "sharedFriends_\(list.id)"
+        let sharedCount = (UserDefaults.standard.array(forKey: key) as? [String])?.count ?? 0
+        cell.configure(with: list, sharedCount: sharedCount)
         return cell
     }
 
@@ -110,6 +91,7 @@ class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UIT
         poisVC.delegate = self
 
         // Update to add a navigation bar to the half modal
+        let savedBookmarksVC = SavedBookmarksViewController()
         let navigationController = UINavigationController(rootViewController: poisVC)
         navigationController.modalPresentationStyle = .pageSheet
         if let sheet = navigationController.sheetPresentationController {

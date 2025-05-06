@@ -6,6 +6,7 @@ class ShareModalViewController: UIViewController, UITableViewDataSource, UITable
     var tableView: UITableView!
     var friendList: [[String: String]] = []
     var selectedFriends: Set<String> = []
+    var onSharingConfirmed: ((Int) -> Void)?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -22,7 +23,8 @@ class ShareModalViewController: UIViewController, UITableViewDataSource, UITable
 
         // Initialize confirm button
         let confirmButton = UIButton(type: .system)
-        confirmButton.setTitle("Confirm Sharing", for: .normal)
+        confirmButton.setTitle("Confirm", for: .normal)
+        confirmButton.setTitleColor(.fifthColor, for: .normal)
         confirmButton.addTarget(self, action: #selector(confirmSharing), for: .touchUpInside)
         confirmButton.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(confirmButton)
@@ -34,13 +36,19 @@ class ShareModalViewController: UIViewController, UITableViewDataSource, UITable
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: confirmButton.topAnchor, constant: -10),
 
-            confirmButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            confirmButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            confirmButton.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
             confirmButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -10),
+            confirmButton.widthAnchor.constraint(equalToConstant: 160),
             confirmButton.heightAnchor.constraint(equalToConstant: 50)
         ])
+        
+        // Load previously shared friends
+        let key = "sharedFriends_\(bookmarkList.id)"
+        if let saved = UserDefaults.standard.array(forKey: key) as? [String] {
+            selectedFriends = Set(saved)
+        }
 
-        // Load friends list
+// Load friends list
         loadFriendList()
     }
 
@@ -61,7 +69,14 @@ class ShareModalViewController: UIViewController, UITableViewDataSource, UITable
         let cell = tableView.dequeueReusableCell(withIdentifier: "FriendCell", for: indexPath) as! FriendCell
         let friend = friendList[indexPath.row]
         cell.configure(with: friend)
-        cell.accessoryType = selectedFriends.contains(friend["id"] ?? "") ? .checkmark : .none
+        
+        if let friendID = friend["id"], selectedFriends.contains(friendID) {
+            cell.accessoryType = .checkmark
+            cell.tintColor = .fourthColor
+        } else {
+            cell.accessoryType = .none
+        }
+    
         return cell
     }
 
@@ -83,10 +98,13 @@ class ShareModalViewController: UIViewController, UITableViewDataSource, UITable
     // MARK: - Actions
 
     @objc func confirmSharing() {
-        // Implement sharing logic here
-        // For example, save the shared bookmark list with selected friends
+        // Save selected friends to UserDefaults
+        let key = "sharedFriends_\(bookmarkList.id)"  // Use unique ID
+        UserDefaults.standard.set(Array(selectedFriends), forKey: key)
 
+        onSharingConfirmed?(selectedFriends.count)
         dismiss(animated: true, completion: nil)
+        ToastManager.showToast(message: ToastMessages.collectionShared, type: .success)
     }
 }
 

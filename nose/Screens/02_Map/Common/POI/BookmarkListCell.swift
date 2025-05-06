@@ -16,7 +16,7 @@ class BookmarkListCell: UITableViewCell {
         textLabel?.numberOfLines = 2 // Allow textLabel to have multiple lines
     }
 
-    func configure(with list: BookmarkList) {
+    func configure(with list: BookmarkList, sharedCount: Int) {
         let nameText = NSAttributedString(string: "\(list.name)\n", attributes: [NSAttributedString.Key.font: UIFont.boldSystemFont(ofSize: 16)])
 
         let bookmarkIcon = UIImage(systemName: "bookmark.fill")?.withTintColor(.fourthColor, renderingMode: .alwaysOriginal)
@@ -34,7 +34,7 @@ class BookmarkListCell: UITableViewCell {
         infoText.append(NSAttributedString(attachment: bookmarkIconAttachment))
         infoText.append(NSAttributedString(string: " \(list.bookmarks.count)  ", attributes: [NSAttributedString.Key.font: UIFont.systemFont(ofSize: 14)]))
         infoText.append(NSAttributedString(attachment: friendsIconAttachment))
-        infoText.append(NSAttributedString(string: " \(list.sharedWithFriends.count)", attributes: [NSAttributedString.Key.font: UIFont.systemFont(ofSize: 14)]))
+        infoText.append(NSAttributedString(string: " \(sharedCount)", attributes: [NSAttributedString.Key.font: UIFont.systemFont(ofSize: 14)]))
         infoText.addAttribute(.foregroundColor, value: UIColor.black, range: NSRange(location: 0, length: infoText.length))
 
         let attributedText = NSMutableAttributedString()
@@ -43,4 +43,5 @@ class BookmarkListCell: UITableViewCell {
 
         textLabel?.attributedText = attributedText
     }
+
 }

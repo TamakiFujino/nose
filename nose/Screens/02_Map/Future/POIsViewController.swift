@@ -31,6 +31,13 @@ class POIsViewController: UIViewController {
         setupARView()
         setupTableView()
         setupConstraints()
+        
+        let key = "sharedFriends_\(bookmarkList.id)"
+        if let savedFriends = UserDefaults.standard.array(forKey: key) as? [String] {
+            sharedWithCount = savedFriends.count
+        }
+
+        updateInfoLabel()
         loadAvatarModel()
     }
 
@@ -84,6 +91,7 @@ class POIsViewController: UIViewController {
         arView.translatesAutoresizingMaskIntoConstraints = false
         arView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(arViewTapped)))
         stackView.addArrangedSubview(arView)
+        arView.environment.background = .color(.firstColor)
     }
 
     private func setupTableView() {
@@ -93,11 +101,8 @@ class POIsViewController: UIViewController {
         tableView.translatesAutoresizingMaskIntoConstraints = false
         tableView.register(POICell.self, forCellReuseIdentifier: "POICell")
         stackView.addArrangedSubview(tableView)
-        
-        // Temporary fix for layout
         tableView.heightAnchor.constraint(equalToConstant: 400).isActive = true
     }
-
 
     private func setupConstraints() {
         NSLayoutConstraint.activate([
@@ -132,14 +137,33 @@ class POIsViewController: UIViewController {
     @objc private func showMenu() {
         let alertController = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
 
-        alertController.addAction(UIAlertAction(title: "Share", style: .default))
+        // share
+        alertController.addAction(UIAlertAction(title: "Share", style: .default) { _ in
+            let shareVC = ShareModalViewController()
+            shareVC.bookmarkList = self.bookmarkList
+            shareVC.modalPresentationStyle = .pageSheet
+            shareVC.onSharingConfirmed = { sharedCount in
+                self.sharedWithCount = sharedCount
+                self.updateInfoLabel()
+            }
+            if let sheet = shareVC.sheetPresentationController {
+                sheet.detents = [.medium()]
+            }
+            self.present(shareVC, animated: true)
+        })
+
+        // complete collection
         alertController.addAction(UIAlertAction(title: "Complete collection", style: .default) { _ in
             self.completeCollection()
             ToastManager.showToast(message: ToastMessages.completedCollection, type: .success)
         })
+
+        // delete collection
         alertController.addAction(UIAlertAction(title: "Delete", style: .destructive) { _ in
             self.showDeleteWarning()
         })
+
+        // cancel
         alertController.addAction(UIAlertAction(title: "Cancel", style: .cancel))
 
         present(alertController, animated: true)
