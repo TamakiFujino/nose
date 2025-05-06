@@ -63,7 +63,6 @@ class AvatarCustomViewController: UIViewController {
         }
     }
 
-
     private func checkForSavedData() {
         // Check if there is any saved data
         if UserDefaults.standard.object(forKey: "selectedItem") == nil {

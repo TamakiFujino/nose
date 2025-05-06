@@ -4,96 +4,100 @@ import RealityKit
 protocol POIsViewControllerDelegate: AnyObject {
     func didDeleteBookmarkList()
     func didCompleteBookmarkList(_ bookmarkList: BookmarkList)
-    func centerMapOnPOI(latitude: Double, longitude: Double) // Delegate method
+    func centerMapOnPOI(latitude: Double, longitude: Double)
 }
 
-class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
+class POIsViewController: UIViewController {
 
+    // MARK: - Properties
     var tableView: UITableView!
     var bookmarkList: BookmarkList!
-    var sharedWithCount: Int = 0 // Assuming you have a way to get this count
-    var loggedInUser: String = "defaultUser" // Replace this with actual logged-in user ID or default user
+    var sharedWithCount: Int = 0
+    var loggedInUser: String = "defaultUser"
     weak var delegate: POIsViewControllerDelegate?
     var infoLabel: UILabel!
     var isFromPastMap: Bool = false
     var scrollView: UIScrollView!
     var arView: ARView!
-    var arContainerView: UIView!
+    var stackView: UIStackView!
 
+    // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
-
-        view.backgroundColor = .white
-        title = bookmarkList.name
-
-        // Set up navigation bar
+        setupView()
         setupNavigationBar()
-
-        // Add label before the table view
-        infoLabel = UILabel()
-        updateInfoLabel()
-        infoLabel.font = UIFont.systemFont(ofSize: 16)
-        infoLabel.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(infoLabel)
-
-        // Initialize the scroll view and ARView
-        setupScrollView()
+        setupInfoLabel()
+        setupScrollViewAndStack()
         setupARView()
-
-        // Initialize the table view
         setupTableView()
-
-        // Set up constraints for info label, scroll view, ARView, and table view
         setupConstraints()
-
-        print("Loaded POIs for bookmark list: \(bookmarkList.name)")
-
-        // Load the avatar model
         loadAvatarModel()
     }
 
+    // MARK: - Setup Methods
+    private func setupView() {
+        view.backgroundColor = .white
+        title = bookmarkList.name
+    }
+
     private func setupNavigationBar() {
-        let backButton = UIBarButtonItem(image: UIImage(systemName: "chevron.left"), style: .plain, target: self, action: #selector(dismissModal))
-        self.navigationItem.leftBarButtonItem = backButton
-        self.navigationController?.navigationBar.tintColor = .black
+        navigationItem.leftBarButtonItem = UIBarButtonItem(
+            image: UIImage(systemName: "chevron.left"),
+            style: .plain,
+            target: self,
+            action: #selector(dismissModal)
+        )
+        navigationController?.navigationBar.tintColor = .black
 
         if !isFromPastMap {
-            let menuButton = UIBarButtonItem(image: UIImage(systemName: "ellipsis"), style: .plain, target: self, action: #selector(showMenu))
-            self.navigationItem.rightBarButtonItem = menuButton
+            navigationItem.rightBarButtonItem = UIBarButtonItem(
+                image: UIImage(systemName: "ellipsis"),
+                style: .plain,
+                target: self,
+                action: #selector(showMenu)
+            )
         }
     }
 
-    private func setupScrollView() {
-        scrollView = UIScrollView(frame: .zero)
+    private func setupInfoLabel() {
+        infoLabel = UILabel()
+        infoLabel.font = UIFont.systemFont(ofSize: 16)
+        infoLabel.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(infoLabel)
+        updateInfoLabel()
+    }
+
+    private func setupScrollViewAndStack() {
+        scrollView = UIScrollView()
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(scrollView)
 
-        arContainerView = UIView(frame: .zero)
-        arContainerView.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.addSubview(arContainerView)
+        stackView = UIStackView()
+        stackView.axis = .vertical
+        stackView.spacing = 10
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.addSubview(stackView)
     }
 
     private func setupARView() {
         arView = ARView(frame: .zero)
         arView.translatesAutoresizingMaskIntoConstraints = false
-        arView.backgroundColor = .clear // Ensure ARView background is transparent
-        arContainerView.addSubview(arView)
-
-        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(arViewTapped))
-        arView.addGestureRecognizer(tapGesture)
+        arView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(arViewTapped)))
+        stackView.addArrangedSubview(arView)
     }
 
     private func setupTableView() {
-        tableView = UITableView(frame: .zero, style: .plain)
+        tableView = UITableView()
         tableView.dataSource = self
         tableView.delegate = self
         tableView.translatesAutoresizingMaskIntoConstraints = false
-        tableView.backgroundColor = .clear // Remove the background color
-        tableView.rowHeight = UITableView.automaticDimension
-        tableView.estimatedRowHeight = 60
         tableView.register(POICell.self, forCellReuseIdentifier: "POICell")
-        scrollView.addSubview(tableView)
+        stackView.addArrangedSubview(tableView)
+        
+        // Temporary fix for layout
+        tableView.heightAnchor.constraint(equalToConstant: 400).isActive = true
     }
+
 
     private func setupConstraints() {
         NSLayoutConstraint.activate([
@@ -106,91 +110,104 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
 
-            arContainerView.topAnchor.constraint(equalTo: scrollView.topAnchor),
-            arContainerView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
-            arContainerView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
-            arContainerView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
-            arContainerView.heightAnchor.constraint(equalToConstant: 60), // Adjust height if needed
+            stackView.topAnchor.constraint(equalTo: scrollView.topAnchor),
+            stackView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
+            stackView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
+            stackView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
+            stackView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
 
-            tableView.topAnchor.constraint(equalTo: arContainerView.bottomAnchor, constant: 10),
-            tableView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
-            tableView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
-            tableView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
-            tableView.heightAnchor.constraint(equalTo: scrollView.heightAnchor, multiplier: 0.8) // Ensure TableView has enough height
+            arView.heightAnchor.constraint(equalToConstant: 200)
         ])
     }
 
     private func loadAvatarModel() {
-        let avatarVC = Avatar3DViewController()
-        addChild(avatarVC)
-        avatarVC.view.frame = arView.bounds
-        arView.addSubview(avatarVC.view)
-        avatarVC.didMove(toParent: self)
+        AvatarRenderer.renderSavedAvatar(in: arView)
     }
 
+    // MARK: - Actions
     @objc private func dismissModal() {
-        self.dismiss(animated: true, completion: nil)
+        dismiss(animated: true)
     }
 
     @objc private func showMenu() {
         let alertController = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
-        let shareAction = UIAlertAction(title: "Share", style: .default) { _ in
-            // Implement share functionality here
-        }
-        let completeCollectionAction = UIAlertAction(title: "Complete collection", style: .default) { _ in
+
+        alertController.addAction(UIAlertAction(title: "Share", style: .default))
+        alertController.addAction(UIAlertAction(title: "Complete collection", style: .default) { _ in
             self.completeCollection()
             ToastManager.showToast(message: ToastMessages.completedCollection, type: .success)
-        }
-        let deleteAction = UIAlertAction(title: "Delete", style: .destructive) { _ in
+        })
+        alertController.addAction(UIAlertAction(title: "Delete", style: .destructive) { _ in
             self.showDeleteWarning()
-        }
-        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
+        })
+        alertController.addAction(UIAlertAction(title: "Cancel", style: .cancel))
 
-        alertController.addAction(shareAction)
-        alertController.addAction(completeCollectionAction)
-        alertController.addAction(deleteAction)
-        alertController.addAction(cancelAction)
-
-        present(alertController, animated: true, completion: nil)
+        present(alertController, animated: true)
     }
 
     @objc private func arViewTapped() {
         let avatarVC = Avatar3DViewController()
         avatarVC.modalPresentationStyle = .fullScreen
-        avatarVC.setupEnvironmentBackground() // Call this method when presenting the full screen avatar view
-        present(avatarVC, animated: true, completion: nil)
+        avatarVC.setupEnvironmentBackground()
+        avatarVC.onDismiss = { [weak self] in
+            self?.arView.scene.anchors.removeAll()
+            self?.loadAvatarModel()
+        }
+        present(avatarVC, animated: true)
     }
 
     private func showDeleteWarning() {
-        let alertController = UIAlertController(title: "Warning", message: "Are you sure you want to delete this bookmark list? This action cannot be undone.", preferredStyle: .alert)
-        let deleteAction = UIAlertAction(title: "Delete", style: .destructive) { _ in
+        let alert = UIAlertController(
+            title: "Warning",
+            message: "Are you sure you want to delete this bookmark list? This action cannot be undone.",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "Delete", style: .destructive) { _ in
             self.deleteBookmarkList()
             ToastManager.showToast(message: ToastMessages.collectionDeleted, type: .success)
-        }
-        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
-
-        alertController.addAction(deleteAction)
-        alertController.addAction(cancelAction)
-
-        present(alertController, animated: true, completion: nil)
+        })
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        present(alert, animated: true)
     }
 
     private func deleteBookmarkList() {
         BookmarksManager.shared.deleteBookmarkList(bookmarkList)
-        self.delegate?.didDeleteBookmarkList()
-        self.dismiss(animated: true, completion: nil)
+        delegate?.didDeleteBookmarkList()
+        dismiss(animated: true)
     }
 
     private func completeCollection() {
         BookmarksManager.shared.completeBookmarkList(bookmarkList)
-        self.delegate?.didCompleteBookmarkList(bookmarkList)
-        self.dismiss(animated: true, completion: nil)
+        delegate?.didCompleteBookmarkList(bookmarkList)
+        dismiss(animated: true)
     }
 
-    // MARK: - UITableViewDataSource
+    private func updateInfoLabel() {
+        let iconSize = CGSize(width: 14, height: 14)
+        let text = NSMutableAttributedString()
 
+        func makeIconAttachment(systemName: String) -> NSTextAttachment {
+            let image = UIImage(systemName: systemName)?.withTintColor(.fourthColor, renderingMode: .alwaysOriginal)
+            let attachment = NSTextAttachment()
+            attachment.image = image
+            attachment.bounds = CGRect(origin: .zero, size: iconSize).offsetBy(dx: 0, dy: -2)
+            return attachment
+        }
+
+        text.append(NSAttributedString(attachment: makeIconAttachment(systemName: "bookmark.fill")))
+        text.append(NSAttributedString(string: " \(bookmarkList.bookmarks.count)  ", attributes: [.font: UIFont.systemFont(ofSize: 14)]))
+        text.append(NSAttributedString(attachment: makeIconAttachment(systemName: "person.fill")))
+        text.append(NSAttributedString(string: " \(sharedWithCount)", attributes: [.font: UIFont.systemFont(ofSize: 14)]))
+        text.addAttribute(.foregroundColor, value: UIColor.black, range: NSRange(location: 0, length: text.length))
+
+        infoLabel.attributedText = text
+    }
+}
+
+// MARK: - UITableViewDataSource & Delegate
+extension POIsViewController: UITableViewDataSource, UITableViewDelegate {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return bookmarkList.bookmarks.count
+        bookmarkList.bookmarks.count
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -205,12 +222,9 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
     @objc private func checkboxTapped(_ sender: UIButton) {
         let index = sender.tag
         bookmarkList.bookmarks[index].visited.toggle()
-        
+
         let isVisited = bookmarkList.bookmarks[index].visited
-        sender.setImage(
-            UIImage(systemName: isVisited ? "checkmark.circle.fill" : "circle"),
-            for: .normal
-        )
+        sender.setImage(UIImage(systemName: isVisited ? "checkmark.circle.fill" : "circle"), for: .normal)
         sender.tintColor = .fourthColor
 
         if let cell = tableView.cellForRow(at: IndexPath(row: index, section: 0)) as? POICell {
@@ -224,28 +238,10 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
         }
     }
 
-    private func getRatingText(rating: Double) -> String {
-        var ratingText = ""
-        let fullStars = Int(rating)
-        for _ in 0..<fullStars {
-            ratingText += "●"
-        }
-        if rating - Double(fullStars) >= 0.5 {
-            ratingText += "◐"
-        }
-        let emptyStars = 5 - fullStars - (ratingText.count > fullStars ? 1 : 0)
-        for _ in 0..<emptyStars {
-            ratingText += "○"
-        }
-        return ratingText
-    }
-
-    // MARK: - UITableViewDelegate
-
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-
         let poi = bookmarkList.bookmarks[indexPath.row]
+
         let detailVC = POIDetailViewController()
         detailVC.placeID = poi.placeID
         detailVC.placeName = poi.name
@@ -256,57 +252,28 @@ class POIsViewController: UIViewController, UITableViewDataSource, UITableViewDe
         detailVC.openingHours = poi.openingHours
         detailVC.latitude = poi.latitude
         detailVC.longitude = poi.longitude
-
-        // Set the showBookmarkIcon property to false
         detailVC.showBookmarkIcon = false
 
-        // Save the selected POI
         BookmarksManager.shared.savePOI(for: loggedInUser, placeID: poi.placeID)
-
-        // Center the map to the selected POI
         delegate?.centerMapOnPOI(latitude: poi.latitude, longitude: poi.longitude)
 
-        // Presenting details for POI
         detailVC.modalPresentationStyle = .pageSheet
         if let sheet = detailVC.sheetPresentationController {
             sheet.detents = [.medium()]
         }
-        print("Presenting details for POI: \(poi.name)")
-        self.present(detailVC, animated: true, completion: nil)
+
+        present(detailVC, animated: true)
     }
 
-    // Swipe to delete functionality
     func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         if editingStyle == .delete {
-            let poiToDelete = bookmarkList.bookmarks[indexPath.row]
-            BookmarksManager.shared.deletePOI(for: loggedInUser, placeID: poiToDelete.placeID)
+            let poi = bookmarkList.bookmarks[indexPath.row]
+            BookmarksManager.shared.deletePOI(for: loggedInUser, placeID: poi.placeID)
             bookmarkList.bookmarks.remove(at: indexPath.row)
             tableView.deleteRows(at: [indexPath], with: .automatic)
-            BookmarksManager.shared.saveBookmarkList(bookmarkList)  // Save updated bookmark list
-            updateInfoLabel() // Update the info label with the new count
+            BookmarksManager.shared.saveBookmarkList(bookmarkList)
+            updateInfoLabel()
             ToastManager.showToast(message: ToastMessages.removeSpotFromCollection, type: .info)
         }
-    }
-
-    private func updateInfoLabel() {
-        let bookmarkIcon = UIImage(systemName: "bookmark.fill")?.withTintColor(.fourthColor, renderingMode: .alwaysOriginal)
-        let friendsIcon = UIImage(systemName: "person.fill")?.withTintColor(.fourthColor, renderingMode: .alwaysOriginal)
-
-        let bookmarkIconAttachment = NSTextAttachment()
-        bookmarkIconAttachment.image = bookmarkIcon
-        bookmarkIconAttachment.bounds = CGRect(x: 0, y: -2, width: 14, height: 14)
-
-        let friendsIconAttachment = NSTextAttachment()
-        friendsIconAttachment.image = friendsIcon
-        friendsIconAttachment.bounds = CGRect(x: 0, y: -2, width: 14, height: 14)
-
-        let attributedText = NSMutableAttributedString()
-        attributedText.append(NSAttributedString(attachment: bookmarkIconAttachment))
-        attributedText.append(NSAttributedString(string: " \(bookmarkList.bookmarks.count)  ", attributes: [NSAttributedString.Key.font: UIFont.systemFont(ofSize: 14)]))
-        attributedText.append(NSAttributedString(attachment: friendsIconAttachment))
-        attributedText.append(NSAttributedString(string: " \(sharedWithCount)", attributes: [NSAttributedString.Key.font: UIFont.systemFont(ofSize: 14)]))
-        attributedText.addAttribute(.foregroundColor, value: UIColor.black, range: NSRange(location: 0, length: attributedText.length))
-
-        infoLabel.attributedText = attributedText
     }
 }

@@ -3,7 +3,7 @@ import UIKit
 import GoogleMaps
 import GooglePlaces
 
-class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, POIsViewControllerDelegate {
+class SavedBookmarksViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, POIsViewControllerDelegate, UIPageViewControllerDelegate, UITabBarControllerDelegate {
 
     var tableView: UITableView!
     var bookmarkLists: [BookmarkList] = []

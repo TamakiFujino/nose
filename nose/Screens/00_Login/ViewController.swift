@@ -104,7 +104,7 @@ class ViewController: UIViewController, ASAuthorizationControllerDelegate, ASAut
                     appleButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
                     appleButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
                     appleButton.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.9),
-                    appleButton.heightAnchor.constraint(equalToConstant: 45),
+                    appleButton.heightAnchor.constraint(equalToConstant: 45)
                 ])
     }
     

@@ -388,4 +388,11 @@ class Avatar3DViewController: UIViewController {
             print("❌ Error saving image: \(error)")
         }
     }
+    
+    var onDismiss: (() -> Void)?
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        onDismiss?()
+    }
 }
