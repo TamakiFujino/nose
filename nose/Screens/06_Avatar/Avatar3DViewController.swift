@@ -10,6 +10,7 @@ class Avatar3DViewController: UIViewController {
     var chosenColors: [String: UIColor] = [:]
     var selectedItem: Any? // Replace `Any` with the appropriate type for your selected item
     var cancellables: [AnyCancellable] = []
+    var currentUserId: String = "defaultUser" // Replace with actual user ID
 
     var skinColor: UIColor? {
         return chosenColors["skin"]
@@ -177,19 +178,22 @@ class Avatar3DViewController: UIViewController {
     }
 
     func saveChosenModelsAndColors() -> Bool {
-        // Save the chosen models to UserDefaults
+        return saveChosenModelsAndColors(for: currentUserId)
+    }
+
+    func saveChosenModelsAndColors(for userId: String) -> Bool {
         for (category, modelName) in chosenModels {
-            UserDefaults.standard.set(modelName, forKey: "chosen\(category.capitalized)Model")
+            let key = "chosenModels_\(userId)_\(category)"
+            UserDefaults.standard.set(modelName, forKey: key)
         }
 
-        // Save the chosen colors to UserDefaults
         do {
             let colorsData = try NSKeyedArchiver.archivedData(withRootObject: chosenColors, requiringSecureCoding: false)
-            UserDefaults.standard.set(colorsData, forKey: "chosenColors")
-            print("✅ Chosen models and colors saved: \(chosenModels), \(chosenColors)")
+            UserDefaults.standard.set(colorsData, forKey: "chosenColors_\(userId)")
+            print("✅ Saved models and colors for userId: \(userId)")
             return true
         } catch {
-            print("❌ Failed to archive chosenColors: \(error)")
+            print("❌ Failed to archive colors for userId \(userId): \(error)")
             return false
         }
     }

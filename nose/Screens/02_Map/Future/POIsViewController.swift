@@ -154,12 +154,25 @@ class POIsViewController: UIViewController {
     private func loadAvatarModel() {
         arView.scene.anchors.removeAll()
 
+        // 👤 Load your own avatar
+        if let myAvatar = AvatarBuilder.buildAvatar(for: loggedInUser) {
+            let anchor = AnchorEntity(world: [0, 0, -0.5])
+            myAvatar.scale = SIMD3<Float>(repeating: 0.5)
+            anchor.addChild(myAvatar)
+            arView.scene.anchors.append(anchor)
+        }
+
+        // 👥 Load shared friends' avatars
         let key = "sharedFriends_\(bookmarkList.id)"
         let sharedIDs = UserDefaults.standard.array(forKey: key) as? [String] ?? []
-        let sharedFriends = mockFriends.filter { sharedIDs.contains($0.id) }
 
-        for (index, friend) in sharedFriends.enumerated() {
-            loadAvatar(for: friend, index: index)
+        for (i, friendId) in sharedIDs.enumerated() {
+            if let friendAvatar = AvatarBuilder.buildAvatar(for: friendId) {
+                let anchor = AnchorEntity(world: [Float(i + 1) * 0.4, 0, -0.5])
+                friendAvatar.scale = SIMD3<Float>(repeating: 0.5)
+                anchor.addChild(friendAvatar)
+                arView.scene.anchors.append(anchor)
+            }
         }
     }
     
@@ -170,7 +183,7 @@ class POIsViewController: UIViewController {
                 print("✅ Loaded entity: \(entity.name), type: \(type(of: entity))")
 
                 // Recursively apply scale to all ModelEntities inside
-                applyFixedScale(to: entity, scale: 0.4)
+                applyFixedScale(to: entity, scale: 0.5)
 
                 let anchor = AnchorEntity(world: [Float(index) * 0.4, 0, -0.5])
                 anchor.addChild(entity)
