@@ -52,11 +52,11 @@ class POIsViewController: UIViewController {
         }
         
         let sharedIDs = UserDefaults.standard.array(forKey: key) as? [String] ?? []
-        let sharedFriends = mockFriends.filter { sharedIDs.contains($0.id) }
+        // let sharedFriends = mockFriends.filter { sharedIDs.contains($0.id) }
 
-        for (index, friend) in sharedFriends.enumerated() {
-            loadAvatar(for: friend, index: index)
-        }
+//        for (index, friend) in sharedFriends.enumerated() {
+//            loadAvatar(for: friend, index: index)
+//        }
 
         updateInfoLabel()
         loadAvatarModel()
