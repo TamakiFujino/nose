@@ -399,4 +399,55 @@ class Avatar3DViewController: UIViewController {
         super.viewWillDisappear(animated)
         onDismiss?()
     }
+    
+    func exportCurrentOutfitAsAvatarOutfit() -> AvatarOutfit {
+        return AvatarOutfit(
+            bottoms: chosenModels["bottoms"] ?? "",
+            tops: chosenModels["tops"] ?? "",
+            hairBase: chosenModels["hair_base"] ?? "",
+            hairFront: chosenModels["hair_front"] ?? "",
+            hairBack: chosenModels["hair_back"] ?? "",
+            jackets: chosenModels["jackets"] ?? "",
+            skin: chosenModels["skin"] ?? "",
+            eye: chosenModels["eye"] ?? "",
+            eyebrow: chosenModels["eyebrow"] ?? "",
+            nose: chosenModels["nose"] ?? "",
+            mouth: chosenModels["mouth"] ?? "",
+            socks: chosenModels["socks"] ?? "",
+            shoes: chosenModels["shoes"] ?? "",
+            head: chosenModels["head"] ?? "",
+            neck: chosenModels["neck"] ?? "",
+            eyewear: chosenModels["eyewear"] ?? ""
+        )
+    }
+    
+    func loadOutfitFrom(_ outfit: AvatarOutfit) {
+        let categories = [
+            ("bottoms", outfit.bottoms),
+            ("tops", outfit.tops),
+            ("hair_base", outfit.hairBase),
+            ("hair_front", outfit.hairFront),
+            ("hair_back", outfit.hairBack),
+            ("jackets", outfit.jackets),
+            ("skin", outfit.skin),
+            ("eye", outfit.eye),
+            ("eyebrow", outfit.eyebrow),
+            ("nose", outfit.nose),
+            ("mouth", outfit.mouth),
+            ("socks", outfit.socks),
+            ("shoes", outfit.shoes),
+            ("head", outfit.head),
+            ("neck", outfit.neck),
+            ("eyewear", outfit.eyewear)
+        ]
+
+        for (category, modelName) in categories {
+            if !modelName.isEmpty {
+                loadClothingItem(named: modelName, category: category)
+            }
+        }
+
+        // Optional: If you want to also load saved colors, we can extend AvatarOutfit later
+    }
+
 }

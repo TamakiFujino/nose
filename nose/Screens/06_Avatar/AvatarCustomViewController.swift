@@ -5,34 +5,39 @@ class AvatarCustomViewController: UIViewController {
 
     var avatar3DViewController: Avatar3DViewController!
     var avatarUIManager: AvatarUIManager!
+    var selectedBookmarkList: BookmarkList?
 
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        // Set the navigation bar title
         self.title = "Avatar"
 
-        // Add save button to the navigation bar
         let saveButton = UIBarButtonItem(title: "Save", style: .plain, target: self, action: #selector(saveButtonTapped))
-        // set button text color
         saveButton.tintColor = .black
         self.navigationItem.rightBarButtonItem = saveButton
 
-        // Initialize and add the Avatar3DViewController
         avatar3DViewController = Avatar3DViewController()
         addChild(avatar3DViewController)
         view.addSubview(avatar3DViewController.view)
         avatar3DViewController.didMove(toParent: self)
 
-        // Initialize the AvatarUIManager
         avatarUIManager = AvatarUIManager(viewController: self, avatar3DViewController: avatar3DViewController)
 
-        // Add gesture for rotation
+        // ✅ Load outfit if available
+        if let outfit = selectedBookmarkList?.associatedOutfit {
+            avatar3DViewController.loadOutfitFrom(outfit)
+        }
+
         let panGesture = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
         view.addGestureRecognizer(panGesture)
 
-        // Set no item selected if there is no data saved previously
         checkForSavedData()
+        
+        self.navigationItem.leftBarButtonItem = UIBarButtonItem(
+            barButtonSystemItem: .close,
+            target: self,
+            action: #selector(closeButtonTapped)
+        )
     }
 
     @objc func handlePan(_ gesture: UIPanGestureRecognizer) {
@@ -47,6 +52,16 @@ class AvatarCustomViewController: UIViewController {
 
     @objc func saveButtonTapped() {
         let didSave = avatar3DViewController.saveChosenModelsAndColors()
+
+        guard var bookmark = selectedBookmarkList else {
+            print("❌ No bookmark selected")
+            ToastManager.showToast(message: "No bookmark selected.", type: .error)
+            return
+        }
+
+        let outfit = avatar3DViewController.exportCurrentOutfitAsAvatarOutfit()
+        bookmark.associatedOutfit = outfit
+        BookmarksManager.shared.saveBookmarkList(bookmark)
 
         guard didSave else {
             ToastManager.showToast(message: ToastMessages.avatarUpdateFailed, type: .error)
@@ -70,5 +85,9 @@ class AvatarCustomViewController: UIViewController {
             avatar3DViewController.selectedItem = nil
             avatar3DViewController.updateUIForNoSelection()
         }
+    }
+    
+    @objc func closeButtonTapped() {
+        dismiss(animated: true)
     }
 }

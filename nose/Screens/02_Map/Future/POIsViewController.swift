@@ -152,29 +152,32 @@ class POIsViewController: UIViewController {
     }
 
     private func loadAvatarModel() {
-        arView.scene.anchors.removeAll()
+            arView.scene.anchors.removeAll()
 
-        // 👤 Load your own avatar
-        if let myAvatar = AvatarBuilder.buildAvatar(for: loggedInUser) {
-            let anchor = AnchorEntity(world: [0, 0, -0.5])
-            myAvatar.scale = SIMD3<Float>(repeating: 0.5)
-            anchor.addChild(myAvatar)
-            arView.scene.anchors.append(anchor)
-        }
-
-        // 👥 Load shared friends' avatars
-        let key = "sharedFriends_\(bookmarkList.id)"
-        let sharedIDs = UserDefaults.standard.array(forKey: key) as? [String] ?? []
-
-        for (i, friendId) in sharedIDs.enumerated() {
-            if let friendAvatar = AvatarBuilder.buildAvatar(for: friendId) {
-                let anchor = AnchorEntity(world: [Float(i + 1) * 0.4, 0, -0.5])
-                friendAvatar.scale = SIMD3<Float>(repeating: 0.5)
-                anchor.addChild(friendAvatar)
+            if let outfit = bookmarkList?.associatedOutfit {
+                let entity = Entity()
+                let builder = AvatarBuilder()
+                builder.buildAvatar(from: outfit, into: entity)
+                entity.scale = SIMD3<Float>(repeating: 0.5)
+                let anchor = AnchorEntity(world: [0, 0, -0.5])
+                anchor.addChild(entity)
                 arView.scene.anchors.append(anchor)
             }
+
+            if let bookmarkList = bookmarkList {
+                let key = "sharedFriends_\(bookmarkList.id)"
+                let sharedIDs = UserDefaults.standard.array(forKey: key) as? [String] ?? []
+
+                for (i, friendId) in sharedIDs.enumerated() {
+                    if let friendAvatar = AvatarBuilder.buildAvatar(for: friendId) {
+                        let anchor = AnchorEntity(world: [Float(i + 1) * 0.4, 0, -0.5])
+                        friendAvatar.scale = SIMD3<Float>(repeating: 0.5)
+                        anchor.addChild(friendAvatar)
+                        arView.scene.anchors.append(anchor)
+                    }
+                }
+            }
         }
-    }
     
     private func loadAvatar(for friend: FriendAvatar, index: Int) {
         Task {
@@ -245,14 +248,18 @@ class POIsViewController: UIViewController {
     }
 
     @objc private func arViewTapped() {
-        let avatarVC = Avatar3DViewController()
-        avatarVC.modalPresentationStyle = .fullScreen
-        avatarVC.setupEnvironmentBackground()
-        avatarVC.onDismiss = { [weak self] in
+        let avatarCustomVC = AvatarCustomViewController()
+        avatarCustomVC.selectedBookmarkList = bookmarkList
+
+        let navController = UINavigationController(rootViewController: avatarCustomVC)
+        navController.modalPresentationStyle = .fullScreen
+
+        avatarCustomVC.avatar3DViewController?.onDismiss = { [weak self] in
             self?.arView.scene.anchors.removeAll()
             self?.loadAvatarModel()
         }
-        present(avatarVC, animated: true)
+
+        present(navController, animated: true)
     }
 
     private func showDeleteWarning() {

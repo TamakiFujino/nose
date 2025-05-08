@@ -44,4 +44,33 @@ struct AvatarBuilder {
 
         return baseEntity
     }
+
+    func buildAvatar(from outfit: AvatarOutfit, into root: Entity) {
+        let categories = [
+            ("bottoms", outfit.bottoms),
+            ("tops", outfit.tops),
+            ("hair_base", outfit.hairBase),
+            ("hair_front", outfit.hairFront),
+            ("hair_back", outfit.hairBack),
+            ("jackets", outfit.jackets),
+            ("skin", outfit.skin),
+            ("eye", outfit.eye),
+            ("eyebrow", outfit.eyebrow),
+            ("nose", outfit.nose),
+            ("mouth", outfit.mouth),
+            ("socks", outfit.socks),
+            ("shoes", outfit.shoes),
+            ("head", outfit.head),
+            ("neck", outfit.neck),
+            ("eyewear", outfit.eyewear)
+        ]
+
+        for (category, modelName) in categories where !modelName.isEmpty {
+            if let item = try? Entity.loadModel(named: modelName) {
+                item.name = modelName
+                root.addChild(item)
+            }
+        }
+    }
+
 }
