@@ -17,6 +17,8 @@ struct AvatarOutfit: Codable {
     var head: String
     var neck: String
     var eyewear: String
+    
+    var colors: [String: String] = [:]
 }
 
 struct BookmarkList: Codable, Equatable {

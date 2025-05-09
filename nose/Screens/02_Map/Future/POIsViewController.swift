@@ -7,6 +7,34 @@ struct FriendAvatar {
     let modelName: String // e.g., "robot", "astronaut"
 }
 
+let dummyOutfit = AvatarOutfit(
+    bottoms: "pants_flare",
+    tops: "top_baseball",
+    hairBase: "highest",
+    hairFront: "front_blunt_med",
+    hairBack: "long_curl",
+    jackets: "",
+    skin: "body",
+    eye: "round",
+    eyebrow: "",
+    nose: "",
+    mouth: "",
+    socks: "",
+    shoes: "crocs",
+    head: "",
+    neck: "",
+    eyewear: "",
+    colors: [
+        "tops": "#FF0000",
+        "bottoms": "#0000FF",
+        "hair_base": "#8B4513",
+        "hair_front": "#8B4513",
+        "hair_back": "#8B4513",
+        "eye": "#00BFFF",
+        "skin": "#FFD1B8"
+    ]
+)
+
 protocol POIsViewControllerDelegate: AnyObject {
     func didDeleteBookmarkList()
     func didCompleteBookmarkList(_ bookmarkList: BookmarkList)
@@ -27,13 +55,6 @@ class POIsViewController: UIViewController {
     var scrollView: UIScrollView!
     var arView: ARView!
     var stackView: UIStackView!
-    
-    // temporary friend avatar
-    let mockFriends: [FriendAvatar] = [
-            FriendAvatar(id: "123456789", name: "Taro Yamada", modelName: "body"),
-            FriendAvatar(id: "987654321", name: "Ichiro Suzuki", modelName: "body"),
-            FriendAvatar(id: "111111111", name: "Ken Sato", modelName: "body")
-        ]
 
     // MARK: - Lifecycle
     override func viewDidLoad() {
@@ -52,11 +73,6 @@ class POIsViewController: UIViewController {
         }
         
         let sharedIDs = UserDefaults.standard.array(forKey: key) as? [String] ?? []
-        // let sharedFriends = mockFriends.filter { sharedIDs.contains($0.id) }
-
-//        for (index, friend) in sharedFriends.enumerated() {
-//            loadAvatar(for: friend, index: index)
-//        }
 
         updateInfoLabel()
         loadAvatarModel()
@@ -127,7 +143,7 @@ class POIsViewController: UIViewController {
         tableView.translatesAutoresizingMaskIntoConstraints = false
         tableView.register(POICell.self, forCellReuseIdentifier: "POICell")
         stackView.addArrangedSubview(tableView)
-        tableView.heightAnchor.constraint(equalToConstant: 400).isActive = true
+        tableView.heightAnchor.constraint(equalToConstant: 500).isActive = true
     }
 
     private func setupConstraints() {
@@ -153,6 +169,18 @@ class POIsViewController: UIViewController {
 
     private func loadAvatarModel() {
             arView.scene.anchors.removeAll()
+        
+        let dummyFriendIDs = ["123456789", "987654321"]
+        for (i, friendId) in dummyFriendIDs.enumerated() {
+            let friendEntity = Entity()
+            let builder = AvatarBuilder()
+            builder.buildAvatar(from: dummyOutfit, into: friendEntity)
+
+            friendEntity.scale = SIMD3<Float>(repeating: 0.5)
+            let anchor = AnchorEntity(world: [Float(i + 1) * 0.8, 0, -0.5])
+            anchor.addChild(friendEntity)
+            arView.scene.anchors.append(anchor)
+        }
 
             if let outfit = bookmarkList?.associatedOutfit {
                 let entity = Entity()
