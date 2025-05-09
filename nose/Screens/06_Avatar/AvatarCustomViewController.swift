@@ -52,6 +52,7 @@ class AvatarCustomViewController: UIViewController {
 
     @objc func saveButtonTapped() {
         let didSave = avatar3DViewController.saveChosenModelsAndColors()
+        ToastManager.showToast(message: ToastMessages.avatarUpdated, type: .success)
 
         guard var bookmark = selectedBookmarkList else {
             print("❌ No bookmark selected")
@@ -66,15 +67,6 @@ class AvatarCustomViewController: UIViewController {
         guard didSave else {
             ToastManager.showToast(message: ToastMessages.avatarUpdateFailed, type: .error)
             return
-        }
-
-        avatar3DViewController.captureSnapshot { success in
-            if success {
-                ToastManager.showToast(message: ToastMessages.avatarUpdated, type: .success)
-            } else {
-                ToastManager.showToast(message: ToastMessages.avatarUpdateFailed, type: .error)
-                ToastManager.showToast(message: "Saved, but failed to capture snapshot.", type: .error)
-            }
         }
     }
 

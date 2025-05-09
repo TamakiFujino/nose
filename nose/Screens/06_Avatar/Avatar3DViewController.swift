@@ -226,10 +226,6 @@ class Avatar3DViewController: UIViewController {
             entity.model?.materials = materials
         }
 
-        // Save the chosen color for the category
-        chosenColors[category] = color
-        saveChosenModelsAndColors()
-
         // Print final materials to verify the change
         print("Updated materials: \(String(describing: entity.model?.materials))")
     }
@@ -258,36 +254,8 @@ class Avatar3DViewController: UIViewController {
             baseEntity.model?.materials = materials
         }
 
-        // Save the chosen color for the skin
-        chosenColors["skin"] = color
-        saveChosenModelsAndColors()
-
         // Print final materials to verify the change
         print("Updated skin color: \(String(describing: baseEntity.model?.materials))")
-    }
-
-    func applyMaskToModel(named modelName: String, isMasked: Bool, category: String) {
-        guard let entity = baseEntity?.findEntity(named: modelName) as? ModelEntity else {
-            print("Entity not found for model: \(modelName)")
-            return
-        }
-
-        // Apply the mask by making the entity invisible or visible based on isMasked
-        if isMasked {
-            // Apply transparency (invisible)
-            var material = SimpleMaterial()
-            material.baseColor = .color(.clear) // Full transparency
-            entity.model?.materials = [material]
-        } else {
-            // Restore original material (visible)
-            if let savedModelName = chosenModels[category], let originalMaterial = entity.model?.materials.first {
-                entity.model?.materials = [originalMaterial]
-            }
-        }
-
-        // Save the mask state
-        chosenModels[category] = modelName
-        saveChosenModelsAndColors()
     }
 
     private func addGroundPlaneWithShadow() {
@@ -344,18 +312,6 @@ class Avatar3DViewController: UIViewController {
     func updateUIForNoSelection() {
         // Implement the logic to update the UI for no selection
         // For example, clear any highlights in the 3D view
-    }
-
-    func captureSnapshot(completion: @escaping (Bool) -> Void) {
-        arView.snapshot(saveToHDR: false) { image in
-            guard let image = image else {
-                print("❌ Failed to capture snapshot.")
-                completion(false)
-                return
-            }
-            self.saveImage(image: image, toDirectory: "capturedAvatars")
-            completion(true)
-        }
     }
 
 
