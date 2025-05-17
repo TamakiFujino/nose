@@ -3,46 +3,56 @@ import UIKit
 
 struct AvatarBuilder {
     static func buildAvatar(for userId: String) -> ModelEntity? {
-        guard let baseEntity = try? Entity.loadModel(named: "body") as? ModelEntity else {
-            print("❌ Failed to load base model")
-            return nil
-        }
-
-        // Load chosenModels
-        var chosenModels: [String: String] = [:]
-        for (key, value) in UserDefaults.standard.dictionaryRepresentation() {
-            if key.hasPrefix("chosenModels_\(userId)_"),
-               let modelName = value as? String {
-                let category = key.replacingOccurrences(of: "chosenModels_\(userId)_", with: "")
-                chosenModels[category] = modelName
+        do {
+            guard let baseEntity = try Entity.loadModel(named: "body") as? ModelEntity else {
+                print("❌ Loaded entity is not a ModelEntity")
+                return nil
             }
-        }
+            print("✅ Successfully loaded base model 'body'")
 
-        // Load chosenColors
-        var chosenColors: [String: UIColor] = [:]
-        if let colorData = UserDefaults.standard.data(forKey: "chosenColors_\(userId)"),
-           let colors = try? NSKeyedUnarchiver.unarchiveTopLevelObjectWithData(colorData) as? [String: UIColor] {
-            chosenColors = colors
-        }
-
-        // Attach clothing models and colors
-        for (category, modelName) in chosenModels {
-            if let clothing = try? Entity.loadModel(named: modelName) as? ModelEntity {
-                clothing.name = modelName
-                clothing.scale = SIMD3<Float>(repeating: 1.0)
-                baseEntity.addChild(clothing)
-
-                if let color = chosenColors[category] {
-                    var material = SimpleMaterial()
-                    material.baseColor = .color(color)
-                    material.roughness = MaterialScalarParameter(floatLiteral: 1.0)
-                    material.metallic = MaterialScalarParameter(floatLiteral: 0.0)
-                    clothing.model?.materials = [material]
+            // Load chosenModels
+            var chosenModels: [String: String] = [:]
+            for (key, value) in UserDefaults.standard.dictionaryRepresentation() {
+                if key.hasPrefix("chosenModels_\(userId)_"),
+                   let modelName = value as? String {
+                    let category = key.replacingOccurrences(of: "chosenModels_\(userId)_", with: "")
+                    chosenModels[category] = modelName
                 }
             }
-        }
 
-        return baseEntity
+            // Load chosenColors
+            var chosenColors: [String: UIColor] = [:]
+            if let colorData = UserDefaults.standard.data(forKey: "chosenColors_\(userId)"),
+               let colors = try? NSKeyedUnarchiver.unarchiveTopLevelObjectWithData(colorData) as? [String: UIColor] {
+                chosenColors = colors
+            }
+
+            // Attach clothing models and colors
+            for (category, modelName) in chosenModels {
+                do {
+                    let clothing = try Entity.loadModel(named: modelName) as! ModelEntity
+                    clothing.name = modelName
+                    clothing.scale = SIMD3<Float>(repeating: 1.0)
+                    baseEntity.addChild(clothing)
+                    print("✅ Loaded model for category '\(category)': \(modelName)")
+
+                    if let color = chosenColors[category] {
+                        var material = SimpleMaterial()
+                        material.baseColor = .color(color)
+                        material.roughness = MaterialScalarParameter(floatLiteral: 1.0)
+                        material.metallic = MaterialScalarParameter(floatLiteral: 0.0)
+                        clothing.model?.materials = [material]
+                    }
+                } catch {
+                    print("❌ Failed to load model for category '\(category)': \(modelName), error: \(error)")
+                }
+            }
+
+            return baseEntity
+        } catch {
+            print("❌ Error loading base model 'body': \(error)")
+            return nil
+        }
     }
 
     func buildAvatar(from outfit: AvatarOutfit, into root: Entity) {
@@ -66,11 +76,14 @@ struct AvatarBuilder {
         ]
 
         for (category, modelName) in categories where !modelName.isEmpty {
-            if let item = try? Entity.loadModel(named: modelName) {
+            do {
+                let item = try Entity.loadModel(named: modelName)
                 item.name = modelName
                 root.addChild(item)
+                print("✅ Loaded model for category '\(category)': \(modelName)")
+            } catch {
+                print("❌ Failed to load model for category '\(category)': \(modelName), error: \(error)")
             }
         }
     }
-
 }
