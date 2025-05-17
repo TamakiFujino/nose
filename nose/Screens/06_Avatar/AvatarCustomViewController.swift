@@ -26,12 +26,16 @@ class AvatarCustomViewController: UIViewController {
         // ✅ Load outfit if available
         if let outfit = selectedBookmarkList?.associatedOutfit {
             avatar3DViewController.loadOutfitFrom(outfit)
+            // AvatarUIManager might need to sync its UI to this outfit here.
+            // For now, displayInitialCategory (called below) will handle a default selection.
         }
+
+        // Instruct AvatarUIManager to select and display an initial category thumbnail.
+        // This method should exist on AvatarUIManager and contain logic to pick a sensible default.
+        avatarUIManager.displayInitialCategory() 
 
         let panGesture = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
         view.addGestureRecognizer(panGesture)
-
-        checkForSavedData()
         
         self.navigationItem.leftBarButtonItem = UIBarButtonItem(
             barButtonSystemItem: .close,
@@ -67,15 +71,6 @@ class AvatarCustomViewController: UIViewController {
         guard didSave else {
             ToastManager.showToast(message: ToastMessages.avatarUpdateFailed, type: .error)
             return
-        }
-    }
-
-    private func checkForSavedData() {
-        // Check if there is any saved data
-        if UserDefaults.standard.object(forKey: "selectedItem") == nil {
-            // No saved data, set no item selected
-            avatar3DViewController.selectedItem = nil
-            avatar3DViewController.updateUIForNoSelection()
         }
     }
     

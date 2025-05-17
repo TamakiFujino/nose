@@ -19,6 +19,43 @@ class AvatarUIManager: NSObject {
         setupAdditionalBottomSheetView()
         setupBottomSheetView()
         setDefaultColor()
+        displayInitialCategory()
+    }
+
+    func displayInitialCategory() {
+        // 1. Determine the category to select.
+        var initialCategoryName: String = "tops" // Default to "tops"
+
+        if let avatarVC = self.avatar3DViewController {
+            // Sync BottomSheetContentView's internal selectedModels with the actual state
+            bottomSheetView.syncSelectedModels(with: avatarVC.chosenModels)
+
+            // Example: if an outfit was loaded, pick the first category from it that has an item.
+            if let firstChosenCategoryWithItem = avatarVC.chosenModels.first(where: { !$0.value.isEmpty })?.key {
+                initialCategoryName = firstChosenCategoryWithItem
+            }
+        } else {
+            // Fallback if avatar3DViewController is not available, though it should be.
+            // Sync with an empty dictionary or handle appropriately.
+            bottomSheetView.syncSelectedModels(with: [:])
+        }
+        
+        print("AvatarUIManager: Attempting to display initial category: \(initialCategoryName)")
+
+        // 2. Instruct BottomSheetContentView to select this category and display its items.
+        bottomSheetView.selectCategoryAndDisplayItems(named: initialCategoryName)
+
+        // Ensure the color selection UI is also updated if needed, 
+        // though setDefaultColor() already runs in init.
+        // If the initial category has a specific color, you might want to update the color UI too.
+        if let initialColor = avatar3DViewController?.chosenColors[initialCategoryName] {
+            bottomSheetView.changeSelectedCategoryColor(to: initialColor)
+            if let buttonIndex = availableColors.firstIndex(of: initialColor), buttonIndex < colorButtons.count {
+                selectColorButton(colorButtons[buttonIndex])
+            }
+        } else {
+            setDefaultColor() // Or apply the default color if the category has no specific color saved
+        }
     }
 
     private func loadAvailableColors() {
@@ -89,7 +126,6 @@ class AvatarUIManager: NSObject {
             if index == 0 {
                 selectColorButton(button)
             }
-            print("Added button with color \(color)")
             contentWidth += buttonSize + padding
         }
 
@@ -112,6 +148,10 @@ class AvatarUIManager: NSObject {
     private func setDefaultColor() {
         guard let defaultColor = availableColors.first else { return }
         bottomSheetView.changeSelectedCategoryColor(to: defaultColor)
+        // Also select the first color button if it exists
+        if let firstColorButton = colorButtons.first {
+            selectColorButton(firstColorButton)
+        }
     }
 
     @objc private func colorButtonTapped(_ sender: UIButton) {
