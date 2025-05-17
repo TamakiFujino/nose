@@ -235,7 +235,7 @@ class BottomSheetContentView: UIView {
             lastButton = thumbnailButton
 
             if let selectedModelName = selectedModels[category], selectedModelName == model.name {
-                thumbnailButton.layer.borderColor = UIColor.blue.cgColor
+                thumbnailButton.layer.borderColor = UIColor.fifthColor.cgColor
                 thumbnailButton.layer.borderWidth = 2
             } else {
                 thumbnailButton.layer.borderColor = UIColor.clear.cgColor

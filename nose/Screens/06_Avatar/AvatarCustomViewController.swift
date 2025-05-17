@@ -7,19 +7,34 @@ class AvatarCustomViewController: UIViewController {
     var avatarUIManager: AvatarUIManager!
     var selectedBookmarkList: BookmarkList?
 
+    private var loadingIndicator: UIActivityIndicatorView!
+
     override func viewDidLoad() {
         super.viewDidLoad()
 
         self.title = "Avatar"
+        view.backgroundColor = .white // Assuming a default background
+
+        setupLoadingIndicator()
+        showLoadingIndicator()
 
         let saveButton = UIBarButtonItem(title: "Save", style: .plain, target: self, action: #selector(saveButtonTapped))
         saveButton.tintColor = .black
         self.navigationItem.rightBarButtonItem = saveButton
 
         avatar3DViewController = Avatar3DViewController()
+        // Set the completion handler *before* adding as child, so it's ready when loadAvatarModel is called
+        avatar3DViewController.onInitialLoadComplete = { [weak self] in
+            self?.hideLoadingIndicator()
+            // Any other UI updates after initial load can go here
+            print("Avatar initial load complete, hiding indicator.")
+        }
+
         addChild(avatar3DViewController)
         view.addSubview(avatar3DViewController.view)
         avatar3DViewController.didMove(toParent: self)
+        // Ensure Avatar3DViewController's view is behind the loading indicator if it's full screen
+        view.bringSubviewToFront(loadingIndicator)
 
         avatarUIManager = AvatarUIManager(viewController: self, avatar3DViewController: avatar3DViewController)
 
@@ -42,6 +57,31 @@ class AvatarCustomViewController: UIViewController {
             target: self,
             action: #selector(closeButtonTapped)
         )
+    }
+
+    private func setupLoadingIndicator() {
+        loadingIndicator = UIActivityIndicatorView(style: .large)
+        loadingIndicator.translatesAutoresizingMaskIntoConstraints = false
+        loadingIndicator.hidesWhenStopped = true
+        loadingIndicator.color = .gray
+        view.addSubview(loadingIndicator)
+
+        NSLayoutConstraint.activate([
+            loadingIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            loadingIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+        ])
+    }
+
+    private func showLoadingIndicator() {
+        loadingIndicator.startAnimating()
+        // Optionally disable user interaction on underlying views
+        // view.isUserInteractionEnabled = false 
+    }
+
+    private func hideLoadingIndicator() {
+        loadingIndicator.stopAnimating()
+        // Re-enable user interaction if it was disabled
+        // view.isUserInteractionEnabled = true
     }
 
     @objc func handlePan(_ gesture: UIPanGestureRecognizer) {
