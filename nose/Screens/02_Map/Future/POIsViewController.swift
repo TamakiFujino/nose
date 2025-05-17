@@ -182,10 +182,27 @@ class POIsViewController: UIViewController {
             arView.scene.anchors.append(anchor)
         }
 
-            if let outfit = bookmarkList?.associatedOutfit {
+            if var currentOutfit = bookmarkList?.associatedOutfit {
+                if currentOutfit.skin.isEmpty {
+                    print("User avatar outfit was missing skin, defaulting to 'body'.")
+                    currentOutfit.skin = "body"
+                    if currentOutfit.colors["skin"] == nil {
+                        currentOutfit.colors["skin"] = "#FFD1B8"
+                    }
+                }
+                
                 let entity = Entity()
                 let builder = AvatarBuilder()
-                builder.buildAvatar(from: outfit, into: entity)
+                builder.buildAvatar(from: currentOutfit, into: entity)
+                entity.scale = SIMD3<Float>(repeating: 0.5)
+                let anchor = AnchorEntity(world: [0, 0, -0.5])
+                anchor.addChild(entity)
+                arView.scene.anchors.append(anchor)
+            } else {
+                print("User avatar has no associated outfit. Loading dummy/default outfit for user.")
+                let entity = Entity()
+                let builder = AvatarBuilder()
+                builder.buildAvatar(from: dummyOutfit, into: entity)
                 entity.scale = SIMD3<Float>(repeating: 0.5)
                 let anchor = AnchorEntity(world: [0, 0, -0.5])
                 anchor.addChild(entity)
