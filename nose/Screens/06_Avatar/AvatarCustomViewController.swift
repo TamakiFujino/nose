@@ -115,6 +115,36 @@ class AvatarCustomViewController: UIViewController {
     }
     
     @objc func closeButtonTapped() {
-        dismiss(animated: true)
+        // First, check if this VC is part of a navigation stack and can be popped.
+        // This is the most likely scenario given the console output and nav bar items.
+        if let navController = self.navigationController {
+            // If self is the root of this navigationController, popViewController might not be what you want
+            // unless this whole navigationController is meant to be removed by a different mechanism.
+            // However, a "close" button usually means popping if not dismissing a modal.
+            if navController.viewControllers.count > 1 && navController.topViewController == self {
+                 print("Popping AvatarCustomViewController from navigation stack.")
+                navController.popViewController(animated: true)
+                return // Successfully popped
+            } else if navController.viewControllers.count == 1 && navController.topViewController == self {
+                // This is the root of its own navigation controller. 
+                // If this nav controller itself was presented modally, previous attempts to dismiss presentingVC would have worked.
+                // If it wasn't modal, then how is it meant to be closed? 
+                // This indicates a more complex setup or a different expectation for "close".
+                print("AvatarCustomViewController is the root of its navigation controller. Standard pop is not applicable. Check presentation method.")
+                // Fall-through to see if it was modally presented without a nav controller for some reason.
+            }
+        }
+
+        // Fallback to modal dismiss attempt (though the console message indicated this wasn't the case)
+        // This will try to dismiss if self was presented modally without a nav controller.
+        let presentingVC = self.presentingViewController
+        if let vc = presentingVC {
+            print("Attempting to dismiss modally presented AvatarCustomViewController (without NavController).")
+            vc.dismiss(animated: true, completion: nil)
+        } else {
+            print("Close button tapped: No presentingViewController and not popped from a nav stack. Action unclear.")
+            // If it reaches here, the view controller is not modal and not in a deeper navigation stack.
+            // The app's specific navigation structure needs to be understood to define "close".
+        }
     }
 }
