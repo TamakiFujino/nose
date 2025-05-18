@@ -323,27 +323,77 @@ class ViewController: UIViewController, ASAuthorizationControllerDelegate, ASAut
         }
     }
 
+    private func generateSingleFriendCode(length: Int = 9) -> String {
+        let letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        return String((0..<length).map{ _ in letters.randomElement()! })
+    }
+
+    private func generateAndCheckFriendCode(attempt: Int = 0, maxAttempts: Int = 5, completion: @escaping (String?) -> Void) {
+        if attempt >= maxAttempts {
+            print("Error: Could not generate a unique friendCode after \(maxAttempts) attempts.")
+            completion(nil)
+            return
+        }
+
+        let potentialCode = generateSingleFriendCode()
+        let db = Firestore.firestore()
+
+        db.collection("users").whereField("friendCode", isEqualTo: potentialCode).getDocuments { (querySnapshot, err) in
+            if let err = err {
+                print("Error checking friendCode uniqueness: \(err.localizedDescription)")
+                // Decide if to retry or fail. For now, fail on DB error.
+                completion(nil)
+                return
+            }
+
+            if querySnapshot == nil || querySnapshot!.isEmpty {
+                // No documents found with this friendCode, so it's unique
+                completion(potentialCode)
+            } else {
+                // Collision detected, try again
+                print("FriendCode collision for \(potentialCode), retrying...")
+                self.generateAndCheckFriendCode(attempt: attempt + 1, maxAttempts: maxAttempts, completion: completion)
+            }
+        }
+    }
+
     private func createUserProfile() {
         guard let user = Auth.auth().currentUser else {
-            print("No user logged in.")
+            print("No user logged in for profile creation.")
             return
         }
 
         let db = Firestore.firestore()
         let userDocRef = db.collection("users").document(user.uid)
 
-        userDocRef.setData([
-            "uid": user.uid,
-            "email": user.email ?? "",
-            "displayName": user.displayName ?? "",
-            "createdAt": FieldValue.serverTimestamp(),
-            "status": "active"
-        ]) { error in
-            if let error = error {
-                print("Error creating user profile: \(error.localizedDescription)")
+        // Generate a unique friend code first
+        generateAndCheckFriendCode { [weak self] friendCode in
+            guard let self = self else { return }
+
+            var userData: [String: Any] = [
+                "uid": user.uid,
+                "email": user.email ?? "",
+                "displayName": user.displayName ?? "", // Note: Apple Sign In might provide this, Google might not immediately.
+                "createdAt": FieldValue.serverTimestamp(),
+                "status": "active"
+            ]
+
+            if let fc = friendCode {
+                userData["friendCode"] = fc
+                print("Generated unique friendCode: \(fc)")
             } else {
-                print("User profile created successfully.")
-                self.showNameInputScreen()
+                print("Proceeding with user profile creation without a friendCode due to generation failure.")
+                // Optionally, you could prevent profile creation or schedule a retry
+            }
+
+            userDocRef.setData(userData) { error in
+                if let error = error {
+                    print("Error creating user profile: \(error.localizedDescription)")
+                } else {
+                    print("User profile created successfully (friendCode: \(friendCode ?? "N/A")).")
+                    // Regardless of friendCode success, proceed to name input if that's the flow
+                    self.showNameInputScreen()
+                }
             }
         }
     }

@@ -1,12 +1,22 @@
 import UIKit
+import FirebaseFirestore
+import FirebaseAuth
 
 class FriendListViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
 
     let customTabBar = CustomTabBar()
     let tableView = UITableView()
-    var friendList: [[String: String]] = []
-    var blockedList: [[String: String]] = []
-    var blockedFriends: Set<String> = []
+    var friendList: [[String: String]] = [] // Filtered list for "Friends" tab
+    var blockedList: [[String: String]] = [] // Filtered list for "Blocked" tab
+    
+    private var allFriendsFromFirestore: [[String: String]] = []
+    private var blockedFriends: Set<String> = [] // UIDs of users I have blocked
+    private var blockedByFriends: Set<String> = [] // UIDs of users who have blocked me
+
+    private let db = Firestore.firestore()
+    private var currentUserID: String? { Auth.auth().currentUser?.uid }
+    private let friendListDocID = "friendListDoc"
+    private let blockListsDocID = "blockListsDoc"
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -26,14 +36,15 @@ class FriendListViewController: UIViewController, UITableViewDelegate, UITableVi
         // Layout
         setupConstraints()
 
-        // Load the friend and blocked lists
-        loadFriendList()
-        loadBlockedFriends()
-        loadBlockedList()
+        // Load initial data
+        loadBlockedListsFromFirestore() // Load the set of blocked friend UIDs from Firestore
+        // fetchAllFriendsAndRefreshDisplay will be called in viewWillAppear
+    }
 
-        // Initially show friends tab
-        customTabBar.segmentedControl.selectedSegmentIndex = 0
-        updateTableView()
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        fetchAllFriendsAndRefreshDisplay() // Refresh data every time the view appears
+        self.navigationController?.navigationBar.tintColor = .black
     }
 
     private func setupNavigationBar() {
@@ -43,7 +54,6 @@ class FriendListViewController: UIViewController, UITableViewDelegate, UITableVi
 
         // Hide the "Back" text in the back button
         navigationItem.backBarButtonItem = UIBarButtonItem(title: "", style: .plain, target: nil, action: nil)
-        self.navigationController?.navigationBar.tintColor = .black
     }
 
     private func setupCustomTabBar() {
@@ -81,26 +91,139 @@ class FriendListViewController: UIViewController, UITableViewDelegate, UITableVi
         ])
     }
 
-    private func loadFriendList() {
-        if let savedFriendList = UserDefaults.standard.array(forKey: "friendList") as? [[String: String]] {
-            friendList = savedFriendList.filter { !blockedFriends.contains($0["id"] ?? "") }
+    private func loadBlockedListsFromFirestore() {
+        guard let currentAuthUID = self.currentUserID else {
+            print("Not logged in. Cannot load block lists.")
+            self.blockedFriends = [] // Reset local cache
+            self.blockedByFriends = []
+            return
+        }
+
+        let blockListRef = db.collection("users").document(currentAuthUID).collection("userFriendData").document(blockListsDocID)
+
+        blockListRef.getDocument { [weak self] (documentSnapshot, error) in
+            guard let self = self else { return }
+            if let error = error {
+                print("Error fetching block lists: \(error.localizedDescription)")
+                self.blockedFriends = [] // Reset on error
+                self.blockedByFriends = []
+                // We still need to refresh the display even if block lists fail to load
+                self.fetchAllFriendsAndRefreshDisplay()
+                return
+            }
+
+            if let document = documentSnapshot, document.exists {
+                if let blockedUIDsArray = document.data()?["blockedUIDs"] as? [String] {
+                    self.blockedFriends = Set(blockedUIDsArray)
+                } else {
+                    self.blockedFriends = [] // Field might not exist yet
+                }
+                if let blockedByUIDsArray = document.data()?["blockedByUIDs"] as? [String] {
+                    self.blockedByFriends = Set(blockedByUIDsArray)
+                } else {
+                    self.blockedByFriends = [] // Field might not exist yet
+                }
+                print("Blocked lists loaded. Blocked: \(self.blockedFriends.count), Blocked By: \(self.blockedByFriends.count)")
+            } else {
+                print("Block lists document does not exist for user \(currentAuthUID). Initializing with empty sets.")
+                self.blockedFriends = []
+                self.blockedByFriends = []
+            }
+            // Crucially, refresh the main friend list display after block lists are loaded (or failed to load)
+            // because fetchAllFriendsAndRefreshDisplay depends on an up-to-date blockedFriends set.
+            self.fetchAllFriendsAndRefreshDisplay()
         }
     }
 
-    private func loadBlockedFriends() {
-        if let savedBlockedFriends = UserDefaults.standard.array(forKey: "blockedFriends") as? [String] {
-            blockedFriends = Set(savedBlockedFriends)
+    private func saveCurrentUserBlockedListToFirestore() {
+        guard let currentAuthUID = self.currentUserID else {
+            print("Not logged in. Cannot save block list.")
+            // Optionally show an error to the user
+            return
+        }
+        
+        let blockListRef = db.collection("users").document(currentAuthUID).collection("userFriendData").document(blockListsDocID)
+        
+        // We save the current state of `self.blockedFriends`
+        let dataToSave: [String: Any] = ["blockedUIDs": Array(self.blockedFriends)]
+        
+        blockListRef.setData(dataToSave, merge: true) { error in // merge:true to not overwrite blockedByUIDs
+            if let error = error {
+                print("Error saving blocked list: \(error.localizedDescription)")
+                ToastManager.showToast(message: "Failed to update block list.", type: .error)
+            } else {
+                print("Blocked list saved successfully to Firestore.")
+                // ToastManager.showToast(message: "Block list updated.", type: .success) // Optional
+            }
         }
     }
 
-    private func loadBlockedList() {
-        if let savedFriendList = UserDefaults.standard.array(forKey: "friendList") as? [[String: String]] {
-            blockedList = savedFriendList.filter { blockedFriends.contains($0["id"] ?? "") }
+    private func fetchAllFriendsAndRefreshDisplay() {
+        guard let userID = currentUserID else {
+            print("Error: Current user ID is nil. Cannot fetch friends.")
+            // Optionally clear local lists and reload table if user logs out
+            self.allFriendsFromFirestore = []
+            refreshFilteredListsAndTable()
+            return
+        }
+
+        db.collection("users").document(userID).collection("userFriendData").document("friendListDoc").getDocument { [weak self] (documentSnapshot, error) in
+            guard let self = self else { return }
+
+            if let error = error {
+                print("Error fetching friends from Firestore: \(error.localizedDescription)")
+                // Keep existing local data or clear it, depending on desired behavior on error
+                // For now, we'll clear it to reflect that we couldn't fetch.
+                self.allFriendsFromFirestore = []
+                self.refreshFilteredListsAndTable()
+                return
+            }
+
+            if let document = documentSnapshot, document.exists {
+                self.allFriendsFromFirestore = document.data()?["friends"] as? [[String: String]] ?? []
+            } else {
+                print("Friend list document does not exist for user \(userID). Initializing as empty.")
+                self.allFriendsFromFirestore = [] // No document means no friends or an error in path
+            }
+            self.refreshFilteredListsAndTable()
         }
     }
 
-    private func saveBlockedFriends() {
-        UserDefaults.standard.set(Array(blockedFriends), forKey: "blockedFriends")
+    private func saveAllFriendsToFirestore() {
+        guard let userID = currentUserID else {
+            print("Error: Current user ID is nil. Cannot save friends.")
+            return
+        }
+        guard !allFriendsFromFirestore.isEmpty else {
+            // If the list is empty, we might want to delete the document or save an empty array
+            // For consistency, saving an empty array.
+            let friendsData = ["friends": []]
+            db.collection("users").document(userID).collection("userFriendData").document("friendListDoc").setData(friendsData) { error in
+                if let error = error {
+                    print("Error saving empty friend list to Firestore: \(error.localizedDescription)")
+                } else {
+                    print("Successfully saved empty friend list to Firestore.")
+                }
+            }
+            return
+        }
+
+        let friendsData = ["friends": self.allFriendsFromFirestore]
+        db.collection("users").document(userID).collection("userFriendData").document("friendListDoc").setData(friendsData) { error in
+            if let error = error {
+                print("Error saving friend list to Firestore: \(error.localizedDescription)")
+                ToastManager.showToast(message: "Failed to sync friends.", type: .error)
+            } else {
+                print("Successfully saved friend list to Firestore.")
+                // ToastManager.showToast(message: "Friends synced.", type: .success) // Optional: success feedback
+            }
+        }
+    }
+    
+    private func refreshFilteredListsAndTable() {
+        self.friendList = self.allFriendsFromFirestore.filter { !blockedFriends.contains($0["id"] ?? "") }
+        self.blockedList = self.allFriendsFromFirestore.filter { blockedFriends.contains($0["id"] ?? "") }
+        self.tableView.reloadData()
     }
 
     @objc private func addFriendButtonTapped() {
@@ -109,15 +232,8 @@ class FriendListViewController: UIViewController, UITableViewDelegate, UITableVi
     }
 
     @objc private func segmentedControlChanged() {
-        updateTableView()
-    }
-
-    private func updateTableView() {
-        if customTabBar.segmentedControl.selectedSegmentIndex == 0 {
-            loadFriendList()
-        } else {
-            loadBlockedList()
-        }
+        // The lists are already filtered, just need to reload the table
+        // to reflect the correct segment's data source.
         tableView.reloadData()
     }
 
@@ -178,12 +294,11 @@ extension FriendListViewController: FriendTableViewCellDelegate {
     }
     
     private func blockUser(at indexPath: IndexPath) {
-        let friend = friendList[indexPath.row]
-        if let friendID = friend["id"] {
+        let friendToBlock = friendList[indexPath.row] // Friend is from the displayed (unblocked) list
+        if let friendID = friendToBlock["id"] {
             blockedFriends.insert(friendID)
-            saveBlockedFriends()
-            friendList.remove(at: indexPath.row)
-            tableView.deleteRows(at: [indexPath], with: .automatic)
+            saveCurrentUserBlockedListToFirestore() // Save updated blocked set to Firestore
+            refreshFilteredListsAndTable() // Re-filter and update UI
             ToastManager.showToast(message: ToastMessages.userBlocked, type: .success)
         } else {
             ToastManager.showToast(message: ToastMessages.userBlockFailed, type: .error)
@@ -191,14 +306,11 @@ extension FriendListViewController: FriendTableViewCellDelegate {
     }
     
     private func unblockUser(at indexPath: IndexPath) {
-        let blocked = blockedList[indexPath.row]
-        if let blockedID = blocked["id"] {
-            blockedFriends.remove(blockedID)
-            saveBlockedFriends()
-            blockedList.remove(at: indexPath.row)
-            tableView.deleteRows(at: [indexPath], with: .automatic)
-            // Add back to friend list
-            friendList.append(blocked)
+        let friendToUnblock = blockedList[indexPath.row] // User is from the displayed blocked list
+        if let friendID = friendToUnblock["id"] {
+            blockedFriends.remove(friendID)
+            saveCurrentUserBlockedListToFirestore() // Save updated blocked set to Firestore
+            refreshFilteredListsAndTable() // Re-filter and update UI
             ToastManager.showToast(message: ToastMessages.userUnblocked, type: .success)
         } else {
             ToastManager.showToast(message: ToastMessages.userUnblockFailed, type: .error)
@@ -206,18 +318,31 @@ extension FriendListViewController: FriendTableViewCellDelegate {
     }
     
     private func unfriendUser(at indexPath: IndexPath) {
-        guard indexPath.row < friendList.count else {
+        // Ensure the operation is on the correct list based on the current tab
+        guard customTabBar.segmentedControl.selectedSegmentIndex == 0, indexPath.row < friendList.count else {
             ToastManager.showToast(message: ToastMessages.userUnfriendFailed, type: .error)
             return
         }
         
-        friendList.remove(at: indexPath.row)
-        tableView.deleteRows(at: [indexPath], with: .automatic)
-        UserDefaults.standard.set(friendList, forKey: "friendList")
+        let friendToRemove = friendList[indexPath.row]
+        
+        // Remove from the source list
+        if let friendIDToRemove = friendToRemove["id"] {
+            allFriendsFromFirestore.removeAll { $0["id"] == friendIDToRemove }
+        } else {
+            // Fallback if ID is missing, though this shouldn't happen with valid data
+            allFriendsFromFirestore.remove(at: indexPath.row) // This might be incorrect if IDs are not guaranteed
+        }
+
+        saveAllFriendsToFirestore() // Save the modified full list to Firestore
+        // refreshFilteredListsAndTable() will be called by fetchAllFriendsAndRefreshDisplay via saveAllFriendsToFirestore's completion or if we call it directly.
+        // For immediate UI update after local change before Firestore confirms:
+        refreshFilteredListsAndTable()
+
         ToastManager.showToast(message: ToastMessages.userUnfrined, type: .success)
+        // Removed UserDefaults.standard.set(friendList, forKey: "friendList")
     }
 }
-
 
 protocol FriendTableViewCellDelegate: AnyObject {
     func didTapOptionsButton(at indexPath: IndexPath)

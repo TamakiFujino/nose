@@ -358,12 +358,22 @@ class POIsViewController: UIViewController {
 // MARK: - UITableViewDataSource & Delegate
 extension POIsViewController: UITableViewDataSource, UITableViewDelegate {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        bookmarkList.bookmarks.count
+        return bookmarkList?.bookmarks.count ?? 0
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "POICell", for: indexPath) as! POICell
-        let poi = bookmarkList.bookmarks[indexPath.row]
+        guard let cell = tableView.dequeueReusableCell(withIdentifier: "POICell", for: indexPath) as? POICell else {
+            assertionFailure("Failed to dequeue POICell. Check identifier and cell registration.")
+            return UITableViewCell()
+        }
+
+        guard let currentBookmarkList = bookmarkList, 
+              indexPath.row < currentBookmarkList.bookmarks.count else {
+            assertionFailure("Data inconsistency in cellForRowAt. bookmarkList might be nil or indexPath out of bounds. This should be prevented by numberOfRowsInSection.")
+            return UITableViewCell()
+        }
+        
+        let poi = currentBookmarkList.bookmarks[indexPath.row]
         cell.poi = poi
         cell.checkbox.tag = indexPath.row
         cell.checkbox.addTarget(self, action: #selector(checkboxTapped(_:)), for: .touchUpInside)
@@ -391,21 +401,19 @@ extension POIsViewController: UITableViewDataSource, UITableViewDelegate {
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        let poi = bookmarkList.bookmarks[indexPath.row]
+        
+        guard let currentBookmarkList = bookmarkList, 
+              indexPath.row < currentBookmarkList.bookmarks.count else {
+            assertionFailure("Data inconsistency in didSelectRowAt. bookmarkList might be nil or indexPath out of bounds.")
+            return
+        }
+        let poi = currentBookmarkList.bookmarks[indexPath.row]
 
-        let detailVC = POIDetailViewController()
-        detailVC.placeID = poi.placeID
-        detailVC.placeName = poi.name
-        detailVC.address = poi.address
-        detailVC.phoneNumber = poi.phoneNumber
-        detailVC.website = poi.website
-        detailVC.rating = poi.rating
-        detailVC.openingHours = poi.openingHours
-        detailVC.latitude = poi.latitude
-        detailVC.longitude = poi.longitude
-        detailVC.showBookmarkIcon = false
+        // Use the new initializer for POIDetailViewController
+        let detailVC = POIDetailViewController(poi: poi, showBookmarkIcon: false)
 
-        BookmarksManager.shared.savePOI(for: loggedInUser, placeID: poi.placeID)
+        // BookmarksManager.shared.savePOI(for: loggedInUser, placeID: poi.placeID) // This line seems redundant if just viewing detail from a list where it's already bookmarked.
+                                                                                  // Or it's intended to ensure it's in a global "all bookmarks" list. For now, commenting out as it's not directly related to the VC initialization.
         delegate?.centerMapOnPOI(latitude: poi.latitude, longitude: poi.longitude)
 
         detailVC.modalPresentationStyle = .pageSheet

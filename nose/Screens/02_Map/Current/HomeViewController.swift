@@ -150,31 +150,37 @@ extension HomeViewController: GMSMapViewDelegate {
             if let place = place {
                 self?.fetchPhotos(forPlaceID: placeID) { photos in
                     DispatchQueue.main.async {
-                        let detailVC = POIDetailViewController()
-                        detailVC.placeID = placeID
-                        detailVC.placeName = name
-                        detailVC.address = place.formattedAddress
-                        detailVC.phoneNumber = place.phoneNumber
-                        detailVC.website = place.website?.absoluteString
-                        detailVC.rating = Double(place.rating)
-                        detailVC.openingHours = place.openingHours?.weekdayText
-                        detailVC.photos = photos
-                        if let location = location {
-                            detailVC.latitude = location.latitude
-                            detailVC.longitude = location.longitude
-                            let camera = GMSCameraPosition.camera(withLatitude: location.latitude, longitude: location.longitude, zoom: 15.0)
-                            self?.mapContainerViewController.mapView.animate(to: camera)
-                        } else {
-                            detailVC.latitude = place.coordinate.latitude
-                            detailVC.longitude = place.coordinate.longitude
-                            let camera = GMSCameraPosition.camera(withLatitude: place.coordinate.latitude, longitude: place.coordinate.longitude, zoom: 15.0)
-                            self?.mapContainerViewController.mapView.animate(to: camera)
-                        }
+                        guard let self = self else { return }
+
+                        // Create a BookmarkedPOI from the fetched GMSPlace and other details
+                        let bookmarkedPOIFromPlace = BookmarkedPOI(
+                            placeID: placeID, // Use the original placeID from the tap
+                            name: name,       // Use the original name from the tap
+                            address: place.formattedAddress,
+                            phoneNumber: place.phoneNumber,
+                            website: place.website?.absoluteString,
+                            rating: Double(place.rating),
+                            openingHours: place.openingHours?.weekdayText,
+                            latitude: location?.latitude ?? place.coordinate.latitude, // Prioritize location from tap if available
+                            longitude: location?.longitude ?? place.coordinate.longitude,
+                            visited: false // Default to false, can be updated if necessary elsewhere
+                        )
+
+                        // Use the new initializer
+                        let detailVC = POIDetailViewController(poi: bookmarkedPOIFromPlace, showBookmarkIcon: true)
+                        detailVC.photos = photos // Photos are fetched separately
+
+                        // Camera animation
+                        let camLatitude = location?.latitude ?? place.coordinate.latitude
+                        let camLongitude = location?.longitude ?? place.coordinate.longitude
+                        let camera = GMSCameraPosition.camera(withLatitude: camLatitude, longitude: camLongitude, zoom: 15.0)
+                        self.mapContainerViewController.mapView.animate(to: camera)
+                        
                         detailVC.modalPresentationStyle = .pageSheet
                         if let sheet = detailVC.sheetPresentationController {
                             sheet.detents = [.medium()]
                         }
-                        self?.present(detailVC, animated: true, completion: nil)
+                        self.present(detailVC, animated: true, completion: nil)
                     }
                 }
             }

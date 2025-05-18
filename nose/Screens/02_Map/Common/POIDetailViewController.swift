@@ -22,6 +22,29 @@ class POIDetailViewController: UIViewController, UITableViewDelegate, UITableVie
     var stackView: UIStackView!
     var bookmarkLists: [BookmarkList] = []
 
+    // MARK: - Initializers
+    init(poi: BookmarkedPOI, showBookmarkIcon: Bool = true) {
+        self.placeID = poi.placeID
+        self.placeName = poi.name
+        self.address = poi.address
+        self.phoneNumber = poi.phoneNumber
+        self.website = poi.website
+        self.rating = poi.rating
+        self.openingHours = poi.openingHours
+        self.latitude = poi.latitude
+        self.longitude = poi.longitude
+        self.showBookmarkIcon = showBookmarkIcon
+        // photos will be fetched in viewDidLoad
+        // bookmarkLists will be initialized as empty or handled by viewDidLoad/other logic
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    // Required initializer for storyboard/nib instantiation, if any
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        // Initialize properties if needed, though primary setup is via the custom init or property injection
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .white
