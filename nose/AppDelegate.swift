@@ -2,6 +2,7 @@ import UIKit
 import FirebaseCore
 import GoogleSignIn
 import GoogleMaps
+import GooglePlaces
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -15,8 +16,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Configure Firebase
         FirebaseApp.configure()
         
-        // Configure Google Maps
-        GMSServices.provideAPIKey("YOUR_GOOGLE_MAPS_API_KEY")
+        // Get API keys from Config.plist
+        guard let filePath = Bundle.main.path(forResource: "Config", ofType: "plist"),
+              let plistDict = NSDictionary(contentsOfFile: filePath) as? [String: Any],
+              let mapsAPIKey = plistDict["GoogleMapsAPIKey"] as? String,
+              let placesAPIKey = plistDict["GooglePlacesAPIKey"] as? String else {
+            fatalError("Couldn't find API keys in Config.plist")
+        }
+        
+        // Configure Google Maps and Places
+        GMSServices.provideAPIKey(mapsAPIKey)
+        GMSPlacesClient.provideAPIKey(placesAPIKey)
         
         return true
     }
