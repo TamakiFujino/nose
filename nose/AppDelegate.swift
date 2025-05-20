@@ -1,6 +1,7 @@
 import UIKit
 import FirebaseCore
 import GoogleSignIn
+import GoogleMaps
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -13,6 +14,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     ) -> Bool {
         // Configure Firebase
         FirebaseApp.configure()
+        
+        // Configure Google Maps
+        GMSServices.provideAPIKey("YOUR_GOOGLE_MAPS_API_KEY")
+        
         return true
     }
     
