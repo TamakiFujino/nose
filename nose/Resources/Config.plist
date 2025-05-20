@@ -6,5 +6,7 @@
 	<string>AIzaSyA1hUsxuy_mY0rVpZJ7TX6nqMCNrgRN3vE</string>
 	<key>GoogleMapsAPIKey</key>
 	<string>AIzaSyA1hUsxuy_mY0rVpZJ7TX6nqMCNrgRN3vE</string>
+	<key>GoogleMapsMapID</key>
+	<string>38d2ea1b2a8ff18d</string>
 </dict>
 </plist>
