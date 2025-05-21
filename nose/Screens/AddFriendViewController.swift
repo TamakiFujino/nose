@@ -263,6 +263,7 @@ class AddFriendViewController: UIViewController {
             print("DEBUG: UserId is empty")
             searchResults = []
             resultContainer.isHidden = true
+            showAlert(title: "Invalid Input", message: "Please enter a User ID to search")
             return
         }
         
@@ -271,6 +272,16 @@ class AddFriendViewController: UIViewController {
             print("DEBUG: Invalid userId format - must start with 'USER'")
             searchResults = []
             resultContainer.isHidden = true
+            showAlert(title: "Invalid User ID", message: "User ID must start with 'USER' followed by numbers")
+            return
+        }
+        
+        // Check if user is searching their own ID
+        if userId == currentUser?.userId {
+            print("DEBUG: User searched their own ID")
+            searchResults = []
+            resultContainer.isHidden = true
+            showAlert(title: "Cannot Add Yourself", message: "You cannot add yourself as a friend")
             return
         }
         
@@ -280,45 +291,74 @@ class AddFriendViewController: UIViewController {
         
         print("DEBUG: Querying Firestore for user with userId: \(userId)")
         let db = Firestore.firestore()
-        db.collection("users").whereField("userId", isEqualTo: userId).getDocuments { [weak self] snapshot, error in
-            guard let self = self else {
-                print("DEBUG: Self was deallocated")
-                return
-            }
-            
-            self.isSearching = false
-            self.activityIndicator.stopAnimating()
-            
-            if let error = error {
-                print("DEBUG: Firestore error: \(error.localizedDescription)")
-                return
-            }
-            
-            print("DEBUG: Firestore query completed")
-            print("DEBUG: Number of documents found: \(snapshot?.documents.count ?? 0)")
-            
-            self.searchResults = snapshot?.documents.compactMap { document in
-                if let user = User.fromFirestore(document) {
-                    print("DEBUG: Successfully parsed user: \(user.name) with userId: \(user.userId)")
-                    return user
-                } else {
-                    print("DEBUG: Failed to parse user from document")
-                    return nil
+        
+        // First check if the user is already a friend
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        db.collection("users").document(currentUserId)
+            .collection("friends").document(userId).getDocument { [weak self] friendSnapshot, friendError in
+                if friendSnapshot?.exists == true {
+                    print("DEBUG: User is already a friend")
+                    self?.isSearching = false
+                    self?.activityIndicator.stopAnimating()
+                    self?.showAlert(title: "Already Friends", message: "This user is already in your friends list")
+                    return
                 }
-            } ?? []
-            
-            DispatchQueue.main.async {
-                if let user = self.searchResults.first {
-                    print("DEBUG: Showing result for user: \(user.name)")
-                    self.resultNameLabel.text = user.name
-                    self.resultUserIdLabel.text = user.userId
-                    self.resultContainer.isHidden = false
-                } else {
-                    print("DEBUG: No user found, hiding result container")
-                    self.resultContainer.isHidden = true
-                }
+                
+                // Then check if the user is blocked
+                db.collection("users").document(currentUserId)
+                    .collection("blocked").document(userId).getDocument { [weak self] blockedSnapshot, blockedError in
+                        if blockedSnapshot?.exists == true {
+                            print("DEBUG: User is blocked")
+                            self?.isSearching = false
+                            self?.activityIndicator.stopAnimating()
+                            self?.showAlert(title: "User Blocked", message: "You have blocked this user. Unblock them first to add them as a friend.")
+                            return
+                        }
+                        
+                        // Finally search for the user
+                        db.collection("users").whereField("userId", isEqualTo: userId).getDocuments { [weak self] snapshot, error in
+                            guard let self = self else {
+                                print("DEBUG: Self was deallocated")
+                                return
+                            }
+                            
+                            self.isSearching = false
+                            self.activityIndicator.stopAnimating()
+                            
+                            if let error = error {
+                                print("DEBUG: Firestore error: \(error.localizedDescription)")
+                                self.showAlert(title: "Error", message: "An error occurred while searching. Please try again.")
+                                return
+                            }
+                            
+                            print("DEBUG: Firestore query completed")
+                            print("DEBUG: Number of documents found: \(snapshot?.documents.count ?? 0)")
+                            
+                            self.searchResults = snapshot?.documents.compactMap { document in
+                                if let user = User.fromFirestore(document) {
+                                    print("DEBUG: Successfully parsed user: \(user.name) with userId: \(user.userId)")
+                                    return user
+                                } else {
+                                    print("DEBUG: Failed to parse user from document")
+                                    return nil
+                                }
+                            } ?? []
+                            
+                            DispatchQueue.main.async {
+                                if let user = self.searchResults.first {
+                                    print("DEBUG: Showing result for user: \(user.name)")
+                                    self.resultNameLabel.text = user.name
+                                    self.resultUserIdLabel.text = user.userId
+                                    self.resultContainer.isHidden = false
+                                } else {
+                                    print("DEBUG: No user found, hiding result container")
+                                    self.resultContainer.isHidden = true
+                                    self.showAlert(title: "User Not Found", message: "No user found with this User ID. Please check the ID and try again.")
+                                }
+                            }
+                        }
+                    }
             }
-        }
     }
     
     private func addFriend(_ user: User) {

@@ -171,8 +171,8 @@ extension SettingsViewController: UITableViewDelegate, UITableViewDataSource {
         
         switch item {
         case "Name":
-            // TODO: Implement name change functionality
-            print("Change name")
+            let editNameVC = EditNameViewController()
+            navigationController?.pushViewController(editNameVC, animated: true)
         case "Log Out":
             handleLogOut()
         case "Delete Account":

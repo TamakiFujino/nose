@@ -81,22 +81,54 @@ class FriendsViewController: UIViewController {
     
     // MARK: - Data Loading
     private func loadFriends() {
-        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        guard let currentUserId = Auth.auth().currentUser?.uid else {
+            print("DEBUG: No current user found")
+            return
+        }
         let db = Firestore.firestore()
+        
+        print("DEBUG: Loading friends for user: \(currentUserId)")
         
         // Load friends
         db.collection("users").document(currentUserId)
             .collection("friends").getDocuments { [weak self] snapshot, error in
                 if let error = error {
-                    print("Error loading friends: \(error.localizedDescription)")
+                    print("DEBUG: Error loading friends: \(error.localizedDescription)")
                     return
                 }
                 
-                self?.friends = snapshot?.documents.compactMap { document in
-                    User.fromFirestore(document)
-                } ?? []
+                print("DEBUG: Found \(snapshot?.documents.count ?? 0) friend documents")
                 
-                DispatchQueue.main.async {
+                // Create a dispatch group to handle multiple async operations
+                let group = DispatchGroup()
+                var loadedFriends: [User] = []
+                
+                snapshot?.documents.forEach { document in
+                    group.enter()
+                    let friendId = document.documentID
+                    print("DEBUG: Fetching full user data for friend ID: \(friendId)")
+                    
+                    // Fetch the complete user data from the users collection
+                    db.collection("users").document(friendId).getDocument { userSnapshot, userError in
+                        defer { group.leave() }
+                        
+                        if let userError = userError {
+                            print("DEBUG: Error fetching user data: \(userError.localizedDescription)")
+                            return
+                        }
+                        
+                        if let userSnapshot = userSnapshot, let user = User.fromFirestore(userSnapshot) {
+                            print("DEBUG: Successfully loaded friend: \(user.name) with ID: \(user.id)")
+                            loadedFriends.append(user)
+                        } else {
+                            print("DEBUG: Failed to parse user document for ID: \(friendId)")
+                        }
+                    }
+                }
+                
+                group.notify(queue: .main) {
+                    print("DEBUG: All friends loaded, total: \(loadedFriends.count)")
+                    self?.friends = loadedFriends
                     if self?.currentSegment == 0 {
                         self?.tableView.reloadData()
                     }
@@ -107,15 +139,42 @@ class FriendsViewController: UIViewController {
         db.collection("users").document(currentUserId)
             .collection("blocked").getDocuments { [weak self] snapshot, error in
                 if let error = error {
-                    print("Error loading blocked users: \(error.localizedDescription)")
+                    print("DEBUG: Error loading blocked users: \(error.localizedDescription)")
                     return
                 }
                 
-                self?.blockedUsers = snapshot?.documents.compactMap { document in
-                    User.fromFirestore(document)
-                } ?? []
+                print("DEBUG: Found \(snapshot?.documents.count ?? 0) blocked user documents")
                 
-                DispatchQueue.main.async {
+                // Create a dispatch group to handle multiple async operations
+                let group = DispatchGroup()
+                var loadedBlockedUsers: [User] = []
+                
+                snapshot?.documents.forEach { document in
+                    group.enter()
+                    let blockedUserId = document.documentID
+                    print("DEBUG: Fetching full user data for blocked user ID: \(blockedUserId)")
+                    
+                    // Fetch the complete user data from the users collection
+                    db.collection("users").document(blockedUserId).getDocument { userSnapshot, userError in
+                        defer { group.leave() }
+                        
+                        if let userError = userError {
+                            print("DEBUG: Error fetching user data: \(userError.localizedDescription)")
+                            return
+                        }
+                        
+                        if let userSnapshot = userSnapshot, let user = User.fromFirestore(userSnapshot) {
+                            print("DEBUG: Successfully loaded blocked user: \(user.name) with ID: \(user.id)")
+                            loadedBlockedUsers.append(user)
+                        } else {
+                            print("DEBUG: Failed to parse user document for ID: \(blockedUserId)")
+                        }
+                    }
+                }
+                
+                group.notify(queue: .main) {
+                    print("DEBUG: All blocked users loaded, total: \(loadedBlockedUsers.count)")
+                    self?.blockedUsers = loadedBlockedUsers
                     if self?.currentSegment == 1 {
                         self?.tableView.reloadData()
                     }
@@ -182,16 +241,29 @@ class FriendsViewController: UIViewController {
 // MARK: - UITableViewDelegate & UITableViewDataSource
 extension FriendsViewController: UITableViewDelegate, UITableViewDataSource {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return currentSegment == 0 ? friends.count : blockedUsers.count
+        let count = currentSegment == 0 ? friends.count : blockedUsers.count
+        print("DEBUG: numberOfRowsInSection called. Current segment: \(currentSegment), count: \(count)")
+        return count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        print("DEBUG: cellForRowAt called for index: \(indexPath.row)")
         let cell = tableView.dequeueReusableCell(withIdentifier: "UserCell", for: indexPath)
         let user = currentSegment == 0 ? friends[indexPath.row] : blockedUsers[indexPath.row]
         
+        print("DEBUG: User data - name: \(user.name), id: \(user.id)")
+        
         var content = cell.defaultContentConfiguration()
         content.text = user.name
+        content.textProperties.color = .label
+        content.textProperties.font = .systemFont(ofSize: 17, weight: .medium)
         cell.contentConfiguration = content
+        
+        // Debug the cell's content after configuration
+        if let configuredContent = cell.contentConfiguration as? UIListContentConfiguration {
+            print("DEBUG: Cell configured with text: \(configuredContent.text ?? "nil")")
+            print("DEBUG: Cell text color: \(configuredContent.textProperties.color)")
+        }
         
         return cell
     }
@@ -203,6 +275,9 @@ extension FriendsViewController: UITableViewDelegate, UITableViewDataSource {
         let alert = UIAlertController(title: user.name, message: nil, preferredStyle: .actionSheet)
         
         if currentSegment == 0 {
+            alert.addAction(UIAlertAction(title: "Unfriend", style: .destructive) { [weak self] _ in
+                self?.unfriendUser(user)
+            })
             alert.addAction(UIAlertAction(title: "Block User", style: .destructive) { [weak self] _ in
                 self?.blockUser(user)
             })
@@ -214,6 +289,27 @@ extension FriendsViewController: UITableViewDelegate, UITableViewDataSource {
         
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
         present(alert, animated: true)
+    }
+    
+    private func unfriendUser(_ user: User) {
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        let db = Firestore.firestore()
+        
+        print("DEBUG: Unfriending user: \(user.name) with ID: \(user.id)")
+        
+        // Remove from friends
+        db.collection("users").document(currentUserId)
+            .collection("friends").document(user.id).delete { [weak self] error in
+                if let error = error {
+                    print("DEBUG: Error unfriending user: \(error.localizedDescription)")
+                    return
+                }
+                
+                print("DEBUG: Successfully unfriended user")
+                DispatchQueue.main.async {
+                    self?.loadFriends()
+                }
+            }
     }
     
     private func blockUser(_ user: User) {
