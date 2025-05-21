@@ -94,8 +94,8 @@ class ProfileViewController: UIViewController {
     }
     
     @objc private func tshirtButtonTapped() {
-        // TODO: Implement t-shirt functionality
-        print("T-shirt button tapped")
+        let avatarVC = AvatarCustomizationViewController()
+        navigationController?.pushViewController(avatarVC, animated: true)
     }
     
     @objc private func settingsButtonTapped() {
