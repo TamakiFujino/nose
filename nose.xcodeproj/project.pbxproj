@@ -67,7 +67,7 @@
 		49E99C1E2D3BE433000F3CE5 /* Exceptions for "nose" folder in "nose" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Assets/Avatar/thumb_empty.png,
+				Assets/thumb_empty.png,
 				Info.plist,
 			);
 			target = 49E99BF52D3BE432000F3CE5 /* nose */;
