@@ -113,18 +113,11 @@ final class HomeViewController: UIViewController {
             zoom: 15
         )
         
-        // Get Map ID from Config.plist
-        guard let filePath = Bundle.main.path(forResource: "Config", ofType: "plist"),
-              let plistDict = NSDictionary(contentsOfFile: filePath) as? [String: Any],
-              let mapID = plistDict["GoogleMapsMapID"] as? String else {
-            fatalError("Couldn't find GoogleMapsMapID in Config.plist")
-        }
-        
         // Create map options with Map ID
         let mapOptions = GMSMapViewOptions()
         mapOptions.camera = camera
         mapOptions.frame = .zero
-        mapOptions.mapID = GMSMapID(identifier: mapID)
+        mapOptions.mapID = GMSMapID(identifier: "7f9a1d61a6b1809f")
         
         let mapView = GMSMapView(options: mapOptions)
         mapView.translatesAutoresizingMaskIntoConstraints = false
@@ -154,7 +147,7 @@ final class HomeViewController: UIViewController {
         button.backgroundColor = .white
         button.tintColor = .fourthColor
         button.layer.cornerRadius = 25
-        button.layer.shadowColor = UIColor.black.cgColor
+        button.layer.shadowColor = UIColor.sixthColor.cgColor
         button.layer.shadowOffset = CGSize(width: 0, height: 2)
         button.layer.shadowRadius = 4
         button.layer.shadowOpacity = 0.2

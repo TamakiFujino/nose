@@ -18,8 +18,8 @@ class SaveToCollectionViewController: UIViewController {
     // MARK: - UI Components
     private lazy var closeButton: UIButton = {
         let button = UIButton(type: .system)
-        button.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
-        button.tintColor = .systemGray
+        button.setImage(UIImage(systemName: "xmark"), for: .normal)
+        button.tintColor = .fourthColor
         button.addTarget(self, action: #selector(closeButtonTapped), for: .touchUpInside)
         button.translatesAutoresizingMaskIntoConstraints = false
         return button
@@ -37,7 +37,7 @@ class SaveToCollectionViewController: UIViewController {
         let label = UILabel()
         label.text = place.name
         label.font = .systemFont(ofSize: 16)
-        label.textColor = .systemGray
+        label.textColor = .fourthColor
         label.numberOfLines = 0
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
@@ -54,8 +54,8 @@ class SaveToCollectionViewController: UIViewController {
     
     private lazy var createNewCollectionButton: UIButton = {
         let button = UIButton(type: .system)
-        button.setImage(UIImage(systemName: "plus.circle.fill"), for: .normal)
-        button.tintColor = .systemBlue
+        button.setImage(UIImage(systemName: "plus"), for: .normal)
+        button.tintColor = .fourthColor
         button.backgroundColor = .white
         button.layer.cornerRadius = 22
         button.layer.shadowColor = UIColor.black.cgColor
@@ -68,12 +68,8 @@ class SaveToCollectionViewController: UIViewController {
     }()
     
     private lazy var saveButton: UIButton = {
-        let button = UIButton(type: .system)
+        let button = CustomButton()
         button.setTitle("Save", for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 16, weight: .semibold)
-        button.backgroundColor = .systemBlue
-        button.setTitleColor(.white, for: .normal)
-        button.layer.cornerRadius = 22
         button.addTarget(self, action: #selector(saveButtonTapped), for: .touchUpInside)
         button.translatesAutoresizingMaskIntoConstraints = false
         return button
@@ -145,35 +141,25 @@ class SaveToCollectionViewController: UIViewController {
     
     // MARK: - Helper Methods
     private func loadCollections() {
-        print("📚 Loading collections...")
         CollectionManager.shared.fetchCollections { [weak self] result in
             DispatchQueue.main.async {
                 switch result {
                 case .success(let fetchedCollections):
-                    print("📚 Successfully fetched \(fetchedCollections.count) collections")
                     fetchedCollections.forEach { collection in
-                        print("📚 Collection '\(collection.name)' has \(collection.places.count) places")
                     }
-                    
                     if fetchedCollections.isEmpty {
-                        print("📚 No collections found, creating defaults...")
-                        // Create default collections if none exist
-                        self?.createDefaultCollections()
                     } else {
                         self?.collections = fetchedCollections
                         self?.collectionsTableView.reloadData()
                     }
                 case .failure(let error):
-                    print("❌ Error fetching collections: \(error.localizedDescription)")
-                    // Show default collections as fallback
-                    self?.createDefaultCollections()
+                    // add toast loading collections
                 }
             }
         }
     }
     
     private func createDefaultCollections() {
-        print("📚 Creating default collections...")
         let defaultCollections = [
             PlaceCollection(id: UUID().uuidString, name: "Favorites", places: [], userId: Auth.auth().currentUser?.uid ?? ""),
             PlaceCollection(id: UUID().uuidString, name: "Want to Visit", places: [], userId: Auth.auth().currentUser?.uid ?? ""),
@@ -182,13 +168,14 @@ class SaveToCollectionViewController: UIViewController {
         
         // Save default collections to Firestore
         for collection in defaultCollections {
-            print("📚 Creating default collection: \(collection.name)")
             CollectionManager.shared.createCollection(name: collection.name) { result in
                 switch result {
                 case .success(let collection):
                     print("✅ Successfully created collection: \(collection.name)")
+                    // add toast collection created
                 case .failure(let error):
                     print("❌ Failed to create collection: \(error.localizedDescription)")
+                    // add toast collection creation failed
                 }
             }
         }
@@ -260,9 +247,6 @@ class SaveToCollectionViewController: UIViewController {
     @objc private func saveButtonTapped() {
         guard let collection = selectedCollection else { return }
         
-        print("💾 Saving place '\(place.name ?? "Unknown")' to collection '\(collection.name)'")
-        print("💾 Current places in collection: \(collection.places.count)")
-        
         // Show loading indicator
         let loadingAlert = UIAlertController(title: "Saving...", message: nil, preferredStyle: .alert)
         present(loadingAlert, animated: true)
@@ -274,6 +258,7 @@ class SaveToCollectionViewController: UIViewController {
                     switch result {
                     case .success:
                         print("✅ Successfully saved place to collection")
+                        // add toast saved place to collection
                         // Refresh collections to update the count
                         self?.loadCollections()
                         // Notify delegate and dismiss
@@ -281,6 +266,7 @@ class SaveToCollectionViewController: UIViewController {
                         self?.dismiss(animated: true)
                     case .failure(let error):
                         print("❌ Error saving place: \(error.localizedDescription)")
+                        // add toast failed to save place
                         // Show error alert
                         let errorAlert = UIAlertController(
                             title: "Error",
@@ -315,6 +301,8 @@ extension SaveToCollectionViewController: UITableViewDelegate, UITableViewDataSo
         
         // Show checkmark for selected collection
         cell.accessoryType = (selectedCollection?.id == collection.id) ? .checkmark : .none
+        // change checkmark color
+        cell.tintColor = .fourthColor
         
         return cell
     }

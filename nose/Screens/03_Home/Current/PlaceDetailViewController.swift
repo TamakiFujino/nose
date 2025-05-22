@@ -30,7 +30,7 @@ final class PlaceDetailViewController: UIViewController {
     private lazy var dragIndicator: UIView = {
         let view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
-        view.backgroundColor = .systemGray4
+        view.backgroundColor = .thirdColor
         view.layer.cornerRadius = 2.5
         return view
     }()
@@ -56,8 +56,8 @@ final class PlaceDetailViewController: UIViewController {
     private lazy var pageControl: UIPageControl = {
         let pageControl = UIPageControl()
         pageControl.translatesAutoresizingMaskIntoConstraints = false
-        pageControl.currentPageIndicatorTintColor = .systemBlue
-        pageControl.pageIndicatorTintColor = .systemGray4
+        pageControl.currentPageIndicatorTintColor = .fifthColor
+        pageControl.pageIndicatorTintColor = .thirdColor
         return pageControl
     }()
     
@@ -83,7 +83,7 @@ final class PlaceDetailViewController: UIViewController {
         ratingLabel.font = .systemFont(ofSize: 16, weight: .medium)
         
         let starImage = UIImageView(image: UIImage(systemName: "star.fill"))
-        starImage.tintColor = .systemYellow
+        starImage.tintColor = .fourthColor
         
         stackView.addArrangedSubview(starImage)
         stackView.addArrangedSubview(ratingLabel)
@@ -95,7 +95,7 @@ final class PlaceDetailViewController: UIViewController {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = .systemFont(ofSize: 16)
-        label.textColor = .systemBlue
+        label.textColor = .fourthColor
         label.text = place.phoneNumber ?? "Phone number not available"
         label.numberOfLines = 0
         return label
@@ -144,11 +144,11 @@ final class PlaceDetailViewController: UIViewController {
     private lazy var saveButton: UIButton = {
         let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.setImage(UIImage(systemName: "bookmark.circle.fill"), for: .normal)
-        button.tintColor = .systemBlue
+        button.setImage(UIImage(systemName: "bookmark"), for: .normal)
+        button.tintColor = .fourthColor
         button.backgroundColor = .white
         button.layer.cornerRadius = 25
-        button.layer.shadowColor = UIColor.black.cgColor
+        button.layer.shadowColor = UIColor.sixthColor.cgColor
         button.layer.shadowOffset = CGSize(width: 0, height: 2)
         button.layer.shadowRadius = 4
         button.layer.shadowOpacity = 0.2
@@ -468,9 +468,9 @@ class HalfModalPresentationController: UIPresentationController {
     override var frameOfPresentedViewInContainerView: CGRect {
         guard let containerView = containerView else { return .zero }
         return CGRect(x: 0,
-                     y: containerView.bounds.height * 0.6,
+                     y: containerView.bounds.height * 0.4,
                      width: containerView.bounds.width,
-                     height: containerView.bounds.height * 0.4)
+                     height: containerView.bounds.height * 0.6)
     }
     
     override func presentationTransitionWillBegin() {
