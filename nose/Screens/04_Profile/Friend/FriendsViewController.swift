@@ -25,7 +25,8 @@ class FriendsViewController: UIViewController {
         tableView.delegate = self
         tableView.dataSource = self
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "UserCell")
-        tableView.backgroundColor = .systemBackground
+        tableView.backgroundColor = .clear
+        tableView.separatorStyle = .none
         return tableView
     }()
     
@@ -50,6 +51,7 @@ class FriendsViewController: UIViewController {
     private func setupUI() {
         let gradientView = CustomGradientView(frame: view.bounds)
         view.addSubview(gradientView)
+        view.sendSubviewToBack(gradientView)
         
         title = "Friends"
         
@@ -254,6 +256,21 @@ extension FriendsViewController: UITableViewDelegate, UITableViewDataSource {
         content.text = user.name
         content.textProperties.color = .label
         content.textProperties.font = .systemFont(ofSize: 17, weight: .medium)
+        
+        // Configure cell background
+        cell.backgroundColor = .clear
+        cell.selectionStyle = .none
+        
+        // Add a custom background view for the cell
+        let backgroundView = UIView()
+        backgroundView.backgroundColor = UIColor.white.withAlphaComponent(0.1)
+        cell.backgroundView = backgroundView
+        
+        // Add a custom selected background view
+        let selectedBackgroundView = UIView()
+        selectedBackgroundView.backgroundColor = UIColor.white.withAlphaComponent(0.2)
+        cell.selectedBackgroundView = selectedBackgroundView
+        
         cell.contentConfiguration = content
         
         // Debug the cell's content after configuration

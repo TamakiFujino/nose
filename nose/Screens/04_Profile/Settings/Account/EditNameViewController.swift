@@ -20,13 +20,9 @@ class EditNameViewController: UIViewController {
     }()
     
     private lazy var saveButton: UIButton = {
-        let button = UIButton(type: .system)
+        let button = CustomButton()
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setTitle("Save", for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
-        button.backgroundColor = .systemBlue
-        button.setTitleColor(.white, for: .normal)
-        button.layer.cornerRadius = 12
         button.addTarget(self, action: #selector(saveButtonTapped), for: .touchUpInside)
         return button
     }()

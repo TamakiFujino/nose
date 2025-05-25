@@ -248,9 +248,7 @@ final class HomeViewController: UIViewController {
     
     @objc private func profileButtonTapped() {
         let profileVC = ProfileViewController()
-        let navController = UINavigationController(rootViewController: profileVC)
-        navController.modalPresentationStyle = .fullScreen
-        present(navController, animated: true)
+        navigationController?.pushViewController(profileVC, animated: true)
     }
     
     @objc private func searchButtonTapped() {
