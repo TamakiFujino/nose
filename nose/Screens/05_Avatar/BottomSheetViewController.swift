@@ -15,6 +15,10 @@ class BottomSheetContentView: UIView {
     private var contentView: UIView!
     private var models: [Model] = []
     private var selectedModels: [String: String] = [:]
+    
+    let baseTabItems = ["Skin", "Eye", "Eyebrow"]
+    let hairTabItems = ["Base", "Front", "Back"]
+    let clothesTabItems = ["Tops", "Bottoms", "Socks"]
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -40,7 +44,7 @@ class BottomSheetContentView: UIView {
     }
 
     private func setupParentTabBar() {
-        let parentTabItems = ["Base", "Hair", "Clothes", "Accessories"]
+        let parentTabItems = ["Base", "Hair", "Clothes"]
         parentTabBar = UISegmentedControl(items: parentTabItems)
         parentTabBar.selectedSegmentIndex = 0
         parentTabBar.addTarget(self, action: #selector(parentTabChanged), for: .valueChanged)
@@ -56,11 +60,6 @@ class BottomSheetContentView: UIView {
     }
 
     private func setupChildTabBar() {
-        let baseTabItems = ["Skin", "Eye", "Eyebrow", "Nose", "Mouth"]
-        let hairTabItems = ["Base", "Front", "Back"]
-        let clothesTabItems = ["Tops", "Jackets", "Bottoms", "Socks", "Shoes"]
-        let accessoriesTabItems = ["Head", "Neck", "Eyewear"]
-
         childTabBar = UISegmentedControl(items: baseTabItems)
         childTabBar.selectedSegmentIndex = 0
         childTabBar.addTarget(self, action: #selector(childTabChanged), for: .valueChanged)
@@ -128,11 +127,6 @@ class BottomSheetContentView: UIView {
     }
 
     private func updateChildTabBar() {
-        let baseTabItems = ["Skin", "Eye", "Eyebrow", "Nose", "Mouth"]
-        let hairTabItems = ["Base", "Front", "Back"]
-        let clothesTabItems = ["Tops", "Jackets", "Bottoms", "Socks", "Shoes"]
-        let accessoriesTabItems = ["Head", "Neck", "Eyewear"]
-
         if parentTabBar.selectedSegmentIndex == 0 {
             childTabBar.removeAllSegments()
             for (index, item) in baseTabItems.enumerated() {
@@ -146,11 +140,6 @@ class BottomSheetContentView: UIView {
         } else if parentTabBar.selectedSegmentIndex == 2 {
             childTabBar.removeAllSegments()
             for (index, item) in clothesTabItems.enumerated() {
-                childTabBar.insertSegment(withTitle: item, at: index, animated: false)
-            }
-        } else if parentTabBar.selectedSegmentIndex == 3 {
-            childTabBar.removeAllSegments()
-            for (index, item) in accessoriesTabItems.enumerated() {
                 childTabBar.insertSegment(withTitle: item, at: index, animated: false)
             }
         }
@@ -171,10 +160,6 @@ class BottomSheetContentView: UIView {
                 category = "eye"
             case 2: // Eyebrow tab
                 category = "eyebrow"
-            case 3: // Nose tab
-                category = "nose"
-            case 4: // Mouth tab
-                category = "mouth"
             default:
                 return
             }
@@ -194,24 +179,9 @@ class BottomSheetContentView: UIView {
             case 0: // Tops tab
                 category = "tops"
             case 1: // Jackets tab
-                category = "jackets"
-            case 2: // Bottoms tab
                 category = "bottoms"
-            case 3: // Socks tab
+            case 2: // Bottoms tab
                 category = "socks"
-            case 4: // Shoes tab
-                category = "shoes"
-            default:
-                return
-            }
-        case 3: // Accessories tab
-            switch childTabBar.selectedSegmentIndex {
-            case 0: // Head tab
-                category = "head"
-            case 1: // Neck tab
-                category = "neck"
-            case 2: // Hand tab
-                category = "eyewear"
             default:
                 return
             }
@@ -269,10 +239,6 @@ class BottomSheetContentView: UIView {
                 category = "eye"
             case 2: // Eyebrow tab
                 category = "eyebrow"
-            case 3: // Nose tab
-                category = "nose"
-            case 4: // Mouth tab
-                category = "mouth"
             default:
                 return
             }
@@ -292,24 +258,9 @@ class BottomSheetContentView: UIView {
             case 0: // Tops tab
                 category = "tops"
             case 1: // Jackets tab
-                category = "jackets"
-            case 2: // Bottoms tab
                 category = "bottoms"
-            case 3: // Socks tab
+            case 2: // Bottoms tab
                 category = "socks"
-            case 4: // Shoes tab
-                category = "shoes"
-            default:
-                return
-            }
-        case 3: // Accessories tab
-            switch childTabBar.selectedSegmentIndex {
-            case 0: // Head tab
-                category = "head"
-            case 1: // Neck tab
-                category = "neck"
-            case 2: // Hand tab
-                category = "eyewear"
             default:
                 return
             }
@@ -344,10 +295,6 @@ class BottomSheetContentView: UIView {
                 category = "eye"
             case 2: // Eyebrow tab
                 category = "eyebrow"
-            case 3: // Nose tab
-                category = "nose"
-            case 4: // Mouth tab
-                category = "mouth"
             default:
                 return
             }
@@ -367,24 +314,9 @@ class BottomSheetContentView: UIView {
             case 0: // Tops tab
                 category = "tops"
             case 1: // Jackets tab
-                category = "jackets"
-            case 2: // Bottoms tab
                 category = "bottoms"
-            case 3: // Socks tab
+            case 2: // Bottoms tab
                 category = "socks"
-            case 4: // Shoes tab
-                category = "shoes"
-            default:
-                return
-            }
-        case 3: // Accessories tab
-            switch childTabBar.selectedSegmentIndex {
-            case 0: // Head tab
-                category = "head"
-            case 1: // Neck tab
-                category = "neck"
-            case 2: // Hand tab
-                category = "eyewear"
             default:
                 return
             }

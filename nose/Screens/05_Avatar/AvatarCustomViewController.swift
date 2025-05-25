@@ -55,7 +55,6 @@ class AvatarCustomViewController: UIViewController {
         if UserDefaults.standard.object(forKey: "selectedItem") == nil {
             // No saved data, set no item selected
             avatar3DViewController.selectedItem = nil
-            avatar3DViewController.updateUIForNoSelection()
         }
     }
     

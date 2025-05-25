@@ -33,13 +33,8 @@ class FriendsViewController: UIViewController {
         let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setImage(UIImage(systemName: "person.badge.plus"), for: .normal)
-        button.tintColor = .systemBlue
+        button.tintColor = .fourthColor
         button.backgroundColor = .systemBackground
-        button.layer.cornerRadius = 25
-        button.layer.shadowColor = UIColor.black.cgColor
-        button.layer.shadowOffset = CGSize(width: 0, height: 2)
-        button.layer.shadowRadius = 4
-        button.layer.shadowOpacity = 0.2
         button.addTarget(self, action: #selector(addFriendButtonTapped), for: .touchUpInside)
         return button
     }()
@@ -53,7 +48,9 @@ class FriendsViewController: UIViewController {
     
     // MARK: - Setup
     private func setupUI() {
-        view.backgroundColor = .systemBackground
+        let gradientView = CustomGradientView(frame: view.bounds)
+        view.addSubview(gradientView)
+        
         title = "Friends"
         
         // Add subviews
@@ -340,4 +337,3 @@ extension FriendsViewController: UITableViewDelegate, UITableViewDataSource {
         loadFriends()
     }
 }
-

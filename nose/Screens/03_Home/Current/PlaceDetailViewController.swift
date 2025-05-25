@@ -555,4 +555,3 @@ extension PlaceDetailViewController: SaveToCollectionViewControllerDelegate {
         }
     }
 }
-

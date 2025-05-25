@@ -100,4 +100,3 @@ extension CollectionsViewController: UITableViewDelegate, UITableViewDataSource 
         present(placesVC, animated: true)
     }
 }
-

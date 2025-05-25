@@ -153,13 +153,15 @@ class SaveToCollectionViewController: UIViewController {
                         self?.collectionsTableView.reloadData()
                     }
                 case .failure(let error):
-                    // add toast loading collections
+                    // show toast message to user
+                    self?.createDefaultCollections()
                 }
             }
         }
     }
     
     private func createDefaultCollections() {
+        print("📚 Creating default collections...")
         let defaultCollections = [
             PlaceCollection(id: UUID().uuidString, name: "Favorites", places: [], userId: Auth.auth().currentUser?.uid ?? ""),
             PlaceCollection(id: UUID().uuidString, name: "Want to Visit", places: [], userId: Auth.auth().currentUser?.uid ?? ""),
@@ -168,14 +170,13 @@ class SaveToCollectionViewController: UIViewController {
         
         // Save default collections to Firestore
         for collection in defaultCollections {
+            print("📚 Creating default collection: \(collection.name)")
             CollectionManager.shared.createCollection(name: collection.name) { result in
                 switch result {
                 case .success(let collection):
                     print("✅ Successfully created collection: \(collection.name)")
-                    // add toast collection created
                 case .failure(let error):
                     print("❌ Failed to create collection: \(error.localizedDescription)")
-                    // add toast collection creation failed
                 }
             }
         }
@@ -247,6 +248,9 @@ class SaveToCollectionViewController: UIViewController {
     @objc private func saveButtonTapped() {
         guard let collection = selectedCollection else { return }
         
+        print("💾 Saving place '\(place.name ?? "Unknown")' to collection '\(collection.name)'")
+        print("💾 Current places in collection: \(collection.places.count)")
+        
         // Show loading indicator
         let loadingAlert = UIAlertController(title: "Saving...", message: nil, preferredStyle: .alert)
         present(loadingAlert, animated: true)
@@ -258,7 +262,6 @@ class SaveToCollectionViewController: UIViewController {
                     switch result {
                     case .success:
                         print("✅ Successfully saved place to collection")
-                        // add toast saved place to collection
                         // Refresh collections to update the count
                         self?.loadCollections()
                         // Notify delegate and dismiss
@@ -266,7 +269,6 @@ class SaveToCollectionViewController: UIViewController {
                         self?.dismiss(animated: true)
                     case .failure(let error):
                         print("❌ Error saving place: \(error.localizedDescription)")
-                        // add toast failed to save place
                         // Show error alert
                         let errorAlert = UIAlertController(
                             title: "Error",
@@ -314,4 +316,3 @@ extension SaveToCollectionViewController: UITableViewDelegate, UITableViewDataSo
         updateSaveButtonState()
     }
 }
-

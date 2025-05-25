@@ -40,7 +40,9 @@ class EditNameViewController: UIViewController {
     
     // MARK: - Setup
     private func setupUI() {
-        view.backgroundColor = .systemBackground
+        let gradientView = CustomGradientView(frame: view.bounds)
+        view.addSubview(gradientView)
+        
         title = "Edit Name"
         
         view.addSubview(nameTextField)

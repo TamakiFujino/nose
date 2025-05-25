@@ -1,193 +1,111 @@
 import UIKit
-import FirebaseAuth
-import FirebaseFirestore
 
-class SettingsViewController: UIViewController {
-    
-    // MARK: - UI Components
-    private lazy var settingsTableView: UITableView = {
-        let tableView = UITableView(frame: .zero, style: .insetGrouped)
-        tableView.translatesAutoresizingMaskIntoConstraints = false
-        tableView.delegate = self
-        tableView.dataSource = self
-        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "SettingsCell")
-        tableView.backgroundColor = .systemGroupedBackground
-        return tableView
-    }()
-    
-    // MARK: - Properties
-    private let sections: [(title: String, items: [String])] = [
-        ("Account", ["Name", "Log Out", "Delete Account"]),
-        ("About", ["Privacy Policy", "Terms of Service", "Licenses", "App Version"])
+class SettingsViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
+
+    let tableView = UITableView()
+
+    // Define setting categories and items
+    var settingsData: [(category: String, items: [String])] = [
+        ("Profile", ["Name", "Account"]),
+        ("About", ["Privacy Policy", "Terms of Service", "App Version", "Licenses"])
     ]
-    
-    // MARK: - Lifecycle
+
     override func viewDidLoad() {
         super.viewDidLoad()
-        setupUI()
+
+        let backButton = UIBarButtonItem()
+        backButton.title = ""  // Hide the "Back" text
+        self.navigationItem.backBarButtonItem = backButton
+        self.navigationController?.navigationBar.tintColor = .black
+
+        let gradientView = CustomGradientView(frame: view.bounds)
+        view.addSubview(gradientView)
+
+        // Set up navigation bar
+        setupNavigationBar()
+
+        setupTableView()
     }
-    
-    // MARK: - Setup
-    private func setupUI() {
-        view.backgroundColor = .systemGroupedBackground
-        title = "Settings"
-        
-        view.addSubview(settingsTableView)
-        
+
+    private func setupNavigationBar() {
+        navigationItem.title = "Settings"
+        self.navigationController?.navigationBar.tintColor = .black
+    }
+
+    func setupTableView() {
+        tableView.delegate = self
+        tableView.dataSource = self
+        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
+        tableView.translatesAutoresizingMaskIntoConstraints = false
+        tableView.backgroundColor = .clear // Remove the background color
+        view.addSubview(tableView)
+
+        // Constraints for TableView
         NSLayoutConstraint.activate([
-            settingsTableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            settingsTableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            settingsTableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            settingsTableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
     }
-    
-    // MARK: - Actions
-    private func handleLogOut() {
-        let alert = UIAlertController(
-            title: "Log Out",
-            message: "Are you sure you want to log out?",
-            preferredStyle: .alert
-        )
-        
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        alert.addAction(UIAlertAction(title: "Log Out", style: .destructive) { [weak self] _ in
-            do {
-                try Auth.auth().signOut()
-                self?.navigationController?.popToRootViewController(animated: true)
-            } catch {
-                print("Error signing out: \(error.localizedDescription)")
-            }
-        })
-        
-        present(alert, animated: true)
-    }
-    
-    private func handleDeleteAccount() {
-        let alert = UIAlertController(
-            title: "Delete Account",
-            message: "Are you sure you want to delete your account? This action cannot be undone.",
-            preferredStyle: .alert
-        )
-        
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        alert.addAction(UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
-            guard let user = Auth.auth().currentUser else { return }
-            
-            // Delete user data from Firestore first
-            let db = Firestore.firestore()
-            db.collection("users").document(user.uid).delete { error in
-                if let error = error {
-                    print("Error deleting user data: \(error.localizedDescription)")
-                    return
-                }
-                
-                // Then delete the user account
-                user.delete { error in
-                    if let error = error {
-                        print("Error deleting user account: \(error.localizedDescription)")
-                        return
-                    }
-                    
-                    DispatchQueue.main.async {
-                        self?.navigationController?.popToRootViewController(animated: true)
-                    }
-                }
-            }
-        })
-        
-        present(alert, animated: true)
-    }
-    
-    private func showPrivacyPolicy() {
-        // TODO: Implement privacy policy view
-        print("Show privacy policy")
-    }
-    
-    private func showTermsOfService() {
-        // TODO: Implement terms of service view
-        print("Show terms of service")
-    }
-    
-    private func showLicenses() {
-        // TODO: Implement licenses view
-        print("Show licenses")
-    }
-    
-    private func showAppVersion() {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
-        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
-        
-        let alert = UIAlertController(
-            title: "App Version",
-            message: "Version: \(version)\nBuild: \(build)",
-            preferredStyle: .alert
-        )
-        
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
-        present(alert, animated: true)
-    }
-}
 
-// MARK: - UITableViewDelegate & UITableViewDataSource
-extension SettingsViewController: UITableViewDelegate, UITableViewDataSource {
+    // MARK: - TableView DataSource
+
     func numberOfSections(in tableView: UITableView) -> Int {
-        return sections.count
+        return settingsData.count
     }
-    
+
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return sections[section].items.count
+        return settingsData[section].items.count
     }
-    
-    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        return sections[section].title
-    }
-    
+
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "SettingsCell", for: indexPath)
-        let item = sections[indexPath.section].items[indexPath.row]
-        
-        var content = cell.defaultContentConfiguration()
-        content.text = item
-        
-        // Set text color for destructive actions
-        if item == "Log Out" || item == "Delete Account" {
-            content.textProperties.color = .systemRed
+        let item = settingsData[indexPath.section].items[indexPath.row]
+        let cell: UITableViewCell
+
+        if item == "App Version" {
+            cell = UITableViewCell(style: .value1, reuseIdentifier: "versionCell")
+            cell.textLabel?.text = item
+            if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
+                cell.detailTextLabel?.text = version
+            }
+            cell.selectionStyle = .none  // Disable selection for app version cell
+        } else {
+            cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
+            cell.textLabel?.text = item
+            cell.accessoryType = .disclosureIndicator  // Add arrow to indicate navigation
         }
-        
-        cell.contentConfiguration = content
-        
-        // Add disclosure indicator for all items except destructive actions
-        if item != "Log Out" && item != "Delete Account" {
-            cell.accessoryType = .disclosureIndicator
-        }
-        
+
+        cell.backgroundColor = .clear // Remove the background color of each cell
         return cell
     }
-    
+
+    // Set section headers
+    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        return settingsData[section].category
+    }
+
+    // Handle selection of a setting option
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        let item = sections[indexPath.section].items[indexPath.row]
-        
-        switch item {
-        case "Name":
-            let editNameVC = EditNameViewController()
-            navigationController?.pushViewController(editNameVC, animated: true)
-        case "Log Out":
-            handleLogOut()
-        case "Delete Account":
-            handleDeleteAccount()
-        case "Privacy Policy":
-            showPrivacyPolicy()
-        case "Terms of Service":
-            showTermsOfService()
-        case "Licenses":
-            showLicenses()
-        case "App Version":
-            showAppVersion()
-        default:
-            break
+
+        let selectedSetting = settingsData[indexPath.section].items[indexPath.row]
+
+        if selectedSetting == "Name" {
+            let nameupdateVC = EditNameViewController()
+            navigationController?.pushViewController(nameupdateVC, animated: true)
+        } else if selectedSetting == "Account" {
+            let accountVC = AccountViewController()
+            navigationController?.pushViewController(accountVC, animated: true)
+        } else if selectedSetting == "Privacy Policy" {
+            let privacypolicyVC = PrivacyPolicyViewController()
+            navigationController?.pushViewController(privacypolicyVC, animated: true)
+        } else if selectedSetting == "Terms of Service" {
+            let termsVC = ToSViewController()
+            navigationController?.pushViewController(termsVC, animated: true)
+        } else if selectedSetting == "Licenses" {
+            let licensesVC = LicensesViewController()
+            navigationController?.pushViewController(licensesVC, animated: true)
         }
     }
 }
-

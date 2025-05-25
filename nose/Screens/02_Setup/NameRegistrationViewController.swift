@@ -63,7 +63,6 @@ final class NameRegistrationViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
-        checkExistingUser()
     }
     
     // MARK: - Setup
@@ -103,39 +102,6 @@ final class NameRegistrationViewController: UIViewController {
             activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor)
         ])
-    }
-    
-    // MARK: - User Check
-    private func checkExistingUser() {
-        guard let firebaseUser = Auth.auth().currentUser else {
-            print("No user is signed in")
-            return
-        }
-        
-        // Show loading indicator
-        activityIndicator.startAnimating()
-        continueButton.isEnabled = false
-        
-        // Check if user already exists in Firestore
-        UserManager.shared.getUser(id: firebaseUser.uid) { [weak self] user, error in
-            guard let self = self else { return }
-            
-            // Hide loading indicator
-            self.activityIndicator.stopAnimating()
-            self.continueButton.isEnabled = true
-            
-            if let error = error {
-                print("Error checking user: \(error.localizedDescription)")
-                return
-            }
-            
-            if let existingUser = user {
-                // User already exists, navigate to home screen
-                print("User already exists, skipping registration")
-                self.navigateToHomeScreen()
-            }
-            // If user is nil, stay on this screen for registration
-        }
     }
     
     // MARK: - Actions
@@ -233,4 +199,3 @@ extension NameRegistrationViewController: UITextFieldDelegate {
         return true
     }
 }
-
