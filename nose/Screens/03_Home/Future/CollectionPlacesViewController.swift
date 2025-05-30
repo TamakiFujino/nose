@@ -264,42 +264,23 @@ class CollectionPlacesViewController: UIViewController {
     }
 
     private func loadCollectionAvatar() {
-        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        guard let currentUserId = Auth.auth().currentUser?.uid else {
+            print("User not logged in")
+            return
+        }
         let db = Firestore.firestore()
-        
-        // Access the avatar from the user's collections subcollection
-        let userRef = db.collection("users").document(currentUserId)
-        let collectionRef = userRef.collection("collections").document(collection.id)
-        
-        print("DEBUG: Loading avatar from path: users/\(currentUserId)/collections/\(collection.id)")
-        
-        collectionRef.getDocument { [weak self] snapshot, error in
+        db.collection("users").document(currentUserId).collection("collections").document(collection.id).getDocument { [weak self] snapshot, error in
             if let error = error {
                 print("Error loading collection avatar: \(error.localizedDescription)")
                 return
             }
-            
-            print("DEBUG: Collection document data: \(snapshot?.data() ?? [:])")
-            
             if let data = snapshot?.data(),
-               let avatarDict = data["avatarData"] as? [String: Any] {
-                print("DEBUG: Found avatar data: \(avatarDict)")
-                if let avatarData = CollectionAvatar.AvatarData.fromFirestoreDict(avatarDict) {
-                    print("DEBUG: Successfully parsed avatar data")
-                    self?.collectionAvatar = CollectionAvatar(
-                        collectionId: self?.collection.id ?? "",
-                        avatarData: avatarData,
-                        createdAt: Date()
-                    )
-                    // Update the avatar preview
-                    DispatchQueue.main.async {
-                        self?.setupAvatarPreview()
-                    }
-                } else {
-                    print("DEBUG: Failed to parse avatar data")
+               let avatarDict = data["avatarData"] as? [String: Any],
+               let avatarData = CollectionAvatar.AvatarData.fromFirestoreDict(avatarDict) {
+                self?.collectionAvatar = CollectionAvatar(collectionId: self?.collection.id ?? "", avatarData: avatarData, createdAt: Date())
+                DispatchQueue.main.async {
+                    self?.setupAvatarPreview()
                 }
-            } else {
-                print("DEBUG: No avatar data found in collection")
             }
         }
     }
@@ -328,53 +309,18 @@ extension CollectionPlacesViewController: AvatarCustomViewControllerDelegate {
     func avatarCustomViewController(_ controller: AvatarCustomViewController, didSaveAvatar avatarData: CollectionAvatar.AvatarData) {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         let db = Firestore.firestore()
-
-        // Build the avatarData dictionary for all categories
         let avatarDict: [String: Any] = avatarData.toFirestoreDict()
 
-        // Use the correct path: users/{userId}/collections/{collectionId}
-        let userRef = db.collection("users").document(currentUserId)
-        let collectionRef = userRef.collection("collections").document(collection.id)
-        
-        print("DEBUG: Saving avatar in delegate")
-        print("DEBUG: Path: users/\(currentUserId)/collections/\(collection.id)")
-        print("DEBUG: Avatar data: \(avatarDict)")
-
-        // First get the current collection data
-        collectionRef.getDocument { [weak self] snapshot, error in
+        db.collection("users").document(currentUserId)
+          .collection("collections").document(collection.id)
+          .setData(["avatarData": avatarDict], merge: true) { [weak self] error in
             if let error = error {
-                print("Error getting collection data in delegate: \(error.localizedDescription)")
+                print("Error saving collection avatar: \(error.localizedDescription)")
                 return
             }
-            
-            var data: [String: Any] = [
-                "avatarData": avatarDict,
-                "userId": currentUserId,
-                "name": snapshot?.data()?["name"] as? String ?? "Untitled Collection"
-            ]
-            
-            print("DEBUG: Prepared data for saving in delegate: \(data)")
-            
-            // If the collection exists, preserve its other fields
-            if let existingData = snapshot?.data() {
-                print("DEBUG: Found existing collection data in delegate: \(existingData)")
-                for (key, value) in existingData {
-                    if !["avatarData", "userId", "name"].contains(key) {
-                        data[key] = value
-                    }
-                }
-            }
-            
-            collectionRef.setData(data, merge: true) { error in
-                if let error = error {
-                    print("Error saving collection avatar in delegate: \(error.localizedDescription)")
-                    return
-                }
-                print("DEBUG: Successfully saved collection avatar in delegate")
-                // Update local cache
-                self?.collectionAvatar = CollectionAvatar(collectionId: self?.collection.id ?? "", avatarData: avatarData, createdAt: Date())
-            }
-        }
+            // **Reload the latest avatar data from Firestore**
+            self?.loadCollectionAvatar()
+          }
     }
 }
 

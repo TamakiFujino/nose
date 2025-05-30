@@ -15,17 +15,6 @@ class ProfileViewController: UIViewController {
         return button
     }()
     
-    private lazy var tshirtButton: UIButton = {
-        let button = UIButton(type: .system)
-        button.translatesAutoresizingMaskIntoConstraints = false
-        button.setImage(UIImage(systemName: "tshirt.fill"), for: .normal)
-        button.tintColor = .fourthColor
-        button.backgroundColor = .systemBackground
-        button.layer.cornerRadius = 25
-        button.addTarget(self, action: #selector(tshirtButtonTapped), for: .touchUpInside)
-        return button
-    }()
-    
     private lazy var settingsButton: UIButton = {
         let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
@@ -50,22 +39,15 @@ class ProfileViewController: UIViewController {
         
         // Add subviews
         view.addSubview(friendsButton)
-        view.addSubview(tshirtButton)
         view.addSubview(settingsButton)
         
         // Setup constraints
         NSLayoutConstraint.activate([
             // Friends button
-            friendsButton.trailingAnchor.constraint(equalTo: tshirtButton.leadingAnchor, constant: -16),
+            friendsButton.trailingAnchor.constraint(equalTo: settingsButton.leadingAnchor, constant: -16),
             friendsButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -16),
             friendsButton.widthAnchor.constraint(equalToConstant: 50),
             friendsButton.heightAnchor.constraint(equalToConstant: 50),
-            
-            // T-shirt button
-            tshirtButton.trailingAnchor.constraint(equalTo: settingsButton.leadingAnchor, constant: -16),
-            tshirtButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -16),
-            tshirtButton.widthAnchor.constraint(equalToConstant: 50),
-            tshirtButton.heightAnchor.constraint(equalToConstant: 50),
             
             // Settings button
             settingsButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
@@ -79,11 +61,6 @@ class ProfileViewController: UIViewController {
     @objc private func friendsButtonTapped() {
         let friendsVC = FriendsViewController()
         navigationController?.pushViewController(friendsVC, animated: true)
-    }
-    
-    @objc private func tshirtButtonTapped() {
-        let avatarVC = AvatarCustomViewController()
-        navigationController?.pushViewController(avatarVC, animated: true)
     }
     
     @objc private func settingsButtonTapped() {
