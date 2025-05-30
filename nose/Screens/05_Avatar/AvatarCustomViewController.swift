@@ -63,7 +63,10 @@ class AvatarCustomViewController: UIViewController {
         
         // Load existing avatar data if available
         if let avatarData = currentAvatarData {
+            print("DEBUG: Loading saved avatar data in setup: \(avatarData.selections)")
             avatar3DViewController.loadAvatarData(avatarData)
+        } else {
+            print("DEBUG: No saved avatar data to load")
         }
     }
 
@@ -95,8 +98,11 @@ class AvatarCustomViewController: UIViewController {
         }
         let avatarData = CollectionAvatar.AvatarData(selections: selections)
         
+        print("DEBUG: Built avatar data: \(selections)")
+        
         if isProfileAvatar {
             // Save to user's profile avatar
+            print("DEBUG: Saving profile avatar")
             db.collection("users").document(currentUserId)
                 .setData([
                     "avatarData": avatarData.toFirestoreDict(),
@@ -106,6 +112,7 @@ class AvatarCustomViewController: UIViewController {
                         print("Error saving profile avatar: \(error.localizedDescription)")
                         return
                     }
+                    print("DEBUG: Successfully saved profile avatar")
                     // Notify delegate
                     self?.delegate?.avatarCustomViewController(self!, didSaveAvatar: avatarData)
                     // Pop view controller
@@ -116,7 +123,9 @@ class AvatarCustomViewController: UIViewController {
             let userRef = db.collection("users").document(currentUserId)
             let collectionRef = userRef.collection("collections").document(collectionId)
             
-            print("Saving avatar to path: users/\(currentUserId)/collections/\(collectionId)")
+            print("DEBUG: Saving collection avatar")
+            print("DEBUG: Path: users/\(currentUserId)/collections/\(collectionId)")
+            print("DEBUG: Avatar data: \(avatarData.toFirestoreDict())")
             
             // First, get the current collection data to preserve other fields
             collectionRef.getDocument { [weak self] snapshot, error in
@@ -132,8 +141,11 @@ class AvatarCustomViewController: UIViewController {
                     "name": snapshot?.data()?["name"] as? String ?? "Untitled Collection"  // Preserve name
                 ]
                 
+                print("DEBUG: Prepared data for saving: \(data)")
+                
                 // If the collection exists, preserve its other fields
                 if let existingData = snapshot?.data() {
+                    print("DEBUG: Found existing collection data: \(existingData)")
                     for (key, value) in existingData {
                         if !["avatarData", "createdAt", "userId", "name"].contains(key) {
                             data[key] = value
@@ -147,6 +159,7 @@ class AvatarCustomViewController: UIViewController {
                         print("Error saving collection avatar: \(error.localizedDescription)")
                         return
                     }
+                    print("DEBUG: Successfully saved collection avatar")
                     // Notify delegate
                     self?.delegate?.avatarCustomViewController(self!, didSaveAvatar: avatarData)
                     // Pop view controller
@@ -161,7 +174,15 @@ class AvatarCustomViewController: UIViewController {
     }
 
     func setInitialAvatarData(_ avatarData: CollectionAvatar.AvatarData) {
+        print("DEBUG: Setting initial avatar data: \(avatarData.selections)")
         currentAvatarData = avatarData
+        // Make sure to load the avatar data in the 3D view
+        if let avatar3DViewController = avatar3DViewController {
+            print("DEBUG: Loading avatar data in 3D view")
+            avatar3DViewController.loadAvatarData(avatarData)
+        } else {
+            print("DEBUG: Avatar3DViewController not ready yet")
+        }
     }
 }
 

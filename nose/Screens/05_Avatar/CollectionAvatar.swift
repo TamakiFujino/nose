@@ -17,10 +17,12 @@ struct CollectionAvatar: Codable {
         
         // MARK: - Firestore Serialization
         func toFirestoreDict() -> [String: Any] {
+            print("DEBUG: Converting avatar data to Firestore dict: \(selections)")
             return selections
         }
         
         static func fromFirestoreDict(_ dict: [String: Any]) -> CollectionAvatar.AvatarData? {
+            print("DEBUG: Converting Firestore dict to avatar data: \(dict)")
             // Convert [String: Any] to [String: [String: String]]
             var selections: [String: [String: String]] = [:]
             for (category, value) in dict {
@@ -28,30 +30,38 @@ struct CollectionAvatar: Codable {
                     selections[category] = valueDict
                 }
             }
+            print("DEBUG: Converted selections: \(selections)")
             return CollectionAvatar.AvatarData(selections: selections)
         }
     }
     
     // Convert to Firestore data
     func toFirestoreData() -> [String: Any] {
-        return [
+        print("DEBUG: Converting CollectionAvatar to Firestore data")
+        let data: [String: Any] = [
             "avatarData": avatarData.toFirestoreDict(),
             "createdAt": Timestamp(date: createdAt)
         ]
+        print("DEBUG: Firestore data: \(data)")
+        return data
     }
     
     // Create from Firestore data
     static func fromFirestore(_ data: [String: Any]) -> CollectionAvatar? {
+        print("DEBUG: Creating CollectionAvatar from Firestore data: \(data)")
         guard let collectionId = data["collectionId"] as? String,
               let avatarDataDict = data["avatarData"] as? [String: Any],
               let avatarData = AvatarData.fromFirestoreDict(avatarDataDict),
               let timestamp = data["createdAt"] as? Timestamp else {
+            print("DEBUG: Failed to create CollectionAvatar from data")
             return nil
         }
-        return CollectionAvatar(
+        let avatar = CollectionAvatar(
             collectionId: collectionId,
             avatarData: avatarData,
             createdAt: timestamp.dateValue()
         )
+        print("DEBUG: Created CollectionAvatar: \(avatar)")
+        return avatar
     }
 } 

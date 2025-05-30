@@ -27,6 +27,8 @@ class CollectionManager {
         )
         
         print("📝 Creating collection '\(name)' in Firestore...")
+        print("📝 Using path: users/\(userId)/collections/\(collection.id)")
+        
         db.collection("users").document(userId).collection("collections").document(collection.id).setData(collection.dictionary) { error in
             if let error = error {
                 print("❌ Error creating collection: \(error.localizedDescription)")
@@ -45,6 +47,8 @@ class CollectionManager {
         }
         
         print("📥 Fetching collections for user \(userId)...")
+        print("📥 Using path: users/\(userId)/collections")
+        
         db.collection("users").document(userId).collection("collections")
             .getDocuments { snapshot, error in
                 if let error = error {
@@ -85,6 +89,7 @@ class CollectionManager {
         )
         
         print("📝 Adding place '\(place.name ?? "Unknown")' to collection \(collectionId)...")
+        print("📝 Using path: users/\(userId)/collections/\(collectionId)")
         print("📝 Place data: \(placeData.dictionary)")
         
         // First, get the current collection to check existing places
@@ -165,6 +170,7 @@ class CollectionManager {
         }
         
         print("🗑 Deleting collection \(collectionId)...")
+        print("🗑 Using path: users/\(userId)/collections/\(collectionId)")
         
         db.collection("users").document(userId).collection("collections").document(collectionId).delete { error in
             if let error = error {

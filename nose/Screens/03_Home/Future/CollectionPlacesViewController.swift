@@ -177,9 +177,12 @@ class CollectionPlacesViewController: UIViewController {
 
     private func loadAvatarModel() {
         guard let avatar = collectionAvatar else {
+            print("DEBUG: No avatar data, loading default avatar")
             loadDefaultAvatar()
             return
         }
+
+        print("DEBUG: Loading avatar model with data: \(avatar.avatarData.selections)")
 
         do {
             baseEntity = try Entity.loadModel(named: "body_2") as? ModelEntity
@@ -188,6 +191,7 @@ class CollectionPlacesViewController: UIViewController {
 
             // Apply avatar color
             if let color = UIColor(named: avatar.avatarData.color) {
+                print("DEBUG: Applying color: \(avatar.avatarData.color)")
                 var material = SimpleMaterial()
                 material.baseColor = .color(color)
                 material.roughness = 0.3
@@ -210,6 +214,7 @@ class CollectionPlacesViewController: UIViewController {
             let rotation = Transform(scale: .one, rotation: simd_quatf(angle: .pi * 2, axis: [0, 1, 0]), translation: .zero)
             baseEntity.move(to: rotation, relativeTo: baseEntity.parent, duration: 20, timingFunction: .linear)
         } catch {
+            print("DEBUG: Error loading avatar model: \(error)")
             loadDefaultAvatar()
         }
     }
@@ -266,21 +271,35 @@ class CollectionPlacesViewController: UIViewController {
         let userRef = db.collection("users").document(currentUserId)
         let collectionRef = userRef.collection("collections").document(collection.id)
         
-        print("Loading avatar from path: users/\(currentUserId)/collections/\(collection.id)")
+        print("DEBUG: Loading avatar from path: users/\(currentUserId)/collections/\(collection.id)")
         
         collectionRef.getDocument { [weak self] snapshot, error in
             if let error = error {
                 print("Error loading collection avatar: \(error.localizedDescription)")
                 return
             }
+            
+            print("DEBUG: Collection document data: \(snapshot?.data() ?? [:])")
+            
             if let data = snapshot?.data(),
-               let avatarDict = data["avatarData"] as? [String: Any],
-               let avatarData = CollectionAvatar.AvatarData.fromFirestoreDict(avatarDict) {
-                self?.collectionAvatar = CollectionAvatar(
-                    collectionId: self?.collection.id ?? "",
-                    avatarData: avatarData,
-                    createdAt: Date()
-                )
+               let avatarDict = data["avatarData"] as? [String: Any] {
+                print("DEBUG: Found avatar data: \(avatarDict)")
+                if let avatarData = CollectionAvatar.AvatarData.fromFirestoreDict(avatarDict) {
+                    print("DEBUG: Successfully parsed avatar data")
+                    self?.collectionAvatar = CollectionAvatar(
+                        collectionId: self?.collection.id ?? "",
+                        avatarData: avatarData,
+                        createdAt: Date()
+                    )
+                    // Update the avatar preview
+                    DispatchQueue.main.async {
+                        self?.setupAvatarPreview()
+                    }
+                } else {
+                    print("DEBUG: Failed to parse avatar data")
+                }
+            } else {
+                print("DEBUG: No avatar data found in collection")
             }
         }
     }
@@ -311,19 +330,51 @@ extension CollectionPlacesViewController: AvatarCustomViewControllerDelegate {
         let db = Firestore.firestore()
 
         // Build the avatarData dictionary for all categories
-        // Assume avatarData contains a dictionary: [String: [String: String]]
-        // e.g., ["skin": ["model": "skin01", "color": "#ffe0bd"], ...]
-        let avatarDict: [String: Any] = avatarData.toFirestoreDict() // You will need to implement this method
+        let avatarDict: [String: Any] = avatarData.toFirestoreDict()
 
-        db.collection("collections").document(collection.id)
-            .setData(["avatarData": avatarDict], merge: true) { [weak self] error in
+        // Use the correct path: users/{userId}/collections/{collectionId}
+        let userRef = db.collection("users").document(currentUserId)
+        let collectionRef = userRef.collection("collections").document(collection.id)
+        
+        print("DEBUG: Saving avatar in delegate")
+        print("DEBUG: Path: users/\(currentUserId)/collections/\(collection.id)")
+        print("DEBUG: Avatar data: \(avatarDict)")
+
+        // First get the current collection data
+        collectionRef.getDocument { [weak self] snapshot, error in
+            if let error = error {
+                print("Error getting collection data in delegate: \(error.localizedDescription)")
+                return
+            }
+            
+            var data: [String: Any] = [
+                "avatarData": avatarDict,
+                "userId": currentUserId,
+                "name": snapshot?.data()?["name"] as? String ?? "Untitled Collection"
+            ]
+            
+            print("DEBUG: Prepared data for saving in delegate: \(data)")
+            
+            // If the collection exists, preserve its other fields
+            if let existingData = snapshot?.data() {
+                print("DEBUG: Found existing collection data in delegate: \(existingData)")
+                for (key, value) in existingData {
+                    if !["avatarData", "userId", "name"].contains(key) {
+                        data[key] = value
+                    }
+                }
+            }
+            
+            collectionRef.setData(data, merge: true) { error in
                 if let error = error {
-                    print("Error saving collection avatar: \(error.localizedDescription)")
+                    print("Error saving collection avatar in delegate: \(error.localizedDescription)")
                     return
                 }
+                print("DEBUG: Successfully saved collection avatar in delegate")
                 // Update local cache
                 self?.collectionAvatar = CollectionAvatar(collectionId: self?.collection.id ?? "", avatarData: avatarData, createdAt: Date())
             }
+        }
     }
 }
 
