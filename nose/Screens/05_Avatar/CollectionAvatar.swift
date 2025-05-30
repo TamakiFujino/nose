@@ -17,12 +17,10 @@ struct CollectionAvatar: Codable {
         
         // MARK: - Firestore Serialization
         func toFirestoreDict() -> [String: Any] {
-            print("DEBUG: Converting avatar data to Firestore dict: \(selections)")
             return selections
         }
         
         static func fromFirestoreDict(_ dict: [String: Any]) -> CollectionAvatar.AvatarData? {
-            print("DEBUG: Converting Firestore dict to avatar data: \(dict)")
             // Convert [String: Any] to [String: [String: String]]
             var selections: [String: [String: String]] = [:]
             for (category, value) in dict {
@@ -30,7 +28,6 @@ struct CollectionAvatar: Codable {
                     selections[category] = valueDict
                 }
             }
-            print("DEBUG: Converted selections: \(selections)")
             return CollectionAvatar.AvatarData(selections: selections)
         }
     }
@@ -42,7 +39,6 @@ struct CollectionAvatar: Codable {
             "avatarData": avatarData.toFirestoreDict(),
             "createdAt": Timestamp(date: createdAt)
         ]
-        print("DEBUG: Firestore data: \(data)")
         return data
     }
     
@@ -64,4 +60,4 @@ struct CollectionAvatar: Codable {
         print("DEBUG: Created CollectionAvatar: \(avatar)")
         return avatar
     }
-} 
+}

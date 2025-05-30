@@ -98,11 +98,7 @@ class AvatarCustomViewController: UIViewController {
         }
         let avatarData = CollectionAvatar.AvatarData(selections: selections)
         
-        print("DEBUG: Built avatar data: \(selections)")
-        
         if isProfileAvatar {
-            // Save to user's profile avatar
-            print("DEBUG: Saving profile avatar")
             db.collection("users").document(currentUserId)
                 .setData([
                     "avatarData": avatarData.toFirestoreDict(),
@@ -112,7 +108,6 @@ class AvatarCustomViewController: UIViewController {
                         print("Error saving profile avatar: \(error.localizedDescription)")
                         return
                     }
-                    print("DEBUG: Successfully saved profile avatar")
                     // Notify delegate
                     self?.delegate?.avatarCustomViewController(self!, didSaveAvatar: avatarData)
                     // Pop view controller
@@ -122,10 +117,6 @@ class AvatarCustomViewController: UIViewController {
             // Save to collection avatar
             let userRef = db.collection("users").document(currentUserId)
             let collectionRef = userRef.collection("collections").document(collectionId)
-            
-            print("DEBUG: Saving collection avatar")
-            print("DEBUG: Path: users/\(currentUserId)/collections/\(collectionId)")
-            print("DEBUG: Avatar data: \(avatarData.toFirestoreDict())")
             
             // First, get the current collection data to preserve other fields
             collectionRef.getDocument { [weak self] snapshot, error in
@@ -140,8 +131,6 @@ class AvatarCustomViewController: UIViewController {
                     "userId": currentUserId,  // Ensure userId is set
                     "name": snapshot?.data()?["name"] as? String ?? "Untitled Collection"  // Preserve name
                 ]
-                
-                print("DEBUG: Prepared data for saving: \(data)")
                 
                 // If the collection exists, preserve its other fields
                 if let existingData = snapshot?.data() {

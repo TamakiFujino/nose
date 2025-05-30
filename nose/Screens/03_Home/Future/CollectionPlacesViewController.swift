@@ -3,6 +3,7 @@ import GooglePlaces
 import FirebaseFirestore
 import FirebaseAuth
 import RealityKit
+import ARKit
 
 class CollectionPlacesViewController: UIViewController {
 
@@ -132,87 +133,78 @@ class CollectionPlacesViewController: UIViewController {
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
     }
-
+    
     private func setupAvatarPreview() {
+        // 1) 前のビューをクリア
         avatarPreviewView?.removeFromSuperview()
-        avatarPreviewView = nil
-
+        
+        // 2) ARView を生成して配置
         let arView = ARView(frame: avatarContainerView.bounds)
         arView.translatesAutoresizingMaskIntoConstraints = false
-        arView.backgroundColor = .clear
-
         avatarContainerView.addSubview(arView)
+        
+        // set environmental color
+        arView.environment.background = .color(.systemGray6)
+        
+        arView.automaticallyConfigureSession = false
         NSLayoutConstraint.activate([
             arView.topAnchor.constraint(equalTo: avatarContainerView.topAnchor),
             arView.leadingAnchor.constraint(equalTo: avatarContainerView.leadingAnchor),
             arView.trailingAnchor.constraint(equalTo: avatarContainerView.trailingAnchor),
             arView.bottomAnchor.constraint(equalTo: avatarContainerView.bottomAnchor)
         ])
-
-        view.backgroundColor = .secondColor
-        arView.environment.background = .color(.secondColor)
-
-        // Camera setup
+        
+        // 3) AR セッションを開始
+        let config = ARWorldTrackingConfiguration()
+        config.planeDetection = []
+        config.environmentTexturing = .none
+        arView.session.run(config)
+        
+        // 4) ライトだけシーンに追加（視認性アップ）
+        let lightAnchor = AnchorEntity(world: [0, 2, 0])
+        let light = DirectionalLight()
+        light.light.intensity = 1000
+        lightAnchor.addChild(light)
+        arView.scene.anchors.append(lightAnchor)
+        
         let cameraEntity = PerspectiveCamera()
         cameraEntity.transform.translation = SIMD3<Float>(0, 3, 7)
         let cameraAnchor = AnchorEntity()
         cameraAnchor.addChild(cameraEntity)
         arView.scene.anchors.append(cameraAnchor)
-
-        // Directional light
-        let lightAnchor = AnchorEntity(world: [0, 2.0, 0])
-        let light = DirectionalLight()
-        light.light.intensity = 1000
-        light.light.color = .white
-        light.shadow = DirectionalLightComponent.Shadow(maximumDistance: 10.0, depthBias: 0.005)
-        light.orientation = simd_quatf(angle: -.pi / 6, axis: [1, 0, 0])
-        lightAnchor.addChild(light)
-        arView.scene.anchors.append(lightAnchor)
-
-        loadAvatarModel()
+        
+        // 5) モデル読み込み
         avatarPreviewView = arView
+        loadAvatarModel()
     }
 
     // MARK: - Avatar Loading
-
     private func loadAvatarModel() {
+        // 1) コレクションアバターデータがなければデフォルトをロード
         guard let avatar = collectionAvatar else {
             print("DEBUG: No avatar data, loading default avatar")
             loadDefaultAvatar()
             return
         }
 
-        print("DEBUG: Loading avatar model with data: \(avatar.avatarData.selections)")
-
         do {
-            baseEntity = try Entity.loadModel(named: "body_2") as? ModelEntity
-            guard let baseEntity = baseEntity else { return }
-            baseEntity.name = "Avatar"
+            // 2) ベースモデル読み込み
+            let model = try Entity.loadModel(named: "body_2")
+            guard let base = model as? ModelEntity else { return }
+            baseEntity = base
 
-            // Apply avatar color
-            if let color = UIColor(named: avatar.avatarData.color) {
-                print("DEBUG: Applying color: \(avatar.avatarData.color)")
-                var material = SimpleMaterial()
-                material.baseColor = .color(color)
-                material.roughness = 0.3
-                material.metallic = 0.0
-                baseEntity.model?.materials = [material]
-            }
+            // 5) スケール＆初期回転
+            applyFixedScale(to: base, scale: 0.3)
+            base.transform.rotation = simd_quatf(angle: .pi / 6, axis: [0, -0.8, 0])
 
-            // Load additional avatar components
-            loadAvatarComponents(avatar.avatarData)
+            // 6) アンカーにセット
+            let yOffset: Float = -0.8
+                    let anchor = AnchorEntity(world: [0, yOffset, 0])
+                    anchor.addChild(base)
 
-            // Transform setup
-            applyFixedScale(to: baseEntity, scale: 1.0)
-            baseEntity.transform.rotation = simd_quatf(angle: .pi / 6, axis: [0, -0.8, 0])
-            avatarPreviewView?.scene.anchors.removeAll()
-            let anchor = AnchorEntity(world: .zero)
-            anchor.addChild(baseEntity)
-            avatarPreviewView?.scene.anchors.append(anchor)
+                    avatarPreviewView?.scene.anchors.removeAll()
+                    avatarPreviewView?.scene.anchors.append(anchor)
 
-            // Animation
-            let rotation = Transform(scale: .one, rotation: simd_quatf(angle: .pi * 2, axis: [0, 1, 0]), translation: .zero)
-            baseEntity.move(to: rotation, relativeTo: baseEntity.parent, duration: 20, timingFunction: .linear)
         } catch {
             print("DEBUG: Error loading avatar model: \(error)")
             loadDefaultAvatar()
@@ -223,7 +215,7 @@ class CollectionPlacesViewController: UIViewController {
         Task {
             do {
                 let entity = try await Entity.load(named: "body_2")
-                applyFixedScale(to: entity, scale: 1.0)
+                applyFixedScale(to: entity, scale: 0.3)
                 if let modelEntity = entity as? ModelEntity {
                     var material = SimpleMaterial()
                     material.baseColor = .color(.systemPink)

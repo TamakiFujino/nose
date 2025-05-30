@@ -89,7 +89,6 @@ class AvatarUIManager: NSObject {
             if index == 0 {
                 selectColorButton(button)
             }
-            print("Added button with color \(color)")
             contentWidth += buttonSize + padding
         }
 
