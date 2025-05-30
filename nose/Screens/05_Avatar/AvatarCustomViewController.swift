@@ -1,7 +1,5 @@
 import UIKit
 import RealityKit
-import FirebaseFirestore
-import Firebase
 
 protocol AvatarCustomViewControllerDelegate: AnyObject {
     func avatarCustomViewController(_ controller: AvatarCustomViewController, didSaveAvatar avatarData: CollectionAvatar.AvatarData)
@@ -15,18 +13,6 @@ class AvatarCustomViewController: UIViewController {
 
     weak var delegate: AvatarCustomViewControllerDelegate?
     private var currentAvatarData: CollectionAvatar.AvatarData?
-    private var collectionId: String?
-    private var isProfileAvatar: Bool
-
-    init(collectionId: String? = nil) {
-        self.collectionId = collectionId
-        self.isProfileAvatar = collectionId == nil
-        super.init(nibName: nil, bundle: nil)
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -42,15 +28,19 @@ class AvatarCustomViewController: UIViewController {
     }
 
     private func setupNavigationBar() {
+        navigationController?.setNavigationBarHidden(false, animated: false)
+        
         let saveButton = UIBarButtonItem(title: "Save", style: .plain, target: self, action: #selector(saveButtonTapped))
         saveButton.tintColor = .black
         navigationItem.rightBarButtonItem = saveButton
         
-        navigationItem.leftBarButtonItem = UIBarButtonItem(
+        let closeButton = UIBarButtonItem(
             barButtonSystemItem: .close,
             target: self,
             action: #selector(closeButtonTapped)
         )
+        closeButton.tintColor = .black
+        navigationItem.leftBarButtonItem = closeButton
     }
 
     private func setupAvatar3DView() {
@@ -63,10 +53,7 @@ class AvatarCustomViewController: UIViewController {
         
         // Load existing avatar data if available
         if let avatarData = currentAvatarData {
-            print("DEBUG: Loading saved avatar data in setup: \(avatarData.selections)")
             avatar3DViewController.loadAvatarData(avatarData)
-        } else {
-            print("DEBUG: No saved avatar data to load")
         }
     }
 
@@ -84,8 +71,8 @@ class AvatarCustomViewController: UIViewController {
     }
 
     @objc private func saveButtonTapped() {
-        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
-        let db = Firestore.firestore()
+        let didSave = avatar3DViewController.saveChosenModelsAndColors()
+        ToastManager.showToast(message: ToastMessages.avatarUpdated, type: .success)
         
         // Build selections dictionary
         var selections: [String: [String: String]] = [:]
@@ -98,64 +85,11 @@ class AvatarCustomViewController: UIViewController {
         }
         let avatarData = CollectionAvatar.AvatarData(selections: selections)
         
-        if isProfileAvatar {
-            db.collection("users").document(currentUserId)
-                .setData([
-                    "avatarData": avatarData.toFirestoreDict(),
-                    "updatedAt": Timestamp(date: Date())
-                ], merge: true) { [weak self] error in
-                    if let error = error {
-                        print("Error saving profile avatar: \(error.localizedDescription)")
-                        return
-                    }
-                    // Notify delegate
-                    self?.delegate?.avatarCustomViewController(self!, didSaveAvatar: avatarData)
-                    // Pop view controller
-                    self?.navigationController?.popViewController(animated: true)
-                }
-        } else if let collectionId = collectionId {
-            // Save to collection avatar
-            let userRef = db.collection("users").document(currentUserId)
-            let collectionRef = userRef.collection("collections").document(collectionId)
-            
-            // First, get the current collection data to preserve other fields
-            collectionRef.getDocument { [weak self] snapshot, error in
-                if let error = error {
-                    print("Error getting collection data: \(error.localizedDescription)")
-                    return
-                }
-                
-                var data: [String: Any] = [
-                    "avatarData": avatarData.toFirestoreDict(),
-                    "createdAt": Timestamp(date: Date()),
-                    "userId": currentUserId,  // Ensure userId is set
-                    "name": snapshot?.data()?["name"] as? String ?? "Untitled Collection"  // Preserve name
-                ]
-                
-                // If the collection exists, preserve its other fields
-                if let existingData = snapshot?.data() {
-                    print("DEBUG: Found existing collection data: \(existingData)")
-                    for (key, value) in existingData {
-                        if !["avatarData", "createdAt", "userId", "name"].contains(key) {
-                            data[key] = value
-                        }
-                    }
-                }
-                
-                // Save the updated data
-                collectionRef.setData(data, merge: true) { error in
-                    if let error = error {
-                        print("Error saving collection avatar: \(error.localizedDescription)")
-                        return
-                    }
-                    print("DEBUG: Successfully saved collection avatar")
-                    // Notify delegate
-                    self?.delegate?.avatarCustomViewController(self!, didSaveAvatar: avatarData)
-                    // Pop view controller
-                    self?.navigationController?.popViewController(animated: true)
-                }
-            }
-        }
+        // Notify delegate
+        delegate?.avatarCustomViewController(self, didSaveAvatar: avatarData)
+        
+        // Pop view controller
+        navigationController?.popViewController(animated: true)
     }
 
     @objc private func closeButtonTapped() {
@@ -163,15 +97,7 @@ class AvatarCustomViewController: UIViewController {
     }
 
     func setInitialAvatarData(_ avatarData: CollectionAvatar.AvatarData) {
-        print("DEBUG: Setting initial avatar data: \(avatarData.selections)")
         currentAvatarData = avatarData
-        // Make sure to load the avatar data in the 3D view
-        if let avatar3DViewController = avatar3DViewController {
-            print("DEBUG: Loading avatar data in 3D view")
-            avatar3DViewController.loadAvatarData(avatarData)
-        } else {
-            print("DEBUG: Avatar3DViewController not ready yet")
-        }
     }
 }
 

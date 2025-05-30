@@ -40,6 +40,7 @@ class Avatar3DViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupARView()
+        loadAvatarModel()
         setupCameraPosition()
         setupBaseEntity()
         addDirectionalLight()

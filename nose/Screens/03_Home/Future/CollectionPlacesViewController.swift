@@ -40,6 +40,16 @@ class CollectionPlacesViewController: UIViewController {
         return label
     }()
 
+    private lazy var customizeButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.setTitle("Customize", for: .normal)
+        button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
+        button.tintColor = .systemBlue
+        button.addTarget(self, action: #selector(customizeButtonTapped), for: .touchUpInside)
+        return button
+    }()
+
     // MARK: - Initialization
 
     init(collection: PlaceCollection) {
@@ -65,23 +75,39 @@ class CollectionPlacesViewController: UIViewController {
         view.backgroundColor = .systemBackground
         view.addSubview(headerView)
         headerView.addSubview(titleLabel)
+        headerView.addSubview(customizeButton)
         view.addSubview(tableView)
 
         NSLayoutConstraint.activate([
             headerView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             headerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             headerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            headerView.heightAnchor.constraint(equalToConstant: 60),
+            headerView.heightAnchor.constraint(equalToConstant: 100),
 
             titleLabel.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 16),
             titleLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
             titleLabel.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
+
+            customizeButton.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 16),
+            customizeButton.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+            customizeButton.heightAnchor.constraint(equalToConstant: 44),
 
             tableView.topAnchor.constraint(equalTo: headerView.bottomAnchor),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
+    }
+
+    // MARK: - Actions
+    @objc private func customizeButtonTapped() {
+        let avatarVC = AvatarCustomViewController()
+       // avatarVC.delegate = self
+
+        let nav = UINavigationController(rootViewController: avatarVC)
+        nav.modalPresentationStyle = .fullScreen
+
+        present(nav, animated: true, completion: nil)
     }
 
     // MARK: - Data Loading
