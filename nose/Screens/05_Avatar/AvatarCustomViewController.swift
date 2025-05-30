@@ -1,5 +1,7 @@
 import UIKit
 import RealityKit
+import FirebaseFirestore
+import Firebase
 
 protocol AvatarCustomViewControllerDelegate: AnyObject {
     func avatarCustomViewController(_ controller: AvatarCustomViewController, didSaveAvatar avatarData: CollectionAvatar.AvatarData)
@@ -13,6 +15,18 @@ class AvatarCustomViewController: UIViewController {
 
     weak var delegate: AvatarCustomViewControllerDelegate?
     private var currentAvatarData: CollectionAvatar.AvatarData?
+    private var collectionId: String?
+    private var isProfileAvatar: Bool
+
+    init(collectionId: String? = nil) {
+        self.collectionId = collectionId
+        self.isProfileAvatar = collectionId == nil
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -67,8 +81,8 @@ class AvatarCustomViewController: UIViewController {
     }
 
     @objc private func saveButtonTapped() {
-        let didSave = avatar3DViewController.saveChosenModelsAndColors()
-        ToastManager.showToast(message: ToastMessages.avatarUpdated, type: .success)
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        let db = Firestore.firestore()
         
         // Build selections dictionary
         var selections: [String: [String: String]] = [:]
@@ -81,11 +95,65 @@ class AvatarCustomViewController: UIViewController {
         }
         let avatarData = CollectionAvatar.AvatarData(selections: selections)
         
-        // Notify delegate
-        delegate?.avatarCustomViewController(self, didSaveAvatar: avatarData)
-        
-        // Pop view controller
-        navigationController?.popViewController(animated: true)
+        if isProfileAvatar {
+            // Save to user's profile avatar
+            db.collection("users").document(currentUserId)
+                .setData([
+                    "avatarData": avatarData.toFirestoreDict(),
+                    "updatedAt": Timestamp(date: Date())
+                ], merge: true) { [weak self] error in
+                    if let error = error {
+                        print("Error saving profile avatar: \(error.localizedDescription)")
+                        return
+                    }
+                    // Notify delegate
+                    self?.delegate?.avatarCustomViewController(self!, didSaveAvatar: avatarData)
+                    // Pop view controller
+                    self?.navigationController?.popViewController(animated: true)
+                }
+        } else if let collectionId = collectionId {
+            // Save to collection avatar
+            let userRef = db.collection("users").document(currentUserId)
+            let collectionRef = userRef.collection("collections").document(collectionId)
+            
+            print("Saving avatar to path: users/\(currentUserId)/collections/\(collectionId)")
+            
+            // First, get the current collection data to preserve other fields
+            collectionRef.getDocument { [weak self] snapshot, error in
+                if let error = error {
+                    print("Error getting collection data: \(error.localizedDescription)")
+                    return
+                }
+                
+                var data: [String: Any] = [
+                    "avatarData": avatarData.toFirestoreDict(),
+                    "createdAt": Timestamp(date: Date()),
+                    "userId": currentUserId,  // Ensure userId is set
+                    "name": snapshot?.data()?["name"] as? String ?? "Untitled Collection"  // Preserve name
+                ]
+                
+                // If the collection exists, preserve its other fields
+                if let existingData = snapshot?.data() {
+                    for (key, value) in existingData {
+                        if !["avatarData", "createdAt", "userId", "name"].contains(key) {
+                            data[key] = value
+                        }
+                    }
+                }
+                
+                // Save the updated data
+                collectionRef.setData(data, merge: true) { error in
+                    if let error = error {
+                        print("Error saving collection avatar: \(error.localizedDescription)")
+                        return
+                    }
+                    // Notify delegate
+                    self?.delegate?.avatarCustomViewController(self!, didSaveAvatar: avatarData)
+                    // Pop view controller
+                    self?.navigationController?.popViewController(animated: true)
+                }
+            }
+        }
     }
 
     @objc private func closeButtonTapped() {

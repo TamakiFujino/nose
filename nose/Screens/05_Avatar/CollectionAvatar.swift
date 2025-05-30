@@ -19,6 +19,7 @@ struct CollectionAvatar: Codable {
         func toFirestoreDict() -> [String: Any] {
             return selections
         }
+        
         static func fromFirestoreDict(_ dict: [String: Any]) -> CollectionAvatar.AvatarData? {
             // Convert [String: Any] to [String: [String: String]]
             var selections: [String: [String: String]] = [:]
@@ -31,16 +32,15 @@ struct CollectionAvatar: Codable {
         }
     }
     
-    // Convert to Firestore data (for legacy, not used in new flow)
+    // Convert to Firestore data
     func toFirestoreData() -> [String: Any] {
         return [
-            "collectionId": collectionId,
             "avatarData": avatarData.toFirestoreDict(),
             "createdAt": Timestamp(date: createdAt)
         ]
     }
     
-    // Create from Firestore data (for legacy, not used in new flow)
+    // Create from Firestore data
     static func fromFirestore(_ data: [String: Any]) -> CollectionAvatar? {
         guard let collectionId = data["collectionId"] as? String,
               let avatarDataDict = data["avatarData"] as? [String: Any],

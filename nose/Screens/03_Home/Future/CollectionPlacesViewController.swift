@@ -259,8 +259,16 @@ class CollectionPlacesViewController: UIViewController {
     }
 
     private func loadCollectionAvatar() {
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         let db = Firestore.firestore()
-        db.collection("collections").document(collection.id).getDocument { [weak self] snapshot, error in
+        
+        // Access the avatar from the user's collections subcollection
+        let userRef = db.collection("users").document(currentUserId)
+        let collectionRef = userRef.collection("collections").document(collection.id)
+        
+        print("Loading avatar from path: users/\(currentUserId)/collections/\(collection.id)")
+        
+        collectionRef.getDocument { [weak self] snapshot, error in
             if let error = error {
                 print("Error loading collection avatar: \(error.localizedDescription)")
                 return
@@ -268,7 +276,11 @@ class CollectionPlacesViewController: UIViewController {
             if let data = snapshot?.data(),
                let avatarDict = data["avatarData"] as? [String: Any],
                let avatarData = CollectionAvatar.AvatarData.fromFirestoreDict(avatarDict) {
-                self?.collectionAvatar = CollectionAvatar(collectionId: self?.collection.id ?? "", avatarData: avatarData, createdAt: Date())
+                self?.collectionAvatar = CollectionAvatar(
+                    collectionId: self?.collection.id ?? "",
+                    avatarData: avatarData,
+                    createdAt: Date()
+                )
             }
         }
     }
@@ -276,7 +288,7 @@ class CollectionPlacesViewController: UIViewController {
     // MARK: - Actions
 
     @objc private func avatarButtonTapped() {
-        let avatarVC = AvatarCustomViewController()
+        let avatarVC = AvatarCustomViewController(collectionId: collection.id)
         avatarVC.delegate = self
         if let existingAvatar = collectionAvatar {
             avatarVC.setInitialAvatarData(existingAvatar.avatarData)
