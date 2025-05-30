@@ -3,22 +3,42 @@ import RealityKit
 import Combine
 
 class Avatar3DViewController: UIViewController {
-    
-    var arView: ARView!
+
+    // MARK: - Properties
+
     var baseEntity: ModelEntity?
     var chosenModels: [String: String] = [:]
     var chosenColors: [String: UIColor] = [:]
-    var selectedItem: Any? // Replace `Any` with the appropriate type for your selected item
-    var cancellables: [AnyCancellable] = []
-    var currentUserId: String = "defaultUser" // Replace with actual user ID
-    
-    var skinColor: UIColor? {
-        return chosenColors["skin"]
+    var selectedItem: Any? // TODO: Replace `Any` with the actual type if possible
+    var cancellables = Set<AnyCancellable>()
+    var currentUserId: String = "defaultUser" // TODO: Replace with actual user ID
+
+    // Expose current avatar properties
+    var currentColor: String {
+        UserDefaults.standard.string(forKey: "selectedColor") ?? "default"
     }
-    
+    var currentStyle: String {
+        UserDefaults.standard.string(forKey: "selectedStyle") ?? "default"
+    }
+    var currentAccessories: [String] {
+        UserDefaults.standard.stringArray(forKey: "selectedAccessories") ?? []
+    }
+    var skinColor: UIColor? {
+        chosenColors["skin"]
+    }
+
+    // MARK: - UI Components
+
+    private lazy var arView: ARView = {
+        let view = ARView(frame: .zero)
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }()
+
+    // MARK: - Lifecycle
+
     override func viewDidLoad() {
         super.viewDidLoad()
-        
         setupARView()
         loadAvatarModel()
         setupCameraPosition()
@@ -27,165 +47,49 @@ class Avatar3DViewController: UIViewController {
         loadSelectionState()
         setupEnvironmentBackground()
     }
-    
-    func setupARView() {
-        arView = ARView(frame: .zero) // ✅ Let Auto Layout handle size
-        arView.translatesAutoresizingMaskIntoConstraints = false
-        arView.backgroundColor = .clear
+
+    // MARK: - Setup
+
+    private func setupARView() {
         view.addSubview(arView)
-        
-        // ✅ Use Auto Layout constraints
         NSLayoutConstraint.activate([
             arView.topAnchor.constraint(equalTo: view.topAnchor),
             arView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             arView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            arView.bottomAnchor.constraint(equalTo: view.bottomAnchor) // You can modify this to set height
+            arView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
+        arView.backgroundColor = .clear
     }
-    
-    func setupEnvironmentBackground() {
+
+    private func setupEnvironmentBackground() {
         view.backgroundColor = .secondColor
         arView.environment.background = .color(.secondColor)
     }
-    
-    func loadAvatarModel() {
-        // Initialize chosenModels with empty strings for each category
-        var savedModels = [
-            "bottoms": "",
-            "tops": "",
-            "hair_base": "",
-            "hair_front": "",
-            "hair_back": "",
-            "jackets": "",
-            "skin": "",
-            "eye": "",
-            "eyebrow": "",
-            "nose": "",
-            "mouth": "",
-            "socks": "",
-            "shoes": "",
-            "head": "",
-            "neck": "",
-            "eyewear": ""
-        ]
-        
-        // Load saved models and colors for each category if they exist
-        for (category, _) in savedModels {
-            if let savedModel = UserDefaults.standard.string(forKey: "chosen\(category.capitalized)Model") {
-                savedModels[category] = savedModel
-            }
-        }
-        
-        chosenModels = savedModels
-        
-        // Load saved colors for each category
-        if let savedColorsData = UserDefaults.standard.data(forKey: "chosenColors"),
-           let savedColors = try? NSKeyedUnarchiver.unarchiveTopLevelObjectWithData(savedColorsData) as? [String: UIColor] {
-            chosenColors = savedColors
-        }
-        
-        // Load the base avatar model
-        do {
-            baseEntity = try Entity.loadModel(named: "body_2") as? ModelEntity
-            baseEntity?.name = "Avatar"
-            // print the origin position of baseEntity
-            print("baseEntity origin: \(String(describing: baseEntity?.position))")
-            // print the size of the baseEntity entity
-            if let bounds = baseEntity?.visualBounds(relativeTo: nil) {
-                print("baseEntity size: \(bounds.extents)")
-            }
-            
-            setupBaseEntity()
-            
-            // Load the saved or default models and apply colors for each category
-            for (category, modelName) in savedModels {
-                if !modelName.isEmpty {
-                    loadClothingItem(named: modelName, category: category)
-                }
-                if let color = chosenColors[category] {
-                    changeClothingItemColor(for: category, to: color)
-                }
-            }
-            
-        } catch {
-            print("Error loading base avatar model: \(error)")
-        }
+
+    // MARK: - Avatar Management
+
+    func loadAvatarData(_ avatarData: CollectionAvatar.AvatarData) {
+        UserDefaults.standard.set(avatarData.color, forKey: "selectedColor")
+        UserDefaults.standard.set(avatarData.style, forKey: "selectedStyle")
+        UserDefaults.standard.set(avatarData.accessories, forKey: "selectedAccessories")
+        updateAvatarAppearance()
     }
-    
-    func loadClothingItem(named modelName: String, category: String) {
-        do {
-            // Remove the previous model for the category if it exists
-            if let previousModelName = chosenModels[category], let existingEntity = baseEntity?.findEntity(named: previousModelName) {
-                existingEntity.removeFromParent()
-            }
-            
-            let newModel = try Entity.loadModel(named: modelName) as? ModelEntity
-            newModel?.name = modelName
-            
-            // Force scale to 1.0
-            newModel?.scale = SIMD3<Float>(1.0, 1.0, 1.0)
-            
-            if let newModel = newModel {
-                baseEntity?.addChild(newModel) // Attach to the base avatar
-            }
-            
-            print("newModel origin: \(String(describing: newModel?.position))")
-            print("newModel size (forced scale): \(String(describing: newModel?.visualBounds(relativeTo: nil).extents))")
-            
-            // Save the chosen model for the category
-            chosenModels[category] = modelName
-            
-            // Apply the chosen color if it exists
-            if let color = chosenColors[category] {
-                changeClothingItemColor(for: category, to: color)
-            }
-        } catch {
-            print("Error loading clothing item: \(error)")
+
+    private func updateAvatarAppearance() {
+        if let color = UIColor(named: currentColor) {
+            baseEntity?.model?.materials = [SimpleMaterial(color: color, isMetallic: false)]
         }
+        // TODO: Update style and accessories based on implementation.
     }
-    
-    func removeClothingItem(for category: String) {
-        // Remove the previous model for the category if it exists
-        if let previousModelName = chosenModels[category], let existingEntity = baseEntity?.findEntity(named: previousModelName) {
-            existingEntity.removeFromParent()
-            chosenModels[category] = ""
-        }
-    }
-    
-    func setupCameraPosition(position: SIMD3<Float> = SIMD3<Float>(0.0, 0.0, 14.0)) {
-        // Create a camera entity
-        let cameraEntity = PerspectiveCamera()
-        cameraEntity.transform.translation = position // Position the camera
-        
-        // Create a camera anchor to hold the camera entity
-        let cameraAnchor = AnchorEntity()
-        cameraAnchor.addChild(cameraEntity)
-        
-        // Add the camera anchor to the scene
-        arView.scene.anchors.append(cameraAnchor)
-    }
-    
-    func setupBaseEntity() {
-        guard let baseEntity = baseEntity else { return }
-        
-        // Rotate the model (Y-axis for turning left/right, X for tilting forward/back)
-        baseEntity.transform.rotation = simd_quatf(angle: .pi / 6, axis: [0, -0.8, 0])
-        
-        let anchor = AnchorEntity(world: [0, 0, 0]) // Place in world space
-        anchor.addChild(baseEntity)
-        arView.scene.anchors.append(anchor)
-    }
-    
+
     func saveChosenModelsAndColors() -> Bool {
-        return saveChosenModelsAndColors(for: currentUserId)
+        saveChosenModelsAndColors(for: currentUserId)
     }
-    
+
     func saveChosenModelsAndColors(for userId: String) -> Bool {
         for (category, modelName) in chosenModels {
-            let key = "chosenModels_\(userId)_\(category)"
-            UserDefaults.standard.set(modelName, forKey: key)
+            UserDefaults.standard.set(modelName, forKey: "chosenModels_\(userId)_\(category)")
         }
-        
         do {
             let colorsData = try NSKeyedArchiver.archivedData(withRootObject: chosenColors, requiringSecureCoding: false)
             UserDefaults.standard.set(colorsData, forKey: "chosenColors_\(userId)")
@@ -196,89 +100,179 @@ class Avatar3DViewController: UIViewController {
             return false
         }
     }
-    
+
+    // MARK: - Model Loading
+
+    func loadAvatarModel() {
+        let categories = [
+            "bottoms", "tops", "hair_base", "hair_front", "hair_back", "jackets", "skin",
+            "eye", "eyebrow", "nose", "mouth", "socks", "shoes", "head", "neck", "eyewear"
+        ]
+        var savedModels = [String: String]()
+        for category in categories {
+            let key = "chosen\(category.capitalized)Model"
+            savedModels[category] = UserDefaults.standard.string(forKey: key) ?? ""
+        }
+        chosenModels = savedModels
+
+        if let savedColorsData = UserDefaults.standard.data(forKey: "chosenColors"),
+           let savedColors = try? NSKeyedUnarchiver.unarchiveTopLevelObjectWithData(savedColorsData) as? [String: UIColor] {
+            chosenColors = savedColors
+        }
+
+        do {
+            baseEntity = try Entity.loadModel(named: "body_2") as? ModelEntity
+            baseEntity?.name = "Avatar"
+            if let position = baseEntity?.position {
+                print("baseEntity origin: \(position)")
+            }
+            if let bounds = baseEntity?.visualBounds(relativeTo: nil) {
+                print("baseEntity size: \(bounds.extents)")
+            }
+            setupBaseEntity()
+            for (category, modelName) in savedModels where !modelName.isEmpty {
+                loadClothingItem(named: modelName, category: category)
+                if let color = chosenColors[category] {
+                    changeClothingItemColor(for: category, to: color)
+                }
+            }
+        } catch {
+            print("Error loading base avatar model: \(error)")
+        }
+    }
+
+    func loadClothingItem(named modelName: String, category: String) {
+        do {
+            if let previousModelName = chosenModels[category],
+               let existingEntity = baseEntity?.findEntity(named: previousModelName) {
+                existingEntity.removeFromParent()
+            }
+            let newModel = try Entity.loadModel(named: modelName) as? ModelEntity
+            newModel?.name = modelName
+            newModel?.scale = SIMD3<Float>(repeating: 1.0)
+            if let newModel = newModel {
+                baseEntity?.addChild(newModel)
+            }
+            if let position = newModel?.position {
+                print("newModel origin: \(position)")
+            }
+            if let size = newModel?.visualBounds(relativeTo: nil).extents {
+                print("newModel size (forced scale): \(size)")
+            }
+            chosenModels[category] = modelName
+            if let color = chosenColors[category] {
+                changeClothingItemColor(for: category, to: color)
+            }
+        } catch {
+            print("Error loading clothing item: \(error)")
+        }
+    }
+
+    func removeClothingItem(for category: String) {
+        if let previousModelName = chosenModels[category],
+           let existingEntity = baseEntity?.findEntity(named: previousModelName) {
+            existingEntity.removeFromParent()
+            chosenModels[category] = ""
+        }
+    }
+
+    func setupCameraPosition(position: SIMD3<Float> = SIMD3<Float>(0.0, 0.0, 14.0)) {
+        let cameraEntity = PerspectiveCamera()
+        cameraEntity.transform.translation = position
+        let cameraAnchor = AnchorEntity()
+        cameraAnchor.addChild(cameraEntity)
+        arView.scene.anchors.append(cameraAnchor)
+    }
+
+    func setupBaseEntity() {
+        guard let baseEntity else { return }
+        baseEntity.transform.rotation = simd_quatf(angle: .pi / 6, axis: [0, -0.8, 0])
+        let anchor = AnchorEntity(world: .zero)
+        anchor.addChild(baseEntity)
+        arView.scene.anchors.append(anchor)
+    }
+
+    // MARK: - Color Management
+
+    func updateColor(_ color: UIColor) {
+        baseEntity?.model?.materials = [SimpleMaterial(color: color, isMetallic: false)]
+        UserDefaults.standard.set(color.accessibilityName, forKey: "selectedColor")
+    }
+
+    // MARK: - Style Management
+
+    func updateStyle(_ style: String) {
+        UserDefaults.standard.set(style, forKey: "selectedStyle")
+        // TODO: Update the 3D model based on the selected style
+    }
+
+    // MARK: - Accessories Management
+
+    func updateAccessories(_ accessories: [String]) {
+        UserDefaults.standard.set(accessories, forKey: "selectedAccessories")
+        // TODO: Update the 3D model with the selected accessories
+    }
+
+    // MARK: - Lighting
+
+    private func addDirectionalLight() {
+        let lightAnchor = AnchorEntity(world: [0, 2.0, 0])
+        let light = DirectionalLight()
+        light.light.intensity = 1000
+        light.light.color = .fourthColor
+        light.shadow = DirectionalLightComponent.Shadow(maximumDistance: 10.0, depthBias: 0.005)
+        light.orientation = simd_quatf(angle: -.pi / 6, axis: [1, 0, 0])
+        lightAnchor.addChild(light)
+        arView.scene.anchors.append(lightAnchor)
+    }
+
+    // MARK: - Selection State
+
+    private func loadSelectionState() {
+        selectedItem = UserDefaults.standard.object(forKey: "selectedItem")
+    }
+
+    // MARK: - Clothing & Skin Color
+
     func changeClothingItemColor(for category: String, to color: UIColor, materialIndex: Int = 0) {
         guard let modelName = chosenModels[category],
               let entity = baseEntity?.findEntity(named: modelName) as? ModelEntity else {
             print("Model entity not found for category: \(category)")
             return
         }
-        
-        // Print debug information
         print("Changing color for category: \(category), model: \(modelName), color: \(color), material index: \(materialIndex)")
-        
-        // Ensure the material index is within bounds
-        guard materialIndex < entity.model?.materials.count ?? 0 else {
+        guard let materialsCount = entity.model?.materials.count, materialIndex < materialsCount else {
             print("Material index out of bounds for category: \(category)")
             return
         }
-        
-        // Create a new SimpleMaterial with the specified color and adjust properties to reduce shininess
-        var material = SimpleMaterial()
-        material.baseColor = .color(color)
-        material.roughness = MaterialScalarParameter(floatLiteral: 1.0) // Increase roughness
-        material.metallic = MaterialScalarParameter(floatLiteral: 0.0) // Decrease metallic
-        
-        // Replace the material at the specified index
-        if var materials = entity.model?.materials {
-            materials[materialIndex] = material
-            entity.model?.materials = materials
-        }
-        
-        // Print final materials to verify the change
-        print("Updated materials: \(String(describing: entity.model?.materials))")
-    }
-    
-    func changeSkinColor(to color: UIColor, materialIndex: Int = 0) {
-        guard let baseEntity = baseEntity else {
-            print("Base entity not found")
-            return
-        }
-        
-        // Ensure the material index is within bounds
-        guard materialIndex < baseEntity.model?.materials.count ?? 0 else {
-            print("Material index out of bounds for skin")
-            return
-        }
-        
-        // Create a new SimpleMaterial with the specified color for the skin
         var material = SimpleMaterial()
         material.baseColor = .color(color)
         material.roughness = MaterialScalarParameter(floatLiteral: 1.0)
         material.metallic = MaterialScalarParameter(floatLiteral: 0.0)
-        
-        // Replace the material at the specified index
+        if var materials = entity.model?.materials {
+            materials[materialIndex] = material
+            entity.model?.materials = materials
+        }
+        print("Updated materials: \(String(describing: entity.model?.materials))")
+    }
+
+    func changeSkinColor(to color: UIColor, materialIndex: Int = 0) {
+        guard let baseEntity else {
+            print("Base entity not found")
+            return
+        }
+        guard let materialsCount = baseEntity.model?.materials.count, materialIndex < materialsCount else {
+            print("Material index out of bounds for skin")
+            return
+        }
+        var material = SimpleMaterial()
+        material.baseColor = .color(color)
+        material.roughness = MaterialScalarParameter(floatLiteral: 1.0)
+        material.metallic = MaterialScalarParameter(floatLiteral: 0.0)
         if var materials = baseEntity.model?.materials {
             materials[materialIndex] = material
             baseEntity.model?.materials = materials
         }
-        
-        // Print final materials to verify the change
         print("Updated skin color: \(String(describing: baseEntity.model?.materials))")
-    }
-    
-    private func addDirectionalLight() {
-        let lightAnchor = AnchorEntity(world: [0, 2.0, 0]) // Higher placement
-        let light = DirectionalLight()
-        
-        light.light.intensity = 1000 // Increase brightness
-        light.light.color = .fourthColor // Adjust color if needed
-        light.shadow = DirectionalLightComponent.Shadow(maximumDistance: 10.0, depthBias: 0.005) // Softer shadows
-        
-        light.orientation = simd_quatf(angle: -.pi / 6, axis: [1, 0, 0]) // Slightly angled
-        lightAnchor.addChild(light)
-        
-        arView.scene.anchors.append(lightAnchor)
-    }
-    
-    private func loadSelectionState() {
-        // Check if there is any saved data
-        if let savedSelection = UserDefaults.standard.object(forKey: "selectedItem") {
-            // Handle the case where there is saved data
-            self.selectedItem = savedSelection
-        } else {
-            // Handle the case where there is no saved data
-            self.selectedItem = nil
-        }
     }
 }
