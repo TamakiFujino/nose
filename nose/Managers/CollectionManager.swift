@@ -37,7 +37,7 @@ class CollectionManager {
                 if let error = error {
                     completion(.failure(error))
                 } else {
-                    let collection = PlaceCollection(id: collectionId, name: name, places: [], userId: currentUserId, createdAt: createdAt)
+                    let collection = PlaceCollection(id: collectionId, name: name, places: [], userId: currentUserId)
                     completion(.success(collection))
                 }
             }
@@ -185,4 +185,4 @@ class CollectionManager {
             }
         }
     }
-} 
+}
