@@ -2,6 +2,7 @@ import Foundation
 import FirebaseFirestore
 import FirebaseAuth
 import GooglePlaces
+import Firebase
 
 class CollectionManager {
     static let shared = CollectionManager()
@@ -14,30 +15,32 @@ class CollectionManager {
     }
     
     func createCollection(name: String, completion: @escaping (Result<PlaceCollection, Error>) -> Void) {
-        guard let userId = Auth.auth().currentUser?.uid else {
-            completion(.failure(handleAuthError()))
+        guard let currentUserId = Auth.auth().currentUser?.uid else {
+            completion(.failure(NSError(domain: "auth", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])))
             return
         }
-        
-        let collection = PlaceCollection(
-            id: UUID().uuidString,
-            name: name,
-            places: [],
-            userId: userId
-        )
-        
-        print("📝 Creating collection '\(name)' in Firestore...")
-        print("📝 Using path: users/\(userId)/collections/\(collection.id)")
-        
-        db.collection("users").document(userId).collection("collections").document(collection.id).setData(collection.dictionary) { error in
-            if let error = error {
-                print("❌ Error creating collection: \(error.localizedDescription)")
-                completion(.failure(error))
-            } else {
-                print("✅ Successfully created collection '\(name)'")
-                completion(.success(collection))
+        let collectionId = UUID().uuidString
+        let createdAt = Date()
+        let collectionData: [String: Any] = [
+            "id": collectionId,
+            "name": name,
+            "places": [],
+            "userId": currentUserId,
+            "createdAt": Timestamp(date: createdAt)
+        ]
+        Firestore.firestore()
+            .collection("users")
+            .document(currentUserId)
+            .collection("collections")
+            .document(collectionId)
+            .setData(collectionData) { error in
+                if let error = error {
+                    completion(.failure(error))
+                } else {
+                    let collection = PlaceCollection(id: collectionId, name: name, places: [], userId: currentUserId, createdAt: createdAt)
+                    completion(.success(collection))
+                }
             }
-        }
     }
     
     func fetchCollections(completion: @escaping (Result<[PlaceCollection], Error>) -> Void) {

@@ -6,6 +6,7 @@ public struct PlaceCollection: Codable {
     public let name: String
     public var places: [Place]
     public let userId: String
+    public let createdAt: Date
     
     public struct Place: Codable {
         public let placeId: String
@@ -32,28 +33,39 @@ public struct PlaceCollection: Codable {
             "id": id,
             "name": name,
             "places": places.map { $0.dictionary },
-            "userId": userId
+            "userId": userId,
+            "createdAt": Timestamp(date: createdAt)
         ]
     }
     
-    public init(id: String, name: String, places: [Place], userId: String) {
+    public init(id: String, name: String, places: [Place], userId: String, createdAt: Date) {
         self.id = id
         self.name = name
         self.places = places
         self.userId = userId
+        self.createdAt = createdAt
     }
     
     public init?(dictionary: [String: Any]) {
         guard let id = dictionary["id"] as? String,
               let name = dictionary["name"] as? String,
-              let userId = dictionary["userId"] as? String else {
+              let userId = dictionary["userId"] as? String,
+              let createdAtValue = dictionary["createdAt"] else {
             print("❌ Failed to parse basic collection data")
             return nil
         }
-        
         self.id = id
         self.name = name
         self.userId = userId
+        // Parse createdAt as Timestamp or Date
+        if let timestamp = createdAtValue as? Timestamp {
+            self.createdAt = timestamp.dateValue()
+        } else if let date = createdAtValue as? Date {
+            self.createdAt = date
+        } else {
+            print("❌ Failed to parse createdAt")
+            return nil
+        }
         
         if let placesData = dictionary["places"] as? [[String: Any]] {
             print("📦 Parsing \(placesData.count) places")

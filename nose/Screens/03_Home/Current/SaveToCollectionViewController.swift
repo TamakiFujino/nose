@@ -163,9 +163,9 @@ class SaveToCollectionViewController: UIViewController {
     private func createDefaultCollections() {
         print("📚 Creating default collections...")
         let defaultCollections = [
-            PlaceCollection(id: UUID().uuidString, name: "Favorites", places: [], userId: Auth.auth().currentUser?.uid ?? ""),
-            PlaceCollection(id: UUID().uuidString, name: "Want to Visit", places: [], userId: Auth.auth().currentUser?.uid ?? ""),
-            PlaceCollection(id: UUID().uuidString, name: "Been There", places: [], userId: Auth.auth().currentUser?.uid ?? "")
+            PlaceCollection(id: UUID().uuidString, name: "Favorites", places: [], userId: Auth.auth().currentUser?.uid ?? "", createdAt: Date()),
+            PlaceCollection(id: UUID().uuidString, name: "Want to Visit", places: [], userId: Auth.auth().currentUser?.uid ?? "", createdAt: Date()),
+            PlaceCollection(id: UUID().uuidString, name: "Been There", places: [], userId: Auth.auth().currentUser?.uid ?? "", createdAt: Date())
         ]
         
         // Save default collections to Firestore
