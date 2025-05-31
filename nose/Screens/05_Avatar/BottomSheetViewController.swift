@@ -1,12 +1,13 @@
 import UIKit
 
+// MARK: - Model
 struct Model: Codable {
     let name: String
     let thumbnail: String
 }
 
 class BottomSheetContentView: UIView {
-
+    // MARK: - Properties
     weak var avatar3DViewController: Avatar3DViewController?
 
     private var parentTabBar: UISegmentedControl!
@@ -16,10 +17,11 @@ class BottomSheetContentView: UIView {
     private var models: [Model] = []
     private var selectedModels: [String: String] = [:]
     
-    let baseTabItems = ["Skin", "Eye", "Eyebrow"]
-    let hairTabItems = ["Base", "Front", "Back"]
-    let clothesTabItems = ["Tops", "Bottoms", "Socks"]
+    private let baseTabItems = ["Skin", "Eye", "Eyebrow"]
+    private let hairTabItems = ["Base", "Front", "Back"]
+    private let clothesTabItems = ["Tops", "Bottoms", "Socks"]
 
+    // MARK: - Initialization
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupView()
@@ -30,10 +32,11 @@ class BottomSheetContentView: UIView {
         setupView()
     }
 
+    // MARK: - Setup
     private func setupView() {
-        self.backgroundColor = .white
-        self.layer.cornerRadius = 16
-        self.clipsToBounds = true
+        backgroundColor = .white
+        layer.cornerRadius = 16
+        clipsToBounds = true
 
         setupParentTabBar()
         setupChildTabBar()
@@ -49,13 +52,12 @@ class BottomSheetContentView: UIView {
         parentTabBar.selectedSegmentIndex = 0
         parentTabBar.addTarget(self, action: #selector(parentTabChanged), for: .valueChanged)
         parentTabBar.translatesAutoresizingMaskIntoConstraints = false
-        self.addSubview(parentTabBar)
+        addSubview(parentTabBar)
 
-        // Set up constraints for the parent tab bar
         NSLayoutConstraint.activate([
-            parentTabBar.topAnchor.constraint(equalTo: self.topAnchor, constant: 16),
-            parentTabBar.leadingAnchor.constraint(equalTo: self.leadingAnchor, constant: 16),
-            parentTabBar.trailingAnchor.constraint(equalTo: self.trailingAnchor, constant: -16)
+            parentTabBar.topAnchor.constraint(equalTo: topAnchor, constant: 16),
+            parentTabBar.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+            parentTabBar.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16)
         ])
     }
 
@@ -64,27 +66,25 @@ class BottomSheetContentView: UIView {
         childTabBar.selectedSegmentIndex = 0
         childTabBar.addTarget(self, action: #selector(childTabChanged), for: .valueChanged)
         childTabBar.translatesAutoresizingMaskIntoConstraints = false
-        self.addSubview(childTabBar)
+        addSubview(childTabBar)
 
-        // Set up constraints for the child tab bar
         NSLayoutConstraint.activate([
             childTabBar.topAnchor.constraint(equalTo: parentTabBar.bottomAnchor, constant: 16),
-            childTabBar.leadingAnchor.constraint(equalTo: self.leadingAnchor, constant: 16),
-            childTabBar.trailingAnchor.constraint(equalTo: self.trailingAnchor, constant: -16)
+            childTabBar.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+            childTabBar.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16)
         ])
     }
 
     private func setupScrollView() {
         scrollView = UIScrollView()
         scrollView.translatesAutoresizingMaskIntoConstraints = false
-        self.addSubview(scrollView)
+        addSubview(scrollView)
 
-        // Set up constraints for the scroll view
         NSLayoutConstraint.activate([
             scrollView.topAnchor.constraint(equalTo: childTabBar.bottomAnchor, constant: 16),
-            scrollView.leadingAnchor.constraint(equalTo: self.leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: self.trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: self.bottomAnchor)
+            scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
     }
 
@@ -93,7 +93,6 @@ class BottomSheetContentView: UIView {
         contentView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.addSubview(contentView)
 
-        // Set up constraints for the content view
         NSLayoutConstraint.activate([
             contentView.topAnchor.constraint(equalTo: scrollView.topAnchor),
             contentView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
@@ -103,6 +102,7 @@ class BottomSheetContentView: UIView {
         ])
     }
 
+    // MARK: - Data Loading
     private func loadModels(for category: String) {
         guard let url = Bundle.main.url(forResource: category, withExtension: "json") else {
             print("Failed to locate \(category).json in bundle.")
@@ -117,6 +117,7 @@ class BottomSheetContentView: UIView {
         }
     }
 
+    // MARK: - Actions
     @objc private func parentTabChanged() {
         updateChildTabBar()
         loadContentForSelectedTab()
@@ -127,76 +128,31 @@ class BottomSheetContentView: UIView {
     }
 
     private func updateChildTabBar() {
-        if parentTabBar.selectedSegmentIndex == 0 {
-            childTabBar.removeAllSegments()
-            for (index, item) in baseTabItems.enumerated() {
-                childTabBar.insertSegment(withTitle: item, at: index, animated: false)
-            }
-        } else if parentTabBar.selectedSegmentIndex == 1 {
-            childTabBar.removeAllSegments()
-            for (index, item) in hairTabItems.enumerated() {
-                childTabBar.insertSegment(withTitle: item, at: index, animated: false)
-            }
-        } else if parentTabBar.selectedSegmentIndex == 2 {
-            childTabBar.removeAllSegments()
-            for (index, item) in clothesTabItems.enumerated() {
-                childTabBar.insertSegment(withTitle: item, at: index, animated: false)
-            }
+        let items: [String]
+        switch parentTabBar.selectedSegmentIndex {
+        case 0: items = baseTabItems
+        case 1: items = hairTabItems
+        case 2: items = clothesTabItems
+        default: return
+        }
+
+        childTabBar.removeAllSegments()
+        for (index, item) in items.enumerated() {
+            childTabBar.insertSegment(withTitle: item, at: index, animated: false)
         }
         childTabBar.selectedSegmentIndex = 0
     }
 
     private func loadContentForSelectedTab() {
-        // Remove all subviews from the content view
         contentView.subviews.forEach { $0.removeFromSuperview() }
-
-        let category: String
-        switch parentTabBar.selectedSegmentIndex {
-        case 0: // Base tab
-            switch childTabBar.selectedSegmentIndex {
-            case 0: // Skin tab
-                category = "skin"
-            case 1: // Eye tab
-                category = "eye"
-            case 2: // Eyebrow tab
-                category = "eyebrow"
-            default:
-                return
-            }
-        case 1: // Hair tab
-            switch childTabBar.selectedSegmentIndex {
-            case 0: // Base tab
-                category = "hair_base"
-            case 1: // Front tab
-                category = "hair_front"
-            case 2: // Back tab
-                category = "hair_back"
-            default:
-                return
-            }
-        case 2: // Clothes tab
-            switch childTabBar.selectedSegmentIndex {
-            case 0: // Tops tab
-                category = "tops"
-            case 1: // Jackets tab
-                category = "bottoms"
-            case 2: // Bottoms tab
-                category = "socks"
-            default:
-                return
-            }
-        default:
-            return
-        }
-
+        let category = getCurrentCategory()
         loadModels(for: category)
         setupThumbnails(for: category)
     }
 
     private func setupThumbnails(for category: String) {
         let padding: CGFloat = 10
-        let buttonSize: CGFloat = (self.bounds.width - (padding * 5)) / 4 // Calculate button size to fit 4 per row with padding
-
+        let buttonSize: CGFloat = (bounds.width - (padding * 5)) / 4
         var lastButton: UIButton?
 
         for (index, model) in models.enumerated() {
@@ -205,22 +161,14 @@ class BottomSheetContentView: UIView {
             let xPosition = padding + CGFloat(column) * (buttonSize + padding)
             let yPosition = padding + CGFloat(row) * (buttonSize + padding)
 
-            let thumbnailButton = UIButton(frame: CGRect(x: xPosition, y: yPosition, width: buttonSize, height: buttonSize))
-            thumbnailButton.tag = index
-            thumbnailButton.setImage(UIImage(named: model.thumbnail), for: .normal)
-            thumbnailButton.addTarget(self, action: #selector(thumbnailTapped(_:)), for: .touchUpInside)
+            let thumbnailButton = createThumbnailButton(
+                model: model,
+                index: index,
+                frame: CGRect(x: xPosition, y: yPosition, width: buttonSize, height: buttonSize),
+                category: category
+            )
             contentView.addSubview(thumbnailButton)
-
             lastButton = thumbnailButton
-
-            // Highlight the selected model
-            if let selectedModel = selectedModels[category], selectedModel == model.name {
-                thumbnailButton.layer.borderColor = UIColor.blue.cgColor
-                thumbnailButton.layer.borderWidth = 2
-            } else {
-                thumbnailButton.layer.borderColor = UIColor.clear.cgColor
-                thumbnailButton.layer.borderWidth = 0
-            }
         }
 
         if let lastButton = lastButton {
@@ -228,102 +176,52 @@ class BottomSheetContentView: UIView {
         }
     }
 
-    @objc private func thumbnailTapped(_ sender: UIButton) {
-        let category: String
-        switch parentTabBar.selectedSegmentIndex {
-        case 0: // Base tab
-            switch childTabBar.selectedSegmentIndex {
-            case 0: // Skin tab
-                category = "skin"
-            case 1: // Eye tab
-                category = "eye"
-            case 2: // Eyebrow tab
-                category = "eyebrow"
-            default:
-                return
-            }
-        case 1: // Hair tab
-            switch childTabBar.selectedSegmentIndex {
-            case 0: // Base tab
-                category = "hair_base"
-            case 1: // Front tab
-                category = "hair_front"
-            case 2: // Back tab
-                category = "hair_back"
-            default:
-                return
-            }
-        case 2: // Clothes tab
-            switch childTabBar.selectedSegmentIndex {
-            case 0: // Tops tab
-                category = "tops"
-            case 1: // Jackets tab
-                category = "bottoms"
-            case 2: // Bottoms tab
-                category = "socks"
-            default:
-                return
-            }
-        default:
-            return
+    private func createThumbnailButton(model: Model, index: Int, frame: CGRect, category: String) -> UIButton {
+        let button = UIButton(frame: frame)
+        button.tag = index
+        button.setImage(UIImage(named: model.thumbnail), for: .normal)
+        button.addTarget(self, action: #selector(thumbnailTapped(_:)), for: .touchUpInside)
+
+        if let selectedModel = selectedModels[category], selectedModel == model.name {
+            button.layer.borderColor = UIColor.fourthColor.cgColor
+            button.layer.borderWidth = 2
+        } else {
+            button.layer.borderColor = UIColor.clear.cgColor
+            button.layer.borderWidth = 0
         }
 
+        return button
+    }
+
+    @objc private func thumbnailTapped(_ sender: UIButton) {
+        let category = getCurrentCategory()
         let model = models[sender.tag]
 
+        // Clear selection for all buttons in the current category
+        contentView.subviews.forEach { view in
+            if let button = view as? UIButton {
+                button.layer.borderColor = UIColor.clear.cgColor
+                button.layer.borderWidth = 0
+            }
+        }
+
         if selectedModels[category] == model.name {
-            // Deselect the model if it is already selected
+            // Deselect if tapping the same item
             selectedModels[category] = nil
             avatar3DViewController?.removeClothingItem(for: category)
         } else {
-            // Select the model
+            // Select new item
             selectedModels[category] = model.name
             avatar3DViewController?.loadClothingItem(named: model.name, category: category)
+            // Highlight the selected button
+            sender.layer.borderColor = UIColor.fourthColor.cgColor
+            sender.layer.borderWidth = 2
         }
-
-        // Reload thumbnails to update the selection highlight
-        setupThumbnails(for: category)
     }
 
+    // MARK: - Public Interface
     func changeSelectedCategoryColor(to color: UIColor) {
-        let category: String
-        switch parentTabBar.selectedSegmentIndex {
-        case 0: // Base tab
-            switch childTabBar.selectedSegmentIndex {
-            case 0: // Skin tab
-                category = "skin"
-            case 1: // Eye tab
-                category = "eye"
-            case 2: // Eyebrow tab
-                category = "eyebrow"
-            default:
-                return
-            }
-        case 1: // Hair tab
-            switch childTabBar.selectedSegmentIndex {
-            case 0: // Base tab
-                category = "hair_base"
-            case 1: // Front tab
-                category = "hair_front"
-            case 2: // Back tab
-                category = "hair_back"
-            default:
-                return
-            }
-        case 2: // Clothes tab
-            switch childTabBar.selectedSegmentIndex {
-            case 0: // Tops tab
-                category = "tops"
-            case 1: // Jackets tab
-                category = "bottoms"
-            case 2: // Bottoms tab
-                category = "socks"
-            default:
-                return
-            }
-        default:
-            return
-        }
-
+        let category = getCurrentCategory()
         if category == "skin" {
             avatar3DViewController?.changeSkinColor(to: color)
         } else {
@@ -335,36 +233,24 @@ class BottomSheetContentView: UIView {
         switch parentTabBar.selectedSegmentIndex {
         case 0: // Base tab
             switch childTabBar.selectedSegmentIndex {
-            case 0: // Skin tab
-                return "skin"
-            case 1: // Eye tab
-                return "eye"
-            case 2: // Eyebrow tab
-                return "eyebrow"
-            default:
-                return ""
+            case 0: return "skin"
+            case 1: return "eye"
+            case 2: return "eyebrow"
+            default: return ""
             }
         case 1: // Hair tab
             switch childTabBar.selectedSegmentIndex {
-            case 0: // Base tab
-                return "hair_base"
-            case 1: // Front tab
-                return "hair_front"
-            case 2: // Back tab
-                return "hair_back"
-            default:
-                return ""
+            case 0: return "hair_base"
+            case 1: return "hair_front"
+            case 2: return "hair_back"
+            default: return ""
             }
         case 2: // Clothes tab
             switch childTabBar.selectedSegmentIndex {
-            case 0: // Tops tab
-                return "tops"
-            case 1: // Jackets tab
-                return "bottoms"
-            case 2: // Bottoms tab
-                return "socks"
-            default:
-                return ""
+            case 0: return "tops"
+            case 1: return "bottoms"
+            case 2: return "socks"
+            default: return ""
             }
         default:
             return ""

@@ -2,15 +2,17 @@ import Foundation
 import FirebaseFirestore
 
 struct CollectionAvatar: Codable {
+    // MARK: - Properties
     let collectionId: String
     let avatarData: AvatarData
     let createdAt: Date
     
+    // MARK: - Nested Types
     struct AvatarData: Codable {
-        // Store selections as [category: ["model": modelName, "color": colorString]]
+        // MARK: - Properties
         var selections: [String: [String: String]]
         
-        // Convenience for old code (optional)
+        // MARK: - Computed Properties
         var color: String { selections["skin"]?["color"] ?? "" }
         var style: String { selections["style"]?["model"] ?? "" }
         var accessories: [String] { selections["accessories"]?["model"]?.components(separatedBy: ",") ?? [] }
@@ -21,7 +23,6 @@ struct CollectionAvatar: Codable {
         }
         
         static func fromFirestoreDict(_ dict: [String: Any]) -> CollectionAvatar.AvatarData? {
-            // Convert [String: Any] to [String: [String: String]]
             var selections: [String: [String: String]] = [:]
             for (category, value) in dict {
                 if let valueDict = value as? [String: String] {
@@ -32,32 +33,26 @@ struct CollectionAvatar: Codable {
         }
     }
     
-    // Convert to Firestore data
+    // MARK: - Firestore Serialization
     func toFirestoreData() -> [String: Any] {
-        print("DEBUG: Converting CollectionAvatar to Firestore data")
-        let data: [String: Any] = [
+        return [
             "avatarData": avatarData.toFirestoreDict(),
             "createdAt": Timestamp(date: createdAt)
         ]
-        return data
     }
     
-    // Create from Firestore data
     static func fromFirestore(_ data: [String: Any]) -> CollectionAvatar? {
-        print("DEBUG: Creating CollectionAvatar from Firestore data: \(data)")
         guard let collectionId = data["collectionId"] as? String,
               let avatarDataDict = data["avatarData"] as? [String: Any],
               let avatarData = AvatarData.fromFirestoreDict(avatarDataDict),
               let timestamp = data["createdAt"] as? Timestamp else {
-            print("DEBUG: Failed to create CollectionAvatar from data")
             return nil
         }
-        let avatar = CollectionAvatar(
+        
+        return CollectionAvatar(
             collectionId: collectionId,
             avatarData: avatarData,
             createdAt: timestamp.dateValue()
         )
-        print("DEBUG: Created CollectionAvatar: \(avatar)")
-        return avatar
     }
 }

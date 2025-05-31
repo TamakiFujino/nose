@@ -1,7 +1,7 @@
 import UIKit
 
 class AvatarUIManager: NSObject {
-
+    // MARK: - Properties
     weak var viewController: UIViewController?
     weak var avatar3DViewController: Avatar3DViewController?
 
@@ -11,6 +11,7 @@ class AvatarUIManager: NSObject {
     private var availableColors: [UIColor] = []
     private var selectedColorButton: UIButton?
 
+    // MARK: - Initialization
     init(viewController: UIViewController, avatar3DViewController: Avatar3DViewController) {
         self.viewController = viewController
         self.avatar3DViewController = avatar3DViewController
@@ -21,6 +22,7 @@ class AvatarUIManager: NSObject {
         setDefaultColor()
     }
 
+    // MARK: - Setup
     private func loadAvailableColors() {
         guard let url = Bundle.main.url(forResource: "colors", withExtension: "json") else {
             print("Failed to locate colors.json in bundle.")
@@ -29,10 +31,8 @@ class AvatarUIManager: NSObject {
 
         do {
             let data = try Data(contentsOf: url)
-            print("Successfully loaded data from colors.json")
             if let colorStrings = try JSONSerialization.jsonObject(with: data, options: []) as? [String: [String]] {
-                availableColors = colorStrings["colors"]?.compactMap { UIColor(hexString: $0) } ?? []
-                print("Parsed colors: \(availableColors)")
+                availableColors = colorStrings["colors"]?.compactMap { UIColor(hex: $0) } ?? []
             }
         } catch {
             print("Failed to load or decode colors.json: \(error)")
@@ -42,14 +42,11 @@ class AvatarUIManager: NSObject {
     private func setupBottomSheetView() {
         guard let viewController = viewController else { return }
 
-        // Create and configure the bottom sheet view
         bottomSheetView = BottomSheetContentView()
         bottomSheetView.avatar3DViewController = avatar3DViewController
         bottomSheetView.translatesAutoresizingMaskIntoConstraints = false
-
         viewController.view.addSubview(bottomSheetView)
 
-        // Set up constraints for the bottom sheet view
         NSLayoutConstraint.activate([
             bottomSheetView.heightAnchor.constraint(equalTo: viewController.view.heightAnchor, multiplier: 0.35),
             bottomSheetView.leadingAnchor.constraint(equalTo: viewController.view.leadingAnchor),
@@ -61,46 +58,17 @@ class AvatarUIManager: NSObject {
     private func setupAdditionalBottomSheetView() {
         guard let viewController = viewController else { return }
 
-        // Create and configure the additional bottom sheet view with white background and no corner radius
+        setupAdditionalBottomSheetContainer(in: viewController)
+        setupColorScrollView()
+    }
+
+    private func setupAdditionalBottomSheetContainer(in viewController: UIViewController) {
         additionalBottomSheetView = UIView()
-        additionalBottomSheetView.backgroundColor = UIColor.white
+        additionalBottomSheetView.backgroundColor = .white
         additionalBottomSheetView.translatesAutoresizingMaskIntoConstraints = false
-
-        // Create a horizontally scrollable area
-        let scrollView = UIScrollView()
-        scrollView.showsHorizontalScrollIndicator = false
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-        additionalBottomSheetView.addSubview(scrollView)
-
         viewController.view.addSubview(additionalBottomSheetView)
 
-        // Add color buttons to the scroll view
-        let buttonSize: CGFloat = 35 // 70% of the original size (50 * 0.7)
-        let padding: CGFloat = 10
-        var contentWidth: CGFloat = padding
-
-        for (index, color) in availableColors.enumerated() {
-            let button = UIButton(frame: CGRect(x: contentWidth, y: padding, width: buttonSize, height: buttonSize))
-            button.backgroundColor = color
-            button.layer.cornerRadius = buttonSize / 2
-            button.addTarget(self, action: #selector(colorButtonTapped(_:)), for: .touchUpInside)
-            scrollView.addSubview(button)
-            colorButtons.append(button)
-            if index == 0 {
-                selectColorButton(button)
-            }
-            contentWidth += buttonSize + padding
-        }
-
-        scrollView.contentSize = CGSize(width: contentWidth, height: buttonSize + 2 * padding)
-
-        // Set up constraints for the scroll view and additional bottom sheet view
         NSLayoutConstraint.activate([
-            scrollView.leadingAnchor.constraint(equalTo: additionalBottomSheetView.leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: additionalBottomSheetView.trailingAnchor),
-            scrollView.topAnchor.constraint(equalTo: additionalBottomSheetView.topAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: additionalBottomSheetView.bottomAnchor),
-
             additionalBottomSheetView.heightAnchor.constraint(equalTo: viewController.view.heightAnchor, multiplier: 0.10),
             additionalBottomSheetView.leadingAnchor.constraint(equalTo: viewController.view.leadingAnchor),
             additionalBottomSheetView.trailingAnchor.constraint(equalTo: viewController.view.trailingAnchor),
@@ -108,20 +76,62 @@ class AvatarUIManager: NSObject {
         ])
     }
 
+    private func setupColorScrollView() {
+        let scrollView = UIScrollView()
+        scrollView.showsHorizontalScrollIndicator = false
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        additionalBottomSheetView.addSubview(scrollView)
+
+        NSLayoutConstraint.activate([
+            scrollView.leadingAnchor.constraint(equalTo: additionalBottomSheetView.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: additionalBottomSheetView.trailingAnchor),
+            scrollView.topAnchor.constraint(equalTo: additionalBottomSheetView.topAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: additionalBottomSheetView.bottomAnchor)
+        ])
+
+        setupColorButtons(in: scrollView)
+    }
+
+    private func setupColorButtons(in scrollView: UIScrollView) {
+        let buttonSize: CGFloat = 35
+        let padding: CGFloat = 10
+        var contentWidth: CGFloat = padding
+
+        for (index, color) in availableColors.enumerated() {
+            let button = createColorButton(color: color, size: buttonSize, xPosition: contentWidth)
+            scrollView.addSubview(button)
+            colorButtons.append(button)
+            
+            if index == 0 {
+                selectColorButton(button)
+            }
+            
+            contentWidth += buttonSize + padding
+        }
+
+        scrollView.contentSize = CGSize(width: contentWidth, height: buttonSize + 2 * padding)
+    }
+
+    private func createColorButton(color: UIColor, size: CGFloat, xPosition: CGFloat) -> UIButton {
+        let button = UIButton(frame: CGRect(x: xPosition, y: 10, width: size, height: size))
+        button.backgroundColor = color
+        button.layer.cornerRadius = size / 2
+        button.addTarget(self, action: #selector(colorButtonTapped(_:)), for: .touchUpInside)
+        return button
+    }
+
     private func setDefaultColor() {
         guard let defaultColor = availableColors.first else { return }
         bottomSheetView.changeSelectedCategoryColor(to: defaultColor)
     }
 
+    // MARK: - Actions
     @objc private func colorButtonTapped(_ sender: UIButton) {
         guard let color = sender.backgroundColor else { return }
         let category = bottomSheetView.getCurrentCategory()
         bottomSheetView.changeSelectedCategoryColor(to: color)
         selectColorButton(sender)
-        
-        // Save the color to the chosenColors dictionary
         avatar3DViewController?.chosenColors[category] = color
-        print("Saved color for \(category): \(color.toHexString())")
     }
 
     private func selectColorButton(_ button: UIButton) {
@@ -132,15 +142,14 @@ class AvatarUIManager: NSObject {
     }
 }
 
+// MARK: - UIColor Extension
 extension UIColor {
     convenience init?(hexString: String) {
         var hex = hexString.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-
         var int: UInt64 = 0
         Scanner(string: hex).scanHexInt64(&int)
 
         let r, g, b, a: CGFloat
-
         switch hex.count {
         case 6: // Format: RRGGBB
             r = CGFloat((int >> 16) & 0xFF) / 255.0
@@ -155,8 +164,6 @@ extension UIColor {
         default:
             return nil
         }
-
-        print("Parsed Color - R: \(r), G: \(g), B: \(b), A: \(a)")
         self.init(red: r, green: g, blue: b, alpha: a)
     }
 }

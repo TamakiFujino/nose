@@ -221,12 +221,10 @@ class CollectionPlacesViewController: UIViewController {
     // MARK: - Actions
     @objc private func avatarContainerTapped() {
         let avatarVC = AvatarCustomViewController(collectionId: collection.id)
+        avatarVC.delegate = self
         let navController = UINavigationController(rootViewController: avatarVC)
         navController.modalPresentationStyle = .fullScreen
-        present(navController, animated: true) { [weak self] in
-            // Reload avatar data after customization
-            self?.loadAvatarData()
-        }
+        present(navController, animated: true)
     }
 
     @objc private func menuButtonTapped() {
@@ -694,5 +692,27 @@ extension PlaceCollection.Place {
             "phoneNumber": phoneNumber,
             "addedAt": Timestamp(date: addedAt)
         ]
+    }
+}
+
+// MARK: - AvatarCustomViewControllerDelegate
+extension CollectionPlacesViewController: AvatarCustomViewControllerDelegate {
+    func avatarCustomViewController(_ controller: AvatarCustomViewController, didSaveAvatar avatarData: CollectionAvatar.AvatarData) {
+        // Update the avatar preview immediately
+        avatarViewController?.loadAvatarData(avatarData)
+        
+        // Also update the collection's avatar data
+        let db = Firestore.firestore()
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        
+        db.collection("users")
+            .document(currentUserId)
+            .collection("collections")
+            .document(collection.id)
+            .setData(["avatarData": avatarData.toFirestoreDict()], merge: true) { error in
+                if let error = error {
+                    print("Error updating collection avatar: \(error.localizedDescription)")
+                }
+            }
     }
 }
