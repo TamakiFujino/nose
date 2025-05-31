@@ -1,25 +1,33 @@
 import UIKit
 
 extension UIColor {
-    static func fromHex(_ hex: String) -> UIColor? {
-        var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+    convenience init?(hex: String) {
+            var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+            if hexSanitized.hasPrefix("#") {
+                hexSanitized.remove(at: hexSanitized.startIndex)
+            }
+            var rgbValue: UInt64 = 0
+            guard Scanner(string: hexSanitized).scanHexInt64(&rgbValue) else { return nil }
 
-        if hexSanitized.hasPrefix("#") {
-            hexSanitized.remove(at: hexSanitized.startIndex)
+            switch hexSanitized.count {
+            case 6: // RRGGBB
+                self.init(
+                    red:   CGFloat((rgbValue & 0xFF0000) >> 16) / 255.0,
+                    green: CGFloat((rgbValue & 0x00FF00) >> 8) / 255.0,
+                    blue:  CGFloat(rgbValue & 0x0000FF) / 255.0,
+                    alpha: 1.0
+                )
+            case 8: // RRGGBBAA
+                self.init(
+                    red:   CGFloat((rgbValue & 0xFF000000) >> 24) / 255.0,
+                    green: CGFloat((rgbValue & 0x00FF0000) >> 16) / 255.0,
+                    blue:  CGFloat((rgbValue & 0x0000FF00) >> 8) / 255.0,
+                    alpha: CGFloat(rgbValue & 0x000000FF) / 255.0
+                )
+            default:
+                return nil
+            }
         }
-
-        guard hexSanitized.count == 6 else { return nil } // Return nil if invalid
-
-        var rgbValue: UInt64 = 0
-        guard Scanner(string: hexSanitized).scanHexInt64(&rgbValue) else { return nil }
-
-        return UIColor(
-            red: CGFloat((rgbValue & 0xFF0000) >> 16) / 255.0,
-            green: CGFloat((rgbValue & 0x00FF00) >> 8) / 255.0,
-            blue: CGFloat(rgbValue & 0x0000FF) / 255.0,
-            alpha: 1.0
-        )
-    }
     
     func toHexString() -> String {
         var r: CGFloat = 0
@@ -32,10 +40,10 @@ extension UIColor {
     }
 
     // Define colors using Hex
-    static let firstColor = UIColor.fromHex("#FFFFFF") ?? .white
-    static let secondColor = UIColor.fromHex("#ECEFF4") ?? .lightGray
-    static let thirdColor = UIColor.fromHex("#D8DEE9") ?? .lightGray
-    static let fourthColor = UIColor.fromHex("#4C566A") ?? .darkGray
-    static let fifthColor = UIColor.fromHex("#434C5E") ?? .darkGray
-    static let sixthColor = UIColor.fromHex("#3B4252") ?? .black
+    static let firstColor = UIColor(hex: "#FFFFFF") ?? .white
+    static let secondColor = UIColor(hex: "#ECEFF4") ?? .lightGray
+    static let thirdColor = UIColor(hex: "#D8DEE9") ?? .lightGray
+    static let fourthColor = UIColor(hex: "#4C566A") ?? .darkGray
+    static let fifthColor = UIColor(hex: "#434C5E") ?? .darkGray
+    static let sixthColor = UIColor(hex: "#3B4252") ?? .black
 }

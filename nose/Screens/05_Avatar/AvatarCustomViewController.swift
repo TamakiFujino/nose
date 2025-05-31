@@ -94,7 +94,6 @@ class AvatarCustomViewController: UIViewController {
 
     @objc private func saveButtonTapped() {
         let didSave = avatar3DViewController.saveChosenModelsAndColors()
-        ToastManager.showToast(message: ToastMessages.avatarUpdated, type: .success)
         
         // Build selections dictionary
         var selections: [String: [String: String]] = [:]
@@ -137,7 +136,7 @@ class AvatarCustomViewController: UIViewController {
                     ToastManager.showToast(message: "Failed to save avatar", type: .error)
                 } else {
                     print("Successfully saved avatar data: \(avatarDict)")
-                    ToastManager.showToast(message: "Avatar saved successfully", type: .success)
+                    ToastManager.showToast(message: ToastMessages.avatarUpdated, type: .success)
                 }
             }
         

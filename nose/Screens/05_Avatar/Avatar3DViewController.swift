@@ -69,42 +69,28 @@ class Avatar3DViewController: UIViewController {
     // MARK: - Avatar Management
 
     func loadAvatarData(_ avatarData: CollectionAvatar.AvatarData) {
-        print("Loading avatar data with selections: \(avatarData.selections)")
-        
-        // Clear existing items
-        for (category, _) in chosenModels {
-            removeClothingItem(for: category)
-        }
-        
-        // Load and apply each item from the saved data
+        // Restore chosen models and colors from avatarData
         for (category, entry) in avatarData.selections {
-            if let modelName = entry["model"], !modelName.isEmpty {
-                print("Loading model for \(category): \(modelName)")
-                // Load the model first
-                loadClothingItem(named: modelName, category: category)
-                
-                // Apply color if available
-                if let colorHex = entry["color"] {
-                    print("Loading color for \(category): \(colorHex)")
-                    if let color = UIColor.fromHex(colorHex) {
-                        print("Successfully created color from hex: \(colorHex)")
-                        chosenColors[category] = color
-                        if category == "skin" {
-                            print("Applying skin color")
-                            changeSkinColor(to: color)
-                        } else {
-                            print("Applying color for \(category)")
-                            changeClothingItemColor(for: category, to: color)
-                        }
-                    } else {
-                        print("Failed to create color from hex: \(colorHex)")
-                    }
-                }
+            if let modelName = entry["model"] {
+                chosenModels[category] = modelName
+            }
+            if let colorString = entry["color"], let color = UIColor(hex: colorString) {
+                chosenColors[category] = color
             }
         }
-        
-        // Update the base entity rotation
-        baseEntity?.transform.rotation = simd_quatf(angle: .pi / 6, axis: [0, -0.8, 0])
+
+        // Always apply skin color if present (even without a model)
+        if let skinColor = chosenColors["skin"] {
+            changeSkinColor(to: skinColor)
+        }
+
+        // For all other categories, load model and apply color
+        for (category, modelName) in chosenModels where category != "skin" && !modelName.isEmpty {
+            loadClothingItem(named: modelName, category: category)
+            if let color = chosenColors[category] {
+                changeClothingItemColor(for: category, to: color)
+            }
+        }
     }
 
     private func updateAvatarAppearance() {
@@ -285,6 +271,7 @@ class Avatar3DViewController: UIViewController {
             materials[materialIndex] = material
             entity.model?.materials = materials
         }
+        chosenColors[category] = color
         print("Updated materials: \(String(describing: entity.model?.materials))")
     }
 
