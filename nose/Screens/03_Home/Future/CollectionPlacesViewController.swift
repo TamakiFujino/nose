@@ -10,6 +10,7 @@ class CollectionPlacesViewController: UIViewController {
     private let collection: PlaceCollection
     private var places: [PlaceCollection.Place] = []
     private var sessionToken: GMSAutocompleteSessionToken?
+    private var sharedFriendsCount: Int = 0
 
     // MARK: - UI Components
 
@@ -59,29 +60,43 @@ class CollectionPlacesViewController: UIViewController {
         return button
     }()
 
-    private lazy var sharedFriendsView: UIView = {
-        let view = UIView()
-        view.translatesAutoresizingMaskIntoConstraints = false
-        view.backgroundColor = .systemGray6
-        view.layer.cornerRadius = 8
-        return view
-    }()
-    
-    private lazy var friendIconImageView: UIImageView = {
-        let imageView = UIImageView()
-        imageView.translatesAutoresizingMaskIntoConstraints = false
-        imageView.image = UIImage(systemName: "person.2.fill")
-        imageView.tintColor = .fourthColor
-        imageView.contentMode = .scaleAspectFit
-        return imageView
-    }()
-    
-    private lazy var sharedCountLabel: UILabel = {
+    private lazy var sharedFriendsLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = .systemFont(ofSize: 14)
         label.textColor = .secondaryLabel
-        label.text = "0 friends"
+        
+        // Create attributed string with icon
+        let imageAttachment = NSTextAttachment()
+        imageAttachment.image = UIImage(systemName: "person.2.fill")?.withTintColor(.secondaryLabel)
+        let imageString = NSAttributedString(attachment: imageAttachment)
+        
+        let textString = NSAttributedString(string: " 0")
+        let attributedText = NSMutableAttributedString()
+        attributedText.append(imageString)
+        attributedText.append(textString)
+        
+        label.attributedText = attributedText
+        return label
+    }()
+
+    private lazy var placesCountLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.font = .systemFont(ofSize: 14)
+        label.textColor = .secondaryLabel
+        
+        // Create attributed string with icon
+        let imageAttachment = NSTextAttachment()
+        imageAttachment.image = UIImage(systemName: "mappin.circle.fill")?.withTintColor(.secondaryLabel)
+        let imageString = NSAttributedString(attachment: imageAttachment)
+        
+        let textString = NSAttributedString(string: " 0")
+        let attributedText = NSMutableAttributedString()
+        attributedText.append(imageString)
+        attributedText.append(textString)
+        
+        label.attributedText = attributedText
         return label
     }()
 
@@ -113,9 +128,8 @@ class CollectionPlacesViewController: UIViewController {
         headerView.addSubview(titleLabel)
         headerView.addSubview(customizeButton)
         headerView.addSubview(menuButton)
-        headerView.addSubview(sharedFriendsView)
-        sharedFriendsView.addSubview(friendIconImageView)
-        sharedFriendsView.addSubview(sharedCountLabel)
+        headerView.addSubview(sharedFriendsLabel)
+        headerView.addSubview(placesCountLabel)
         view.addSubview(tableView)
 
         NSLayoutConstraint.activate([
@@ -133,23 +147,15 @@ class CollectionPlacesViewController: UIViewController {
             menuButton.widthAnchor.constraint(equalToConstant: 44),
             menuButton.heightAnchor.constraint(equalToConstant: 44),
 
-            customizeButton.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 16),
+            sharedFriendsLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
+            sharedFriendsLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+            
+            placesCountLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
+            placesCountLabel.leadingAnchor.constraint(equalTo: sharedFriendsLabel.trailingAnchor, constant: 16),
+
+            customizeButton.topAnchor.constraint(equalTo: sharedFriendsLabel.bottomAnchor, constant: 16),
             customizeButton.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
             customizeButton.heightAnchor.constraint(equalToConstant: 44),
-            
-            sharedFriendsView.topAnchor.constraint(equalTo: customizeButton.bottomAnchor, constant: 8),
-            sharedFriendsView.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
-            sharedFriendsView.heightAnchor.constraint(equalToConstant: 32),
-            sharedFriendsView.widthAnchor.constraint(equalToConstant: 120),
-            
-            friendIconImageView.leadingAnchor.constraint(equalTo: sharedFriendsView.leadingAnchor, constant: 12),
-            friendIconImageView.centerYAnchor.constraint(equalTo: sharedFriendsView.centerYAnchor),
-            friendIconImageView.widthAnchor.constraint(equalToConstant: 16),
-            friendIconImageView.heightAnchor.constraint(equalToConstant: 16),
-            
-            sharedCountLabel.leadingAnchor.constraint(equalTo: friendIconImageView.trailingAnchor, constant: 8),
-            sharedCountLabel.trailingAnchor.constraint(equalTo: sharedFriendsView.trailingAnchor, constant: -12),
-            sharedCountLabel.centerYAnchor.constraint(equalTo: sharedFriendsView.centerYAnchor),
 
             tableView.topAnchor.constraint(equalTo: headerView.bottomAnchor),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -321,48 +327,59 @@ class CollectionPlacesViewController: UIViewController {
 
     private func loadPlaces() {
         places = collection.places
+        updatePlacesCountLabel()
         tableView.reloadData()
     }
 
     private func loadSharedFriendsCount() {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
-        let db = Firestore.firestore()
         
-        // First check if this collection is shared by others
+        let db = Firestore.firestore()
         db.collection("users")
             .document(currentUserId)
-            .collection("sharedCollections")
-            .document(self.collection.id)
+            .collection("collections")
+            .document(collection.id)
             .getDocument { [weak self] snapshot, error in
                 if let error = error {
-                    print("Error loading shared friends count: \(error.localizedDescription)")
+                    print("Error loading collection: \(error.localizedDescription)")
                     return
                 }
                 
-                if let data = snapshot?.data(),
-                   let sharedWith = data["sharedWith"] as? [String] {
-                    DispatchQueue.main.async {
-                        self?.sharedCountLabel.text = "\(sharedWith.count) friends"
-                        self?.sharedFriendsView.isHidden = false
-                    }
+                if let sharedWith = snapshot?.data()?["sharedWith"] as? [String] {
+                    self?.sharedFriendsCount = sharedWith.count
                 } else {
-                    // If not shared by others, check if this user has shared it
-                    db.collection("users")
-                        .whereField("sharedCollections.\(self?.collection.id ?? "").sharedBy", isEqualTo: currentUserId)
-                        .getDocuments { [weak self] snapshot, error in
-                            if let error = error {
-                                print("Error loading shared friends count: \(error.localizedDescription)")
-                                return
-                            }
-                            
-                            let count = snapshot?.documents.count ?? 0
-                            DispatchQueue.main.async {
-                                self?.sharedCountLabel.text = "\(count) friends"
-                                self?.sharedFriendsView.isHidden = count == 0
-                            }
-                        }
+                    self?.sharedFriendsCount = 0
                 }
+                self?.updateSharedFriendsLabel()
             }
+    }
+
+    private func updateSharedFriendsLabel() {
+        let imageAttachment = NSTextAttachment()
+        imageAttachment.image = UIImage(systemName: "person.2.fill")?.withTintColor(.secondaryLabel)
+        let imageString = NSAttributedString(attachment: imageAttachment)
+        
+        let textString = NSAttributedString(string: " \(sharedFriendsCount)")
+        
+        let attributedText = NSMutableAttributedString()
+        attributedText.append(imageString)
+        attributedText.append(textString)
+        
+        sharedFriendsLabel.attributedText = attributedText
+    }
+
+    private func updatePlacesCountLabel() {
+        let imageAttachment = NSTextAttachment()
+        imageAttachment.image = UIImage(systemName: "bookmark.fill")?.withTintColor(.secondaryLabel)
+        let imageString = NSAttributedString(attachment: imageAttachment)
+        
+        let textString = NSAttributedString(string: " \(places.count)")
+        
+        let attributedText = NSMutableAttributedString()
+        attributedText.append(imageString)
+        attributedText.append(textString)
+        
+        placesCountLabel.attributedText = attributedText
     }
 }
 
@@ -564,34 +581,48 @@ extension CollectionPlacesViewController: ShareCollectionViewControllerDelegate 
         
         // Share with selected friends
         shareWithFriends(friends)
+        
+        // After sharing is complete, reload the shared friends count
+        loadSharedFriendsCount()
     }
     
     private func shareWithFriends(_ friends: [User]) {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         let db = Firestore.firestore()
         
-        // Create a shared collection document
-        let sharedCollection = [
-            "collectionId": collection.id,
-            "sharedBy": currentUserId,
-            "sharedAt": FieldValue.serverTimestamp(),
-            "sharedWith": friends.map { $0.id }
+        // Show loading state
+        let loadingAlert = UIAlertController(title: "Sharing Collection", message: "Please wait...", preferredStyle: .alert)
+        let loadingIndicator = UIActivityIndicatorView(frame: CGRect(x: 10, y: 5, width: 50, height: 50))
+        loadingIndicator.hidesWhenStopped = true
+        loadingIndicator.style = .medium
+        loadingIndicator.startAnimating()
+        loadingAlert.view.addSubview(loadingIndicator)
+        present(loadingAlert, animated: true)
+        
+        // Update the collection document with shared information
+        let sharedData = [
+            "sharedWith": friends.map { $0.id },
+            "sharedAt": FieldValue.serverTimestamp()
         ] as [String: Any]
         
-        // Add to each friend's shared collections
-        for friend in friends {
-            db.collection("users")
-                .document(friend.id)
-                .collection("sharedCollections")
-                .document(collection.id)
-                .setData(sharedCollection) { error in
-                    if let error = error {
-                        print("Error sharing collection with \(friend.name): \(error.localizedDescription)")
-                    } else {
-                        print("Successfully shared collection with \(friend.name)")
+        db.collection("users")
+            .document(currentUserId)
+            .collection("collections")
+            .document(collection.id)
+            .updateData(sharedData) { [weak self] error in
+                if let error = error {
+                    print("Error sharing collection: \(error.localizedDescription)")
+                    self?.dismiss(animated: true) {
+                        ToastManager.showToast(message: "Failed to share collection", type: .error)
                     }
+                    return
                 }
-        }
+                
+                self?.dismiss(animated: true) {
+                    ToastManager.showToast(message: "Collection shared successfully", type: .success)
+                    self?.loadSharedFriendsCount()
+                }
+            }
     }
 }
 
