@@ -63,7 +63,7 @@ class AddFriendViewController: UIViewController {
     private lazy var resultContainer: UIView = {
         let view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
-        view.backgroundColor = .systemBackground
+        view.backgroundColor = .clear
         view.isHidden = true
         return view
     }()
@@ -76,23 +76,10 @@ class AddFriendViewController: UIViewController {
         return label
     }()
     
-    private lazy var resultUserIdLabel: UILabel = {
-        let label = UILabel()
-        label.translatesAutoresizingMaskIntoConstraints = false
-        label.font = .systemFont(ofSize: 16)
-        label.textColor = .secondaryLabel
-        label.textAlignment = .center
-        return label
-    }()
-    
-    private lazy var addFriendButton: UIButton = {
-        let button = UIButton(type: .system)
+    private lazy var addFriendButton: CustomButton = {
+        let button = CustomButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setTitle("Add Friend", for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
-        button.backgroundColor = .systemBlue
-        button.setTitleColor(.white, for: .normal)
-        button.layer.cornerRadius = 12
         button.addTarget(self, action: #selector(addFriendButtonTapped), for: .touchUpInside)
         return button
     }()
@@ -128,7 +115,6 @@ class AddFriendViewController: UIViewController {
         userIdContainer.addSubview(copyButton)
         view.addSubview(resultContainer)
         resultContainer.addSubview(resultNameLabel)
-        resultContainer.addSubview(resultUserIdLabel)
         resultContainer.addSubview(addFriendButton)
         view.addSubview(activityIndicator)
         
@@ -168,11 +154,7 @@ class AddFriendViewController: UIViewController {
             resultNameLabel.leadingAnchor.constraint(equalTo: resultContainer.leadingAnchor, constant: 16),
             resultNameLabel.trailingAnchor.constraint(equalTo: resultContainer.trailingAnchor, constant: -16),
             
-            resultUserIdLabel.topAnchor.constraint(equalTo: resultNameLabel.bottomAnchor, constant: 8),
-            resultUserIdLabel.leadingAnchor.constraint(equalTo: resultContainer.leadingAnchor, constant: 16),
-            resultUserIdLabel.trailingAnchor.constraint(equalTo: resultContainer.trailingAnchor, constant: -16),
-            
-            addFriendButton.topAnchor.constraint(equalTo: resultUserIdLabel.bottomAnchor, constant: 24),
+            addFriendButton.topAnchor.constraint(equalTo: resultNameLabel.bottomAnchor, constant: 24),
             addFriendButton.leadingAnchor.constraint(equalTo: resultContainer.leadingAnchor, constant: 16),
             addFriendButton.trailingAnchor.constraint(equalTo: resultContainer.trailingAnchor, constant: -16),
             addFriendButton.heightAnchor.constraint(equalToConstant: 50),
@@ -326,7 +308,6 @@ class AddFriendViewController: UIViewController {
                                 if let user = self.searchResults.first {
                                     print("DEBUG: Showing result for user: \(user.name)")
                                     self.resultNameLabel.text = user.name
-                                    self.resultUserIdLabel.text = user.userId
                                     self.resultContainer.isHidden = false
                                 } else {
                                     print("DEBUG: No user found, hiding result container")

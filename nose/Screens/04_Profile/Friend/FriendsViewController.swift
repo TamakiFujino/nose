@@ -34,7 +34,7 @@ class FriendsViewController: UIViewController {
         let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
         // set button icon
-        button.setImage(UIImage(systemName: "person.badge.plus"), for: .normal)
+        button.setImage(UIImage(systemName: "person.fill.badge.plus"), for: .normal)
         button.tintColor = .fourthColor
         button.backgroundColor = .clear
         button.addTarget(self, action: #selector(addFriendButtonTapped), for: .touchUpInside)
