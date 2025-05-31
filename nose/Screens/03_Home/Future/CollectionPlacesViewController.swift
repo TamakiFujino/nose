@@ -20,6 +20,15 @@ class CollectionPlacesViewController: UIViewController {
         return view
     }()
 
+    private lazy var menuButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.setImage(UIImage(systemName: "ellipsis"), for: .normal)
+        button.tintColor = .fourthColor
+        button.addTarget(self, action: #selector(menuButtonTapped), for: .touchUpInside)
+        return button
+    }()
+
     private lazy var tableView: UITableView = {
         let tableView = UITableView()
         tableView.translatesAutoresizingMaskIntoConstraints = false
@@ -50,6 +59,32 @@ class CollectionPlacesViewController: UIViewController {
         return button
     }()
 
+    private lazy var sharedFriendsView: UIView = {
+        let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.backgroundColor = .systemGray6
+        view.layer.cornerRadius = 8
+        return view
+    }()
+    
+    private lazy var friendIconImageView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.image = UIImage(systemName: "person.2.fill")
+        imageView.tintColor = .fourthColor
+        imageView.contentMode = .scaleAspectFit
+        return imageView
+    }()
+    
+    private lazy var sharedCountLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.font = .systemFont(ofSize: 14)
+        label.textColor = .secondaryLabel
+        label.text = "0 friends"
+        return label
+    }()
+
     // MARK: - Initialization
 
     init(collection: PlaceCollection) {
@@ -66,6 +101,7 @@ class CollectionPlacesViewController: UIViewController {
         super.viewDidLoad()
         setupUI()
         loadPlaces()
+        loadSharedFriendsCount()
         sessionToken = GMSAutocompleteSessionToken()
     }
 
@@ -76,21 +112,44 @@ class CollectionPlacesViewController: UIViewController {
         view.addSubview(headerView)
         headerView.addSubview(titleLabel)
         headerView.addSubview(customizeButton)
+        headerView.addSubview(menuButton)
+        headerView.addSubview(sharedFriendsView)
+        sharedFriendsView.addSubview(friendIconImageView)
+        sharedFriendsView.addSubview(sharedCountLabel)
         view.addSubview(tableView)
 
         NSLayoutConstraint.activate([
             headerView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             headerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             headerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            headerView.heightAnchor.constraint(equalToConstant: 100),
+            headerView.heightAnchor.constraint(equalToConstant: 140),
 
             titleLabel.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 16),
             titleLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
-            titleLabel.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
+            titleLabel.trailingAnchor.constraint(equalTo: menuButton.leadingAnchor, constant: -16),
+
+            menuButton.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 16),
+            menuButton.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
+            menuButton.widthAnchor.constraint(equalToConstant: 44),
+            menuButton.heightAnchor.constraint(equalToConstant: 44),
 
             customizeButton.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 16),
             customizeButton.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
             customizeButton.heightAnchor.constraint(equalToConstant: 44),
+            
+            sharedFriendsView.topAnchor.constraint(equalTo: customizeButton.bottomAnchor, constant: 8),
+            sharedFriendsView.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+            sharedFriendsView.heightAnchor.constraint(equalToConstant: 32),
+            sharedFriendsView.widthAnchor.constraint(equalToConstant: 120),
+            
+            friendIconImageView.leadingAnchor.constraint(equalTo: sharedFriendsView.leadingAnchor, constant: 12),
+            friendIconImageView.centerYAnchor.constraint(equalTo: sharedFriendsView.centerYAnchor),
+            friendIconImageView.widthAnchor.constraint(equalToConstant: 16),
+            friendIconImageView.heightAnchor.constraint(equalToConstant: 16),
+            
+            sharedCountLabel.leadingAnchor.constraint(equalTo: friendIconImageView.trailingAnchor, constant: 8),
+            sharedCountLabel.trailingAnchor.constraint(equalTo: sharedFriendsView.trailingAnchor, constant: -12),
+            sharedCountLabel.centerYAnchor.constraint(equalTo: sharedFriendsView.centerYAnchor),
 
             tableView.topAnchor.constraint(equalTo: headerView.bottomAnchor),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -107,11 +166,203 @@ class CollectionPlacesViewController: UIViewController {
         present(navController, animated: true, completion: nil)
     }
 
+    @objc private func menuButtonTapped() {
+        let alertController = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
+        
+        // Share with friends action
+        let shareAction = UIAlertAction(title: "Share with Friends", style: .default) { [weak self] _ in
+            self?.shareCollection()
+        }
+        shareAction.setValue(UIImage(systemName: "square.and.arrow.up"), forKey: "image")
+        
+        // Complete collection action
+        let completeAction = UIAlertAction(title: "Complete the Collection", style: .default) { [weak self] _ in
+            self?.completeCollection()
+        }
+        completeAction.setValue(UIImage(systemName: "checkmark.circle"), forKey: "image")
+        
+        // Delete collection action
+        let deleteAction = UIAlertAction(title: "Delete Collection", style: .destructive) { [weak self] _ in
+            self?.confirmDeleteCollection()
+        }
+        deleteAction.setValue(UIImage(systemName: "trash"), forKey: "image")
+        
+        // Cancel action
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+        
+        alertController.addAction(shareAction)
+        alertController.addAction(completeAction)
+        alertController.addAction(deleteAction)
+        alertController.addAction(cancelAction)
+        
+        // For iPad support
+        if let popoverController = alertController.popoverPresentationController {
+            popoverController.sourceView = menuButton
+            popoverController.sourceRect = menuButton.bounds
+        }
+        
+        present(alertController, animated: true)
+    }
+    
+    private func shareCollection() {
+        let shareVC = ShareCollectionViewController(collection: collection)
+        shareVC.delegate = self
+        let navController = UINavigationController(rootViewController: shareVC)
+        present(navController, animated: true)
+    }
+    
+    private func completeCollection() {
+        // TODO: Implement collection completion logic
+        print("Completing collection: \(collection.name)")
+        // You can add your completion logic here
+    }
+    
+    private func confirmDeleteCollection() {
+        // Create a custom alert controller with a more prominent warning
+        let alertController = UIAlertController(
+            title: "Delete Collection",
+            message: "Are you sure you want to delete '\(collection.name)'? This action cannot be undone.",
+            preferredStyle: .alert
+        )
+        
+        // Add a destructive delete action
+        let deleteAction = UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
+            self?.deleteCollection()
+        }
+        
+        // Add a cancel action
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+        
+        // Add actions to the alert controller
+        alertController.addAction(deleteAction)
+        alertController.addAction(cancelAction)
+        
+        // Present the alert controller
+        present(alertController, animated: true)
+    }
+    
+    private func deleteCollection() {
+        guard let currentUserId = Auth.auth().currentUser?.uid else {
+            print("Error: User not authenticated")
+            return
+        }
+        
+        let db = Firestore.firestore()
+        
+        // Show loading state
+        let loadingAlert = UIAlertController(title: "Deleting Collection", message: "Please wait...", preferredStyle: .alert)
+        let loadingIndicator = UIActivityIndicatorView(frame: CGRect(x: 10, y: 5, width: 50, height: 50))
+        loadingIndicator.hidesWhenStopped = true
+        loadingIndicator.style = .medium
+        loadingIndicator.startAnimating()
+        loadingAlert.view.addSubview(loadingIndicator)
+        present(loadingAlert, animated: true)
+        
+        // First, delete any shared collections
+        db.collection("users")
+            .whereField("sharedCollections.\(collection.id).sharedBy", isEqualTo: currentUserId)
+            .getDocuments { [weak self] snapshot, error in
+                guard let self = self else { return }
+                
+                if let error = error {
+                    print("Error finding shared collections: \(error.localizedDescription)")
+                    self.dismiss(animated: true) {
+                        ToastManager.showToast(message: "Failed to delete collection", type: .error)
+                    }
+                    return
+                }
+                
+                // Create a dispatch group to handle multiple deletions
+                let group = DispatchGroup()
+                
+                // Delete shared collections from each user
+                snapshot?.documents.forEach { document in
+                    group.enter()
+                    db.collection("users")
+                        .document(document.documentID)
+                        .collection("sharedCollections")
+                        .document(self.collection.id)
+                        .delete { error in
+                            if let error = error {
+                                print("Error deleting shared collection: \(error.localizedDescription)")
+                            }
+                            group.leave()
+                        }
+                }
+                
+                // After all shared collections are deleted, delete the main collection
+                group.notify(queue: .main) {
+                    db.collection("users")
+                        .document(currentUserId)
+                        .collection("collections")
+                        .document(self.collection.id)
+                        .delete { [weak self] error in
+                            self?.dismiss(animated: true) {
+                                if let error = error {
+                                    print("Error deleting collection: \(error.localizedDescription)")
+                                    ToastManager.showToast(message: "Failed to delete collection", type: .error)
+                                } else {
+                                    print("Successfully deleted collection")
+                                    ToastManager.showToast(message: "Collection deleted", type: .success)
+                                    
+                                    // Dismiss the view controller and notify parent to refresh
+                                    self?.dismiss(animated: true) {
+                                        // Post notification to refresh collections
+                                        NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
+                                    }
+                                }
+                            }
+                        }
+                }
+            }
+    }
+
     // MARK: - Data Loading
 
     private func loadPlaces() {
         places = collection.places
         tableView.reloadData()
+    }
+
+    private func loadSharedFriendsCount() {
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        let db = Firestore.firestore()
+        
+        // First check if this collection is shared by others
+        db.collection("users")
+            .document(currentUserId)
+            .collection("sharedCollections")
+            .document(self.collection.id)
+            .getDocument { [weak self] snapshot, error in
+                if let error = error {
+                    print("Error loading shared friends count: \(error.localizedDescription)")
+                    return
+                }
+                
+                if let data = snapshot?.data(),
+                   let sharedWith = data["sharedWith"] as? [String] {
+                    DispatchQueue.main.async {
+                        self?.sharedCountLabel.text = "\(sharedWith.count) friends"
+                        self?.sharedFriendsView.isHidden = false
+                    }
+                } else {
+                    // If not shared by others, check if this user has shared it
+                    db.collection("users")
+                        .whereField("sharedCollections.\(self?.collection.id ?? "").sharedBy", isEqualTo: currentUserId)
+                        .getDocuments { [weak self] snapshot, error in
+                            if let error = error {
+                                print("Error loading shared friends count: \(error.localizedDescription)")
+                                return
+                            }
+                            
+                            let count = snapshot?.documents.count ?? 0
+                            DispatchQueue.main.async {
+                                self?.sharedCountLabel.text = "\(count) friends"
+                                self?.sharedFriendsView.isHidden = count == 0
+                            }
+                        }
+                }
+            }
     }
 }
 
@@ -137,7 +388,7 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         placesClient.fetchPlace(fromPlaceID: place.placeId, placeFields: fields, sessionToken: sessionToken) { [weak self] place, error in
             if let place = place {
                 DispatchQueue.main.async {
-                    let detailVC = PlaceDetailViewController(place: place)
+                    let detailVC = PlaceDetailViewController(place: place, isFromCollection: true)
                     self?.present(detailVC, animated: true)
                 }
             }
@@ -219,6 +470,57 @@ class PlaceTableViewCell: UITableViewCell {
                     }
                 }
             }
+        }
+    }
+}
+
+// MARK: - ShareCollectionViewControllerDelegate
+extension CollectionPlacesViewController: ShareCollectionViewControllerDelegate {
+    func shareCollectionViewController(_ controller: ShareCollectionViewController, didSelectFriends friends: [User]) {
+        // Create a shareable link or content
+        let shareText = "Check out my collection: \(collection.name)"
+        let activityViewController = UIActivityViewController(
+            activityItems: [shareText],
+            applicationActivities: nil
+        )
+        
+        // For iPad support
+        if let popoverController = activityViewController.popoverPresentationController {
+            popoverController.sourceView = menuButton
+            popoverController.sourceRect = menuButton.bounds
+        }
+        
+        present(activityViewController, animated: true)
+        
+        // Share with selected friends
+        shareWithFriends(friends)
+    }
+    
+    private func shareWithFriends(_ friends: [User]) {
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        let db = Firestore.firestore()
+        
+        // Create a shared collection document
+        let sharedCollection = [
+            "collectionId": collection.id,
+            "sharedBy": currentUserId,
+            "sharedAt": FieldValue.serverTimestamp(),
+            "sharedWith": friends.map { $0.id }
+        ] as [String: Any]
+        
+        // Add to each friend's shared collections
+        for friend in friends {
+            db.collection("users")
+                .document(friend.id)
+                .collection("sharedCollections")
+                .document(collection.id)
+                .setData(sharedCollection) { error in
+                    if let error = error {
+                        print("Error sharing collection with \(friend.name): \(error.localizedDescription)")
+                    } else {
+                        print("Successfully shared collection with \(friend.name)")
+                    }
+                }
         }
     }
 }

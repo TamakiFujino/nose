@@ -16,6 +16,31 @@ class AvatarCustomViewController: UIViewController {
     weak var delegate: AvatarCustomViewControllerDelegate?
     private var currentAvatarData: CollectionAvatar.AvatarData?
     private let collectionId: String
+    
+    private lazy var loadingView: UIView = {
+        let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.backgroundColor = .systemBackground
+        view.alpha = 0
+        return view
+    }()
+    
+    private lazy var activityIndicator: UIActivityIndicatorView = {
+        let indicator = UIActivityIndicatorView(style: .large)
+        indicator.translatesAutoresizingMaskIntoConstraints = false
+        indicator.color = .fourthColor
+        return indicator
+    }()
+    
+    private lazy var loadingLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.text = "Loading Avatar..."
+        label.font = .systemFont(ofSize: 16, weight: .medium)
+        label.textColor = .fourthColor
+        label.textAlignment = .center
+        return label
+    }()
 
     init(collectionId: String) {
         self.collectionId = collectionId
@@ -38,6 +63,24 @@ class AvatarCustomViewController: UIViewController {
     private func setupUI() {
         view.backgroundColor = .systemBackground
         title = "Customize Avatar"
+        
+        // Add loading view
+        view.addSubview(loadingView)
+        loadingView.addSubview(activityIndicator)
+        loadingView.addSubview(loadingLabel)
+        
+        NSLayoutConstraint.activate([
+            loadingView.topAnchor.constraint(equalTo: view.topAnchor),
+            loadingView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            loadingView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            loadingView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            
+            activityIndicator.centerXAnchor.constraint(equalTo: loadingView.centerXAnchor),
+            activityIndicator.centerYAnchor.constraint(equalTo: loadingView.centerYAnchor),
+            
+            loadingLabel.topAnchor.constraint(equalTo: activityIndicator.bottomAnchor, constant: 16),
+            loadingLabel.centerXAnchor.constraint(equalTo: loadingView.centerXAnchor)
+        ])
     }
 
     private func setupNavigationBar() {
@@ -66,6 +109,8 @@ class AvatarCustomViewController: UIViewController {
     }
 
     private func setupAvatar3DView() {
+        showLoading()
+        
         avatar3DViewController = Avatar3DViewController()
         addChild(avatar3DViewController)
         view.addSubview(avatar3DViewController.view)
@@ -76,6 +121,11 @@ class AvatarCustomViewController: UIViewController {
         // Load existing avatar data if available
         if let avatarData = currentAvatarData {
             avatar3DViewController.loadAvatarData(avatarData)
+        }
+        
+        // Hide loading after a short delay to ensure everything is loaded
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            self?.hideLoading()
         }
     }
 
@@ -155,11 +205,27 @@ class AvatarCustomViewController: UIViewController {
         currentAvatarData = avatarData
     }
 
+    private func showLoading() {
+        loadingView.alpha = 1
+        activityIndicator.startAnimating()
+    }
+    
+    private func hideLoading() {
+        UIView.animate(withDuration: 0.3) {
+            self.loadingView.alpha = 0
+        } completion: { _ in
+            self.activityIndicator.stopAnimating()
+        }
+    }
+
     private func loadSavedAvatarData() {
         guard let currentUserId = Auth.auth().currentUser?.uid else {
             print("Error: User not authenticated")
+            hideLoading()
             return
         }
+        
+        showLoading()
         
         let db = Firestore.firestore()
         db.collection("users")
@@ -169,6 +235,7 @@ class AvatarCustomViewController: UIViewController {
             .getDocument { [weak self] snapshot, error in
                 if let error = error {
                     print("Error loading avatar data: \(error.localizedDescription)")
+                    self?.hideLoading()
                     return
                 }
                 
@@ -178,6 +245,11 @@ class AvatarCustomViewController: UIViewController {
                     // Load the saved avatar data
                     self?.currentAvatarData = avatarData
                     self?.avatar3DViewController.loadAvatarData(avatarData)
+                }
+                
+                // Hide loading after a short delay to ensure everything is loaded
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                    self?.hideLoading()
                 }
             }
     }

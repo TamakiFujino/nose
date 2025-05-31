@@ -396,7 +396,7 @@ final class HomeViewController: UIViewController {
         mapView.animate(to: camera)
         
         // Present place detail view controller
-        let detailViewController = PlaceDetailViewController(place: place)
+        let detailViewController = PlaceDetailViewController(place: place, isFromCollection: false)
         print("Presenting detail view controller")
         
         // Add a slight delay to ensure proper presentation

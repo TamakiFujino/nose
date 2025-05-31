@@ -8,6 +8,7 @@ final class PlaceDetailViewController: UIViewController {
     private var photos: [UIImage] = []
     private var currentPhotoIndex = 0
     private var detailedPlace: GMSPlace?
+    private var isFromCollection: Bool
     
     // MARK: - UI Components
     private lazy var scrollView: UIScrollView = {
@@ -157,8 +158,9 @@ final class PlaceDetailViewController: UIViewController {
     }()
     
     // MARK: - Initialization
-    init(place: GMSPlace) {
+    init(place: GMSPlace, isFromCollection: Bool) {
         self.place = place
+        self.isFromCollection = isFromCollection
         super.init(nibName: nil, bundle: nil)
         modalPresentationStyle = .custom
         transitioningDelegate = self
@@ -174,6 +176,9 @@ final class PlaceDetailViewController: UIViewController {
         print("PlaceDetailViewController - viewDidLoad")
         setupUI()
         fetchPlaceDetails()
+        
+        // Hide save button if place is from a collection
+        saveButton.isHidden = isFromCollection
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -555,3 +560,4 @@ extension PlaceDetailViewController: SaveToCollectionViewControllerDelegate {
         }
     }
 }
+

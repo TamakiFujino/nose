@@ -31,7 +31,17 @@ class CollectionsViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
+        setupNotifications()
         loadCollections()
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        loadCollections()
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
     
     // MARK: - Setup
@@ -53,6 +63,19 @@ class CollectionsViewController: UIViewController {
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
+    }
+    
+    private func setupNotifications() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(refreshCollections),
+            name: NSNotification.Name("RefreshCollections"),
+            object: nil
+        )
+    }
+    
+    @objc private func refreshCollections() {
+        loadCollections()
     }
     
     // MARK: - Data Loading

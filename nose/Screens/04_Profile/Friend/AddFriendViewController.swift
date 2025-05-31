@@ -19,7 +19,7 @@ class AddFriendViewController: UIViewController {
     private lazy var searchBar: UISearchBar = {
         let searchBar = UISearchBar()
         searchBar.translatesAutoresizingMaskIntoConstraints = false
-        searchBar.placeholder = "Search by User ID (e.g., USER123456)"
+        searchBar.placeholder = "Search by User ID"
         searchBar.delegate = self
         searchBar.searchBarStyle = .minimal
         searchBar.autocapitalizationType = .allCharacters
@@ -135,8 +135,8 @@ class AddFriendViewController: UIViewController {
         // Setup constraints
         NSLayoutConstraint.activate([
             searchContainer.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            searchContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            searchContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            searchContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            searchContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             searchContainer.heightAnchor.constraint(equalToConstant: 44),
             
             searchBar.topAnchor.constraint(equalTo: searchContainer.topAnchor),
@@ -145,21 +145,20 @@ class AddFriendViewController: UIViewController {
             searchBar.bottomAnchor.constraint(equalTo: searchContainer.bottomAnchor),
             
             userIdContainer.topAnchor.constraint(equalTo: searchContainer.bottomAnchor, constant: 8),
-            userIdContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            userIdContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
             userIdContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             userIdContainer.heightAnchor.constraint(equalToConstant: 44),
             
-            userIdLabel.leadingAnchor.constraint(equalTo: userIdContainer.leadingAnchor, constant: 12),
+            userIdLabel.leadingAnchor.constraint(equalTo: userIdContainer.leadingAnchor),
             userIdLabel.centerYAnchor.constraint(equalTo: userIdContainer.centerYAnchor),
             
-            userIdValueLabel.leadingAnchor.constraint(equalTo: userIdLabel.trailingAnchor, constant: 8),
+            userIdValueLabel.leadingAnchor.constraint(equalTo: userIdLabel.trailingAnchor, constant: 4),
             userIdValueLabel.centerYAnchor.constraint(equalTo: userIdContainer.centerYAnchor),
             
-            copyButton.leadingAnchor.constraint(equalTo: userIdValueLabel.trailingAnchor, constant: 8),
-            copyButton.trailingAnchor.constraint(equalTo: userIdContainer.trailingAnchor, constant: -12),
+            copyButton.leadingAnchor.constraint(equalTo: userIdValueLabel.trailingAnchor, constant: 4),
             copyButton.centerYAnchor.constraint(equalTo: userIdContainer.centerYAnchor),
-            copyButton.widthAnchor.constraint(equalToConstant: 44),
-            copyButton.heightAnchor.constraint(equalToConstant: 44),
+            copyButton.widthAnchor.constraint(equalToConstant: 24),
+            copyButton.heightAnchor.constraint(equalToConstant: 24),
             
             resultContainer.topAnchor.constraint(equalTo: userIdContainer.bottomAnchor, constant: 32),
             resultContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor),
