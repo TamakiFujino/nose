@@ -115,8 +115,13 @@ class AvatarUIManager: NSObject {
 
     @objc private func colorButtonTapped(_ sender: UIButton) {
         guard let color = sender.backgroundColor else { return }
+        let category = bottomSheetView.getCurrentCategory()
         bottomSheetView.changeSelectedCategoryColor(to: color)
         selectColorButton(sender)
+        
+        // Save the color to the chosenColors dictionary
+        avatar3DViewController?.chosenColors[category] = color
+        print("Saved color for \(category): \(color.toHexString())")
     }
 
     private func selectColorButton(_ button: UIButton) {

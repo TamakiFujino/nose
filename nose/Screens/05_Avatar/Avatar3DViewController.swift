@@ -69,10 +69,42 @@ class Avatar3DViewController: UIViewController {
     // MARK: - Avatar Management
 
     func loadAvatarData(_ avatarData: CollectionAvatar.AvatarData) {
-        UserDefaults.standard.set(avatarData.color, forKey: "selectedColor")
-        UserDefaults.standard.set(avatarData.style, forKey: "selectedStyle")
-        UserDefaults.standard.set(avatarData.accessories, forKey: "selectedAccessories")
-        updateAvatarAppearance()
+        print("Loading avatar data with selections: \(avatarData.selections)")
+        
+        // Clear existing items
+        for (category, _) in chosenModels {
+            removeClothingItem(for: category)
+        }
+        
+        // Load and apply each item from the saved data
+        for (category, entry) in avatarData.selections {
+            if let modelName = entry["model"], !modelName.isEmpty {
+                print("Loading model for \(category): \(modelName)")
+                // Load the model first
+                loadClothingItem(named: modelName, category: category)
+                
+                // Apply color if available
+                if let colorHex = entry["color"] {
+                    print("Loading color for \(category): \(colorHex)")
+                    if let color = UIColor.fromHex(colorHex) {
+                        print("Successfully created color from hex: \(colorHex)")
+                        chosenColors[category] = color
+                        if category == "skin" {
+                            print("Applying skin color")
+                            changeSkinColor(to: color)
+                        } else {
+                            print("Applying color for \(category)")
+                            changeClothingItemColor(for: category, to: color)
+                        }
+                    } else {
+                        print("Failed to create color from hex: \(colorHex)")
+                    }
+                }
+            }
+        }
+        
+        // Update the base entity rotation
+        baseEntity?.transform.rotation = simd_quatf(angle: .pi / 6, axis: [0, -0.8, 0])
     }
 
     private func updateAvatarAppearance() {

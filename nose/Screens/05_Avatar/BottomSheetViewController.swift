@@ -330,4 +330,44 @@ class BottomSheetContentView: UIView {
             avatar3DViewController?.changeClothingItemColor(for: category, to: color)
         }
     }
+
+    func getCurrentCategory() -> String {
+        switch parentTabBar.selectedSegmentIndex {
+        case 0: // Base tab
+            switch childTabBar.selectedSegmentIndex {
+            case 0: // Skin tab
+                return "skin"
+            case 1: // Eye tab
+                return "eye"
+            case 2: // Eyebrow tab
+                return "eyebrow"
+            default:
+                return ""
+            }
+        case 1: // Hair tab
+            switch childTabBar.selectedSegmentIndex {
+            case 0: // Base tab
+                return "hair_base"
+            case 1: // Front tab
+                return "hair_front"
+            case 2: // Back tab
+                return "hair_back"
+            default:
+                return ""
+            }
+        case 2: // Clothes tab
+            switch childTabBar.selectedSegmentIndex {
+            case 0: // Tops tab
+                return "tops"
+            case 1: // Jackets tab
+                return "bottoms"
+            case 2: // Bottoms tab
+                return "socks"
+            default:
+                return ""
+            }
+        default:
+            return ""
+        }
+    }
 }

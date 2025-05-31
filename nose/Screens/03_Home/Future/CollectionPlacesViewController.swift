@@ -101,13 +101,10 @@ class CollectionPlacesViewController: UIViewController {
 
     // MARK: - Actions
     @objc private func customizeButtonTapped() {
-        let avatarVC = AvatarCustomViewController()
-       // avatarVC.delegate = self
-
-        let nav = UINavigationController(rootViewController: avatarVC)
-        nav.modalPresentationStyle = .fullScreen
-
-        present(nav, animated: true, completion: nil)
+        let avatarVC = AvatarCustomViewController(collectionId: collection.id)
+        let navController = UINavigationController(rootViewController: avatarVC)
+        navController.modalPresentationStyle = .fullScreen
+        present(navController, animated: true, completion: nil)
     }
 
     // MARK: - Data Loading

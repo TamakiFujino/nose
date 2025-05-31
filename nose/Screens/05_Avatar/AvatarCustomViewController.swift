@@ -1,5 +1,7 @@
 import UIKit
 import RealityKit
+import FirebaseFirestore
+import FirebaseAuth
 
 protocol AvatarCustomViewControllerDelegate: AnyObject {
     func avatarCustomViewController(_ controller: AvatarCustomViewController, didSaveAvatar avatarData: CollectionAvatar.AvatarData)
@@ -13,6 +15,16 @@ class AvatarCustomViewController: UIViewController {
 
     weak var delegate: AvatarCustomViewControllerDelegate?
     private var currentAvatarData: CollectionAvatar.AvatarData?
+    private let collectionId: String
+
+    init(collectionId: String) {
+        self.collectionId = collectionId
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -20,6 +32,7 @@ class AvatarCustomViewController: UIViewController {
         setupNavigationBar()
         setupAvatar3DView()
         setupGestures()
+        loadSavedAvatarData()
     }
 
     private func setupUI() {
@@ -30,10 +43,19 @@ class AvatarCustomViewController: UIViewController {
     private func setupNavigationBar() {
         navigationController?.setNavigationBarHidden(false, animated: false)
         
+        // Configure navigation bar appearance
+        let appearance = UINavigationBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = .systemBackground
+        navigationController?.navigationBar.standardAppearance = appearance
+        navigationController?.navigationBar.scrollEdgeAppearance = appearance
+        
+        // Add save button
         let saveButton = UIBarButtonItem(title: "Save", style: .plain, target: self, action: #selector(saveButtonTapped))
         saveButton.tintColor = .black
         navigationItem.rightBarButtonItem = saveButton
         
+        // Add close button
         let closeButton = UIBarButtonItem(
             barButtonSystemItem: .close,
             target: self,
@@ -79,11 +101,45 @@ class AvatarCustomViewController: UIViewController {
         for (category, modelName) in avatar3DViewController.chosenModels {
             var entry: [String: String] = ["model": modelName]
             if let color = avatar3DViewController.chosenColors[category] {
-                entry["color"] = color.toHexString()
+                // Convert UIColor to hex string
+                var red: CGFloat = 0
+                var green: CGFloat = 0
+                var blue: CGFloat = 0
+                var alpha: CGFloat = 0
+                color.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+                let hexString = String(format: "#%02X%02X%02X",
+                                     Int(red * 255),
+                                     Int(green * 255),
+                                     Int(blue * 255))
+                entry["color"] = hexString
+                print("Saving color for \(category): \(hexString)")
             }
             selections[category] = entry
         }
         let avatarData = CollectionAvatar.AvatarData(selections: selections)
+        
+        // Save to Firestore
+        guard let currentUserId = Auth.auth().currentUser?.uid else {
+            print("Error: User not authenticated")
+            return
+        }
+        
+        let db = Firestore.firestore()
+        let avatarDict = avatarData.toFirestoreDict()
+        
+        db.collection("users")
+            .document(currentUserId)
+            .collection("collections")
+            .document(collectionId)
+            .setData(["avatarData": avatarDict], merge: true) { error in
+                if let error = error {
+                    print("Error saving avatar data: \(error.localizedDescription)")
+                    ToastManager.showToast(message: "Failed to save avatar", type: .error)
+                } else {
+                    print("Successfully saved avatar data: \(avatarDict)")
+                    ToastManager.showToast(message: "Avatar saved successfully", type: .success)
+                }
+            }
         
         // Notify delegate
         delegate?.avatarCustomViewController(self, didSaveAvatar: avatarData)
@@ -99,16 +155,31 @@ class AvatarCustomViewController: UIViewController {
     func setInitialAvatarData(_ avatarData: CollectionAvatar.AvatarData) {
         currentAvatarData = avatarData
     }
-}
 
-extension UIColor {
-    func toHexString() -> String {
-        var r: CGFloat = 0
-        var g: CGFloat = 0
-        var b: CGFloat = 0
-        var a: CGFloat = 0
-        getRed(&r, green: &g, blue: &b, alpha: &a)
-        let rgb: Int = (Int)(r*255)<<16 | (Int)(g*255)<<8 | (Int)(b*255)<<0
-        return String(format: "#%06x", rgb)
+    private func loadSavedAvatarData() {
+        guard let currentUserId = Auth.auth().currentUser?.uid else {
+            print("Error: User not authenticated")
+            return
+        }
+        
+        let db = Firestore.firestore()
+        db.collection("users")
+            .document(currentUserId)
+            .collection("collections")
+            .document(collectionId)
+            .getDocument { [weak self] snapshot, error in
+                if let error = error {
+                    print("Error loading avatar data: \(error.localizedDescription)")
+                    return
+                }
+                
+                if let data = snapshot?.data(),
+                   let avatarDict = data["avatarData"] as? [String: Any],
+                   let avatarData = CollectionAvatar.AvatarData.fromFirestoreDict(avatarDict) {
+                    // Load the saved avatar data
+                    self?.currentAvatarData = avatarData
+                    self?.avatar3DViewController.loadAvatarData(avatarData)
+                }
+            }
     }
 }
