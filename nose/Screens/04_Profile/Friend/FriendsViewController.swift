@@ -264,7 +264,6 @@ extension FriendsViewController: UITableViewDelegate, UITableViewDataSource {
         
         // Add a custom background view for the cell
         let backgroundView = UIView()
-        backgroundView.backgroundColor = UIColor.white.withAlphaComponent(0.1)
         cell.backgroundView = backgroundView
         
         // Add a custom selected background view

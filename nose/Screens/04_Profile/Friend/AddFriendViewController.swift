@@ -201,7 +201,12 @@ class AddFriendViewController: UIViewController {
             if let user = User.fromFirestore(snapshot) {
                 DispatchQueue.main.async {
                     self?.currentUser = user
-                    self?.userIdValueLabel.text = user.userId
+                    if let userId = snapshot.data()?["userId"] as? String {
+                        self?.userIdValueLabel.text = userId
+                    } else {
+                        print("Warning: userId not found in Firestore document")
+                        self?.userIdValueLabel.text = user.userId
+                    }
                 }
             }
         }
