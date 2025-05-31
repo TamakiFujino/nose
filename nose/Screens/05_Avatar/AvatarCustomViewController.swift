@@ -112,6 +112,7 @@ class AvatarCustomViewController: UIViewController {
         showLoading()
         
         avatar3DViewController = Avatar3DViewController()
+        avatar3DViewController.cameraPosition = SIMD3<Float>(0.0, 0.0, 14.0)
         addChild(avatar3DViewController)
         view.addSubview(avatar3DViewController.view)
         avatar3DViewController.didMove(toParent: self)

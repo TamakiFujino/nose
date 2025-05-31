@@ -13,6 +13,7 @@ class Avatar3DViewController: UIViewController {
     var selectedItem: Any? // TODO: Replace `Any` with the actual type if possible
     var cancellables = Set<AnyCancellable>()
     var currentUserId: String = "defaultUser" // TODO: Replace with actual user ID
+    var cameraPosition: SIMD3<Float> = SIMD3<Float>(0.0, 0.0, 14.0)
 
     // Expose current avatar properties
     var currentColor: String {
@@ -220,9 +221,9 @@ class Avatar3DViewController: UIViewController {
         }
     }
 
-    func setupCameraPosition(position: SIMD3<Float> = SIMD3<Float>(0.0, 0.0, 14.0)) {
+    func setupCameraPosition() {
         let cameraEntity = PerspectiveCamera()
-        cameraEntity.transform.translation = position
+        cameraEntity.transform.translation = cameraPosition
         let cameraAnchor = AnchorEntity()
         cameraAnchor.addChild(cameraEntity)
         arView.scene.anchors.append(cameraAnchor)

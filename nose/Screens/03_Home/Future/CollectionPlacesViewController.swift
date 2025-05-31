@@ -170,24 +170,23 @@ class CollectionPlacesViewController: UIViewController {
     }
 
     private func setupAvatarView() {
-        avatarViewController = Avatar3DViewController()
-        guard let avatarVC = avatarViewController else { return }
-        
+        let avatarVC = Avatar3DViewController()
+        avatarVC.cameraPosition = SIMD3<Float>(0.0, 3.0, 7.0)
+        avatarViewController = avatarVC
+
         addChild(avatarVC)
         avatarContainer.addSubview(avatarVC.view)
         avatarVC.view.translatesAutoresizingMaskIntoConstraints = false
-        
         NSLayoutConstraint.activate([
             avatarVC.view.topAnchor.constraint(equalTo: avatarContainer.topAnchor),
             avatarVC.view.leadingAnchor.constraint(equalTo: avatarContainer.leadingAnchor),
             avatarVC.view.trailingAnchor.constraint(equalTo: avatarContainer.trailingAnchor),
             avatarVC.view.bottomAnchor.constraint(equalTo: avatarContainer.bottomAnchor)
         ])
-        
         avatarVC.didMove(toParent: self)
         loadAvatarData()
     }
-
+    
     private func loadAvatarData() {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         let db = Firestore.firestore()
