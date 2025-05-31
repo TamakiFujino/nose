@@ -27,15 +27,6 @@ class CollectionsViewController: UIViewController {
         return label
     }()
     
-    private lazy var menuButton: UIButton = {
-        let button = UIButton(type: .system)
-        button.translatesAutoresizingMaskIntoConstraints = false
-        button.setImage(UIImage(systemName: "ellipsis"), for: .normal)
-        button.tintColor = .fourthColor
-        button.addTarget(self, action: #selector(menuButtonTapped), for: .touchUpInside)
-        return button
-    }()
-    
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -59,19 +50,13 @@ class CollectionsViewController: UIViewController {
         
         // Add subviews
         view.addSubview(titleLabel)
-        view.addSubview(menuButton)
         view.addSubview(tableView)
         
         // Setup constraints
         NSLayoutConstraint.activate([
             titleLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
             titleLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            titleLabel.trailingAnchor.constraint(equalTo: menuButton.leadingAnchor, constant: -16),
-            
-            menuButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
-            menuButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            menuButton.widthAnchor.constraint(equalToConstant: 44),
-            menuButton.heightAnchor.constraint(equalToConstant: 44),
+            titleLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             
             tableView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 16),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -91,100 +76,6 @@ class CollectionsViewController: UIViewController {
     
     @objc private func refreshCollections() {
         loadCollections()
-    }
-    
-    @objc private func menuButtonTapped() {
-        let alertController = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
-        
-        // Create new collection action
-        let createAction = UIAlertAction(title: "Create New Collection", style: .default) { [weak self] _ in
-            self?.createNewCollection()
-        }
-        createAction.setValue(UIImage(systemName: "plus.circle"), forKey: "image")
-        
-        // View completed collections action
-        let viewCompletedAction = UIAlertAction(title: "View Completed Collections", style: .default) { [weak self] _ in
-            self?.viewCompletedCollections()
-        }
-        viewCompletedAction.setValue(UIImage(systemName: "checkmark.circle"), forKey: "image")
-        
-        // Cancel action
-        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
-        
-        alertController.addAction(createAction)
-        alertController.addAction(viewCompletedAction)
-        alertController.addAction(cancelAction)
-        
-        // For iPad support
-        if let popoverController = alertController.popoverPresentationController {
-            popoverController.sourceView = menuButton
-            popoverController.sourceRect = menuButton.bounds
-        }
-        
-        present(alertController, animated: true)
-    }
-    
-    private func createNewCollection() {
-        let alertController = UIAlertController(
-            title: "New Collection",
-            message: "Enter a name for your collection",
-            preferredStyle: .alert
-        )
-        
-        alertController.addTextField { textField in
-            textField.placeholder = "Collection name"
-        }
-        
-        let createAction = UIAlertAction(title: "Create", style: .default) { [weak self] _ in
-            guard let name = alertController.textFields?.first?.text, !name.isEmpty else { return }
-            
-            self?.showLoadingAlert(title: "Creating Collection")
-            
-            guard let currentUserId = Auth.auth().currentUser?.uid else { return }
-            let db = Firestore.firestore()
-            
-            let status = PlaceCollection.Status.active.rawValue
-            print("DEBUG: Creating new collection with status: \(status)")
-            
-            let collectionData: [String: Any] = [
-                "name": name,
-                "places": [],
-                "userId": currentUserId,
-                "status": status
-            ]
-            
-            db.collection("users")
-                .document(currentUserId)
-                .collection("collections")
-                .addDocument(data: collectionData) { [weak self] error in
-                    self?.dismiss(animated: true) {
-                        if let error = error {
-                            ToastManager.showToast(message: "Failed to create collection", type: .error)
-                            print("Error creating collection: \(error.localizedDescription)")
-                        } else {
-                            print("DEBUG: Successfully created new collection")
-                            ToastManager.showToast(message: "Collection created", type: .success)
-                            self?.loadCollections()
-                        }
-                    }
-                }
-        }
-        
-        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
-        
-        alertController.addAction(createAction)
-        alertController.addAction(cancelAction)
-        
-        present(alertController, animated: true)
-    }
-    
-    private func viewCompletedCollections() {
-        let boxVC = BoxViewController()
-        if let sheet = boxVC.sheetPresentationController {
-            sheet.detents = [.medium()]
-            sheet.prefersGrabberVisible = true
-        }
-        present(boxVC, animated: true)
     }
     
     private func showLoadingAlert(title: String) {
