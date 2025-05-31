@@ -85,12 +85,23 @@ class Avatar3DViewController: UIViewController {
 
     private func setupBaseEntity() {
         guard let baseEntity else { return }
+        clearBaseEntityAnchors()
         baseEntity.transform.rotation = simd_quatf(angle: .pi / 6, axis: [0, -0.8, 0])
         let anchor = AnchorEntity(world: .zero)
         anchor.addChild(baseEntity)
         arView.scene.anchors.append(anchor)
     }
-
+    
+    private func clearBaseEntityAnchors() {
+        // Only keep anchors that do NOT contain the baseEntity ("Avatar")
+        let anchorsToRemove = arView.scene.anchors.filter { anchor in
+            anchor.children.contains(where: { $0.name == "Avatar" })
+        }
+        for anchor in anchorsToRemove {
+            arView.scene.anchors.remove(anchor)
+        }
+    }
+    
     private func addDirectionalLight() {
         let lightAnchor = AnchorEntity(world: [0, 2.0, 0])
         let light = DirectionalLight()
@@ -153,34 +164,34 @@ class Avatar3DViewController: UIViewController {
     }
 
     func loadClothingItem(named modelName: String, category: String) {
-        do {
-            // Remove existing item if any
-            if let existingEntity = baseEntity?.findEntity(named: modelName) {
-                existingEntity.removeFromParent()
-            }
-            
-            // Remove any existing item for this category
-            if let previousModelName = chosenModels[category],
-               let existingEntity = baseEntity?.findEntity(named: previousModelName) {
-                existingEntity.removeFromParent()
-            }
-
-            // Load and setup new item
-            let newModel = try Entity.loadModel(named: modelName) as? ModelEntity
-            newModel?.name = modelName
-            newModel?.scale = SIMD3<Float>(repeating: 1.0)
-            
-            if let newModel = newModel {
-                baseEntity?.addChild(newModel)
-                chosenModels[category] = modelName
-                
-                if let color = chosenColors[category] {
-                    changeClothingItemColor(for: category, to: color)
-                }
-            }
-        } catch {
-            print("Error loading clothing item: \(error)")
+        // Remove previous model if present
+        if let previousModelName = chosenModels[category],
+           let existingEntity = baseEntity?.findEntity(named: previousModelName) {
+            existingEntity.removeFromParent()
         }
+
+        // Load new model asynchronously
+        Entity.loadModelAsync(named: modelName)
+            .receive(on: DispatchQueue.main)
+            .sink(receiveCompletion: { completion in
+                if case .failure(let error) = completion {
+                    print("Error loading model: \(error)")
+                }
+            }, receiveValue: { [weak self] entity in
+                guard let self = self else { return }
+                let modelEntity = entity as? ModelEntity
+                modelEntity?.name = modelName
+                modelEntity?.scale = SIMD3<Float>(repeating: 1.0)
+                if let modelEntity = modelEntity {
+                    self.baseEntity?.addChild(modelEntity)
+                    // Apply color if present
+                    if let color = self.chosenColors[category] {
+                        self.changeClothingItemColor(for: category, to: color)
+                    }
+                }
+                self.chosenModels[category] = modelName
+            })
+            .store(in: &cancellables)
     }
 
     func removeClothingItem(for category: String) {
@@ -264,6 +275,7 @@ class Avatar3DViewController: UIViewController {
             "eye", "eyebrow", "nose", "mouth", "socks", "shoes", "head", "neck", "eyewear"
         ]
         
+        // Load chosen models from UserDefaults
         for category in categories {
             let key = "chosen\(category.capitalized)Model"
             if let modelName = UserDefaults.standard.string(forKey: key), !modelName.isEmpty {
@@ -271,24 +283,32 @@ class Avatar3DViewController: UIViewController {
             }
         }
 
+        // Load chosen colors from UserDefaults
         if let savedColorsData = UserDefaults.standard.data(forKey: "chosenColors"),
            let savedColors = try? NSKeyedUnarchiver.unarchiveTopLevelObjectWithData(savedColorsData) as? [String: UIColor] {
             chosenColors = savedColors
         }
 
-        do {
-            baseEntity = try Entity.loadModel(named: "body_2") as? ModelEntity
-            baseEntity?.name = "Avatar"
-            setupBaseEntity()
-            
-            for (category, modelName) in chosenModels where !modelName.isEmpty {
-                loadClothingItem(named: modelName, category: category)
-                if let color = chosenColors[category] {
-                    changeClothingItemColor(for: category, to: color)
+        // Load base entity model asynchronously
+        Entity.loadModelAsync(named: "body_2")
+            .receive(on: DispatchQueue.main)
+            .sink(receiveCompletion: { completion in
+                if case .failure(let error) = completion {
+                    print("Error loading base avatar model: \(error)")
                 }
-            }
-        } catch {
-            print("Error loading base avatar model: \(error)")
-        }
+            }, receiveValue: { [weak self] entity in
+                guard let self = self else { return }
+                self.baseEntity = entity as? ModelEntity
+                self.baseEntity?.name = "Avatar"
+                self.setupBaseEntity()
+                
+                for (category, modelName) in self.chosenModels where !modelName.isEmpty {
+                    self.loadClothingItem(named: modelName, category: category)
+                    if let color = self.chosenColors[category] {
+                        self.changeClothingItemColor(for: category, to: color)
+                    }
+                }
+            })
+            .store(in: &cancellables)
     }
 }
