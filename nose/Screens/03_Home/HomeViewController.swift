@@ -32,6 +32,11 @@ final class HomeViewController: UIViewController {
         view.addSubview(dot2)
         view.addSubview(dot3)
         
+        // Store references to dots
+        self.leftDot = dot1
+        self.middleDot = dot2
+        self.rightDot = dot3
+        
         // Setup constraints
         NSLayoutConstraint.activate([
             // Line constraints
@@ -63,6 +68,11 @@ final class HomeViewController: UIViewController {
         
         return view
     }()
+    
+    // Add properties to track dots
+    private var leftDot: UIView?
+    private var middleDot: UIView?
+    private var rightDot: UIView?
     
     private func createDot(isSelected: Bool) -> UIView {
         let dot = UIView()
@@ -102,6 +112,18 @@ final class HomeViewController: UIViewController {
         button.backgroundColor = .white
         button.layer.cornerRadius = 20
         button.addTarget(self, action: #selector(sparkButtonTapped), for: .touchUpInside)
+        button.isHidden = true
+        return button
+    }()
+    
+    private lazy var boxButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.setImage(UIImage(systemName: "archivebox"), for: .normal)
+        button.tintColor = .fourthColor
+        button.backgroundColor = .white
+        button.layer.cornerRadius = 20
+        button.addTarget(self, action: #selector(boxButtonTapped), for: .touchUpInside)
         button.isHidden = true
         return button
     }()
@@ -172,6 +194,7 @@ final class HomeViewController: UIViewController {
         view.addSubview(mapView)
         view.addSubview(searchButton)
         view.addSubview(sparkButton)
+        view.addSubview(boxButton)
         view.addSubview(searchResultsTableView)
         view.addSubview(currentLocationButton)
         view.addSubview(profileButton)
@@ -190,6 +213,12 @@ final class HomeViewController: UIViewController {
             searchButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             searchButton.widthAnchor.constraint(equalToConstant: 40),
             searchButton.heightAnchor.constraint(equalToConstant: 40),
+            
+            // Box button constraints (same position as search button)
+            boxButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
+            boxButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            boxButton.widthAnchor.constraint(equalToConstant: 40),
+            boxButton.heightAnchor.constraint(equalToConstant: 40),
             
             // Spark button constraints (same position as search button)
             sparkButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
@@ -267,6 +296,15 @@ final class HomeViewController: UIViewController {
         present(collectionsVC, animated: true)
     }
     
+    @objc private func boxButtonTapped() {
+        let boxVC = BoxViewController()
+        if let sheet = boxVC.sheetPresentationController {
+            sheet.detents = [.medium()]
+            sheet.prefersGrabberVisible = true
+        }
+        present(boxVC, animated: true)
+    }
+    
     @objc private func dotSliderTapped(_ gesture: UITapGestureRecognizer) {
         let location = gesture.location(in: dotSlider)
         let width = dotSlider.bounds.width
@@ -275,30 +313,31 @@ final class HomeViewController: UIViewController {
         // Determine which segment was tapped
         let segment = Int(location.x / segmentWidth)
         
-        // Update dots - skip the first subview (line) and update the next three (dots)
-        for (index, subview) in dotSlider.subviews.enumerated() {
-            if index > 0 && index <= 3 { // Skip the line view (index 0) and only process dots
-                subview.backgroundColor = (index - 1) == segment ? .fifthColor : .thirdColor
-            }
-        }
+        // Update dots using stored references
+        leftDot?.backgroundColor = segment == 0 ? .fifthColor : .thirdColor
+        middleDot?.backgroundColor = segment == 1 ? .fifthColor : .thirdColor
+        rightDot?.backgroundColor = segment == 2 ? .fifthColor : .thirdColor
         
         // Always show the map view
         mapView.isHidden = false
         
         // Handle different dot selections
         switch segment {
-        case 0: // Left dot
+        case 0: // Left dot - show box
             print("Left dot selected")
             searchButton.isHidden = true
             sparkButton.isHidden = true
+            boxButton.isHidden = false
         case 1: // Middle dot - show search
             print("Middle dot selected")
             searchButton.isHidden = false
             sparkButton.isHidden = true
+            boxButton.isHidden = true
         case 2: // Right dot - show collections
             print("Right dot selected")
             searchButton.isHidden = true
             sparkButton.isHidden = false
+            boxButton.isHidden = true
         default:
             break
         }

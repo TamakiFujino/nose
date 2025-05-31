@@ -14,6 +14,7 @@ class CollectionManager {
         return NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])
     }
     
+    // MARK: - Collection Creation and Fetching
     func createCollection(name: String, completion: @escaping (Result<PlaceCollection, Error>) -> Void) {
         guard let currentUserId = Auth.auth().currentUser?.uid else {
             completion(.failure(NSError(domain: "auth", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])))
@@ -76,6 +77,7 @@ class CollectionManager {
             }
     }
     
+    // MARK: - Place Management
     func addPlaceToCollection(_ place: GMSPlace, collectionId: String, completion: @escaping (Result<Void, Error>) -> Void) {
         guard let userId = Auth.auth().currentUser?.uid else {
             completion(.failure(handleAuthError()))
@@ -95,7 +97,6 @@ class CollectionManager {
         print("📝 Using path: users/\(userId)/collections/\(collectionId)")
         print("📝 Place data: \(placeData.dictionary)")
         
-        // First, get the current collection to check existing places
         db.collection("users").document(userId).collection("collections").document(collectionId).getDocument { [weak self] snapshot, error in
             if let error = error {
                 print("❌ Error getting collection: \(error.localizedDescription)")
@@ -111,7 +112,6 @@ class CollectionManager {
             
             print("📄 Current collection data: \(data)")
             
-            // Update the collection with the new place
             self?.db.collection("users").document(userId).collection("collections").document(collectionId).updateData([
                 "places": FieldValue.arrayUnion([placeData.dictionary])
             ]) { error in
@@ -166,6 +166,7 @@ class CollectionManager {
         }
     }
     
+    // MARK: - Collection Management
     func deleteCollection(_ collectionId: String, completion: @escaping (Result<Void, Error>) -> Void) {
         guard let userId = Auth.auth().currentUser?.uid else {
             completion(.failure(handleAuthError()))
@@ -175,14 +176,121 @@ class CollectionManager {
         print("🗑 Deleting collection \(collectionId)...")
         print("🗑 Using path: users/\(userId)/collections/\(collectionId)")
         
-        db.collection("users").document(userId).collection("collections").document(collectionId).delete { error in
-            if let error = error {
-                print("❌ Error deleting collection: \(error.localizedDescription)")
-                completion(.failure(error))
-            } else {
-                print("✅ Successfully deleted collection")
-                completion(.success(()))
+        // First, delete any shared collections
+        db.collection("users")
+            .whereField("sharedCollections.\(collectionId).sharedBy", isEqualTo: userId)
+            .getDocuments { [weak self] snapshot, error in
+                if let error = error {
+                    print("❌ Error finding shared collections: \(error.localizedDescription)")
+                    completion(.failure(error))
+                    return
+                }
+                
+                let group = DispatchGroup()
+                
+                snapshot?.documents.forEach { document in
+                    group.enter()
+                    self?.db.collection("users")
+                        .document(document.documentID)
+                        .collection("sharedCollections")
+                        .document(collectionId)
+                        .delete { error in
+                            if let error = error {
+                                print("❌ Error deleting shared collection: \(error.localizedDescription)")
+                            }
+                            group.leave()
+                        }
+                }
+                
+                group.notify(queue: .main) {
+                    self?.db.collection("users")
+                        .document(userId)
+                        .collection("collections")
+                        .document(collectionId)
+                        .delete { error in
+                            if let error = error {
+                                print("❌ Error deleting collection: \(error.localizedDescription)")
+                                completion(.failure(error))
+                            } else {
+                                print("✅ Successfully deleted collection")
+                                completion(.success(()))
+                            }
+                        }
+                }
             }
+    }
+    
+    func completeCollection(_ collection: PlaceCollection, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            completion(.failure(handleAuthError()))
+            return
         }
+        
+        print("✅ Marking collection '\(collection.name)' as completed...")
+        
+        db.collection("users")
+            .document(userId)
+            .collection("collections")
+            .document(collection.id)
+            .updateData(["isCompleted": true]) { error in
+                if let error = error {
+                    print("❌ Error completing collection: \(error.localizedDescription)")
+                    completion(.failure(error))
+                } else {
+                    print("✅ Successfully marked collection as completed")
+                    completion(.success(()))
+                }
+            }
+    }
+    
+    func shareCollection(_ collection: PlaceCollection, with friends: [User], completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            completion(.failure(handleAuthError()))
+            return
+        }
+        
+        print("📤 Sharing collection '\(collection.name)' with \(friends.count) friends...")
+        
+        let sharedData = [
+            "sharedWith": friends.map { $0.id },
+            "sharedAt": FieldValue.serverTimestamp()
+        ] as [String: Any]
+        
+        db.collection("users")
+            .document(userId)
+            .collection("collections")
+            .document(collection.id)
+            .updateData(sharedData) { error in
+                if let error = error {
+                    print("❌ Error sharing collection: \(error.localizedDescription)")
+                    completion(.failure(error))
+                } else {
+                    print("✅ Successfully shared collection")
+                    completion(.success(()))
+                }
+            }
+    }
+    
+    func updateAvatarData(_ avatarData: CollectionAvatar.AvatarData, for collection: PlaceCollection, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            completion(.failure(handleAuthError()))
+            return
+        }
+        
+        print("🔄 Updating avatar data for collection '\(collection.name)'...")
+        
+        db.collection("users")
+            .document(userId)
+            .collection("collections")
+            .document(collection.id)
+            .setData(["avatarData": avatarData.toFirestoreDict()], merge: true) { error in
+                if let error = error {
+                    print("❌ Error updating avatar data: \(error.localizedDescription)")
+                    completion(.failure(error))
+                } else {
+                    print("✅ Successfully updated avatar data")
+                    completion(.success(()))
+                }
+            }
     }
 }

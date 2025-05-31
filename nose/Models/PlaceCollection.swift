@@ -6,6 +6,12 @@ public struct PlaceCollection: Codable {
     public let name: String
     public var places: [Place]
     public let userId: String
+    public var status: Status
+    
+    public enum Status: String, Codable {
+        case active
+        case completed
+    }
     
     public struct Place: Codable {
         public let placeId: String
@@ -32,15 +38,17 @@ public struct PlaceCollection: Codable {
             "id": id,
             "name": name,
             "places": places.map { $0.dictionary },
-            "userId": userId
+            "userId": userId,
+            "status": status.rawValue
         ]
     }
     
-    public init(id: String, name: String, places: [Place], userId: String) {
+    public init(id: String, name: String, places: [Place], userId: String, status: Status = .active) {
         self.id = id
         self.name = name
         self.places = places
         self.userId = userId
+        self.status = status
     }
     
     public init?(dictionary: [String: Any]) {
@@ -54,6 +62,14 @@ public struct PlaceCollection: Codable {
         self.id = id
         self.name = name
         self.userId = userId
+        
+        // Parse status, default to active if not found
+        if let statusString = dictionary["status"] as? String,
+           let status = Status(rawValue: statusString) {
+            self.status = status
+        } else {
+            self.status = .active
+        }
         
         if let placesData = dictionary["places"] as? [[String: Any]] {
             print("📦 Parsing \(placesData.count) places")
