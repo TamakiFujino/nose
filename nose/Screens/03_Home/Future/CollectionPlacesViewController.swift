@@ -394,6 +394,76 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
             }
         }
     }
+    
+    // Add swipe-to-delete functionality
+    func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
+        let deleteAction = UIContextualAction(style: .destructive, title: "Delete") { [weak self] (action, view, completion) in
+            self?.confirmDeletePlace(at: indexPath)
+            completion(false) // Don't dismiss the swipe action until user confirms
+        }
+        deleteAction.backgroundColor = .systemRed
+        deleteAction.image = UIImage(systemName: "trash")
+        
+        return UISwipeActionsConfiguration(actions: [deleteAction])
+    }
+    
+    private func confirmDeletePlace(at indexPath: IndexPath) {
+        let place = places[indexPath.row]
+        let alertController = UIAlertController(
+            title: "Delete Place",
+            message: "Are you sure you want to remove '\(place.name)' from this collection?",
+            preferredStyle: .alert
+        )
+        
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+        let deleteAction = UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
+            self?.deletePlace(at: indexPath)
+        }
+        
+        alertController.addAction(cancelAction)
+        alertController.addAction(deleteAction)
+        
+        present(alertController, animated: true)
+    }
+    
+    private func deletePlace(at indexPath: IndexPath) {
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        let place = places[indexPath.row]
+        let db = Firestore.firestore()
+        
+        // Show loading state
+        let loadingAlert = UIAlertController(title: "Removing Place", message: "Please wait...", preferredStyle: .alert)
+        let loadingIndicator = UIActivityIndicatorView(frame: CGRect(x: 10, y: 5, width: 50, height: 50))
+        loadingIndicator.hidesWhenStopped = true
+        loadingIndicator.style = .medium
+        loadingIndicator.startAnimating()
+        loadingAlert.view.addSubview(loadingIndicator)
+        present(loadingAlert, animated: true)
+        
+        // Remove the place from the collection
+        db.collection("users")
+            .document(currentUserId)
+            .collection("collections")
+            .document(collection.id)
+            .updateData([
+                "places": FieldValue.arrayRemove([place.toFirestoreData()])
+            ]) { [weak self] error in
+                self?.dismiss(animated: true) {
+                    if let error = error {
+                        print("Error removing place: \(error.localizedDescription)")
+                        ToastManager.showToast(message: "Failed to remove place", type: .error)
+                    } else {
+                        // Update local data
+                        self?.places.remove(at: indexPath.row)
+                        self?.tableView.deleteRows(at: [indexPath], with: .automatic)
+                        ToastManager.showToast(message: "Place removed", type: .success)
+                        
+                        // Notify parent to refresh
+                        NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
+                    }
+                }
+            }
+    }
 }
 
 // MARK: - PlaceTableViewCell
@@ -522,5 +592,19 @@ extension CollectionPlacesViewController: ShareCollectionViewControllerDelegate 
                     }
                 }
         }
+    }
+}
+
+// MARK: - PlaceCollection.Place
+extension PlaceCollection.Place {
+    func toFirestoreData() -> [String: Any] {
+        return [
+            "placeId": placeId,
+            "name": name,
+            "formattedAddress": formattedAddress,
+            "rating": rating,
+            "phoneNumber": phoneNumber,
+            "addedAt": Timestamp(date: addedAt)
+        ]
     }
 }
