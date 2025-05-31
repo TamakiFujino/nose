@@ -6,6 +6,7 @@ class Avatar3DViewController: UIViewController {
 
     // MARK: - Properties
 
+    var isPreviewMode: Bool = false
     var baseEntity: ModelEntity?
     var chosenModels: [String: String] = [:]
     var chosenColors: [String: UIColor] = [:]
@@ -40,11 +41,15 @@ class Avatar3DViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupARView()
-        loadAvatarModel()
+        if !isPreviewMode {
+            loadAvatarModel()
+        }
         setupCameraPosition()
         setupBaseEntity()
         addDirectionalLight()
-        loadSelectionState()
+        if !isPreviewMode {
+            loadSelectionState()
+        }
         setupEnvironmentBackground()
     }
 
@@ -69,26 +74,47 @@ class Avatar3DViewController: UIViewController {
     // MARK: - Avatar Management
 
     func loadAvatarData(_ avatarData: CollectionAvatar.AvatarData) {
+        print("DEBUG: Loading avatar data in preview mode")
+        isPreviewMode = true
+        
+        // Clear existing models and colors
+        chosenModels.removeAll()
+        chosenColors.removeAll()
+        
+        // Remove existing items
+        for category in ["bottoms", "tops", "hair_base", "hair_front", "hair_back", "jackets", "skin",
+                        "eye", "eyebrow", "nose", "mouth", "socks", "shoes", "head", "neck", "eyewear"] {
+            removeClothingItem(for: category)
+        }
+        
+        // Load base model if not already loaded
+        if baseEntity == nil {
+            do {
+                baseEntity = try Entity.loadModel(named: "body_2") as? ModelEntity
+                baseEntity?.name = "Avatar"
+                setupBaseEntity()
+            } catch {
+                print("Error loading base avatar model: \(error)")
+                return
+            }
+        }
+
         // Restore chosen models and colors from avatarData
         for (category, entry) in avatarData.selections {
+            print("DEBUG: Processing category: \(category)")
             if let modelName = entry["model"] {
+                print("DEBUG: Loading model: \(modelName) for category: \(category)")
                 chosenModels[category] = modelName
+                loadClothingItem(named: modelName, category: category)
             }
             if let colorString = entry["color"], let color = UIColor(hex: colorString) {
+                print("DEBUG: Setting color: \(colorString) for category: \(category)")
                 chosenColors[category] = color
-            }
-        }
-
-        // Always apply skin color if present (even without a model)
-        if let skinColor = chosenColors["skin"] {
-            changeSkinColor(to: skinColor)
-        }
-
-        // For all other categories, load model and apply color
-        for (category, modelName) in chosenModels where category != "skin" && !modelName.isEmpty {
-            loadClothingItem(named: modelName, category: category)
-            if let color = chosenColors[category] {
-                changeClothingItemColor(for: category, to: color)
+                if category == "skin" {
+                    changeSkinColor(to: color)
+                } else {
+                    changeClothingItemColor(for: category, to: color)
+                }
             }
         }
     }

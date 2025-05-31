@@ -11,6 +11,7 @@ class CollectionPlacesViewController: UIViewController {
     private var places: [PlaceCollection.Place] = []
     private var sessionToken: GMSAutocompleteSessionToken?
     private var sharedFriendsCount: Int = 0
+    private var avatarViewController: Avatar3DViewController?
 
     // MARK: - UI Components
 
@@ -18,6 +19,17 @@ class CollectionPlacesViewController: UIViewController {
         let view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
         view.backgroundColor = .systemBackground
+        return view
+    }()
+
+    private lazy var avatarContainer: UIView = {
+        let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.backgroundColor = .clear
+        view.layer.cornerRadius = 8
+        view.isUserInteractionEnabled = true
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(avatarContainerTapped))
+        view.addGestureRecognizer(tapGesture)
         return view
     }()
 
@@ -48,16 +60,6 @@ class CollectionPlacesViewController: UIViewController {
         label.font = .systemFont(ofSize: 20, weight: .bold)
         label.textColor = .label
         return label
-    }()
-
-    private lazy var customizeButton: UIButton = {
-        let button = UIButton(type: .system)
-        button.translatesAutoresizingMaskIntoConstraints = false
-        button.setTitle("Customize", for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
-        button.tintColor = .systemBlue
-        button.addTarget(self, action: #selector(customizeButtonTapped), for: .touchUpInside)
-        return button
     }()
 
     private lazy var sharedFriendsLabel: UILabel = {
@@ -126,17 +128,17 @@ class CollectionPlacesViewController: UIViewController {
         view.backgroundColor = .systemBackground
         view.addSubview(headerView)
         headerView.addSubview(titleLabel)
-        headerView.addSubview(customizeButton)
         headerView.addSubview(menuButton)
         headerView.addSubview(sharedFriendsLabel)
         headerView.addSubview(placesCountLabel)
+        headerView.addSubview(avatarContainer)
         view.addSubview(tableView)
 
         NSLayoutConstraint.activate([
             headerView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             headerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             headerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            headerView.heightAnchor.constraint(equalToConstant: 140),
+            headerView.heightAnchor.constraint(equalToConstant: 300), // Increased height for larger avatar
 
             titleLabel.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 16),
             titleLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
@@ -153,23 +155,79 @@ class CollectionPlacesViewController: UIViewController {
             placesCountLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
             placesCountLabel.leadingAnchor.constraint(equalTo: sharedFriendsLabel.trailingAnchor, constant: 16),
 
-            customizeButton.topAnchor.constraint(equalTo: sharedFriendsLabel.bottomAnchor, constant: 16),
-            customizeButton.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
-            customizeButton.heightAnchor.constraint(equalToConstant: 44),
+            avatarContainer.topAnchor.constraint(equalTo: sharedFriendsLabel.bottomAnchor, constant: 16),
+            avatarContainer.leadingAnchor.constraint(equalTo: headerView.leadingAnchor),
+            avatarContainer.trailingAnchor.constraint(equalTo: headerView.trailingAnchor),
+            avatarContainer.heightAnchor.constraint(equalToConstant: 180), // Increased height for larger avatar
 
             tableView.topAnchor.constraint(equalTo: headerView.bottomAnchor),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
+
+        setupAvatarView()
+    }
+
+    private func setupAvatarView() {
+        avatarViewController = Avatar3DViewController()
+        guard let avatarVC = avatarViewController else { return }
+        
+        addChild(avatarVC)
+        avatarContainer.addSubview(avatarVC.view)
+        avatarVC.view.translatesAutoresizingMaskIntoConstraints = false
+        
+        NSLayoutConstraint.activate([
+            avatarVC.view.topAnchor.constraint(equalTo: avatarContainer.topAnchor),
+            avatarVC.view.leadingAnchor.constraint(equalTo: avatarContainer.leadingAnchor),
+            avatarVC.view.trailingAnchor.constraint(equalTo: avatarContainer.trailingAnchor),
+            avatarVC.view.bottomAnchor.constraint(equalTo: avatarContainer.bottomAnchor)
+        ])
+        
+        avatarVC.didMove(toParent: self)
+        loadAvatarData()
+    }
+
+    private func loadAvatarData() {
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        let db = Firestore.firestore()
+        
+        print("DEBUG: Loading avatar data for collection: \(collection.id)")
+        db.collection("users")
+            .document(currentUserId)
+            .collection("collections")
+            .document(collection.id)
+            .getDocument { [weak self] snapshot, error in
+                if let error = error {
+                    print("Error loading collection: \(error.localizedDescription)")
+                    return
+                }
+                
+                if let avatarData = snapshot?.data()?["avatarData"] as? [String: Any] {
+                    print("DEBUG: Found avatar data: \(avatarData)")
+                    if let avatarData = CollectionAvatar.AvatarData.fromFirestoreDict(avatarData) {
+                        DispatchQueue.main.async {
+                            print("DEBUG: Loading avatar data into view controller")
+                            self?.avatarViewController?.loadAvatarData(avatarData)
+                        }
+                    } else {
+                        print("DEBUG: Failed to parse avatar data")
+                    }
+                } else {
+                    print("DEBUG: No avatar data found in collection")
+                }
+            }
     }
 
     // MARK: - Actions
-    @objc private func customizeButtonTapped() {
+    @objc private func avatarContainerTapped() {
         let avatarVC = AvatarCustomViewController(collectionId: collection.id)
         let navController = UINavigationController(rootViewController: avatarVC)
         navController.modalPresentationStyle = .fullScreen
-        present(navController, animated: true, completion: nil)
+        present(navController, animated: true) { [weak self] in
+            // Reload avatar data after customization
+            self?.loadAvatarData()
+        }
     }
 
     @objc private func menuButtonTapped() {
