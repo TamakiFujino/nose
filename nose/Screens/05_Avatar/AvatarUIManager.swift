@@ -129,9 +129,17 @@ class AvatarUIManager: NSObject {
     @objc private func colorButtonTapped(_ sender: UIButton) {
         guard let color = sender.backgroundColor else { return }
         let category = bottomSheetView.getCurrentCategory()
-        bottomSheetView.changeSelectedCategoryColor(to: color)
+        // Call the efficient color change method on the 3D view controller
+        if category == "skin" {
+            avatar3DViewController?.changeSkinColor(to: color)
+        } else {
+            avatar3DViewController?.changeClothingItemColor(for: category, to: color)
+        }
         selectColorButton(sender)
+        
+        // Save the color to the chosenColors dictionary (could be redundant, but for UI sync)
         avatar3DViewController?.chosenColors[category] = color
+        print("Saved color for \(category): \(color.toHexString())")
     }
 
     private func selectColorButton(_ button: UIButton) {

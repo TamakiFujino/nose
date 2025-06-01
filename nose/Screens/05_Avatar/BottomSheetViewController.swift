@@ -222,6 +222,7 @@ class BottomSheetContentView: UIView {
     // MARK: - Public Interface
     func changeSelectedCategoryColor(to color: UIColor) {
         let category = getCurrentCategory()
+        // Call the efficient color change method on the 3D view controller
         if category == "skin" {
             avatar3DViewController?.changeSkinColor(to: color)
         } else {
