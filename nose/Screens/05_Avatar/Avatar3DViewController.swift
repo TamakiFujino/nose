@@ -327,19 +327,16 @@ class Avatar3DViewController: UIViewController {
             if let color = chosenColors[category] {
                 changeClothingItemColor(for: category, to: color)
             }
-        } else {
-            // Load asynchronously
-            Entity.loadModelAsync(named: modelName)
-                .receive(on: DispatchQueue.main)
-                .sink(receiveCompletion: { completion in
-                    if case .failure(let error) = completion {
-                        print("Failed to load model: \(error)")
-                    }
-                }, receiveValue: { [weak self] loadedEntity in
-                    guard let self = self else { return }
-                    guard let loaded = loadedEntity as? ModelEntity else { return }
-                    self.modelCache[modelName] = loaded
-                    let modelEntity = loaded.clone(recursive: true)
+            return
+        }
+        
+        // Load asynchronously from Firebase Storage
+        Task {
+            do {
+                let loadedEntity = try await AvatarResourceManager.shared.loadModelEntity(named: modelName)
+                await MainActor.run {
+                    self.modelCache[modelName] = loadedEntity
+                    let modelEntity = loadedEntity.clone(recursive: true)
                     modelEntity.name = modelName
                     modelEntity.scale = SIMD3<Float>(repeating: 1.0)
                     
@@ -353,8 +350,10 @@ class Avatar3DViewController: UIViewController {
                     if let color = self.chosenColors[category] {
                         self.changeClothingItemColor(for: category, to: color)
                     }
-                })
-                .store(in: &cancellables)
+                }
+            } catch {
+                print("Failed to load model: \(error)")
+            }
         }
     }
 

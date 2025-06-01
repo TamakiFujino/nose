@@ -1172,6 +1172,9 @@ PODS:
   - Firebase/Firestore (11.7.0):
     - Firebase/CoreOnly
     - FirebaseFirestore (~> 11.7.0)
+  - Firebase/Storage (11.7.0):
+    - Firebase/CoreOnly
+    - FirebaseStorage (~> 11.7.0)
   - FirebaseAnalytics (11.7.0):
     - FirebaseAnalytics/AdIdSupport (= 11.7.0)
     - FirebaseCore (~> 11.7.0)
@@ -1235,6 +1238,13 @@ PODS:
     - GoogleUtilities/UserDefaults (~> 8.0)
     - PromisesObjC (~> 2.4)
   - FirebaseSharedSwift (11.8.0)
+  - FirebaseStorage (11.7.0):
+    - FirebaseAppCheckInterop (~> 11.0)
+    - FirebaseAuthInterop (~> 11.0)
+    - FirebaseCore (~> 11.7.0)
+    - FirebaseCoreExtension (~> 11.7.0)
+    - GoogleUtilities/Environment (~> 8.0)
+    - GTMSessionFetcher/Core (< 5.0, >= 3.4)
   - GoogleAppMeasurement (11.7.0):
     - GoogleAppMeasurement/AdIdSupport (= 11.7.0)
     - GoogleUtilities/AppDelegateSwizzler (~> 8.0)
@@ -1398,6 +1408,7 @@ DEPENDENCIES:
   - Firebase/Auth
   - Firebase/Core
   - Firebase/Firestore
+  - Firebase/Storage
   - GoogleMaps
   - GooglePlaces
   - GoogleSignIn
@@ -1420,6 +1431,7 @@ SPEC REPOS:
     - FirebaseFirestoreInternal
     - FirebaseInstallations
     - FirebaseSharedSwift
+    - FirebaseStorage
     - GoogleAppMeasurement
     - GoogleMaps
     - GooglePlaces
@@ -1451,6 +1463,7 @@ SPEC CHECKSUMS:
   FirebaseFirestoreInternal: 953e31e70db09d928b927b65761171c680d2ea9b
   FirebaseInstallations: 9347e719c3d52d8d7b9074b2c32407dd027305e9
   FirebaseSharedSwift: 672954eac7b141d6954fab9a32d45d6b1d922df8
+  FirebaseStorage: d35da127dd49edcbd07b8c07cf651a70161558b2
   GoogleAppMeasurement: 0471a5b5bff51f3a91b1e76df22c952d04c63967
   GoogleMaps: 634ec3ca99698b31ca2253d64f017217d70cfb38
   GooglePlaces: f997a80fb7b88233ad53aa8c9d5f092c86ceae54
@@ -1465,6 +1478,6 @@ SPEC CHECKSUMS:
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
   RecaptchaInterop: 7d1a4a01a6b2cb1610a47ef3f85f0c411434cb21
 
-PODFILE CHECKSUM: 9c66ff1107e8faca435b8499d98e194c00dd842a
+PODFILE CHECKSUM: a57e0b02ad0b7a7fb332dc48b7e79aeadefb9bb7
 
 COCOAPODS: 1.16.2

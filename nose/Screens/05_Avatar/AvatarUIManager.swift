@@ -1,4 +1,5 @@
 import UIKit
+import FirebaseStorage
 
 class AvatarUIManager: NSObject {
     // MARK: - Properties
@@ -10,29 +11,32 @@ class AvatarUIManager: NSObject {
     private var colorButtons: [UIButton] = []
     private var availableColors: [UIColor] = []
     private var selectedColorButton: UIButton?
+    
+    private let storage = Storage.storage()
 
     // MARK: - Initialization
     init(viewController: UIViewController, avatar3DViewController: Avatar3DViewController) {
         self.viewController = viewController
         self.avatar3DViewController = avatar3DViewController
         super.init()
-        loadAvailableColors()
+        Task {
+            await loadAvailableColors()
+        }
         setupAdditionalBottomSheetView()
         setupBottomSheetView()
         setDefaultColor()
     }
 
     // MARK: - Setup
-    private func loadAvailableColors() {
-        guard let url = Bundle.main.url(forResource: "colors", withExtension: "json") else {
-            print("Failed to locate colors.json in bundle.")
-            return
-        }
-
+    private func loadAvailableColors() async {
         do {
-            let data = try Data(contentsOf: url)
+            let jsonRef = storage.reference().child("avatar_assets/json/colors.json")
+            let maxSize: Int64 = 1 * 1024 * 1024 // 1MB max size
+            let data = try await jsonRef.data(maxSize: maxSize)
+            
             if let colorStrings = try JSONSerialization.jsonObject(with: data, options: []) as? [String: [String]] {
                 availableColors = colorStrings["colors"]?.compactMap { UIColor(hex: $0) } ?? []
+                print("Successfully loaded \(availableColors.count) colors")
             }
         } catch {
             print("Failed to load or decode colors.json: \(error)")

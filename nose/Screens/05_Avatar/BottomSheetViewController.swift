@@ -1,9 +1,9 @@
 import UIKit
+import FirebaseStorage
 
 // MARK: - Model
 struct Model: Codable {
     let name: String
-    let thumbnail: String
 }
 
 class BottomSheetContentView: UIView {
@@ -20,6 +20,8 @@ class BottomSheetContentView: UIView {
     private let baseTabItems = ["Skin", "Eye", "Eyebrow"]
     private let hairTabItems = ["Base", "Front", "Back"]
     private let clothesTabItems = ["Tops", "Bottoms", "Socks"]
+    
+    private let storage = Storage.storage()
 
     // MARK: - Initialization
     override init(frame: CGRect) {
@@ -42,8 +44,12 @@ class BottomSheetContentView: UIView {
         setupChildTabBar()
         setupScrollView()
         setupContentView()
-        loadModels(for: "base")
-        loadContentForSelectedTab()
+        
+        // Use Task to handle async call
+        Task {
+            await loadModels(for: "base")
+            loadContentForSelectedTab()
+        }
     }
 
     private func setupParentTabBar() {
@@ -103,28 +109,76 @@ class BottomSheetContentView: UIView {
     }
 
     // MARK: - Data Loading
-    private func loadModels(for category: String) {
-        guard let url = Bundle.main.url(forResource: category, withExtension: "json") else {
-            print("Failed to locate \(category).json in bundle.")
+    private func loadModels(for category: String) async {
+        // Skip loading models for color-only categories
+        if category == "skin" {
+            models = []
             return
         }
 
         do {
-            let data = try Data(contentsOf: url)
-            models = try JSONDecoder().decode([Model].self, from: data)
+            // Get the main category file name
+            let mainCategory: String
+            switch category {
+            case "skin", "eyes", "eyebrows":
+                mainCategory = "base"
+            case "hair_base", "hair_front", "hair_back":
+                mainCategory = "hair"
+            case "tops", "bottoms", "socks":
+                mainCategory = "clothes"
+            default:
+                print("Unknown category: \(category)")
+                models = []
+                return
+            }
+
+            let jsonRef = storage.reference().child("avatar_assets/json/\(mainCategory).json")
+            let maxSize: Int64 = 1 * 1024 * 1024 // 1MB max size
+            let data = try await jsonRef.data(maxSize: maxSize)
+            
+            // Decode the dictionary with arrays
+            let dict = try JSONDecoder().decode([String: [String]].self, from: data)
+            
+            // Get the subcategory name
+            let subcategory: String
+            switch category {
+            case "skin": subcategory = "skin"
+            case "eyes": subcategory = "eyes"
+            case "eyebrows": subcategory = "eyebrows"
+            case "hair_base": subcategory = "base"
+            case "hair_front": subcategory = "front"
+            case "hair_back": subcategory = "back"
+            case "tops": subcategory = "tops"
+            case "bottoms": subcategory = "bottoms"
+            case "socks": subcategory = "socks"
+            default: subcategory = category
+            }
+            
+            if let modelsArray = dict[subcategory] {
+                models = modelsArray.map { Model(name: $0) }
+                print("Successfully loaded models for category: \(category) from \(mainCategory).json")
+            } else {
+                print("No models found for subcategory: \(subcategory) in \(mainCategory).json")
+                models = []
+            }
         } catch {
-            print("Failed to load or decode \(category).json: \(error)")
+            print("Failed to load or decode \(category) from main category JSON: \(error)")
+            models = []
         }
     }
 
     // MARK: - Actions
     @objc private func parentTabChanged() {
         updateChildTabBar()
-        loadContentForSelectedTab()
+        Task {
+            await loadContentForSelectedTab()
+        }
     }
 
     @objc private func childTabChanged() {
-        loadContentForSelectedTab()
+        Task {
+            await loadContentForSelectedTab()
+        }
     }
 
     private func updateChildTabBar() {
@@ -146,11 +200,20 @@ class BottomSheetContentView: UIView {
     private func loadContentForSelectedTab() {
         contentView.subviews.forEach { $0.removeFromSuperview() }
         let category = getCurrentCategory()
-        loadModels(for: category)
-        setupThumbnails(for: category)
+        
+        // Use Task to handle async call
+        Task {
+            await loadModels(for: category)
+            setupThumbnails(for: category)
+        }
     }
 
     private func setupThumbnails(for category: String) {
+        // Skip thumbnail setup for color-only categories
+        if category == "skin" {
+            return
+        }
+
         let padding: CGFloat = 10
         let buttonSize: CGFloat = (bounds.width - (padding * 5)) / 4
         var lastButton: UIButton?
@@ -179,7 +242,16 @@ class BottomSheetContentView: UIView {
     private func createThumbnailButton(model: Model, index: Int, frame: CGRect, category: String) -> UIButton {
         let button = UIButton(frame: frame)
         button.tag = index
-        button.setImage(UIImage(named: model.thumbnail), for: .normal)
+        
+        // Load thumbnail asynchronously
+        Task {
+            if let image = await AvatarResourceManager.shared.loadThumbnail(for: model.name) {
+                DispatchQueue.main.async {
+                    button.setImage(image, for: .normal)
+                }
+            }
+        }
+        
         button.addTarget(self, action: #selector(thumbnailTapped(_:)), for: .touchUpInside)
 
         if let selectedModel = selectedModels[category], selectedModel == model.name {
@@ -235,8 +307,8 @@ class BottomSheetContentView: UIView {
         case 0: // Base tab
             switch childTabBar.selectedSegmentIndex {
             case 0: return "skin"
-            case 1: return "eye"
-            case 2: return "eyebrow"
+            case 1: return "eyes"
+            case 2: return "eyebrows"
             default: return ""
             }
         case 1: // Hair tab
