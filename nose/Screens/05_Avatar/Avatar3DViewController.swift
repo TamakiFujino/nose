@@ -2,6 +2,8 @@ import UIKit
 import RealityKit
 import Combine
 
+private var modelCache: [String: ModelEntity] = [:]
+
 class Avatar3DViewController: UIViewController {
 
     // MARK: - Properties
@@ -112,6 +114,7 @@ class Avatar3DViewController: UIViewController {
         lightAnchor.addChild(light)
         arView.scene.anchors.append(lightAnchor)
     }
+    
 
     // MARK: - Avatar Management
 
@@ -170,28 +173,28 @@ class Avatar3DViewController: UIViewController {
             existingEntity.removeFromParent()
         }
 
-        // Load new model asynchronously
-        Entity.loadModelAsync(named: modelName)
-            .receive(on: DispatchQueue.main)
-            .sink(receiveCompletion: { completion in
-                if case .failure(let error) = completion {
-                    print("Error loading model: \(error)")
-                }
-            }, receiveValue: { [weak self] entity in
-                guard let self = self else { return }
-                let modelEntity = entity as? ModelEntity
-                modelEntity?.name = modelName
-                modelEntity?.scale = SIMD3<Float>(repeating: 1.0)
-                if let modelEntity = modelEntity {
-                    self.baseEntity?.addChild(modelEntity)
-                    // Apply color if present
-                    if let color = self.chosenColors[category] {
-                        self.changeClothingItemColor(for: category, to: color)
-                    }
-                }
-                self.chosenModels[category] = modelName
-            })
-            .store(in: &cancellables)
+        // Try to get from cache
+        let modelEntity: ModelEntity
+        if let cached = modelCache[modelName] {
+            modelEntity = cached.clone(recursive: true)
+        } else {
+            guard let loaded = try? Entity.loadModel(named: modelName) as? ModelEntity else {
+                print("Failed to load model: \(modelName)")
+                return
+            }
+            modelCache[modelName] = loaded
+            modelEntity = loaded.clone(recursive: true)
+        }
+
+        modelEntity.name = modelName
+        modelEntity.scale = SIMD3<Float>(repeating: 1.0)
+        baseEntity?.addChild(modelEntity)
+        chosenModels[category] = modelName
+
+        // Apply color if already chosen
+        if let color = chosenColors[category] {
+            changeClothingItemColor(for: category, to: color)
+        }
     }
 
     func removeClothingItem(for category: String) {
