@@ -206,44 +206,33 @@ class Avatar3DViewController: UIViewController {
     }
 
     // MARK: - Color Management
-
     func changeClothingItemColor(for category: String, to color: UIColor, materialIndex: Int = 0) {
         guard let modelName = chosenModels[category],
               let entity = baseEntity?.findEntity(named: modelName) as? ModelEntity,
-              let materialsCount = entity.model?.materials.count,
-              materialIndex < materialsCount else {
+              var materials = entity.model?.materials,
+              materialIndex < materials.count else {
+            print("Model entity or material index not found for category: \(category)")
             return
         }
-
-        var material = SimpleMaterial()
-        material.baseColor = .color(color)
-        material.roughness = MaterialScalarParameter(floatLiteral: 0.5)
-        material.metallic = MaterialScalarParameter(floatLiteral: 0.1)
-
-        if var materials = entity.model?.materials {
-            materials[materialIndex] = material
-            entity.model?.materials = materials
-        }
-        
+        let newSimpleMaterial = SimpleMaterial(color: color, isMetallic: false)
+        materials[materialIndex] = newSimpleMaterial
+        entity.model?.materials = materials
         chosenColors[category] = color
+        print("Set color for \(category) by replacing with SimpleMaterial")
     }
 
     func changeSkinColor(to color: UIColor, materialIndex: Int = 0) {
-        guard let baseEntity,
-              let materialsCount = baseEntity.model?.materials.count,
-              materialIndex < materialsCount else {
+        guard let baseEntity = baseEntity,
+              var materials = baseEntity.model?.materials,
+              materialIndex < materials.count else {
+            print("Base entity or material index out of bounds")
             return
         }
-
-        var material = SimpleMaterial()
-        material.baseColor = .color(color)
-        material.roughness = MaterialScalarParameter(floatLiteral: 0.5)
-        material.metallic = MaterialScalarParameter(floatLiteral: 0.1)
-
-        if var materials = baseEntity.model?.materials {
-            materials[materialIndex] = material
-            baseEntity.model?.materials = materials
-        }
+        let newSimpleMaterial = SimpleMaterial(color: color, isMetallic: false)
+        materials[materialIndex] = newSimpleMaterial
+        baseEntity.model?.materials = materials
+        chosenColors["skin"] = color
+        print("Set skin color by replacing with SimpleMaterial")
     }
 
     // MARK: - State Management
