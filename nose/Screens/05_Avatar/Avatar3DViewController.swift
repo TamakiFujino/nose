@@ -2,8 +2,6 @@ import UIKit
 import RealityKit
 import Combine
 
-private var modelCache: [String: ModelEntity] = [:]
-
 class Avatar3DViewController: UIViewController {
 
     // MARK: - Properties
@@ -16,6 +14,8 @@ class Avatar3DViewController: UIViewController {
     var selectedItem: Any?
     var cancellables = Set<AnyCancellable>()
     var currentUserId: String = "defaultUser"
+    
+    private var modelCache: [String: ModelEntity] = [:]
 
     // MARK: - Computed Properties
 
@@ -114,7 +114,6 @@ class Avatar3DViewController: UIViewController {
         lightAnchor.addChild(light)
         arView.scene.anchors.append(lightAnchor)
     }
-    
 
     // MARK: - Avatar Management
 
@@ -139,13 +138,19 @@ class Avatar3DViewController: UIViewController {
     }
 
     private func loadBaseModel() {
-        do {
-            baseEntity = try Entity.loadModel(named: "body_2") as? ModelEntity
-            baseEntity?.name = "Avatar"
-            setupBaseEntity()
-        } catch {
-            print("Error loading base avatar model: \(error)")
-        }
+        Entity.loadModelAsync(named: "body_2")
+            .receive(on: DispatchQueue.main)
+            .sink(receiveCompletion: { completion in
+                if case .failure(let error) = completion {
+                    print("Error loading base avatar model: \(error)")
+                }
+            }, receiveValue: { [weak self] entity in
+                guard let self = self else { return }
+                self.baseEntity = entity as? ModelEntity
+                self.baseEntity?.name = "Avatar"
+                self.setupBaseEntity()
+            })
+            .store(in: &cancellables)
     }
 
     private func applyAvatarData(_ avatarData: CollectionAvatar.AvatarData) {
@@ -174,26 +179,38 @@ class Avatar3DViewController: UIViewController {
         }
 
         // Try to get from cache
-        let modelEntity: ModelEntity
         if let cached = modelCache[modelName] {
-            modelEntity = cached.clone(recursive: true)
-        } else {
-            guard let loaded = try? Entity.loadModel(named: modelName) as? ModelEntity else {
-                print("Failed to load model: \(modelName)")
-                return
+            let modelEntity = cached.clone(recursive: true)
+            modelEntity.name = modelName
+            modelEntity.scale = SIMD3<Float>(repeating: 1.0)
+            baseEntity?.addChild(modelEntity)
+            chosenModels[category] = modelName
+            // Apply color if already chosen
+            if let color = chosenColors[category] {
+                changeClothingItemColor(for: category, to: color)
             }
-            modelCache[modelName] = loaded
-            modelEntity = loaded.clone(recursive: true)
-        }
-
-        modelEntity.name = modelName
-        modelEntity.scale = SIMD3<Float>(repeating: 1.0)
-        baseEntity?.addChild(modelEntity)
-        chosenModels[category] = modelName
-
-        // Apply color if already chosen
-        if let color = chosenColors[category] {
-            changeClothingItemColor(for: category, to: color)
+        } else {
+            // Load asynchronously
+            Entity.loadModelAsync(named: modelName)
+                .receive(on: DispatchQueue.main)
+                .sink(receiveCompletion: { completion in
+                    if case .failure(let error) = completion {
+                        print("Failed to load model: \(error)")
+                    }
+                }, receiveValue: { [weak self] loadedEntity in
+                    guard let self = self else { return }
+                    guard let loaded = loadedEntity as? ModelEntity else { return }
+                    self.modelCache[modelName] = loaded
+                    let modelEntity = loaded.clone(recursive: true)
+                    modelEntity.name = modelName
+                    modelEntity.scale = SIMD3<Float>(repeating: 1.0)
+                    self.baseEntity?.addChild(modelEntity)
+                    self.chosenModels[category] = modelName
+                    if let color = self.chosenColors[category] {
+                        self.changeClothingItemColor(for: category, to: color)
+                    }
+                })
+                .store(in: &cancellables)
         }
     }
 
