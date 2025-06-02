@@ -1,10 +1,18 @@
 import UIKit
 import RealityKit
 import FirebaseStorage
+import Foundation
 
 final class AvatarResourceManager {
     static let shared = AvatarResourceManager()
-    private init() {}
+    private init() {
+        // Configure URLCache
+        cache.diskCapacity = maxCacheSize
+        cache.memoryCapacity = maxCacheSize / 2
+        
+        // Start periodic cache cleanup
+        startCacheCleanup()
+    }
 
     private let storage = Storage.storage()
     private let fileManager = FileManager.default
@@ -13,6 +21,11 @@ final class AvatarResourceManager {
     private let thumbnailCache = NSCache<NSString, UIImage>()
     private var cachedColors: [ColorModel] = []
     private var cachedModels: [String: [String: [String]]] = [:]
+    private let cache = URLCache.shared
+    private let maxCacheSize: Int = 100 * 1024 * 1024 // 100MB
+    private var modelCache: [String: ModelEntity] = [:]
+    private var loadingTasks: [String: Task<ModelEntity?, Error>] = [:]
+    private var loadedCategories: Set<String> = []  // Track loaded categories
 
     // MARK: - Directory for caching
     private var cacheDirectory: URL {
@@ -33,32 +46,105 @@ final class AvatarResourceManager {
         async let modelsTask = loadModels()
         
         // Wait for both tasks to complete
-        try await (colorsTask, modelsTask)
+        let colors = try await colorsTask
+        let models = try await modelsTask
         
-        print("✅ All resources preloaded successfully")
+        // Store the loaded data
+        cachedColors = colors.map { color in
+            ColorModel(name: color.toHexString() ?? "", hex: color.toHexString() ?? "")
+        }
+        cachedModels = models
+        
+        print("✅ Preloaded \(colors.count) colors and \(models.count) model categories")
     }
 
-    private func loadColors() async throws {
+    private func loadColors() async throws -> [UIColor] {
         print("🔄 Loading colors...")
+
         let jsonRef = storage.reference().child("avatar_assets/json/colors.json")
-        let maxSize: Int64 = 1 * 1024 * 1024
-        let data = try await jsonRef.data(maxSize: maxSize)
-        let colors = try JSONDecoder().decode([ColorModel].self, from: data)
-        self.cachedColors = colors
-        print("✅ Colors loaded: \(colors.count)")
+        let maxSize: Int64 = 1 * 1024 * 1024 // 1MB
+
+        do {
+            let data = try await jsonRef.data(maxSize: maxSize)
+            print("📦 Downloaded colors.json: \(String(data: data, encoding: .utf8) ?? "unable to decode")")
+
+            let jsonObject = try JSONSerialization.jsonObject(with: data, options: [])
+            
+            guard let colorObjects = jsonObject as? [[String: String]] else {
+                print("❌ colors.json is not in expected format [[String: String]]")
+                return []
+            }
+
+            print("🎨 Found \(colorObjects.count) color objects")
+
+            let colors: [UIColor] = colorObjects.compactMap { obj -> UIColor? in
+                guard let hex = obj["hex"] else {
+                    print("⚠️ Skipping color object due to missing 'hex'")
+                    return nil
+                }
+                guard let color = UIColor(hex: hex) else {
+                    print("⚠️ Failed to convert hex '\(hex)' to UIColor")
+                    return nil
+                }
+                print("🎨 Converted hex \(hex) to color: \(color.toHexString() ?? "n/a")")
+                return color
+            }
+
+            print("✅ Successfully loaded \(colors.count) valid colors")
+            return colors
+        } catch {
+            print("❌ Error loading colors.json: \(error.localizedDescription)")
+            throw error
+        }
     }
 
-    private func loadModels() async throws {
+
+    private func loadModels() async throws -> [String: [String: [String]]] {
         print("🔄 Loading models...")
-        let categories = ["base", "hair", "clothes"]
-        for category in categories {
-            print("📦 Loading models for category: \(category)")
-            let jsonRef = storage.reference().child("avatar_assets/json/\(category).json")
-            let maxSize: Int64 = 1 * 1024 * 1024
+        
+        // Load each JSON file concurrently
+        async let baseTask = loadModelFile("base.json")
+        async let clothesTask = loadModelFile("clothes.json")
+        async let hairTask = loadModelFile("hair.json")
+        
+        // Wait for all tasks to complete
+        let base = try await baseTask
+        let clothes = try await clothesTask
+        let hair = try await hairTask
+        
+        // Combine all models
+        var allModels: [String: [String: [String]]] = [:]
+        allModels["base"] = base
+        allModels["clothes"] = clothes
+        allModels["hair"] = hair
+        
+        print("✅ Successfully loaded models from all categories")
+        return allModels
+    }
+    
+    private func loadModelFile(_ filename: String) async throws -> [String: [String]] {
+        let jsonRef = storage.reference().child("avatar_assets/json/\(filename)")
+        let maxSize: Int64 = 1 * 1024 * 1024 // 1MB
+        
+        do {
             let data = try await jsonRef.data(maxSize: maxSize)
-            let models = try JSONDecoder().decode([String: [String]].self, from: data)
-            self.cachedModels[category] = models
-            print("✅ Loaded \(models.count) subcategories for \(category)")
+            print("📦 Downloaded \(filename): \(String(data: data, encoding: .utf8) ?? "unable to decode")")
+            
+            let json = try JSONSerialization.jsonObject(with: data, options: [])
+            guard let modelObjects = json as? [String: [String]] else {
+                print("❌ \(filename) is not in expected format [String: [String]]")
+                return [:]
+            }
+            
+            print("✅ Successfully loaded \(modelObjects.count) categories from \(filename)")
+            return modelObjects
+        } catch let error as NSError {
+            if error.domain == "com.google.HTTPStatus" && error.code == 404 {
+                print("⚠️ \(filename) not found in Firebase Storage. Using empty model list.")
+                return [:]
+            }
+            print("❌ Error loading \(filename): \(error.localizedDescription)")
+            throw error
         }
     }
 
@@ -80,26 +166,71 @@ final class AvatarResourceManager {
 
     // MARK: - ModelEntity Loading (with download & cache)
     func loadModelEntity(named modelName: String) async throws -> ModelEntity {
+        // Check memory cache first
         if let entity = modelEntities[modelName] {
+            print("📦 Using cached model entity for: \(modelName)")
             return entity
         }
-        let modelFileURL = cacheDirectory.appendingPathComponent("\(modelName).usdz")
-        if !fileManager.fileExists(atPath: modelFileURL.path) {
-            try await downloadModel(named: modelName, to: modelFileURL)
+        
+        // Check if there's an ongoing loading task
+        if let existingTask = loadingTasks[modelName] {
+            print("⏳ Using existing loading task for: \(modelName)")
+            if let entity = try await existingTask.value {
+                return entity
+            } else {
+                throw NSError(domain: "AvatarResourceManager", code: 404, userInfo: [NSLocalizedDescriptionKey: "Failed to load model: \(modelName)"])
+            }
         }
-        let modelEntity: ModelEntity
-        if #available(iOS 15.0, *) {
-            modelEntity = try await ModelEntity.loadModel(contentsOf: modelFileURL)
+        
+        // Create new loading task
+        let task = Task<ModelEntity?, Error> {
+            let modelFileURL = cacheDirectory.appendingPathComponent("\(modelName).usdz")
+            
+            // Check if file exists in cache
+            if fileManager.fileExists(atPath: modelFileURL.path) {
+                print("📦 Found cached file for: \(modelName)")
+                do {
+                    let modelEntity = try await loadModelFromFile(modelFileURL)
+                    modelEntities[modelName] = modelEntity
+                    modelFileURLs[modelName] = modelFileURL
+                    return modelEntity
+                } catch {
+                    print("❌ Error loading cached model: \(error)")
+                    // If cached model fails to load, continue with download
+                }
+            }
+            
+            // Download if not in cache
+            print("⬇️ Downloading model: \(modelName)")
+            try await downloadModel(named: modelName, to: modelFileURL)
+            
+            // Load the downloaded model
+            let modelEntity = try await loadModelFromFile(modelFileURL)
+            modelEntities[modelName] = modelEntity
+            modelFileURLs[modelName] = modelFileURL
+            return modelEntity
+        }
+        
+        loadingTasks[modelName] = task
+        defer { loadingTasks[modelName] = nil }
+        
+        if let entity = try await task.value {
+            return entity
         } else {
-            let entity = try await ModelEntity.load(contentsOf: modelFileURL)
-            guard let modelEntityCasted = entity as? ModelEntity else {
+            throw NSError(domain: "AvatarResourceManager", code: 404, userInfo: [NSLocalizedDescriptionKey: "Failed to load model: \(modelName)"])
+        }
+    }
+    
+    private func loadModelFromFile(_ fileURL: URL) async throws -> ModelEntity {
+        if #available(iOS 15.0, *) {
+            return try await ModelEntity.loadModel(contentsOf: fileURL)
+        } else {
+            let entity = try await ModelEntity.load(contentsOf: fileURL)
+            guard let modelEntity = entity as? ModelEntity else {
                 throw NSError(domain: "AvatarResourceManager", code: 422, userInfo: [NSLocalizedDescriptionKey: "Loaded entity is not a ModelEntity"])
             }
-            modelEntity = modelEntityCasted
+            return modelEntity
         }
-        modelEntities[modelName] = modelEntity
-        modelFileURLs[modelName] = modelFileURL
-        return modelEntity
     }
 
     private func downloadModel(named modelName: String, to fileURL: URL) async throws {
@@ -150,6 +281,7 @@ final class AvatarResourceManager {
         thumbnailCache.removeAllObjects()
         cachedColors.removeAll()
         cachedModels.removeAll()
+        loadedCategories.removeAll()  // Clear loaded categories
     }
 
     // MARK: - Utility: Category/Subcategory Mapping
@@ -163,9 +295,11 @@ final class AvatarResourceManager {
         } else if modelName.starts(with: "hair_") {
             if modelName.contains("_base") {
                 return ("hair", "base")
-            } else if modelName.contains("_front") {
+            } else if modelName.contains("hairfront_") {
                 return ("hair", "front")
-            } else if modelName.contains("_back") {
+            } else if modelName.contains("hairside_") {
+                return ("hair", "side")
+            } else if modelName.contains("hairback_") {
                 return ("hair", "back")
             }
         } else if modelName.starts(with: "eye_") {
@@ -174,5 +308,108 @@ final class AvatarResourceManager {
             return ("base", "eyebrows")
         }
         return ("base", "base")
+    }
+
+    // MARK: - Cache Management
+    private func startCacheCleanup() {
+        // Clean cache every 24 hours
+        Timer.scheduledTimer(withTimeInterval: 24 * 60 * 60, repeats: true) { [weak self] _ in
+            self?.cleanCache()
+        }
+    }
+    
+    private func cleanCache() {
+        do {
+            let contents = try fileManager.contentsOfDirectory(at: cacheDirectory, includingPropertiesForKeys: [.contentModificationDateKey])
+            
+            // Sort files by modification date
+            let sortedFiles = try contents.sorted { url1, url2 in
+                let date1 = try url1.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate ?? Date.distantPast
+                let date2 = try url2.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate ?? Date.distantPast
+                return date1 < date2
+            }
+            
+            // Remove oldest files if cache size exceeds limit
+            var currentSize = try getCacheSize()
+            for file in sortedFiles {
+                if currentSize <= maxCacheSize {
+                    break
+                }
+                let fileSize = try file.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+                try fileManager.removeItem(at: file)
+                currentSize -= fileSize
+            }
+        } catch {
+            print("Error cleaning cache: \(error)")
+        }
+    }
+    
+    private func getCacheSize() throws -> Int {
+        let contents = try fileManager.contentsOfDirectory(at: cacheDirectory, includingPropertiesForKeys: [.fileSizeKey])
+        return try contents.reduce(0) { sum, url in
+            sum + (try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0)
+        }
+    }
+    
+    // MARK: - Cache Operations
+    private func getCachedFilePath(for path: String) -> URL {
+        // Create a unique filename based on the Firebase path
+        let filename = path.replacingOccurrences(of: "/", with: "_")
+        return cacheDirectory.appendingPathComponent(filename)
+    }
+    
+    private func isFileCached(at path: String) -> Bool {
+        let filePath = getCachedFilePath(for: path)
+        return fileManager.fileExists(atPath: filePath.path)
+    }
+    
+    private func saveToCache(data: Data, for path: String) {
+        let filePath = getCachedFilePath(for: path)
+        try? data.write(to: filePath)
+    }
+    
+    private func loadFromCache(for path: String) -> Data? {
+        let filePath = getCachedFilePath(for: path)
+        return try? Data(contentsOf: filePath)
+    }
+    
+    // MARK: - Category Loading
+    func loadCategory(_ category: String) async throws {
+        // Check if category is already loaded
+        if loadedCategories.contains(category) {
+            print("✅ Category \(category) already loaded")
+            return
+        }
+        
+        print("🔄 Loading category: \(category)")
+        guard let subcategories = cachedModels[category] else {
+            print("❌ Category \(category) not found in cached models")
+            return
+        }
+        
+        // Load all models in the category concurrently
+        var tasks: [Task<Void, Error>] = []
+        for (_, models) in subcategories {
+            for modelName in models {
+                let task = Task {
+                    _ = try await loadModelEntity(named: modelName)
+                }
+                tasks.append(task)
+            }
+        }
+        
+        // Wait for all models to load
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for task in tasks {
+                group.addTask {
+                    try await task.value
+                }
+            }
+            try await group.waitForAll()
+        }
+        
+        // Mark category as loaded
+        loadedCategories.insert(category)
+        print("✅ Category \(category) loaded successfully")
     }
 }

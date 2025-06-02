@@ -158,7 +158,7 @@ class Avatar3DViewController: UIViewController {
         chosenModels.removeAll()
         chosenColors.removeAll()
         
-        let categories = ["bottoms", "tops", "hair_base", "hair_front", "hair_back", "jackets", "skin",
+        let categories = ["bottoms", "tops", "hairbase", "hairfront", "hairside", "hairback", "jackets", "skin",
                          "eye", "eyebrow", "nose", "mouth", "socks", "shoes", "head", "neck", "eyewear"]
         categories.forEach { removeClothingItem(for: $0) }
     }
@@ -262,7 +262,7 @@ class Avatar3DViewController: UIViewController {
     // MARK: - Avatar Management
     private func loadAvatarModel() {
         let categories = [
-            "bottoms", "tops", "hair_base", "hair_front", "hair_back", "jackets", "skin",
+            "bottoms", "tops", "hairbase", "hairfront", "hairfront", "hairback", "jackets", "skin",
             "eye", "eyebrow", "nose", "mouth", "socks", "shoes", "head", "neck", "eyewear"
         ]
         

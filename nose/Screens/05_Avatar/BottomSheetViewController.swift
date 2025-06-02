@@ -18,7 +18,7 @@ class BottomSheetContentView: UIView {
     private var selectedModels: [String: String] = [:]
     
     private let baseTabItems = ["Skin", "Eye", "Eyebrow"]
-    private let hairTabItems = ["Base", "Front", "Back"]
+    private let hairTabItems = ["Base", "Front", "Side", "Back"]
     private let clothesTabItems = ["Tops", "Bottoms", "Socks"]
     
     private let storage = Storage.storage()
@@ -122,7 +122,7 @@ class BottomSheetContentView: UIView {
             switch category {
             case "skin", "eyes", "eyebrows":
                 mainCategory = "base"
-            case "hair_base", "hair_front", "hair_back":
+            case "hairbase", "hairfront", "hairside", "hairback":
                 mainCategory = "hair"
             case "tops", "bottoms", "socks":
                 mainCategory = "clothes"
@@ -145,9 +145,10 @@ class BottomSheetContentView: UIView {
             case "skin": subcategory = "skin"
             case "eyes": subcategory = "eyes"
             case "eyebrows": subcategory = "eyebrows"
-            case "hair_base": subcategory = "base"
-            case "hair_front": subcategory = "front"
-            case "hair_back": subcategory = "back"
+            case "hairbase": subcategory = "base"
+            case "hairfront": subcategory = "front"
+            case "hairside": subcategory = "side"
+            case "hairback": subcategory = "back"
             case "tops": subcategory = "tops"
             case "bottoms": subcategory = "bottoms"
             case "socks": subcategory = "socks"
@@ -313,9 +314,10 @@ class BottomSheetContentView: UIView {
             }
         case 1: // Hair tab
             switch childTabBar.selectedSegmentIndex {
-            case 0: return "hair_base"
-            case 1: return "hair_front"
-            case 2: return "hair_back"
+            case 0: return "hairbase"
+            case 1: return "hairfront"
+            case 2: return "hairside"
+            case 3: return "hairback"
             default: return ""
             }
         case 2: // Clothes tab
