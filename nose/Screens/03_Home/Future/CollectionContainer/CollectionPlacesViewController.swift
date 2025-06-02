@@ -34,6 +34,14 @@ class CollectionPlacesViewController: UIViewController {
         return view
     }()
 
+    private lazy var loadingIndicator: UIActivityIndicatorView = {
+        let indicator = UIActivityIndicatorView(style: .large)
+        indicator.translatesAutoresizingMaskIntoConstraints = false
+        indicator.hidesWhenStopped = true
+        indicator.color = .fourthColor
+        return indicator
+    }()
+
     private lazy var menuButton: UIButton = {
         let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
@@ -179,13 +187,22 @@ class CollectionPlacesViewController: UIViewController {
         addChild(avatarVC)
         avatarContainer.addSubview(avatarVC.view)
         avatarVC.view.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Add loading indicator
+        avatarContainer.addSubview(loadingIndicator)
+        
         NSLayoutConstraint.activate([
             avatarVC.view.topAnchor.constraint(equalTo: avatarContainer.topAnchor),
             avatarVC.view.leadingAnchor.constraint(equalTo: avatarContainer.leadingAnchor),
             avatarVC.view.trailingAnchor.constraint(equalTo: avatarContainer.trailingAnchor),
-            avatarVC.view.bottomAnchor.constraint(equalTo: avatarContainer.bottomAnchor)
+            avatarVC.view.bottomAnchor.constraint(equalTo: avatarContainer.bottomAnchor),
+            
+            loadingIndicator.centerXAnchor.constraint(equalTo: avatarContainer.centerXAnchor),
+            loadingIndicator.centerYAnchor.constraint(equalTo: avatarContainer.centerYAnchor)
         ])
+        
         avatarVC.didMove(toParent: self)
+        loadingIndicator.startAnimating()
         loadAvatarData()
     }
     
@@ -201,6 +218,7 @@ class CollectionPlacesViewController: UIViewController {
             .getDocument { [weak self] snapshot, error in
                 if let error = error {
                     print("Error loading collection: \(error.localizedDescription)")
+                    self?.loadingIndicator.stopAnimating()
                     return
                 }
                 
@@ -210,12 +228,15 @@ class CollectionPlacesViewController: UIViewController {
                         DispatchQueue.main.async {
                             print("DEBUG: Loading avatar data into view controller")
                             self?.avatarViewController?.loadAvatarData(avatarData)
+                            self?.loadingIndicator.stopAnimating()
                         }
                     } else {
                         print("DEBUG: Failed to parse avatar data")
+                        self?.loadingIndicator.stopAnimating()
                     }
                 } else {
                     print("DEBUG: No avatar data found in collection")
+                    self?.loadingIndicator.stopAnimating()
                 }
             }
     }

@@ -43,6 +43,8 @@ class AvatarCustomViewController: UIViewController {
         return label
     }()
 
+    private var loadingIndicator: UIActivityIndicatorView!
+
     // MARK: - Initialization
     init(collectionId: String) {
         self.collectionId = collectionId
@@ -57,10 +59,12 @@ class AvatarCustomViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
-        setupNavigationBar()
-        setupAvatar3DView()
-        setupGestures()
-        loadSavedAvatarData()
+        setupLoadingIndicator()
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        preloadResources()
     }
 
     // MARK: - Setup
@@ -86,6 +90,19 @@ class AvatarCustomViewController: UIViewController {
             
             loadingLabel.topAnchor.constraint(equalTo: activityIndicator.bottomAnchor, constant: 16),
             loadingLabel.centerXAnchor.constraint(equalTo: loadingView.centerXAnchor)
+        ])
+    }
+
+    private func setupLoadingIndicator() {
+        loadingIndicator = UIActivityIndicatorView(style: .large)
+        loadingIndicator.translatesAutoresizingMaskIntoConstraints = false
+        loadingIndicator.hidesWhenStopped = true
+        loadingIndicator.color = .fourthColor
+        view.addSubview(loadingIndicator)
+        
+        NSLayoutConstraint.activate([
+            loadingIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            loadingIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor)
         ])
     }
 
@@ -250,5 +267,21 @@ class AvatarCustomViewController: UIViewController {
     // MARK: - Public Interface
     func setInitialAvatarData(_ avatarData: CollectionAvatar.AvatarData) {
         currentAvatarData = avatarData
+    }
+
+    private func preloadResources() {
+        showLoading()
+        view.isUserInteractionEnabled = false
+        
+        AvatarResourceManager.shared.preloadAllResources { [weak self] in
+            DispatchQueue.main.async {
+                self?.hideLoading()
+                self?.view.isUserInteractionEnabled = true
+                self?.setupNavigationBar()
+                self?.setupAvatar3DView()
+                self?.setupGestures()
+                self?.loadSavedAvatarData()
+            }
+        }
     }
 }
