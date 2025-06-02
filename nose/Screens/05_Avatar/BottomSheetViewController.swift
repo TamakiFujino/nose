@@ -20,7 +20,7 @@ class BottomSheetContentView: UIView {
     private var loadingIndicator: UIActivityIndicatorView!
     private var loadingOverlay: UIView!
     
-    private let baseTabItems = ["Skin", "Eye", "Eyebrow"]
+    private let baseTabItems = ["Skin", "Eyes", "Eyebrows"]
     private let hairTabItems = ["Base", "Front", "Side", "Back"]
     private let clothesTabItems = ["Tops", "Bottoms", "Socks"]
     
@@ -187,6 +187,7 @@ class BottomSheetContentView: UIView {
                 if let modelsArray = cachedData[subcategory] {
                     let newModels = modelsArray.map { Model(name: $0) }
                     await setModels(newModels)
+                    await preloadModelEntities(modelNames: modelsArray)
                     return
                 }
             }
@@ -206,7 +207,10 @@ class BottomSheetContentView: UIView {
                 let newModels = modelsArray.map { Model(name: $0) }
                 await setModels(newModels)
                 
-                // Prefetch thumbnails for the first few items
+                // ✅ Preload all models in this category
+                await preloadModelEntities(modelNames: modelsArray)
+                
+                // ✅ Prefetch thumbnails as you already do
                 await prefetchThumbnails(for: modelsArray.prefix(8))
             } else {
                 print("No models found for subcategory: \(subcategory) in \(mainCategory).json")
@@ -231,6 +235,18 @@ class BottomSheetContentView: UIView {
         case "bottoms": return "bottoms"
         case "socks": return "socks"
         default: return category
+        }
+    }
+    
+    private func preloadModelEntities(modelNames: [String]) async {
+        for modelName in modelNames {
+            Task.detached {
+                do {
+                    _ = try await AvatarResourceManager.shared.loadModelEntity(named: modelName)
+                } catch {
+                    print("Failed to preload model: \(modelName), error: \(error)")
+                }
+            }
         }
     }
 

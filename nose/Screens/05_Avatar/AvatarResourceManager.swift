@@ -414,28 +414,40 @@ final class AvatarResourceManager {
 
     // MARK: - Utility: Category/Subcategory Mapping
     static func getCategoryAndSubcategory(from modelName: String) -> (category: String, subcategory: String) {
-        if modelName.starts(with: "tops_") {
-            return ("clothes", "tops")
-        } else if modelName.starts(with: "bottoms_") {
-            return ("clothes", "bottoms")
-        } else if modelName.starts(with: "socks_") {
-            return ("clothes", "socks")
-        } else if modelName.starts(with: "hair_") {
-            if modelName.contains("_base") {
-                return ("hair", "base")
-            } else if modelName.contains("hairfront_") {
-                return ("hair", "front")
-            } else if modelName.contains("hairside_") {
-                return ("hair", "side")
-            } else if modelName.contains("hairback_") {
-                return ("hair", "back")
-            }
-        } else if modelName.starts(with: "eye_") {
+        // Handle base categories first
+        if modelName == "skin" {
+            return ("base", "skin")
+        } else if modelName == "eyes" {
             return ("base", "eyes")
-        } else if modelName.starts(with: "eyebrow_") {
+        } else if modelName == "eyebrows" {
             return ("base", "eyebrows")
         }
-        return ("base", "base")
+        
+        // Handle prefixed categories
+        if modelName.hasPrefix("tops_") {
+            return ("clothes", "tops")
+        } else if modelName.hasPrefix("bottoms_") {
+            return ("clothes", "bottoms")
+        } else if modelName.hasPrefix("socks_") {
+            return ("clothes", "socks")
+        } else if modelName.hasPrefix("hair_") {
+            if modelName.contains("_base") {
+                return ("hair", "base")
+            } else if modelName.contains("_front") {
+                return ("hair", "front")
+            } else if modelName.contains("_side") {
+                return ("hair", "side")
+            } else if modelName.contains("_back") {
+                return ("hair", "back")
+            }
+        } else if modelName.hasPrefix("eye_") {
+            return ("base", "eyes")
+        } else if modelName.hasPrefix("eyebrow_") {
+            return ("base", "eyebrows")
+        }
+        
+        // Default case
+        return ("base", "skin")
     }
 
     // MARK: - Cache Management
