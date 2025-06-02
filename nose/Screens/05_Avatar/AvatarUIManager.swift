@@ -6,8 +6,8 @@ class AvatarUIManager: NSObject {
     weak var viewController: UIViewController?
     weak var avatar3DViewController: Avatar3DViewController?
 
-    private var bottomSheetView: BottomSheetContentView!
-    private var additionalBottomSheetView: UIView!
+    var bottomSheetView: BottomSheetContentView!
+    var additionalBottomSheetView: UIView!
     private var colorButtons: [UIButton] = []
     private var availableColors: [UIColor] = []
     private var selectedColorButton: UIButton?
@@ -19,65 +19,69 @@ class AvatarUIManager: NSObject {
         self.viewController = viewController
         self.avatar3DViewController = avatar3DViewController
         super.init()
+        
+        setupBottomSheetView()
+        setupAdditionalBottomSheetView()
+        
         Task {
             await loadAvailableColors()
         }
-        setupAdditionalBottomSheetView()
-        setupBottomSheetView()
-        setDefaultColor()
     }
 
     // MARK: - Setup
+    private func setupBottomSheetView() {
+        bottomSheetView = BottomSheetContentView()
+        bottomSheetView.avatar3DViewController = avatar3DViewController
+        bottomSheetView.translatesAutoresizingMaskIntoConstraints = false
+    }
+
+    private func setupAdditionalBottomSheetView() {
+        additionalBottomSheetView = UIView()
+        additionalBottomSheetView.backgroundColor = .white
+        additionalBottomSheetView.translatesAutoresizingMaskIntoConstraints = false
+        setupColorScrollView()
+    }
+
     private func loadAvailableColors() async {
         do {
             let jsonRef = storage.reference().child("avatar_assets/json/colors.json")
             let maxSize: Int64 = 1 * 1024 * 1024 // 1MB max size
             let data = try await jsonRef.data(maxSize: maxSize)
             
-            if let colorStrings = try JSONSerialization.jsonObject(with: data, options: []) as? [String: [String]] {
-                availableColors = colorStrings["colors"]?.compactMap { UIColor(hex: $0) } ?? []
-                print("Successfully loaded \(availableColors.count) colors")
+            print("📦 Downloaded colors.json data: \(String(data: data, encoding: .utf8) ?? "unable to decode")")
+            
+            // Try to decode the new JSON format with name and hex properties
+            if let colorObjects = try? JSONSerialization.jsonObject(with: data, options: []) as? [[String: String]] {
+                print("🎨 Found \(colorObjects.count) color objects")
+                availableColors = colorObjects.compactMap { colorObject in
+                    guard let hexString = colorObject["hex"] else {
+                        print("❌ Missing hex value in color object")
+                        return nil
+                    }
+                    let color = UIColor(hex: hexString)
+                    print("🎨 Converting hex \(hexString) to color: \(color?.toHexString() ?? "failed")")
+                    return color
+                }
+                print("✅ Successfully loaded \(availableColors.count) colors from colors.json")
+            } else {
+                print("❌ Failed to parse colors.json in expected format")
+            }
+            
+            // Update UI on main thread
+            await MainActor.run {
+                if let scrollView = self.additionalBottomSheetView.subviews.first as? UIScrollView {
+                    // Clear existing buttons
+                    self.colorButtons.forEach { $0.removeFromSuperview() }
+                    self.colorButtons.removeAll()
+                    
+                    // Setup new buttons
+                    self.setupColorButtons(in: scrollView)
+                    print("🎨 Set up \(self.colorButtons.count) color buttons")
+                }
             }
         } catch {
-            print("Failed to load or decode colors.json: \(error)")
+            print("❌ Failed to load or decode colors.json: \(error)")
         }
-    }
-
-    private func setupBottomSheetView() {
-        guard let viewController = viewController else { return }
-
-        bottomSheetView = BottomSheetContentView()
-        bottomSheetView.avatar3DViewController = avatar3DViewController
-        bottomSheetView.translatesAutoresizingMaskIntoConstraints = false
-        viewController.view.addSubview(bottomSheetView)
-
-        NSLayoutConstraint.activate([
-            bottomSheetView.heightAnchor.constraint(equalTo: viewController.view.heightAnchor, multiplier: 0.35),
-            bottomSheetView.leadingAnchor.constraint(equalTo: viewController.view.leadingAnchor),
-            bottomSheetView.trailingAnchor.constraint(equalTo: viewController.view.trailingAnchor),
-            bottomSheetView.bottomAnchor.constraint(equalTo: additionalBottomSheetView.topAnchor)
-        ])
-    }
-
-    private func setupAdditionalBottomSheetView() {
-        guard let viewController = viewController else { return }
-
-        setupAdditionalBottomSheetContainer(in: viewController)
-        setupColorScrollView()
-    }
-
-    private func setupAdditionalBottomSheetContainer(in viewController: UIViewController) {
-        additionalBottomSheetView = UIView()
-        additionalBottomSheetView.backgroundColor = .white
-        additionalBottomSheetView.translatesAutoresizingMaskIntoConstraints = false
-        viewController.view.addSubview(additionalBottomSheetView)
-
-        NSLayoutConstraint.activate([
-            additionalBottomSheetView.heightAnchor.constraint(equalTo: viewController.view.heightAnchor, multiplier: 0.10),
-            additionalBottomSheetView.leadingAnchor.constraint(equalTo: viewController.view.leadingAnchor),
-            additionalBottomSheetView.trailingAnchor.constraint(equalTo: viewController.view.trailingAnchor),
-            additionalBottomSheetView.bottomAnchor.constraint(equalTo: viewController.view.bottomAnchor)
-        ])
     }
 
     private func setupColorScrollView() {
@@ -101,6 +105,8 @@ class AvatarUIManager: NSObject {
         let padding: CGFloat = 10
         var contentWidth: CGFloat = padding
 
+        print("🔄 Setting up color buttons with \(availableColors.count) colors")
+        
         for (index, color) in availableColors.enumerated() {
             let button = createColorButton(color: color, size: buttonSize, xPosition: contentWidth)
             scrollView.addSubview(button)
@@ -114,19 +120,18 @@ class AvatarUIManager: NSObject {
         }
 
         scrollView.contentSize = CGSize(width: contentWidth, height: buttonSize + 2 * padding)
+        print("📏 Set scroll view content size to: \(scrollView.contentSize)")
     }
 
     private func createColorButton(color: UIColor, size: CGFloat, xPosition: CGFloat) -> UIButton {
         let button = UIButton(frame: CGRect(x: xPosition, y: 10, width: size, height: size))
         button.backgroundColor = color
         button.layer.cornerRadius = size / 2
+        button.layer.borderWidth = 1
+        button.layer.borderColor = UIColor.lightGray.cgColor
         button.addTarget(self, action: #selector(colorButtonTapped(_:)), for: .touchUpInside)
+        print("🎨 Created color button with color: \(color.toHexString())")
         return button
-    }
-
-    private func setDefaultColor() {
-        guard let defaultColor = availableColors.first else { return }
-        bottomSheetView.changeSelectedCategoryColor(to: defaultColor)
     }
 
     // MARK: - Actions
@@ -141,7 +146,7 @@ class AvatarUIManager: NSObject {
         }
         selectColorButton(sender)
         
-        // Save the color to the chosenColors dictionary (could be redundant, but for UI sync)
+        // Save the color to the chosenColors dictionary
         avatar3DViewController?.chosenColors[category] = color
         print("Saved color for \(category): \(color.toHexString())")
     }

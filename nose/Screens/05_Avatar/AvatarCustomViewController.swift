@@ -144,6 +144,28 @@ class AvatarCustomViewController: UIViewController {
         
         avatarUIManager = AvatarUIManager(viewController: self, avatar3DViewController: avatar3DViewController)
         
+        if let bottomSheetView = avatarUIManager.bottomSheetView {
+            view.addSubview(bottomSheetView)
+            bottomSheetView.translatesAutoresizingMaskIntoConstraints = false
+            NSLayoutConstraint.activate([
+                bottomSheetView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                bottomSheetView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+                bottomSheetView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+                bottomSheetView.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.47)
+            ])
+        }
+        
+        if let additionalBottomSheetView = avatarUIManager.additionalBottomSheetView {
+            view.addSubview(additionalBottomSheetView)
+            additionalBottomSheetView.translatesAutoresizingMaskIntoConstraints = false
+            NSLayoutConstraint.activate([
+                additionalBottomSheetView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                additionalBottomSheetView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+                additionalBottomSheetView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+                additionalBottomSheetView.heightAnchor.constraint(equalToConstant: 100)
+            ])
+        }
+        
         if let avatarData = currentAvatarData {
             avatar3DViewController.loadAvatarData(avatarData)
         }
