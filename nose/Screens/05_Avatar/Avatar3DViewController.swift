@@ -338,7 +338,9 @@ class Avatar3DViewController: UIViewController {
             return cachedMaterial
         }
         
-        let material = SimpleMaterial(color: color, isMetallic: false)
+        // Create material with optimized settings
+        var material = SimpleMaterial(color: color, isMetallic: false)
+        material.roughness = 0.5  // Reduce material complexity
         materialCache[materialKey] = material
         return material
     }
@@ -353,8 +355,12 @@ class Avatar3DViewController: UIViewController {
             animations.append(block)
             self.pendingAnimations[entityName] = animations
             
-            // Process animations in batches
-            if animations.count >= 3 {  // Adjust batch size as needed
+            // Process animations immediately for color changes
+            if entityName == "skin" || entityName.contains("color") {
+                self.processAnimations(for: entityName)
+            }
+            // Process other animations in batches
+            else if animations.count >= 3 {
                 self.processAnimations(for: entityName)
             }
         }
@@ -363,12 +369,17 @@ class Avatar3DViewController: UIViewController {
     private func processAnimations(for entityName: String) {
         guard let animations = pendingAnimations[entityName] else { return }
         
-        // Batch process animations
+        // Process animations on main thread with optimized batching
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
-            for animation in animations {
-                animation()
+            
+            // Batch process animations
+            autoreleasepool {
+                for animation in animations {
+                    animation()
+                }
             }
+            
             self.pendingAnimations[entityName] = []
         }
     }
@@ -382,8 +393,12 @@ class Avatar3DViewController: UIViewController {
                     hideEntity(for: existingModel)
                 }
                 
-                // Get or create new entity
+                // Get or create new entity with optimized loading
                 let entity = try await getOrCreateEntity(for: modelName)
+                
+                // Optimize entity settings
+                entity.generateCollisionShapes(recursive: false)  // Disable collision generation
+                entity.components[PhysicsBodyComponent.self] = nil  // Remove physics if not needed
                 
                 // Apply current color if exists
                 if let color = chosenColors[category] {
@@ -399,11 +414,10 @@ class Avatar3DViewController: UIViewController {
                 // Update chosen models
                 chosenModels[category] = modelName
                 
-                // Cleanup if needed
+                // Clean up inactive entities periodically
                 cleanupInactiveEntities()
-                
             } catch {
-                print("Error loading clothing item: \(error)")
+                print("Failed to load clothing item: \(error)")
             }
         }
     }
@@ -417,21 +431,29 @@ class Avatar3DViewController: UIViewController {
     
     // MARK: - Optimized Color Change
     func changeClothingItemColor(for category: String, to color: UIColor) {
-        guard let modelName = chosenModels[category] else { return }
+        guard let entity = entityPool[chosenModels[category] ?? ""] else { return }
         
-        queueAnimation(for: modelName) { [weak self] in
-            guard let self = self,
-                  let entity = self.entityPool[modelName] else { return }
-            
-            let material = self.getOrCreateMaterial(for: color, category: category)
+        // Use optimized material application
+        let material = getOrCreateMaterial(for: color, category: category)
+        
+        // Batch material updates
+        queueAnimation(for: category) { [weak self] in
             entity.model?.materials = [material]
-            self.chosenColors[category] = color
+            self?.chosenColors[category] = color
         }
     }
     
     func changeSkinColor(to color: UIColor) {
         guard let baseEntity = baseEntity else { return }
-        changeItemColor(for: baseEntity, to: color, categoryKey: "skin")
+        
+        // Use optimized material application
+        let material = getOrCreateMaterial(for: color, category: "skin")
+        
+        // Batch material updates
+        queueAnimation(for: "skin") { [weak self] in
+            baseEntity.model?.materials = [material]
+            self?.chosenColors["skin"] = color
+        }
     }
     
     // MARK: - Memory Management
