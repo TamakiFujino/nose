@@ -506,27 +506,20 @@ class BottomSheetContentView: UIView {
     func getCurrentCategory() -> String {
         switch parentTabBar.selectedSegmentIndex {
         case 0: // Base tab
-            switch childTabBar.selectedSegmentIndex {
-            case 0: return "skin"
-            case 1: return "eyes"
-            case 2: return "eyebrows"
-            default: return ""
-            }
+            let index = childTabBar.selectedSegmentIndex
+            guard index >= 0 && index < AvatarCategory.baseCategories.count else { return "" }
+            return AvatarCategory.baseCategories[index]
+            
         case 1: // Hair tab
-            switch childTabBar.selectedSegmentIndex {
-            case 0: return "hairbase"
-            case 1: return "hairfront"
-            case 2: return "hairside"
-            case 3: return "hairback"
-            default: return ""
-            }
+            let index = childTabBar.selectedSegmentIndex
+            guard index >= 0 && index < AvatarCategory.hairCategories.count else { return "" }
+            return AvatarCategory.hairCategories[index]
+            
         case 2: // Clothes tab
-            switch childTabBar.selectedSegmentIndex {
-            case 0: return "tops"
-            case 1: return "bottoms"
-            case 2: return "socks"
-            default: return ""
-            }
+            let index = childTabBar.selectedSegmentIndex
+            guard index >= 0 && index < AvatarCategory.clothingCategories.count else { return "" }
+            return AvatarCategory.clothingCategories[index]
+            
         default:
             return ""
         }
