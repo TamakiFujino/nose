@@ -25,6 +25,9 @@ class Avatar3DViewController: UIViewController {
     private var materialCache: [String: SimpleMaterial] = [:]  // Cache for materials
     private var animationQueue = DispatchQueue(label: "com.avatar.animation", qos: .userInteractive)
     private var pendingAnimations: [String: [AnimationBlock]] = [:]
+    private var materialUpdateQueue = DispatchQueue(label: "com.avatar.material", qos: .userInteractive)
+    private var lastMaterialUpdate: [String: Date] = [:]
+    private let materialUpdateThrottle: TimeInterval = 0.016 // ~60 FPS
 
     // MARK: - Computed Properties
 
@@ -303,9 +306,29 @@ class Avatar3DViewController: UIViewController {
             return existingEntity
         }
         
-        // Create new entity
+        // Create new entity with optimized settings
         let entity = try await AvatarResourceManager.shared.loadModelEntity(named: modelName)
         entity.name = modelName
+        
+        // Optimize entity settings
+        entity.generateCollisionShapes(recursive: false)
+        entity.components[PhysicsBodyComponent.self] = nil
+        
+        // Optimize model settings
+        if let model = entity.model {
+            let optimizedMaterials = model.materials.map { material -> Material in
+                if var simpleMaterial = material as? SimpleMaterial {
+                    simpleMaterial.roughness = 0.5
+                    simpleMaterial.metallic = 0.0
+                    return simpleMaterial
+                }
+                return material
+            }
+            // Create a new model with optimized materials
+            let optimizedModel = ModelComponent(mesh: model.mesh, materials: optimizedMaterials)
+            entity.model = optimizedModel
+        }
+        
         entityPool[modelName] = entity
         activeEntities.insert(modelName)
         return entity
@@ -341,6 +364,7 @@ class Avatar3DViewController: UIViewController {
         // Create material with optimized settings
         var material = SimpleMaterial(color: color, isMetallic: false)
         material.roughness = 0.5  // Reduce material complexity
+        material.metallic = 0.0   // Disable metallic for better performance
         materialCache[materialKey] = material
         return material
     }
@@ -396,10 +420,6 @@ class Avatar3DViewController: UIViewController {
                 // Get or create new entity with optimized loading
                 let entity = try await getOrCreateEntity(for: modelName)
                 
-                // Optimize entity settings
-                entity.generateCollisionShapes(recursive: false)  // Disable collision generation
-                entity.components[PhysicsBodyComponent.self] = nil  // Remove physics if not needed
-                
                 // Apply current color if exists
                 if let color = chosenColors[category] {
                     let material = getOrCreateMaterial(for: color, category: category)
@@ -433,11 +453,19 @@ class Avatar3DViewController: UIViewController {
     func changeClothingItemColor(for category: String, to color: UIColor) {
         guard let entity = entityPool[chosenModels[category] ?? ""] else { return }
         
+        // Throttle material updates
+        let now = Date()
+        if let lastUpdate = lastMaterialUpdate[category],
+           now.timeIntervalSince(lastUpdate) < materialUpdateThrottle {
+            return
+        }
+        lastMaterialUpdate[category] = now
+        
         // Use optimized material application
         let material = getOrCreateMaterial(for: color, category: category)
         
-        // Batch material updates
-        queueAnimation(for: category) { [weak self] in
+        // Apply material directly without queuing
+        DispatchQueue.main.async { [weak self] in
             entity.model?.materials = [material]
             self?.chosenColors[category] = color
         }
@@ -446,11 +474,19 @@ class Avatar3DViewController: UIViewController {
     func changeSkinColor(to color: UIColor) {
         guard let baseEntity = baseEntity else { return }
         
+        // Throttle material updates
+        let now = Date()
+        if let lastUpdate = lastMaterialUpdate["skin"],
+           now.timeIntervalSince(lastUpdate) < materialUpdateThrottle {
+            return
+        }
+        lastMaterialUpdate["skin"] = now
+        
         // Use optimized material application
         let material = getOrCreateMaterial(for: color, category: "skin")
         
-        // Batch material updates
-        queueAnimation(for: "skin") { [weak self] in
+        // Apply material directly without queuing
+        DispatchQueue.main.async { [weak self] in
             baseEntity.model?.materials = [material]
             self?.chosenColors["skin"] = color
         }
@@ -461,6 +497,7 @@ class Avatar3DViewController: UIViewController {
         super.didReceiveMemoryWarning()
         cleanupInactiveEntities()
         materialCache.removeAll()
+        lastMaterialUpdate.removeAll()
     }
 }
 
