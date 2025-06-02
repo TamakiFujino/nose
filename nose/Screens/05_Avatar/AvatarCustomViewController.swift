@@ -273,14 +273,34 @@ class AvatarCustomViewController: UIViewController {
         showLoading()
         view.isUserInteractionEnabled = false
         
-        AvatarResourceManager.shared.preloadAllResources { [weak self] in
-            DispatchQueue.main.async {
-                self?.hideLoading()
-                self?.view.isUserInteractionEnabled = true
-                self?.setupNavigationBar()
-                self?.setupAvatar3DView()
-                self?.setupGestures()
-                self?.loadSavedAvatarData()
+        Task {
+            do {
+                print("🔄 Starting to preload resources...")
+                try await AvatarResourceManager.shared.preloadAllResources()
+                print("✅ Resources preloaded successfully")
+                
+                await MainActor.run {
+                    self.hideLoading()
+                    self.view.isUserInteractionEnabled = true
+                    self.setupNavigationBar()
+                    self.setupAvatar3DView()
+                    self.setupGestures()
+                    self.loadSavedAvatarData()
+                }
+            } catch {
+                print("❌ Error preloading resources: \(error)")
+                await MainActor.run {
+                    self.hideLoading()
+                    self.view.isUserInteractionEnabled = true
+                    // Show error alert
+                    let alert = UIAlertController(
+                        title: "Error",
+                        message: "Failed to load avatar resources. Please try again.",
+                        preferredStyle: .alert
+                    )
+                    alert.addAction(UIAlertAction(title: "OK", style: .default))
+                    self.present(alert, animated: true)
+                }
             }
         }
     }
