@@ -10,6 +10,7 @@ final class HomeViewController: UIViewController {
     private var currentLocation: CLLocation?
     private var searchResults: [GMSPlace] = []
     private var sessionToken: GMSAutocompleteSessionToken?
+    private var currentLocationMarker: GMSMarker?
     
     // MARK: - UI Components
     private lazy var headerView: UIView = {
@@ -547,6 +548,53 @@ final class HomeViewController: UIViewController {
             }
         }
     }
+    
+    private func updateCurrentLocationMarker(at location: CLLocation) {
+        // Remove existing marker if any
+        currentLocationMarker?.map = nil
+        
+        // Create custom marker
+        let marker = GMSMarker(position: location.coordinate)
+        
+        // Create custom marker view
+        let markerView = UIView(frame: CGRect(x: 0, y: 0, width: 40, height: 40))
+        markerView.backgroundColor = .clear
+        
+        // Create outer circle (pulse effect)
+        let outerCircle = UIView(frame: CGRect(x: 0, y: 0, width: 40, height: 40))
+        outerCircle.backgroundColor = UIColor.firstColor.withAlphaComponent(0.2)
+        outerCircle.layer.cornerRadius = 20
+        outerCircle.layer.masksToBounds = true
+        markerView.addSubview(outerCircle)
+        
+        // Create inner circle (solid)
+        let innerCircle = UIView(frame: CGRect(x: 10, y: 10, width: 20, height: 20))
+        innerCircle.backgroundColor = .firstColor
+        innerCircle.layer.cornerRadius = 10
+        innerCircle.layer.masksToBounds = true
+        markerView.addSubview(innerCircle)
+        
+        // Add pulse animation
+        let pulseAnimation = CABasicAnimation(keyPath: "transform.scale")
+        pulseAnimation.duration = 1.0
+        pulseAnimation.fromValue = 1.0
+        pulseAnimation.toValue = 1.2
+        pulseAnimation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        pulseAnimation.autoreverses = true
+        pulseAnimation.repeatCount = .infinity
+        
+        // Ensure the animation maintains the circular shape
+        outerCircle.layer.add(pulseAnimation, forKey: "pulse")
+        outerCircle.layer.allowsEdgeAntialiasing = true
+        
+        // Set the custom marker view
+        marker.iconView = markerView
+        marker.groundAnchor = CGPoint(x: 0.5, y: 0.5)
+        marker.map = mapView
+        
+        // Store reference to marker
+        currentLocationMarker = marker
+    }
 }
 
 // MARK: - UISearchBarDelegate
@@ -622,6 +670,9 @@ extension HomeViewController: CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
         currentLocation = location
+        
+        // Update custom marker
+        updateCurrentLocationMarker(at: location)
         
         // Update camera position to user's location
         let camera = GMSCameraPosition.camera(
@@ -709,18 +760,18 @@ class GradientHeaderView: UIView {
         switch segment {
         case 0:
             colors = [
-                UIColor(hex: "A7B5FF")?.cgColor ?? UIColor.firstColor.cgColor,
-                UIColor(hex: "C49ED9")?.cgColor ?? UIColor.secondColor.cgColor
+                UIColor(hex: "E3E989")?.cgColor ?? UIColor.firstColor.cgColor,
+                UIColor(hex: "D0BDDC")?.cgColor ?? UIColor.secondColor.cgColor
             ]
         case 1: // Middle dot - Yellow to Green
             colors = [
-                UIColor(hex: "C49ED9")?.cgColor ?? UIColor.secondColor.cgColor,     // Gold
-                UIColor(hex: "E287B2")?.cgColor ?? UIColor.thirdColor.cgColor      // Lime green
+                UIColor(hex: "D0BDDC")?.cgColor ?? UIColor.secondColor.cgColor,     // Gold
+                UIColor(hex: "FBAB19")?.cgColor ?? UIColor.thirdColor.cgColor      // Lime green
             ]
         case 2: // Right dot - Green to Blue
             colors = [
-                UIColor(hex: "E287B2")?.cgColor ?? UIColor.thirdColor.cgColor,     // Lime green
-                UIColor(hex: "FF708C")?.cgColor ?? UIColor.fourthColor.cgColor       // Dodger blue
+                UIColor(hex: "FBAB19")?.cgColor ?? UIColor.thirdColor.cgColor,     // Lime green
+                UIColor(hex: "EE2725")?.cgColor ?? UIColor.fourthColor.cgColor       // Dodger blue
             ]
         default:
             return

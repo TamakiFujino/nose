@@ -13,10 +13,10 @@ class CustomButton: UIButton {
     }
 
     private func setupButton() {
-        self.setTitleColor(.firstColor, for: .normal)
+        self.setTitleColor(.fifthColor, for: .normal)
         self.layer.cornerRadius = 8
         self.clipsToBounds = true
-        self.backgroundColor = UIColor.fourthColor
+        self.backgroundColor = UIColor.thirdColor
         self.titleLabel?.font = UIFont.boldSystemFont(ofSize: 18)
     }
 }
