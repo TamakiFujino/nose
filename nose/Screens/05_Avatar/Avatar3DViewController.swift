@@ -166,8 +166,7 @@ class Avatar3DViewController: UIViewController {
         chosenModels.removeAll()
         chosenColors.removeAll()
         
-        let categories = ["skin", "eyes", "eyebrows", "tops", "bottoms", "socks", "hairbase", "hairfront", "hairside", "hairback"]
-        categories.forEach { removeClothingItem(for: $0) }
+        AvatarCategory.all.forEach { removeClothingItem(for: $0) }
     }
 
     private func loadBaseModel() {
@@ -231,8 +230,7 @@ class Avatar3DViewController: UIViewController {
 
     // MARK: - Avatar Management
     private func loadAvatarModel() {
-        let categories = [
-            "skin", "eyes", "eyebrows", "tops", "bottoms", "socks", "hairbase", "hairfront", "hairside", "hairback"]
+        let categories = AvatarCategory.all
         
         // Load chosen models from UserDefaults
         for category in categories {
@@ -449,6 +447,10 @@ class Avatar3DViewController: UIViewController {
     }
     
     func removeClothingItem(for category: String) {
+        guard AvatarCategory.isValid(category) else {
+            print("❌ Invalid category: \(category)")
+            return
+        }
         if let modelName = chosenModels[category] {
             hideEntity(for: modelName)
             chosenModels.removeValue(forKey: category)
