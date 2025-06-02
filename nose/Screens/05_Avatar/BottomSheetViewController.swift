@@ -246,9 +246,16 @@ class BottomSheetContentView: UIView {
         
         // Load thumbnail asynchronously
         Task {
-            if let image = await AvatarResourceManager.shared.loadThumbnail(for: model.name) {
+            do {
+                let image = try await AvatarResourceManager.shared.loadThumbnail(for: model.name)
                 DispatchQueue.main.async {
                     button.setImage(image, for: .normal)
+                }
+            } catch {
+                print("Failed to load thumbnail for \(model.name): \(error)")
+                // Optionally set a placeholder image
+                DispatchQueue.main.async {
+                    button.setImage(UIImage(systemName: "photo"), for: .normal)
                 }
             }
         }

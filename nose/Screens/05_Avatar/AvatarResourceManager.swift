@@ -26,6 +26,10 @@ final class AvatarResourceManager {
     private var modelCache: [String: ModelEntity] = [:]
     private var loadingTasks: [String: Task<ModelEntity?, Error>] = [:]
     private var loadedCategories: Set<String> = []  // Track loaded categories
+    private var thumbnailLoadingTasks: [String: Task<UIImage?, Error>] = [:]
+    private let thumbnailSize: CGSize = CGSize(width: 200, height: 200) // Low-res thumbnail size
+    private var loadedThumbnails: Set<String> = [] // Track loaded thumbnails
+    private let thumbnailLoadingQueue = DispatchQueue(label: "com.avatar.thumbnailLoading", qos: .userInitiated)
 
     // MARK: - Directory for caching
     private var cacheDirectory: URL {
@@ -254,25 +258,114 @@ final class AvatarResourceManager {
     }
 
     // MARK: - Thumbnail Loading & Caching
-    func loadThumbnail(for modelName: String) async -> UIImage? {
+    func loadThumbnail(for modelName: String) async throws -> UIImage {
+        // Check memory cache first
         if let cached = thumbnailCache.object(forKey: modelName as NSString) {
+            print("📦 Using cached thumbnail for: \(modelName)")
             return cached
         }
-        let (category, subcategory) = AvatarResourceManager.getCategoryAndSubcategory(from: modelName)
-        let remotePath = "avatar_assets/thumbnails/\(category)/\(subcategory)/\(modelName).jpg"
-        let thumbnailRef = storage.reference().child(remotePath)
+        
+        // Check if there's an ongoing loading task
+        if let existingTask = thumbnailLoadingTasks[modelName] {
+            print("⏳ Using existing thumbnail loading task for: \(modelName)")
+            do {
+                if let image = try await existingTask.value {
+                    return image
+                }
+            } catch {
+                print("❌ Error in existing task for \(modelName): \(error)")
+                // Continue with new task if existing one failed
+            }
+        }
+        
+        // Create new loading task
+        let task = Task<UIImage?, Error> { [weak self] in
+            guard let self = self else {
+                throw NSError(domain: "AvatarResourceManager", code: 500, userInfo: [NSLocalizedDescriptionKey: "Resource manager deallocated"])
+            }
+            
+            let (category, subcategory) = AvatarResourceManager.getCategoryAndSubcategory(from: modelName)
+            let remotePath = "avatar_assets/thumbnails/\(category)/\(subcategory)/\(modelName).jpg"
+            let thumbnailRef = self.storage.reference().child(remotePath)
+            
+            do {
+                let data = try await thumbnailRef.data(maxSize: 1 * 1024 * 1024)
+                guard let image = UIImage(data: data) else {
+                    throw NSError(domain: "AvatarResourceManager", code: 422, userInfo: [NSLocalizedDescriptionKey: "Invalid image data for: \(modelName)"])
+                }
+                
+                // Resize image on background queue
+                let resizedImage = await self.resizeImage(image, to: self.thumbnailSize)
+                
+                // Cache the resized image
+                self.thumbnailCache.setObject(resizedImage, forKey: modelName as NSString)
+                self.loadedThumbnails.insert(modelName)
+                
+                return resizedImage
+            } catch {
+                print("❌ Failed to load thumbnail for \(modelName): \(error)")
+                throw error
+            }
+        }
+        
+        // Store task and clean up when done
+        thumbnailLoadingTasks[modelName] = task
+        defer {
+            thumbnailLoadingTasks[modelName] = nil
+        }
+        
         do {
-            let data = try await thumbnailRef.data(maxSize: 1 * 1024 * 1024)
-            if let image = UIImage(data: data) {
-                thumbnailCache.setObject(image, forKey: modelName as NSString)
+            if let image = try await task.value {
                 return image
+            } else {
+                throw NSError(domain: "AvatarResourceManager", code: 404, userInfo: [NSLocalizedDescriptionKey: "Failed to load thumbnail for: \(modelName)"])
             }
         } catch {
-            print("Failed to load thumbnail for \(modelName): \(error)")
+            print("❌ Error loading thumbnail for \(modelName): \(error)")
+            throw error
         }
-        return nil
     }
-
+    
+    // MARK: - Batch Thumbnail Loading
+    func loadThumbnails(for models: [String]) async throws -> [String: UIImage] {
+        print("🔄 Loading \(models.count) thumbnails...")
+        var results: [String: UIImage] = [:]
+        
+        // Filter out already loaded thumbnails
+        let modelsToLoad = models.filter { !loadedThumbnails.contains($0) }
+        
+        // Load thumbnails concurrently
+        try await withThrowingTaskGroup(of: (String, UIImage).self) { group in
+            for modelName in modelsToLoad {
+                group.addTask {
+                    let image = try await self.loadThumbnail(for: modelName)
+                    return (modelName, image)
+                }
+            }
+            
+            // Collect results
+            for try await (modelName, image) in group {
+                results[modelName] = image
+            }
+        }
+        
+        print("✅ Loaded \(results.count) thumbnails")
+        return results
+    }
+    
+    // MARK: - Image Processing
+    private func resizeImage(_ image: UIImage, to size: CGSize) async -> UIImage {
+        await withCheckedContinuation { continuation in
+            thumbnailLoadingQueue.async {
+                let renderer = UIGraphicsImageRenderer(size: size)
+                let resizedImage = renderer.image { context in
+                    image.draw(in: CGRect(origin: .zero, size: size))
+                }
+                continuation.resume(returning: resizedImage)
+            }
+        }
+    }
+    
     func clearCache() {
         modelEntities.removeAll()
         modelFileURLs.removeAll()
@@ -281,7 +374,9 @@ final class AvatarResourceManager {
         thumbnailCache.removeAllObjects()
         cachedColors.removeAll()
         cachedModels.removeAll()
-        loadedCategories.removeAll()  // Clear loaded categories
+        loadedCategories.removeAll()
+        loadedThumbnails.removeAll()  // Clear loaded thumbnails tracking
+        thumbnailLoadingTasks.removeAll()  // Clear thumbnail loading tasks
     }
 
     // MARK: - Utility: Category/Subcategory Mapping
