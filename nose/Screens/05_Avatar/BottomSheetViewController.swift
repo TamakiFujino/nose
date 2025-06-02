@@ -16,6 +16,7 @@ class BottomSheetContentView: UIView {
     private var contentView: UIView!
     private var models: [Model] = []
     private var selectedModels: [String: String] = [:]
+    private let modelsQueue = DispatchQueue(label: "com.nose.modelsQueue", attributes: .concurrent)
     
     private let baseTabItems = ["Skin", "Eye", "Eyebrow"]
     private let hairTabItems = ["Base", "Front", "Side", "Back"]
@@ -112,7 +113,7 @@ class BottomSheetContentView: UIView {
     private func loadModels(for category: String) async {
         // Skip loading models for color-only categories
         if category == "skin" {
-            models = []
+            await setModels([])
             return
         }
 
@@ -128,7 +129,7 @@ class BottomSheetContentView: UIView {
                 mainCategory = "clothes"
             default:
                 print("Unknown category: \(category)")
-                models = []
+                await setModels([])
                 return
             }
 
@@ -156,15 +157,28 @@ class BottomSheetContentView: UIView {
             }
             
             if let modelsArray = dict[subcategory] {
-                models = modelsArray.map { Model(name: $0) }
+                let newModels = modelsArray.map { Model(name: $0) }
+                await setModels(newModels)
                 print("Successfully loaded models for category: \(category) from \(mainCategory).json")
             } else {
                 print("No models found for subcategory: \(subcategory) in \(mainCategory).json")
-                models = []
+                await setModels([])
             }
         } catch {
             print("Failed to load or decode \(category) from main category JSON: \(error)")
-            models = []
+            await setModels([])
+        }
+    }
+
+    private func setModels(_ newModels: [Model]) async {
+        await MainActor.run {
+            models = newModels
+        }
+    }
+
+    private func getModels() async -> [Model] {
+        await MainActor.run {
+            return models
         }
     }
 
@@ -219,29 +233,41 @@ class BottomSheetContentView: UIView {
         let buttonSize: CGFloat = (bounds.width - (padding * 5)) / 4
         var lastButton: UIButton?
 
-        for (index, model) in models.enumerated() {
-            let row = index / 4
-            let column = index % 4
-            let xPosition = padding + CGFloat(column) * (buttonSize + padding)
-            let yPosition = padding + CGFloat(row) * (buttonSize + padding)
+        Task {
+            let currentModels = await getModels()
+            for (index, model) in currentModels.enumerated() {
+                let row = index / 4
+                let column = index % 4
+                let xPosition = padding + CGFloat(column) * (buttonSize + padding)
+                let yPosition = padding + CGFloat(row) * (buttonSize + padding)
 
-            let thumbnailButton = createThumbnailButton(
-                model: model,
-                index: index,
-                frame: CGRect(x: xPosition, y: yPosition, width: buttonSize, height: buttonSize),
-                category: category
-            )
-            contentView.addSubview(thumbnailButton)
-            lastButton = thumbnailButton
-        }
+                let thumbnailButton = createThumbnailButton(
+                    model: model,
+                    index: index,
+                    frame: CGRect(x: xPosition, y: yPosition, width: buttonSize, height: buttonSize),
+                    category: category
+                )
+                await MainActor.run {
+                    contentView.addSubview(thumbnailButton)
+                    lastButton = thumbnailButton
+                }
+            }
 
-        if let lastButton = lastButton {
-            contentView.bottomAnchor.constraint(equalTo: lastButton.bottomAnchor, constant: padding).isActive = true
+            if let lastButton = lastButton {
+                await MainActor.run {
+                    contentView.bottomAnchor.constraint(equalTo: lastButton.bottomAnchor, constant: padding).isActive = true
+                }
+            }
         }
     }
 
     private func createThumbnailButton(model: Model, index: Int, frame: CGRect, category: String) -> UIButton {
         let button = UIButton(frame: frame)
+        // Ensure index is valid before setting tag
+        guard index >= 0 else {
+            print("Invalid index for thumbnail button: \(index)")
+            return button
+        }
         button.tag = index
         
         // Load thumbnail asynchronously
@@ -253,7 +279,7 @@ class BottomSheetContentView: UIView {
                 }
             } catch {
                 print("Failed to load thumbnail for \(model.name): \(error)")
-                // Optionally set a placeholder image
+                // Set a placeholder image
                 DispatchQueue.main.async {
                     button.setImage(UIImage(systemName: "photo"), for: .normal)
                 }
@@ -275,27 +301,41 @@ class BottomSheetContentView: UIView {
 
     @objc private func thumbnailTapped(_ sender: UIButton) {
         let category = getCurrentCategory()
-        let model = models[sender.tag]
-
-        // Clear selection for all buttons in the current category
-        contentView.subviews.forEach { view in
-            if let button = view as? UIButton {
-                button.layer.borderColor = UIColor.clear.cgColor
-                button.layer.borderWidth = 0
+        
+        Task {
+            // Add bounds checking
+            let currentModels = await getModels()
+            guard sender.tag >= 0 && sender.tag < currentModels.count else {
+                print("Invalid model index: \(sender.tag)")
+                return
             }
-        }
+            
+            let model = currentModels[sender.tag]
 
-        if selectedModels[category] == model.name {
-            // Deselect if tapping the same item
-            selectedModels[category] = nil
-            avatar3DViewController?.removeClothingItem(for: category)
-        } else {
-            // Select new item
-            selectedModels[category] = model.name
-            avatar3DViewController?.loadClothingItem(named: model.name, category: category)
-            // Highlight the selected button
-            sender.layer.borderColor = UIColor.fourthColor.cgColor
-            sender.layer.borderWidth = 2
+            // Clear selection for all buttons in the current category
+            await MainActor.run {
+                contentView.subviews.forEach { view in
+                    if let button = view as? UIButton {
+                        button.layer.borderColor = UIColor.clear.cgColor
+                        button.layer.borderWidth = 0
+                    }
+                }
+            }
+
+            if selectedModels[category] == model.name {
+                // Deselect if tapping the same item
+                selectedModels[category] = nil
+                avatar3DViewController?.removeClothingItem(for: category)
+            } else {
+                // Select new item
+                selectedModels[category] = model.name
+                avatar3DViewController?.loadClothingItem(named: model.name, category: category)
+                // Highlight the selected button
+                await MainActor.run {
+                    sender.layer.borderColor = UIColor.fourthColor.cgColor
+                    sender.layer.borderWidth = 2
+                }
+            }
         }
     }
 

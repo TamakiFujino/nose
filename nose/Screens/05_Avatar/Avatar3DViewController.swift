@@ -20,6 +20,11 @@ class Avatar3DViewController: UIViewController {
     
     private var modelCache: [String: ModelEntity] = [:]
     private var baseMaterial: SimpleMaterial?
+    private var entityPool: [String: ModelEntity] = [:]  // Pool of reusable entities
+    private var activeEntities: Set<String> = []  // Track currently active entities
+    private var materialCache: [String: SimpleMaterial] = [:]  // Cache for materials
+    private var animationQueue = DispatchQueue(label: "com.avatar.animation", qos: .userInteractive)
+    private var pendingAnimations: [String: [AnimationBlock]] = [:]
 
     // MARK: - Computed Properties
 
@@ -220,20 +225,6 @@ class Avatar3DViewController: UIViewController {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.03, execute: workItem) // ~33 FPS
     }
 
-    func changeClothingItemColor(for category: String, to color: UIColor) {
-        guard let modelName = chosenModels[category],
-              let entity = baseEntity?.findEntity(named: modelName) as? ModelEntity else {
-            print("Model entity not found for category: \(category)")
-            return
-        }
-        changeItemColor(for: entity, to: color, categoryKey: category)
-    }
-
-    func changeSkinColor(to color: UIColor) {
-        guard let baseEntity = baseEntity else { return }
-        changeItemColor(for: baseEntity, to: color, categoryKey: "skin")
-    }
-
     // MARK: - State Management
 
     private func loadSelectionState() {
@@ -303,66 +294,151 @@ class Avatar3DViewController: UIViewController {
             .store(in: &cancellables)
     }
 
-    func loadClothingItem(named modelName: String, category: String) {
-        // Remove previous model if present
-        if let previousModelName = chosenModels[category],
-           let existingEntity = baseEntity?.findEntity(named: previousModelName) {
-            existingEntity.removeFromParent()
-        }
-
-        // Try to get from cache
-        if let cached = modelCache[modelName] {
-            let modelEntity = cached.clone(recursive: true)
-            modelEntity.name = modelName
-            modelEntity.scale = SIMD3<Float>(repeating: 1.0)
-            
-            // Always apply the base material
-            if let baseMaterial = baseMaterial {
-                modelEntity.model?.materials = [baseMaterial]
-            }
-            
-            baseEntity?.addChild(modelEntity)
-            chosenModels[category] = modelName
-            // Apply color if already chosen
-            if let color = chosenColors[category] {
-                changeClothingItemColor(for: category, to: color)
-            }
-            return
+    // MARK: - Entity Management
+    private func getOrCreateEntity(for modelName: String) async throws -> ModelEntity {
+        // Check if entity exists in pool
+        if let existingEntity = entityPool[modelName] {
+            existingEntity.isEnabled = true
+            activeEntities.insert(modelName)
+            return existingEntity
         }
         
-        // Load asynchronously from Firebase Storage
-        Task {
-            do {
-                let loadedEntity = try await AvatarResourceManager.shared.loadModelEntity(named: modelName)
-                await MainActor.run {
-                    self.modelCache[modelName] = loadedEntity
-                    let modelEntity = loadedEntity.clone(recursive: true)
-                    modelEntity.name = modelName
-                    modelEntity.scale = SIMD3<Float>(repeating: 1.0)
-                    
-                    // Always apply the base material
-                    if let baseMaterial = self.baseMaterial {
-                        modelEntity.model?.materials = [baseMaterial]
-                    }
-                    
-                    self.baseEntity?.addChild(modelEntity)
-                    self.chosenModels[category] = modelName
-                    if let color = self.chosenColors[category] {
-                        self.changeClothingItemColor(for: category, to: color)
-                    }
-                }
-            } catch {
-                print("Failed to load model: \(error)")
+        // Create new entity
+        let entity = try await AvatarResourceManager.shared.loadModelEntity(named: modelName)
+        entity.name = modelName
+        entityPool[modelName] = entity
+        activeEntities.insert(modelName)
+        return entity
+    }
+    
+    private func hideEntity(for modelName: String) {
+        if let entity = entityPool[modelName] {
+            entity.isEnabled = false
+            activeEntities.remove(modelName)
+        }
+    }
+    
+    private func cleanupInactiveEntities() {
+        // Keep only the most recently used entities
+        let maxPoolSize = 20  // Adjust based on your needs
+        if entityPool.count > maxPoolSize {
+            let inactiveEntities = entityPool.keys.filter { !activeEntities.contains($0) }
+            for entityName in inactiveEntities.prefix(entityPool.count - maxPoolSize) {
+                entityPool.removeValue(forKey: entityName)
             }
         }
     }
 
-    func removeClothingItem(for category: String) {
-        if let previousModelName = chosenModels[category],
-           let existingEntity = baseEntity?.findEntity(named: previousModelName) {
-            existingEntity.removeFromParent()
-            chosenModels[category] = ""
+    // MARK: - Material Management
+    private func getOrCreateMaterial(for color: UIColor, category: String) -> SimpleMaterial {
+        let colorKey = color.toHexString() ?? "default"
+        let materialKey = "\(category)_\(colorKey)"
+        
+        if let cachedMaterial = materialCache[materialKey] {
+            return cachedMaterial
         }
+        
+        let material = SimpleMaterial(color: color, isMetallic: false)
+        materialCache[materialKey] = material
+        return material
+    }
+
+    // MARK: - Animation Management
+    typealias AnimationBlock = () -> Void
+    
+    private func queueAnimation(for entityName: String, block: @escaping AnimationBlock) {
+        animationQueue.async { [weak self] in
+            guard let self = self else { return }
+            var animations = self.pendingAnimations[entityName] ?? []
+            animations.append(block)
+            self.pendingAnimations[entityName] = animations
+            
+            // Process animations in batches
+            if animations.count >= 3 {  // Adjust batch size as needed
+                self.processAnimations(for: entityName)
+            }
+        }
+    }
+    
+    private func processAnimations(for entityName: String) {
+        guard let animations = pendingAnimations[entityName] else { return }
+        
+        // Batch process animations
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            for animation in animations {
+                animation()
+            }
+            self.pendingAnimations[entityName] = []
+        }
+    }
+
+    // MARK: - Optimized Clothing Item Management
+    func loadClothingItem(named modelName: String, category: String) {
+        Task {
+            do {
+                // Hide existing item in the same category
+                if let existingModel = chosenModels[category] {
+                    hideEntity(for: existingModel)
+                }
+                
+                // Get or create new entity
+                let entity = try await getOrCreateEntity(for: modelName)
+                
+                // Apply current color if exists
+                if let color = chosenColors[category] {
+                    let material = getOrCreateMaterial(for: color, category: category)
+                    entity.model?.materials = [material]
+                }
+                
+                // Add to scene if not already present
+                if entity.parent == nil {
+                    baseEntity?.addChild(entity)
+                }
+                
+                // Update chosen models
+                chosenModels[category] = modelName
+                
+                // Cleanup if needed
+                cleanupInactiveEntities()
+                
+            } catch {
+                print("Error loading clothing item: \(error)")
+            }
+        }
+    }
+    
+    func removeClothingItem(for category: String) {
+        if let modelName = chosenModels[category] {
+            hideEntity(for: modelName)
+            chosenModels.removeValue(forKey: category)
+        }
+    }
+    
+    // MARK: - Optimized Color Change
+    func changeClothingItemColor(for category: String, to color: UIColor) {
+        guard let modelName = chosenModels[category] else { return }
+        
+        queueAnimation(for: modelName) { [weak self] in
+            guard let self = self,
+                  let entity = self.entityPool[modelName] else { return }
+            
+            let material = self.getOrCreateMaterial(for: color, category: category)
+            entity.model?.materials = [material]
+            self.chosenColors[category] = color
+        }
+    }
+    
+    func changeSkinColor(to color: UIColor) {
+        guard let baseEntity = baseEntity else { return }
+        changeItemColor(for: baseEntity, to: color, categoryKey: "skin")
+    }
+    
+    // MARK: - Memory Management
+    override func didReceiveMemoryWarning() {
+        super.didReceiveMemoryWarning()
+        cleanupInactiveEntities()
+        materialCache.removeAll()
     }
 }
 
