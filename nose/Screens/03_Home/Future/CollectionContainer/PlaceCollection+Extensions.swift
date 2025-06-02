@@ -12,4 +12,4 @@ extension PlaceCollection.Place {
             "addedAt": Timestamp(date: addedAt)
         ]
     }
-} 
+}

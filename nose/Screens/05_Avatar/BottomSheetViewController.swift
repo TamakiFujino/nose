@@ -17,6 +17,8 @@ class BottomSheetContentView: UIView {
     private var models: [Model] = []
     private var selectedModels: [String: String] = [:]
     private let modelsQueue = DispatchQueue(label: "com.nose.modelsQueue", attributes: .concurrent)
+    private var loadingIndicator: UIActivityIndicatorView!
+    private var loadingOverlay: UIView!
     
     private let baseTabItems = ["Skin", "Eye", "Eyebrow"]
     private let hairTabItems = ["Base", "Front", "Side", "Back"]
@@ -45,6 +47,7 @@ class BottomSheetContentView: UIView {
         setupChildTabBar()
         setupScrollView()
         setupContentView()
+        setupLoadingIndicator()
         
         // Use Task to handle async call
         Task {
@@ -107,6 +110,43 @@ class BottomSheetContentView: UIView {
             contentView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
             contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor)
         ])
+    }
+
+    private func setupLoadingIndicator() {
+        loadingOverlay = UIView()
+        loadingOverlay.backgroundColor = UIColor.black.withAlphaComponent(0.3)
+        loadingOverlay.isHidden = true
+        loadingOverlay.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(loadingOverlay)
+        
+        loadingIndicator = UIActivityIndicatorView(style: .large)
+        loadingIndicator.color = .white
+        loadingIndicator.translatesAutoresizingMaskIntoConstraints = false
+        loadingOverlay.addSubview(loadingIndicator)
+        
+        NSLayoutConstraint.activate([
+            loadingOverlay.topAnchor.constraint(equalTo: topAnchor),
+            loadingOverlay.leadingAnchor.constraint(equalTo: leadingAnchor),
+            loadingOverlay.trailingAnchor.constraint(equalTo: trailingAnchor),
+            loadingOverlay.bottomAnchor.constraint(equalTo: bottomAnchor),
+            
+            loadingIndicator.centerXAnchor.constraint(equalTo: loadingOverlay.centerXAnchor),
+            loadingIndicator.centerYAnchor.constraint(equalTo: loadingOverlay.centerYAnchor)
+        ])
+    }
+
+    private func showLoading() {
+        DispatchQueue.main.async {
+            self.loadingOverlay.isHidden = false
+            self.loadingIndicator.startAnimating()
+        }
+    }
+
+    private func hideLoading() {
+        DispatchQueue.main.async {
+            self.loadingOverlay.isHidden = true
+            self.loadingIndicator.stopAnimating()
+        }
     }
 
     // MARK: - Data Loading
@@ -216,14 +256,18 @@ class BottomSheetContentView: UIView {
         contentView.subviews.forEach { $0.removeFromSuperview() }
         let category = getCurrentCategory()
         
+        // Show loading indicator
+        showLoading()
+        
         // Use Task to handle async call
         Task {
             await loadModels(for: category)
-            setupThumbnails(for: category)
+            await setupThumbnails(for: category)
+            hideLoading()
         }
     }
 
-    private func setupThumbnails(for category: String) {
+    private func setupThumbnails(for category: String) async {
         // Skip thumbnail setup for color-only categories
         if category == "skin" {
             return
@@ -233,35 +277,33 @@ class BottomSheetContentView: UIView {
         let buttonSize: CGFloat = (bounds.width - (padding * 5)) / 4
         var lastButton: UIButton?
 
-        Task {
-            let currentModels = await getModels()
-            for (index, model) in currentModels.enumerated() {
-                let row = index / 4
-                let column = index % 4
-                let xPosition = padding + CGFloat(column) * (buttonSize + padding)
-                let yPosition = padding + CGFloat(row) * (buttonSize + padding)
+        let currentModels = await getModels()
+        for (index, model) in currentModels.enumerated() {
+            let row = index / 4
+            let column = index % 4
+            let xPosition = padding + CGFloat(column) * (buttonSize + padding)
+            let yPosition = padding + CGFloat(row) * (buttonSize + padding)
 
-                let thumbnailButton = createThumbnailButton(
-                    model: model,
-                    index: index,
-                    frame: CGRect(x: xPosition, y: yPosition, width: buttonSize, height: buttonSize),
-                    category: category
-                )
-                await MainActor.run {
-                    contentView.addSubview(thumbnailButton)
-                    lastButton = thumbnailButton
-                }
+            let thumbnailButton = await createThumbnailButton(
+                model: model,
+                index: index,
+                frame: CGRect(x: xPosition, y: yPosition, width: buttonSize, height: buttonSize),
+                category: category
+            )
+            await MainActor.run {
+                contentView.addSubview(thumbnailButton)
+                lastButton = thumbnailButton
             }
+        }
 
-            if let lastButton = lastButton {
-                await MainActor.run {
-                    contentView.bottomAnchor.constraint(equalTo: lastButton.bottomAnchor, constant: padding).isActive = true
-                }
+        if let lastButton = lastButton {
+            await MainActor.run {
+                contentView.bottomAnchor.constraint(equalTo: lastButton.bottomAnchor, constant: padding).isActive = true
             }
         }
     }
 
-    private func createThumbnailButton(model: Model, index: Int, frame: CGRect, category: String) -> UIButton {
+    private func createThumbnailButton(model: Model, index: Int, frame: CGRect, category: String) async -> UIButton {
         let button = UIButton(frame: frame)
         // Ensure index is valid before setting tag
         guard index >= 0 else {
@@ -270,20 +312,23 @@ class BottomSheetContentView: UIView {
         }
         button.tag = index
         
+        // Set placeholder image immediately
+        await MainActor.run {
+            button.setImage(UIImage(systemName: "photo"), for: .normal)
+            button.imageView?.contentMode = .scaleAspectFit
+            button.tintColor = .gray
+        }
+        
         // Load thumbnail asynchronously
-        Task {
-            do {
-                let image = try await AvatarResourceManager.shared.loadThumbnail(for: model.name)
-                DispatchQueue.main.async {
-                    button.setImage(image, for: .normal)
-                }
-            } catch {
-                print("Failed to load thumbnail for \(model.name): \(error)")
-                // Set a placeholder image
-                DispatchQueue.main.async {
-                    button.setImage(UIImage(systemName: "photo"), for: .normal)
-                }
+        do {
+            let image = try await AvatarResourceManager.shared.loadThumbnail(for: model.name)
+            await MainActor.run {
+                button.setImage(image, for: .normal)
+                button.imageView?.contentMode = .scaleAspectFit
+                button.tintColor = nil
             }
+        } catch {
+            print("Failed to load thumbnail for \(model.name): \(error)")
         }
         
         button.addTarget(self, action: #selector(thumbnailTapped(_:)), for: .touchUpInside)

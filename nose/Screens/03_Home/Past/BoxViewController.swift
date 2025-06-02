@@ -120,4 +120,4 @@ extension BoxViewController: UITableViewDelegate, UITableViewDataSource {
         }
         present(placesVC, animated: true)
     }
-} 
+}

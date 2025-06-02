@@ -560,4 +560,3 @@ extension PlaceDetailViewController: SaveToCollectionViewControllerDelegate {
         }
     }
 }
-
