@@ -12,16 +12,16 @@ final class ViewController: UIViewController {
     private lazy var sloganLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "Travel Through Time,\nChange for the Future"
+        label.text = "Travel Through Time\nChange for the Future"
         label.textAlignment = .center
-        label.font = .systemFont(ofSize: 24, weight: .medium)
-        label.textColor = .black
+        label.font = .systemFont(ofSize: 28, weight: .bold)
+        label.textColor = .white
         label.numberOfLines = 0
         return label
     }()
     
-    private lazy var appleButton: CustomButton = {
-        let button = CustomButton()
+    private lazy var appleButton: CustomGlassButton = {
+        let button = CustomGlassButton()
         button.translatesAutoresizingMaskIntoConstraints = false
         
         // Create a container view for icon and text
@@ -70,8 +70,8 @@ final class ViewController: UIViewController {
         return button
     }()
     
-    private lazy var googleButton: CustomButton = {
-        let button = CustomButton()
+    private lazy var googleButton: CustomGlassButton = {
+        let button = CustomGlassButton()
         button.translatesAutoresizingMaskIntoConstraints = false
         
         // Create a container view for icon and text
@@ -155,10 +155,13 @@ final class ViewController: UIViewController {
     
     // MARK: - Setup
     private func setupUI() {
-        // set background color using CustomGradient.swift
-        let gradientView = CustomGradientView(frame: view.bounds)
-        view.addSubview(gradientView)
-        view.sendSubviewToBack(gradientView)
+        // set background using image
+        let backgroundImage = UIImageView(frame: UIScreen.main.bounds)
+        backgroundImage.image = UIImage(named: "splash")
+        backgroundImage.contentMode = .scaleAspectFill  // or .scaleAspectFit if you want full image visible
+        backgroundImage.clipsToBounds = true
+        view.addSubview(backgroundImage)
+        view.sendSubviewToBack(backgroundImage)
         
         // Add subviews
         view.addSubview(sloganLabel)
@@ -170,7 +173,7 @@ final class ViewController: UIViewController {
         NSLayoutConstraint.activate([
             // Slogan constraints
             sloganLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            sloganLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: -100),
+            sloganLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor),
             sloganLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             sloganLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
             
