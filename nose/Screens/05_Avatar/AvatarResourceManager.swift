@@ -3,6 +3,7 @@ import RealityKit
 import FirebaseStorage
 import Foundation
 
+@MainActor
 final class AvatarResourceManager {
     static let shared = AvatarResourceManager()
     private init() {
@@ -173,82 +174,88 @@ final class AvatarResourceManager {
         // Check memory cache first
         if let entity = modelEntities[modelName] {
             print("📦 Using cached model entity for: \(modelName)")
-            return entity
+            return entity.clone(recursive: true)
         }
         
         // Check if there's an ongoing loading task
         if let existingTask = loadingTasks[modelName] {
             print("⏳ Using existing loading task for: \(modelName)")
-            if let entity = try await existingTask.value {
-                return entity
-            } else {
-                throw NSError(domain: "AvatarResourceManager", code: 404, userInfo: [NSLocalizedDescriptionKey: "Failed to load model: \(modelName)"])
+            do {
+                if let entity = try await existingTask.value {
+                    return entity.clone(recursive: true)
+                }
+            } catch {
+                print("❌ Error in existing task for \(modelName): \(error)")
+                // Remove failed task and continue with new task
+                loadingTasks.removeValue(forKey: modelName)
             }
         }
         
         // Create new loading task
-        let task = Task<ModelEntity?, Error> {
-            let modelFileURL = cacheDirectory.appendingPathComponent("\(modelName).usdz")
+        let task = Task<ModelEntity?, Error> { [weak self] in
+            guard let self = self else {
+                throw NSError(domain: "AvatarResourceManager", code: 500, userInfo: [NSLocalizedDescriptionKey: "Resource manager deallocated"])
+            }
+            
+            let modelFileURL = self.cacheDirectory.appendingPathComponent("\(modelName).usdz")
             
             // Check if file exists in cache
-            if fileManager.fileExists(atPath: modelFileURL.path) {
+            if self.fileManager.fileExists(atPath: modelFileURL.path) {
                 print("📦 Found cached file for: \(modelName)")
                 do {
-                    let modelEntity = try await loadModelFromFile(modelFileURL)
-                    // Optimize model settings
-                    if let model = modelEntity.model {
-                        let optimizedMaterials = model.materials.map { material -> Material in
-                            if var simpleMaterial = material as? SimpleMaterial {
-                                simpleMaterial.roughness = 0.5
-                                simpleMaterial.metallic = 0.0
-                                return simpleMaterial
-                            }
-                            return material
-                        }
-                        let optimizedModel = ModelComponent(mesh: model.mesh, materials: optimizedMaterials)
-                        modelEntity.model = optimizedModel
-                    }
-                    modelEntities[modelName] = modelEntity
-                    modelFileURLs[modelName] = modelFileURL
+                    let modelEntity = try await self.loadModelFromFile(modelFileURL)
+                    self.applyOptimizedMaterials(to: modelEntity)
+                    self.modelEntities[modelName] = modelEntity
+                    self.modelFileURLs[modelName] = modelFileURL
                     return modelEntity
                 } catch {
                     print("❌ Error loading cached model: \(error)")
-                    // If cached model fails to load, continue with download
                 }
             }
             
             // Download if not in cache
             print("⬇️ Downloading model: \(modelName)")
-            try await downloadModel(named: modelName, to: modelFileURL)
+            try await self.downloadModel(named: modelName, to: modelFileURL)
             
-            // Load the downloaded model
-            let modelEntity = try await loadModelFromFile(modelFileURL)
-            // Optimize model settings
-            if let model = modelEntity.model {
-                let optimizedMaterials = model.materials.map { material -> Material in
-                    if var simpleMaterial = material as? SimpleMaterial {
-                        simpleMaterial.roughness = 0.5
-                        simpleMaterial.metallic = 0.0
-                        return simpleMaterial
-                    }
-                    return material
-                }
-                let optimizedModel = ModelComponent(mesh: model.mesh, materials: optimizedMaterials)
-                modelEntity.model = optimizedModel
-            }
-            modelEntities[modelName] = modelEntity
-            modelFileURLs[modelName] = modelFileURL
+            let modelEntity = try await self.loadModelFromFile(modelFileURL)
+            self.applyOptimizedMaterials(to: modelEntity)
+            self.modelEntities[modelName] = modelEntity
+            self.modelFileURLs[modelName] = modelFileURL
             return modelEntity
         }
         
+        // Store task and clean up when done
         loadingTasks[modelName] = task
-        defer { loadingTasks[modelName] = nil }
         
-        if let entity = try await task.value {
-            return entity
-        } else {
-            throw NSError(domain: "AvatarResourceManager", code: 404, userInfo: [NSLocalizedDescriptionKey: "Failed to load model: \(modelName)"])
+        do {
+            if let entity = try await task.value {
+                // Clean up task after successful completion
+                loadingTasks.removeValue(forKey: modelName)
+                return entity.clone(recursive: true)
+            } else {
+                // Clean up task after failure
+                loadingTasks.removeValue(forKey: modelName)
+                throw NSError(domain: "AvatarResourceManager", code: 404, userInfo: [NSLocalizedDescriptionKey: "Failed to load model: \(modelName)"])
+            }
+        } catch {
+            // Clean up task after error
+            loadingTasks.removeValue(forKey: modelName)
+            print("❌ Error loading model for \(modelName): \(error)")
+            throw error
         }
+    }
+    
+    private func applyOptimizedMaterials(to entity: ModelEntity) {
+        guard let model = entity.model else { return }
+        let optimizedMaterials = model.materials.map { material -> Material in
+            if var simpleMaterial = material as? SimpleMaterial {
+                simpleMaterial.roughness = 0.5
+                simpleMaterial.metallic = 0.0
+                return simpleMaterial
+            }
+            return material
+        }
+        entity.model = ModelComponent(mesh: model.mesh, materials: optimizedMaterials)
     }
     
     private func loadModelFromFile(_ fileURL: URL) async throws -> ModelEntity {

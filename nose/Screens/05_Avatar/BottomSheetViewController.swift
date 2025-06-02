@@ -240,11 +240,11 @@ class BottomSheetContentView: UIView {
     
     private func preloadModelEntities(modelNames: [String]) async {
         for modelName in modelNames {
-            Task.detached {
+            Task {
                 do {
                     _ = try await AvatarResourceManager.shared.loadModelEntity(named: modelName)
                 } catch {
-                    print("Failed to preload model: \(modelName), error: \(error)")
+                    print("❌ Failed to preload model: \(modelName), error: \(error)")
                 }
             }
         }
