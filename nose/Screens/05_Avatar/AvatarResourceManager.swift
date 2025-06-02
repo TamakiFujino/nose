@@ -195,6 +195,19 @@ final class AvatarResourceManager {
                 print("📦 Found cached file for: \(modelName)")
                 do {
                     let modelEntity = try await loadModelFromFile(modelFileURL)
+                    // Optimize model settings
+                    if let model = modelEntity.model {
+                        let optimizedMaterials = model.materials.map { material -> Material in
+                            if var simpleMaterial = material as? SimpleMaterial {
+                                simpleMaterial.roughness = 0.5
+                                simpleMaterial.metallic = 0.0
+                                return simpleMaterial
+                            }
+                            return material
+                        }
+                        let optimizedModel = ModelComponent(mesh: model.mesh, materials: optimizedMaterials)
+                        modelEntity.model = optimizedModel
+                    }
                     modelEntities[modelName] = modelEntity
                     modelFileURLs[modelName] = modelFileURL
                     return modelEntity
@@ -210,6 +223,19 @@ final class AvatarResourceManager {
             
             // Load the downloaded model
             let modelEntity = try await loadModelFromFile(modelFileURL)
+            // Optimize model settings
+            if let model = modelEntity.model {
+                let optimizedMaterials = model.materials.map { material -> Material in
+                    if var simpleMaterial = material as? SimpleMaterial {
+                        simpleMaterial.roughness = 0.5
+                        simpleMaterial.metallic = 0.0
+                        return simpleMaterial
+                    }
+                    return material
+                }
+                let optimizedModel = ModelComponent(mesh: model.mesh, materials: optimizedMaterials)
+                modelEntity.model = optimizedModel
+            }
             modelEntities[modelName] = modelEntity
             modelFileURLs[modelName] = modelFileURL
             return modelEntity
@@ -227,12 +253,19 @@ final class AvatarResourceManager {
     
     private func loadModelFromFile(_ fileURL: URL) async throws -> ModelEntity {
         if #available(iOS 15.0, *) {
-            return try await ModelEntity.loadModel(contentsOf: fileURL)
+            let entity = try await ModelEntity.loadModel(contentsOf: fileURL)
+            // Optimize entity settings
+            entity.generateCollisionShapes(recursive: false)
+            entity.components[PhysicsBodyComponent.self] = nil
+            return entity
         } else {
             let entity = try await ModelEntity.load(contentsOf: fileURL)
             guard let modelEntity = entity as? ModelEntity else {
                 throw NSError(domain: "AvatarResourceManager", code: 422, userInfo: [NSLocalizedDescriptionKey: "Loaded entity is not a ModelEntity"])
             }
+            // Optimize entity settings
+            modelEntity.generateCollisionShapes(recursive: false)
+            modelEntity.components[PhysicsBodyComponent.self] = nil
             return modelEntity
         }
     }
@@ -241,20 +274,11 @@ final class AvatarResourceManager {
         let (category, subcategory) = AvatarResourceManager.getCategoryAndSubcategory(from: modelName)
         let remotePath = "avatar_assets/models/\(category)/\(subcategory)/\(modelName).usdz"
         let modelRef = storage.reference().child(remotePath)
-        if fileManager.fileExists(atPath: fileURL.path) {
-            try? fileManager.removeItem(at: fileURL)
-        }
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            modelRef.write(toFile: fileURL) { url, error in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                } else if let url = url, self.fileManager.fileExists(atPath: url.path) {
-                    continuation.resume(returning: ())
-                } else {
-                    continuation.resume(throwing: NSError(domain: "AvatarResourceManager", code: 404, userInfo: [NSLocalizedDescriptionKey: "Download succeeded but file doesn't exist"]))
-                }
-            }
-        }
+        
+        // Use a more efficient download method
+        let maxSize: Int64 = 10 * 1024 * 1024 // 10MB max size
+        let data = try await modelRef.data(maxSize: maxSize)
+        try data.write(to: fileURL)
     }
 
     // MARK: - Thumbnail Loading & Caching
@@ -274,7 +298,8 @@ final class AvatarResourceManager {
                 }
             } catch {
                 print("❌ Error in existing task for \(modelName): \(error)")
-                // Continue with new task if existing one failed
+                // Remove failed task and continue with new task
+                thumbnailLoadingTasks.removeValue(forKey: modelName)
             }
         }
         
@@ -310,17 +335,20 @@ final class AvatarResourceManager {
         
         // Store task and clean up when done
         thumbnailLoadingTasks[modelName] = task
-        defer {
-            thumbnailLoadingTasks[modelName] = nil
-        }
         
         do {
             if let image = try await task.value {
+                // Clean up task after successful completion
+                thumbnailLoadingTasks.removeValue(forKey: modelName)
                 return image
             } else {
+                // Clean up task after failure
+                thumbnailLoadingTasks.removeValue(forKey: modelName)
                 throw NSError(domain: "AvatarResourceManager", code: 404, userInfo: [NSLocalizedDescriptionKey: "Failed to load thumbnail for: \(modelName)"])
             }
         } catch {
+            // Clean up task after error
+            thumbnailLoadingTasks.removeValue(forKey: modelName)
             print("❌ Error loading thumbnail for \(modelName): \(error)")
             throw error
         }
@@ -334,10 +362,15 @@ final class AvatarResourceManager {
         // Filter out already loaded thumbnails
         let modelsToLoad = models.filter { !loadedThumbnails.contains($0) }
         
-        // Load thumbnails concurrently
+        // Load thumbnails concurrently with a limit
         try await withThrowingTaskGroup(of: (String, UIImage).self) { group in
+            let semaphore = DispatchSemaphore(value: 3) // Limit concurrent downloads
+            
             for modelName in modelsToLoad {
                 group.addTask {
+                    semaphore.wait()
+                    defer { semaphore.signal() }
+                    
                     let image = try await self.loadThumbnail(for: modelName)
                     return (modelName, image)
                 }

@@ -26,6 +26,14 @@ class BottomSheetContentView: UIView {
     
     private let storage = Storage.storage()
 
+    private var jsonCache: [String: [String: [String]]] = [:]  // Cache for JSON data
+    private var thumbnailPrefetchQueue = DispatchQueue(label: "com.nose.thumbnailPrefetch", qos: .userInitiated)
+    private var pendingThumbnailLoads: Set<String> = []
+    private var thumbnailLoadSemaphore = DispatchSemaphore(value: 3)  // Limit concurrent thumbnail loads
+    private var uiUpdateQueue = DispatchQueue(label: "com.nose.uiUpdate", qos: .userInteractive)
+    private var pendingUIUpdates: [() -> Void] = []
+    private var isProcessingUIUpdates = false
+
     // MARK: - Initialization
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -136,16 +144,16 @@ class BottomSheetContentView: UIView {
     }
 
     private func showLoading() {
-        DispatchQueue.main.async {
-            self.loadingOverlay.isHidden = false
-            self.loadingIndicator.startAnimating()
+        Task { @MainActor in
+            loadingOverlay.isHidden = false
+            loadingIndicator.startAnimating()
         }
     }
 
     private func hideLoading() {
-        DispatchQueue.main.async {
-            self.loadingOverlay.isHidden = true
-            self.loadingIndicator.stopAnimating()
+        Task { @MainActor in
+            loadingOverlay.isHidden = true
+            loadingIndicator.stopAnimating()
         }
     }
 
@@ -173,33 +181,33 @@ class BottomSheetContentView: UIView {
                 return
             }
 
+            // Check cache first
+            if let cachedData = jsonCache[mainCategory] {
+                let subcategory = getSubcategory(for: category)
+                if let modelsArray = cachedData[subcategory] {
+                    let newModels = modelsArray.map { Model(name: $0) }
+                    await setModels(newModels)
+                    return
+                }
+            }
+
+            // Download and cache if not in cache
             let jsonRef = storage.reference().child("avatar_assets/json/\(mainCategory).json")
             let maxSize: Int64 = 1 * 1024 * 1024 // 1MB max size
             let data = try await jsonRef.data(maxSize: maxSize)
             
-            // Decode the dictionary with arrays
+            // Decode and cache the dictionary
             let dict = try JSONDecoder().decode([String: [String]].self, from: data)
+            jsonCache[mainCategory] = dict
             
-            // Get the subcategory name
-            let subcategory: String
-            switch category {
-            case "skin": subcategory = "skin"
-            case "eyes": subcategory = "eyes"
-            case "eyebrows": subcategory = "eyebrows"
-            case "hairbase": subcategory = "base"
-            case "hairfront": subcategory = "front"
-            case "hairside": subcategory = "side"
-            case "hairback": subcategory = "back"
-            case "tops": subcategory = "tops"
-            case "bottoms": subcategory = "bottoms"
-            case "socks": subcategory = "socks"
-            default: subcategory = category
-            }
-            
+            // Get models for current subcategory
+            let subcategory = getSubcategory(for: category)
             if let modelsArray = dict[subcategory] {
                 let newModels = modelsArray.map { Model(name: $0) }
                 await setModels(newModels)
-                print("Successfully loaded models for category: \(category) from \(mainCategory).json")
+                
+                // Prefetch thumbnails for the first few items
+                await prefetchThumbnails(for: modelsArray.prefix(8))
             } else {
                 print("No models found for subcategory: \(subcategory) in \(mainCategory).json")
                 await setModels([])
@@ -207,6 +215,42 @@ class BottomSheetContentView: UIView {
         } catch {
             print("Failed to load or decode \(category) from main category JSON: \(error)")
             await setModels([])
+        }
+    }
+
+    private func getSubcategory(for category: String) -> String {
+        switch category {
+        case "skin": return "skin"
+        case "eyes": return "eyes"
+        case "eyebrows": return "eyebrows"
+        case "hairbase": return "base"
+        case "hairfront": return "front"
+        case "hairside": return "side"
+        case "hairback": return "back"
+        case "tops": return "tops"
+        case "bottoms": return "bottoms"
+        case "socks": return "socks"
+        default: return category
+        }
+    }
+
+    private func prefetchThumbnails(for models: ArraySlice<String>) async {
+        for modelName in models {
+            guard !pendingThumbnailLoads.contains(modelName) else { continue }
+            pendingThumbnailLoads.insert(modelName)
+            
+            Task {
+                thumbnailLoadSemaphore.wait()
+                defer { thumbnailLoadSemaphore.signal() }
+                
+                do {
+                    _ = try await AvatarResourceManager.shared.loadThumbnail(for: modelName)
+                    pendingThumbnailLoads.remove(modelName)
+                } catch {
+                    print("Failed to prefetch thumbnail for \(modelName): \(error)")
+                    pendingThumbnailLoads.remove(modelName)
+                }
+            }
         }
     }
 
@@ -259,25 +303,38 @@ class BottomSheetContentView: UIView {
         // Show loading indicator
         showLoading()
         
-        // Use Task to handle async call
-        Task {
-            await loadModels(for: category)
-            await setupThumbnails(for: category)
-            hideLoading()
+        // Use Task to handle async call with timeout
+        Task { [weak self] in
+            guard let self = self else { return }
+            
+            do {
+                try await withTimeout(seconds: 10) {
+                    await self.loadModels(for: category)
+                    await self.setupThumbnails(for: category)
+                }
+            } catch {
+                print("Failed to load content: \(error)")
+                // Ensure loading indicator is hidden even on error
+                self.hideLoading()
+            }
         }
     }
 
     private func setupThumbnails(for category: String) async {
         // Skip thumbnail setup for color-only categories
         if category == "skin" {
+            hideLoading()
             return
         }
 
         let padding: CGFloat = 10
         let buttonSize: CGFloat = (bounds.width - (padding * 5)) / 4
         var lastButton: UIButton?
+        var thumbnailButtons: [UIButton] = []
 
         let currentModels = await getModels()
+        
+        // Create all buttons first
         for (index, model) in currentModels.enumerated() {
             let row = index / 4
             let column = index % 4
@@ -290,45 +347,80 @@ class BottomSheetContentView: UIView {
                 frame: CGRect(x: xPosition, y: yPosition, width: buttonSize, height: buttonSize),
                 category: category
             )
-            await MainActor.run {
-                contentView.addSubview(thumbnailButton)
-                lastButton = thumbnailButton
-            }
+            thumbnailButtons.append(thumbnailButton)
         }
 
-        if let lastButton = lastButton {
-            await MainActor.run {
-                contentView.bottomAnchor.constraint(equalTo: lastButton.bottomAnchor, constant: padding).isActive = true
+        // Batch UI updates
+        await queueUIUpdate {
+            // Remove existing views
+            self.contentView.subviews.forEach { $0.removeFromSuperview() }
+            
+            // Add new buttons
+            for button in thumbnailButtons {
+                self.contentView.addSubview(button)
+                lastButton = button
             }
+            
+            // Update content view size
+            if let lastButton = lastButton {
+                self.contentView.bottomAnchor.constraint(equalTo: lastButton.bottomAnchor, constant: padding).isActive = true
+            }
+        }
+        
+        // Hide loading indicator after setup is complete
+        hideLoading()
+    }
+
+    private func queueUIUpdate(_ update: @escaping () -> Void) async {
+        await MainActor.run {
+            pendingUIUpdates.append(update)
+            processUIUpdates()
+        }
+    }
+
+    private func processUIUpdates() {
+        guard !isProcessingUIUpdates else { return }
+        isProcessingUIUpdates = true
+        
+        let updates = pendingUIUpdates
+        pendingUIUpdates.removeAll()
+        
+        for update in updates {
+            update()
+        }
+        
+        isProcessingUIUpdates = false
+        
+        if !pendingUIUpdates.isEmpty {
+            processUIUpdates()
         }
     }
 
     private func createThumbnailButton(model: Model, index: Int, frame: CGRect, category: String) async -> UIButton {
         let button = UIButton(frame: frame)
-        // Ensure index is valid before setting tag
-        guard index >= 0 else {
-            print("Invalid index for thumbnail button: \(index)")
-            return button
-        }
         button.tag = index
         
         // Set placeholder image immediately
-        await MainActor.run {
-            button.setImage(UIImage(systemName: "photo"), for: .normal)
-            button.imageView?.contentMode = .scaleAspectFit
-            button.tintColor = .gray
-        }
+        button.setImage(UIImage(systemName: "photo"), for: .normal)
+        button.imageView?.contentMode = .scaleAspectFit
+        button.tintColor = .gray
         
-        // Load thumbnail asynchronously
-        do {
-            let image = try await AvatarResourceManager.shared.loadThumbnail(for: model.name)
-            await MainActor.run {
-                button.setImage(image, for: .normal)
-                button.imageView?.contentMode = .scaleAspectFit
-                button.tintColor = nil
+        // Load thumbnail asynchronously with timeout
+        Task {
+            do {
+                // Add timeout to thumbnail loading
+                try await withTimeout(seconds: 5) {
+                    let image = try await AvatarResourceManager.shared.loadThumbnail(for: model.name)
+                    await MainActor.run {
+                        button.setImage(image, for: .normal)
+                        button.imageView?.contentMode = .scaleAspectFit
+                        button.tintColor = nil
+                    }
+                }
+            } catch {
+                print("Failed to load thumbnail for \(model.name): \(error)")
+                // Keep the placeholder image on error
             }
-        } catch {
-            print("Failed to load thumbnail for \(model.name): \(error)")
         }
         
         button.addTarget(self, action: #selector(thumbnailTapped(_:)), for: .touchUpInside)
@@ -421,6 +513,24 @@ class BottomSheetContentView: UIView {
             }
         default:
             return ""
+        }
+    }
+
+    // MARK: - Timeout Helper
+    private func withTimeout<T>(seconds: TimeInterval, operation: @escaping () async throws -> T) async throws -> T {
+        try await withThrowingTaskGroup(of: T.self) { group in
+            group.addTask {
+                try await operation()
+            }
+            
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                throw NSError(domain: "BottomSheetViewController", code: -1, userInfo: [NSLocalizedDescriptionKey: "Operation timed out"])
+            }
+            
+            let result = try await group.next()!
+            group.cancelAll()
+            return result
         }
     }
 }

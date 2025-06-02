@@ -19,7 +19,7 @@ class Avatar3DViewController: UIViewController {
         private var colorChangeDebounceWorkItems: [ObjectIdentifier: DispatchWorkItem] = [:]
     
     private var modelCache: [String: ModelEntity] = [:]
-    private var baseMaterial: SimpleMaterial?
+    private var categoryMaterials: [String: SimpleMaterial] = [:]  // Materials for each category
     private var entityPool: [String: ModelEntity] = [:]  // Pool of reusable entities
     private var activeEntities: Set<String> = []  // Track currently active entities
     private var materialCache: [String: SimpleMaterial] = [:]  // Cache for materials
@@ -28,6 +28,9 @@ class Avatar3DViewController: UIViewController {
     private var materialUpdateQueue = DispatchQueue(label: "com.avatar.material", qos: .userInteractive)
     private var lastMaterialUpdate: [String: Date] = [:]
     private let materialUpdateThrottle: TimeInterval = 0.016 // ~60 FPS
+    private var sceneUpdateQueue = DispatchQueue(label: "com.avatar.scene", qos: .userInteractive)
+    private var pendingSceneUpdates: [() -> Void] = []
+    private var isProcessingSceneUpdates = false
 
     // MARK: - Computed Properties
 
@@ -107,20 +110,17 @@ class Avatar3DViewController: UIViewController {
         clearBaseEntityAnchors()
         baseEntity.transform.rotation = simd_quatf(angle: .pi / 6, axis: [0, -0.8, 0])
         
-        // Create and store the base material for reuse
-        if baseMaterial == nil {
-            if let materials = baseEntity.model?.materials,
-               let firstMaterial = materials.first as? SimpleMaterial {
-                baseMaterial = firstMaterial
-            } else {
-                // Create a default material if none exists
-                baseMaterial = SimpleMaterial(color: .white, isMetallic: false)
-            }
+        // Create material for base entity if not exists
+        if categoryMaterials["skin"] == nil {
+            var material = SimpleMaterial(color: .white, isMetallic: false)
+            material.roughness = 0.5
+            material.metallic = 0.0
+            categoryMaterials["skin"] = material
         }
         
-        // Apply the base material to the base entity
-        if let baseMaterial = baseMaterial {
-            baseEntity.model?.materials = [baseMaterial]
+        // Apply the material to the base entity
+        if let material = categoryMaterials["skin"] {
+            baseEntity.model?.materials = [material]
         }
         
         let anchor = AnchorEntity(world: .zero)
@@ -203,29 +203,6 @@ class Avatar3DViewController: UIViewController {
                 }
             }
         }
-    }
-
-    /// Efficiently change the color of a clothing item or base model, always using a single SimpleMaterial.
-    private func changeItemColor(for entity: ModelEntity, to color: UIColor, categoryKey: String? = nil) {
-        // Debounce rapid color changes for live preview
-        let entityId = ObjectIdentifier(entity)
-        colorChangeDebounceWorkItems[entityId]?.cancel()
-        let workItem = DispatchWorkItem { [weak entity, weak self] in
-            guard let entity = entity else { return }
-            
-            // Always use the base material
-            if let baseMaterial = self?.baseMaterial {
-                var newMaterial = baseMaterial
-                newMaterial.baseColor = .color(color)
-                entity.model?.materials = [newMaterial]
-            }
-            
-            if let categoryKey = categoryKey, let self = self {
-                self.chosenColors[categoryKey] = color
-            }
-        }
-        colorChangeDebounceWorkItems[entityId] = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.03, execute: workItem) // ~33 FPS
     }
 
     // MARK: - State Management
@@ -319,7 +296,7 @@ class Avatar3DViewController: UIViewController {
             let optimizedMaterials = model.materials.map { material -> Material in
                 if var simpleMaterial = material as? SimpleMaterial {
                     simpleMaterial.roughness = 0.5
-                    simpleMaterial.metallic = 0.0
+                    simpleMaterial.metallic = 0.2
                     return simpleMaterial
                 }
                 return material
@@ -353,19 +330,16 @@ class Avatar3DViewController: UIViewController {
     }
 
     // MARK: - Material Management
-    private func getOrCreateMaterial(for color: UIColor, category: String) -> SimpleMaterial {
-        let colorKey = color.toHexString() ?? "default"
-        let materialKey = "\(category)_\(colorKey)"
-        
-        if let cachedMaterial = materialCache[materialKey] {
-            return cachedMaterial
+    private func getOrCreateMaterial(for category: String) -> SimpleMaterial {
+        if let existingMaterial = categoryMaterials[category] {
+            return existingMaterial
         }
         
-        // Create material with optimized settings
-        var material = SimpleMaterial(color: color, isMetallic: false)
-        material.roughness = 0.5  // Reduce material complexity
-        material.metallic = 0.0   // Disable metallic for better performance
-        materialCache[materialKey] = material
+        // Create new material with default settings
+        var material = SimpleMaterial(color: .white, isMetallic: false)
+        material.roughness = 0.5
+        material.metallic = 0.0
+        categoryMaterials[category] = material
         return material
     }
 
@@ -408,6 +382,40 @@ class Avatar3DViewController: UIViewController {
         }
     }
 
+    // MARK: - Scene Management
+    private func queueSceneUpdate(_ update: @escaping () -> Void) {
+        sceneUpdateQueue.async { [weak self] in
+            guard let self = self else { return }
+            self.pendingSceneUpdates.append(update)
+            self.processSceneUpdates()
+        }
+    }
+    
+    private func processSceneUpdates() {
+        guard !isProcessingSceneUpdates else { return }
+        isProcessingSceneUpdates = true
+        
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            autoreleasepool {
+                let updates = self.pendingSceneUpdates
+                self.pendingSceneUpdates.removeAll()
+                
+                for update in updates {
+                    update()
+                }
+            }
+            
+            self.isProcessingSceneUpdates = false
+            
+            // Process any new updates that came in while we were processing
+            if !self.pendingSceneUpdates.isEmpty {
+                self.processSceneUpdates()
+            }
+        }
+    }
+
     // MARK: - Optimized Clothing Item Management
     func loadClothingItem(named modelName: String, category: String) {
         Task {
@@ -420,15 +428,16 @@ class Avatar3DViewController: UIViewController {
                 // Get or create new entity with optimized loading
                 let entity = try await getOrCreateEntity(for: modelName)
                 
-                // Apply current color if exists
-                if let color = chosenColors[category] {
-                    let material = getOrCreateMaterial(for: color, category: category)
-                    entity.model?.materials = [material]
-                }
+                // Apply category material
+                let material = getOrCreateMaterial(for: category)
+                entity.model?.materials = [material]
                 
-                // Add to scene if not already present
-                if entity.parent == nil {
-                    baseEntity?.addChild(entity)
+                // Queue scene update
+                queueSceneUpdate { [weak self] in
+                    // Add to scene if not already present
+                    if entity.parent == nil {
+                        self?.baseEntity?.addChild(entity)
+                    }
                 }
                 
                 // Update chosen models
@@ -451,8 +460,6 @@ class Avatar3DViewController: UIViewController {
     
     // MARK: - Optimized Color Change
     func changeClothingItemColor(for category: String, to color: UIColor) {
-        guard let entity = entityPool[chosenModels[category] ?? ""] else { return }
-        
         // Throttle material updates
         let now = Date()
         if let lastUpdate = lastMaterialUpdate[category],
@@ -461,19 +468,14 @@ class Avatar3DViewController: UIViewController {
         }
         lastMaterialUpdate[category] = now
         
-        // Use optimized material application
-        let material = getOrCreateMaterial(for: color, category: category)
+        // Update the category material color
+        updateMaterialColor(for: category, to: color)
         
-        // Apply material directly without queuing
-        DispatchQueue.main.async { [weak self] in
-            entity.model?.materials = [material]
-            self?.chosenColors[category] = color
-        }
+        // Update chosen colors
+        chosenColors[category] = color
     }
     
     func changeSkinColor(to color: UIColor) {
-        guard let baseEntity = baseEntity else { return }
-        
         // Throttle material updates
         let now = Date()
         if let lastUpdate = lastMaterialUpdate["skin"],
@@ -482,14 +484,11 @@ class Avatar3DViewController: UIViewController {
         }
         lastMaterialUpdate["skin"] = now
         
-        // Use optimized material application
-        let material = getOrCreateMaterial(for: color, category: "skin")
+        // Update the skin material color
+        updateMaterialColor(for: "skin", to: color)
         
-        // Apply material directly without queuing
-        DispatchQueue.main.async { [weak self] in
-            baseEntity.model?.materials = [material]
-            self?.chosenColors["skin"] = color
-        }
+        // Update chosen colors
+        chosenColors["skin"] = color
     }
     
     // MARK: - Memory Management
@@ -498,6 +497,39 @@ class Avatar3DViewController: UIViewController {
         cleanupInactiveEntities()
         materialCache.removeAll()
         lastMaterialUpdate.removeAll()
+    }
+
+    // MARK: - Material Management
+    private func updateMaterialColor(for category: String, to color: UIColor) {
+        materialUpdateQueue.async { [weak self] in
+            guard let self = self else { return }
+            
+            // Create new material with updated color
+            var newMaterial = SimpleMaterial(color: color, isMetallic: false)
+            newMaterial.roughness = 0.5
+            newMaterial.metallic = 0.0
+            
+            // Update category material
+            self.categoryMaterials[category] = newMaterial
+            
+            // Queue scene update to apply the change
+            self.queueSceneUpdate { [weak self] in
+                guard let self = self else { return }
+                
+                if category == "skin" {
+                    // Update base entity material
+                    if let baseEntity = self.baseEntity {
+                        baseEntity.model?.materials = [newMaterial]
+                    }
+                } else {
+                    // Update only the entities in this category
+                    if let modelName = self.chosenModels[category],
+                       let entity = self.entityPool[modelName] {
+                        entity.model?.materials = [newMaterial]
+                    }
+                }
+            }
+        }
     }
 }
 
