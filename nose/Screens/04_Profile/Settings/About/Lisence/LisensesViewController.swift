@@ -13,8 +13,7 @@ class LicensesViewController: UIViewController, UITableViewDelegate, UITableView
         self.navigationItem.backBarButtonItem = backButton
         self.navigationController?.navigationBar.tintColor = .black
 
-        let gradientView = CustomGradientView(frame: view.bounds)
-        view.addSubview(gradientView)
+        view.backgroundColor = .firstColor
 
         // Set up navigation bar
         setupNavigationBar()

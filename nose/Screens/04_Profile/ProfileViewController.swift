@@ -37,6 +37,10 @@ class ProfileViewController: UIViewController {
         view.backgroundColor = .systemBackground
         title = "Profile"
         
+        // Configure navigation bar
+        navigationController?.navigationBar.tintColor = .label
+        navigationItem.largeTitleDisplayMode = .never
+        
         // Add subviews
         view.addSubview(friendsButton)
         view.addSubview(settingsButton)

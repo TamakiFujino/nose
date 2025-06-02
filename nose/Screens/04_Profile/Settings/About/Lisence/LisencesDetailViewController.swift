@@ -13,9 +13,7 @@ class LicenseDetailViewController: UIViewController {
         self.navigationItem.backBarButtonItem = backButton
         self.navigationController?.navigationBar.tintColor = .black
 
-        let gradientView = CustomGradientView(frame: view.bounds)
-        view.addSubview(gradientView)
-        view.sendSubviewToBack(gradientView)
+        view.backgroundColor = .firstColor
 
         setupTextView()
     }

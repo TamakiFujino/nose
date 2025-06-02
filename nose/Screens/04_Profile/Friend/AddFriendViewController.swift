@@ -100,11 +100,14 @@ class AddFriendViewController: UIViewController {
     
     // MARK: - Setup
     private func setupUI() {
-        let gradientView = CustomGradientView(frame: view.bounds)
-        view.addSubview(gradientView)
-        view.sendSubviewToBack(gradientView)
+        // set background color
+        view.backgroundColor = .firstColor
         
         title = "Add Friend"
+        
+        // Configure navigation bar
+        navigationController?.navigationBar.tintColor = .label
+        navigationItem.largeTitleDisplayMode = .never
         
         // Add subviews
         view.addSubview(searchContainer)

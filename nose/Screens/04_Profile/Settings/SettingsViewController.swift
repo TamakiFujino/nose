@@ -13,13 +13,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        let backButton = UIBarButtonItem()
-        backButton.title = ""  // Hide the "Back" text
-        self.navigationItem.backBarButtonItem = backButton
-        self.navigationController?.navigationBar.tintColor = .black
-
-        let gradientView = CustomGradientView(frame: view.bounds)
-        view.addSubview(gradientView)
+        view.backgroundColor = .firstColor
 
         // Set up navigation bar
         setupNavigationBar()

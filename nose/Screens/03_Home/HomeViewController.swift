@@ -229,7 +229,11 @@ final class HomeViewController: UIViewController {
         view.backgroundColor = .white
         // Remove title
         navigationItem.title = nil
-        navigationController?.navigationBar.isHidden = true
+       // navigationController?.navigationBar.isHidden = true
+        
+        // Configure navigation bar for pushed view controllers
+        navigationController?.navigationBar.tintColor = .label
+        navigationController?.navigationBar.prefersLargeTitles = false
         
         // Add subviews in correct order
         view.addSubview(mapView)

@@ -20,8 +20,7 @@ class AccountViewController: UIViewController, UITableViewDelegate, UITableViewD
         self.navigationController?.navigationBar.tintColor = .black
         self.navigationItem.title = "Account"  // Set title in the navigation bar
 
-        let gradientView = CustomGradientView(frame: view.bounds)
-        view.addSubview(gradientView)
+        view.backgroundColor = .firstColor
 
         setupTableView()
     }
