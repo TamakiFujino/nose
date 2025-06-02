@@ -20,10 +20,6 @@ class BottomSheetContentView: UIView {
     private var loadingIndicator: UIActivityIndicatorView!
     private var loadingOverlay: UIView!
     
-    private let baseTabItems = ["Skin", "Eyes", "Eyebrows"]
-    private let hairTabItems = ["Base", "Front", "Side", "Back"]
-    private let clothesTabItems = ["Tops", "Bottoms", "Socks"]
-    
     private let storage = Storage.storage()
 
     private var jsonCache: [String: [String: [String]]] = [:]  // Cache for JSON data
@@ -65,8 +61,7 @@ class BottomSheetContentView: UIView {
     }
 
     private func setupParentTabBar() {
-        let parentTabItems = ["Base", "Hair", "Clothes"]
-        parentTabBar = UISegmentedControl(items: parentTabItems)
+        parentTabBar = UISegmentedControl(items: AvatarCategory.parentTabItems)
         parentTabBar.selectedSegmentIndex = 0
         parentTabBar.addTarget(self, action: #selector(parentTabChanged), for: .valueChanged)
         parentTabBar.translatesAutoresizingMaskIntoConstraints = false
@@ -80,7 +75,7 @@ class BottomSheetContentView: UIView {
     }
 
     private func setupChildTabBar() {
-        childTabBar = UISegmentedControl(items: baseTabItems)
+        childTabBar = UISegmentedControl(items: AvatarCategory.baseTabItems)
         childTabBar.selectedSegmentIndex = 0
         childTabBar.addTarget(self, action: #selector(childTabChanged), for: .valueChanged)
         childTabBar.translatesAutoresizingMaskIntoConstraints = false
@@ -160,22 +155,15 @@ class BottomSheetContentView: UIView {
     // MARK: - Data Loading
     private func loadModels(for category: String) async {
         // Skip loading models for color-only categories
-        if category == "skin" {
+        if category == AvatarCategory.skin {
             await setModels([])
             return
         }
 
         do {
             // Get the main category file name
-            let mainCategory: String
-            switch category {
-            case "skin", "eyes", "eyebrows":
-                mainCategory = "base"
-            case "hairbase", "hairfront", "hairside", "hairback":
-                mainCategory = "hair"
-            case "tops", "bottoms", "socks":
-                mainCategory = "clothes"
-            default:
+            let mainCategory = AvatarCategory.getParentCategory(for: category)
+            guard !mainCategory.isEmpty else {
                 print("Unknown category: \(category)")
                 await setModels([])
                 return
@@ -183,7 +171,7 @@ class BottomSheetContentView: UIView {
 
             // Check cache first
             if let cachedData = jsonCache[mainCategory] {
-                let subcategory = getSubcategory(for: category)
+                let subcategory = AvatarCategory.getSubcategory(for: category)
                 if let modelsArray = cachedData[subcategory] {
                     let newModels = modelsArray.map { Model(name: $0) }
                     await setModels(newModels)
@@ -202,7 +190,7 @@ class BottomSheetContentView: UIView {
             jsonCache[mainCategory] = dict
             
             // Get models for current subcategory
-            let subcategory = getSubcategory(for: category)
+            let subcategory = AvatarCategory.getSubcategory(for: category)
             if let modelsArray = dict[subcategory] {
                 let newModels = modelsArray.map { Model(name: $0) }
                 await setModels(newModels)
@@ -222,22 +210,6 @@ class BottomSheetContentView: UIView {
         }
     }
 
-    private func getSubcategory(for category: String) -> String {
-        switch category {
-        case "skin": return "skin"
-        case "eyes": return "eyes"
-        case "eyebrows": return "eyebrows"
-        case "hairbase": return "base"
-        case "hairfront": return "front"
-        case "hairside": return "side"
-        case "hairback": return "back"
-        case "tops": return "tops"
-        case "bottoms": return "bottoms"
-        case "socks": return "socks"
-        default: return category
-        }
-    }
-    
     private func preloadModelEntities(modelNames: [String]) async {
         for modelName in modelNames {
             Task {
@@ -299,9 +271,9 @@ class BottomSheetContentView: UIView {
     private func updateChildTabBar() {
         let items: [String]
         switch parentTabBar.selectedSegmentIndex {
-        case 0: items = baseTabItems
-        case 1: items = hairTabItems
-        case 2: items = clothesTabItems
+        case 0: items = AvatarCategory.baseTabItems
+        case 1: items = AvatarCategory.hairTabItems
+        case 2: items = AvatarCategory.clothesTabItems
         default: return
         }
 
