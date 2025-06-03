@@ -13,9 +13,20 @@ struct CollectionAvatar: Codable {
         var selections: [String: [String: String]]
         
         // MARK: - Computed Properties
-        var color: String { selections["skin"]?["color"] ?? "" }
-        var style: String { selections["style"]?["model"] ?? "" }
-        var accessories: [String] { selections["accessories"]?["model"]?.components(separatedBy: ",") ?? [] }
+        // Get color values
+        var skinColor: String { AvatarCategory.getColor(from: selections, category: AvatarCategory.skin) }
+        
+        // Get model values for each category
+        var models: [String: String] {
+            var result: [String: String] = [:]
+            for category in AvatarCategory.modelCategories {
+                let model = AvatarCategory.getModel(from: selections, category: category)
+                if !model.isEmpty {
+                    result[category] = model
+                }
+            }
+            return result
+        }
         
         // MARK: - Firestore Serialization
         func toFirestoreDict() -> [String: Any] {
