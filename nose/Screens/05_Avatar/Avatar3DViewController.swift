@@ -399,8 +399,11 @@ class Avatar3DViewController: UIViewController {
                 
                 print("🔍 Initial materials count: \(model.materials.count)")
                 
+                // Get the last selected color for this category or use white as default
+                let lastColor = chosenColors[category] ?? .white
+                
                 // Create both materials
-                var colorMaterial = SimpleMaterial(color: .white, isMetallic: false)
+                var colorMaterial = SimpleMaterial(color: lastColor, isMetallic: false)
                 colorMaterial.roughness = 0.5
                 colorMaterial.metallic = 0.0
                 
@@ -412,7 +415,7 @@ class Avatar3DViewController: UIViewController {
                 do {
                     entity.model?.materials = [colorMaterial, whiteMaterial]
                     print("✅ Applied initial materials:")
-                    print("   - First material: white (default)")
+                    print("   - First material: \(lastColor)")
                     print("   - Second material: white")
                 } catch {
                     print("❌ Failed to apply materials: \(error)")
