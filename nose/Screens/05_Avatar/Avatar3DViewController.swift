@@ -23,8 +23,6 @@ class Avatar3DViewController: UIViewController {
     private var entityPool: [String: ModelEntity] = [:]  // Pool of reusable entities
     private var activeEntities: Set<String> = []  // Track currently active entities
     private var materialCache: [String: SimpleMaterial] = [:]  // Cache for materials
-    private var animationQueue = DispatchQueue(label: "com.avatar.animation", qos: .userInteractive)
-    private var pendingAnimations: [String: [AnimationBlock]] = [:]
     private var materialUpdateQueue = DispatchQueue(label: "com.avatar.material", qos: .userInteractive)
     private var lastMaterialUpdate: [String: Date] = [:]
     private let materialUpdateThrottle: TimeInterval = 0.016 // ~60 FPS
@@ -166,7 +164,7 @@ class Avatar3DViewController: UIViewController {
         chosenModels.removeAll()
         chosenColors.removeAll()
         
-        AvatarCategory.all.forEach { removeClothingItem(for: $0) }
+        AvatarCategory.all.forEach { removeAvatarPart(for: $0) }
     }
 
     private func loadBaseModel() {
@@ -189,7 +187,7 @@ class Avatar3DViewController: UIViewController {
         for (category, entry) in avatarData.selections {
             if let modelName = entry["model"] {
                 chosenModels[category] = modelName
-                loadClothingItem(named: modelName, category: category)
+                loadAvatarPart(named: modelName, category: category)
             }
             
             if let colorString = entry["color"], let color = UIColor(hex: colorString) {
@@ -197,7 +195,7 @@ class Avatar3DViewController: UIViewController {
                 if category == "skin" {
                     changeSkinColor(to: color)
                 } else {
-                    changeClothingItemColor(for: category, to: color)
+                    changeAvatarPartColor(for: category, to: color)
                 }
             }
         }
@@ -260,9 +258,9 @@ class Avatar3DViewController: UIViewController {
                 self.setupBaseEntity()
                 
                 for (category, modelName) in self.chosenModels where !modelName.isEmpty {
-                    self.loadClothingItem(named: modelName, category: category)
+                    self.loadAvatarPart(named: modelName, category: category)
                     if let color = self.chosenColors[category] {
-                        self.changeClothingItemColor(for: category, to: color)
+                        self.changeAvatarPartColor(for: category, to: color)
                     }
                 }
             })
@@ -338,45 +336,6 @@ class Avatar3DViewController: UIViewController {
         return material
     }
 
-    // MARK: - Animation Management
-    typealias AnimationBlock = () -> Void
-    
-    private func queueAnimation(for entityName: String, block: @escaping AnimationBlock) {
-        animationQueue.async { [weak self] in
-            guard let self = self else { return }
-            var animations = self.pendingAnimations[entityName] ?? []
-            animations.append(block)
-            self.pendingAnimations[entityName] = animations
-            
-            // Process animations immediately for color changes
-            if entityName == "skin" || entityName.contains("color") {
-                self.processAnimations(for: entityName)
-            }
-            // Process other animations in batches
-            else if animations.count >= 3 {
-                self.processAnimations(for: entityName)
-            }
-        }
-    }
-    
-    private func processAnimations(for entityName: String) {
-        guard let animations = pendingAnimations[entityName] else { return }
-        
-        // Process animations on main thread with optimized batching
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            
-            // Batch process animations
-            autoreleasepool {
-                for animation in animations {
-                    animation()
-                }
-            }
-            
-            self.pendingAnimations[entityName] = []
-        }
-    }
-
     // MARK: - Scene Management
     private func queueSceneUpdate(_ update: @escaping () -> Void) {
         sceneUpdateQueue.async { [weak self] in
@@ -411,8 +370,8 @@ class Avatar3DViewController: UIViewController {
         }
     }
 
-    // MARK: - Optimized Clothing Item Management
-    func loadClothingItem(named modelName: String, category: String) {
+    // MARK: - Optimized Avatar Part Management
+    func loadAvatarPart(named modelName: String, category: String) {
         Task {
             do {
                 // Hide existing item in the same category
@@ -441,12 +400,12 @@ class Avatar3DViewController: UIViewController {
                 // Clean up inactive entities periodically
                 cleanupInactiveEntities()
             } catch {
-                print("Failed to load clothing item: \(error)")
+                print("Failed to load avatar part: \(error)")
             }
         }
     }
     
-    func removeClothingItem(for category: String) {
+    func removeAvatarPart(for category: String) {
         guard AvatarCategory.isValid(category) else {
             print("❌ Invalid category: \(category)")
             return
@@ -458,7 +417,7 @@ class Avatar3DViewController: UIViewController {
     }
     
     // MARK: - Optimized Color Change
-    func changeClothingItemColor(for category: String, to color: UIColor) {
+    func changeAvatarPartColor(for category: String, to color: UIColor) {
         // Throttle material updates
         let now = Date()
         if let lastUpdate = lastMaterialUpdate[category],

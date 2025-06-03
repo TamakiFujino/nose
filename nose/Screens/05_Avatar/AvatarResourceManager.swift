@@ -67,7 +67,7 @@ final class AvatarResourceManager {
         print("🔄 Loading colors...")
 
         let jsonRef = storage.reference().child("avatar_assets/json/colors.json")
-        let maxSize: Int64 = 1 * 1024 * 1024 // 1MB
+        let maxSize: Int64 = 10 * 1024 // 10KB is more than enough for hex codes
 
         do {
             let data = try await jsonRef.data(maxSize: maxSize)
@@ -103,25 +103,24 @@ final class AvatarResourceManager {
         }
     }
 
-
     private func loadModels() async throws -> [String: [String: [String]]] {
         print("🔄 Loading models...")
         
-        // Load each JSON file concurrently
-        async let baseTask = loadModelFile("base.json")
-        async let clothesTask = loadModelFile("clothes.json")
-        async let hairTask = loadModelFile("hair.json")
+        // Load each JSON file concurrently using AvatarCategory constants
+        async let bodyTask = loadModelFile(AvatarCategory.jsonFiles[AvatarCategory.body] ?? "")
+        async let clothesTask = loadModelFile(AvatarCategory.jsonFiles[AvatarCategory.clothes] ?? "")
+        async let hairTask = loadModelFile(AvatarCategory.jsonFiles[AvatarCategory.hair] ?? "")
         
         // Wait for all tasks to complete
-        let base = try await baseTask
+        let body = try await bodyTask
         let clothes = try await clothesTask
         let hair = try await hairTask
         
-        // Combine all models
+        // Combine all models using AvatarCategory constants
         var allModels: [String: [String: [String]]] = [:]
-        allModels["base"] = base
-        allModels["clothes"] = clothes
-        allModels["hair"] = hair
+        allModels[AvatarCategory.body] = body
+        allModels[AvatarCategory.clothes] = clothes
+        allModels[AvatarCategory.hair] = hair
         
         print("✅ Successfully loaded models from all categories")
         return allModels
@@ -452,30 +451,35 @@ final class AvatarResourceManager {
 
     // MARK: - Utility: Category/Subcategory Mapping
     static func getCategoryAndSubcategory(from modelName: String) -> (category: String, subcategory: String) {
-        // Check base categories
-        for category in AvatarCategory.baseCategories {
-            if modelName.contains(category) {
-                return (AvatarCategory.base, category)
+        // Special case for eyebrows since it contains "eye"
+        if modelName.hasPrefix("eyebrow") {
+            return (AvatarCategory.body, AvatarCategory.eyebrows)
+        }
+        
+        // Check body categories
+        for category in AvatarCategory.bodyCategories {
+            if modelName.hasPrefix(category) {
+                return (AvatarCategory.body, category)
             }
         }
         
         // Check clothing categories
         for category in AvatarCategory.clothingCategories {
-            if modelName.contains(category) {
+            if modelName.hasPrefix(category) {
                 return (AvatarCategory.clothes, category)
             }
         }
         
         // Check hair categories
         for category in AvatarCategory.hairCategories {
-            if modelName.contains(category) {
+            if modelName.hasPrefix("hair_\(category)") {
                 return (AvatarCategory.hair, category)
             }
         }
         
         // If we can't determine the category, log an error and return a safe default
         print("⚠️ Warning: Could not determine category for model: \(modelName)")
-        return (AvatarCategory.base, AvatarCategory.eyes)
+        return (AvatarCategory.body, AvatarCategory.eyes)
     }
 
     // MARK: - Cache Management

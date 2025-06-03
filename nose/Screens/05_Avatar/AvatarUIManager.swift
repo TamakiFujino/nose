@@ -139,11 +139,7 @@ class AvatarUIManager: NSObject {
         guard let color = sender.backgroundColor else { return }
         let category = bottomSheetView.getCurrentCategory()
         // Call the efficient color change method on the 3D view controller
-        if category == "skin" {
-            avatar3DViewController?.changeSkinColor(to: color)
-        } else {
-            avatar3DViewController?.changeClothingItemColor(for: category, to: color)
-        }
+        updateColor(color, for: category)
         selectColorButton(sender)
         
         // Save the color to the chosenColors dictionary
@@ -156,6 +152,14 @@ class AvatarUIManager: NSObject {
         button.layer.borderColor = UIColor.black.cgColor
         button.layer.borderWidth = 2
         selectedColorButton = button
+    }
+
+    func updateColor(_ color: UIColor, for category: String) {
+        if category == AvatarCategory.skin {
+            avatar3DViewController?.changeSkinColor(to: color)
+        } else {
+            avatar3DViewController?.changeAvatarPartColor(for: category, to: color)
+        }
     }
 }
 

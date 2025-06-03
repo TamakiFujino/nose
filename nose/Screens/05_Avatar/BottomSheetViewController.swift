@@ -75,7 +75,7 @@ class BottomSheetContentView: UIView {
     }
 
     private func setupChildTabBar() {
-        childTabBar = UISegmentedControl(items: AvatarCategory.baseTabItems)
+        childTabBar = UISegmentedControl(items: AvatarCategory.bodyTabItems)
         childTabBar.selectedSegmentIndex = 0
         childTabBar.addTarget(self, action: #selector(childTabChanged), for: .valueChanged)
         childTabBar.translatesAutoresizingMaskIntoConstraints = false
@@ -271,7 +271,7 @@ class BottomSheetContentView: UIView {
     private func updateChildTabBar() {
         let items: [String]
         switch parentTabBar.selectedSegmentIndex {
-        case 0: items = AvatarCategory.baseTabItems
+        case 0: items = AvatarCategory.bodyTabItems
         case 1: items = AvatarCategory.hairTabItems
         case 2: items = AvatarCategory.clothesTabItems
         default: return
@@ -450,11 +450,11 @@ class BottomSheetContentView: UIView {
             if selectedModels[category] == model.name {
                 // Deselect if tapping the same item
                 selectedModels[category] = nil
-                avatar3DViewController?.removeClothingItem(for: category)
+                avatar3DViewController?.removeAvatarPart(for: category)
             } else {
                 // Select new item
                 selectedModels[category] = model.name
-                avatar3DViewController?.loadClothingItem(named: model.name, category: category)
+                avatar3DViewController?.loadAvatarPart(named: model.name, category: category)
                 // Highlight the selected button
                 await MainActor.run {
                     sender.layer.borderColor = UIColor.fourthColor.cgColor
@@ -471,16 +471,16 @@ class BottomSheetContentView: UIView {
         if category == "skin" {
             avatar3DViewController?.changeSkinColor(to: color)
         } else {
-            avatar3DViewController?.changeClothingItemColor(for: category, to: color)
+            avatar3DViewController?.changeAvatarPartColor(for: category, to: color)
         }
     }
 
     func getCurrentCategory() -> String {
         switch parentTabBar.selectedSegmentIndex {
-        case 0: // Base tab
+        case 0: // Body tab
             let index = childTabBar.selectedSegmentIndex
-            guard index >= 0 && index < AvatarCategory.baseCategories.count else { return "" }
-            return AvatarCategory.baseCategories[index]
+            guard index >= 0 && index < AvatarCategory.bodyCategories.count else { return "" }
+            return AvatarCategory.bodyCategories[index]
             
         case 1: // Hair tab
             let index = childTabBar.selectedSegmentIndex
@@ -512,6 +512,20 @@ class BottomSheetContentView: UIView {
             let result = try await group.next()!
             group.cancelAll()
             return result
+        }
+    }
+
+    private func removeCurrentModel(for category: String) {
+        guard let avatar3DViewController = avatar3DViewController else { return }
+        avatar3DViewController.removeAvatarPart(for: category)
+    }
+    
+    private func applyColor(_ color: UIColor, to category: String) {
+        guard let avatar3DViewController = avatar3DViewController else { return }
+        if category == AvatarCategory.skin {
+            avatar3DViewController.changeSkinColor(to: color)
+        } else {
+            avatar3DViewController.changeAvatarPartColor(for: category, to: color)
         }
     }
 }

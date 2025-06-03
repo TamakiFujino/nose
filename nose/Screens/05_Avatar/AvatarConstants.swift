@@ -1,21 +1,31 @@
 import Foundation
 
 enum AvatarCategory {
-    // Parent categories
-    static let base = "base"
+    // MARK: - Main Categories
+    static let body = "body"
     static let hair = "hair"
     static let clothes = "clothes"
+    static let colors = "colors"
     
-    // Base categories
-    static let skin = "skin"
+    // MARK: - JSON File Names
+    static let jsonFiles: [String: String] = [
+        body: "\(body).json",
+        hair: "\(hair).json",
+        clothes: "\(clothes).json"
+    ]
+    
+    // MARK: - Body Categories
     static let eyes = "eyes"
     static let eyebrows = "eyebrows"
+    static let nose = "nose"
+    static let mouth = "mouth"
+    static let skin = "skin"
     
-    // Hair categories
-    static let hairBase = "base"
-    static let hairFront = "front"
-    static let hairSide = "side"
-    static let hairBack = "back"
+    // Body categories
+    static let base = "base"
+    static let front = "front"
+    static let side = "side"
+    static let back = "back"
     
     // Clothing categories
     static let tops = "tops"
@@ -30,32 +40,32 @@ enum AvatarCategory {
         tops,
         bottoms,
         socks,
-        hairBase,
-        hairFront,
-        hairSide,
-        hairBack
+        base,
+        front,
+        side,
+        back
     ]
     
     // Category groups
-    static let baseCategories: [String] = [skin, eyes, eyebrows]
+    static let bodyCategories: [String] = [skin, eyes, eyebrows]
     static let clothingCategories: [String] = [tops, bottoms, socks]
-    static let hairCategories: [String] = [hairBase, hairFront, hairSide, hairBack]
+    static let hairCategories: [String] = [base, front, side, back]
     
     // Tab items for UI
-    static let baseTabItems = ["Skin", "Eyes", "Eyebrows"]
-    static let hairTabItems = ["Base", "Front", "Side", "Back"]
-    static let clothesTabItems = ["Tops", "Bottoms", "Socks"]
-    static let parentTabItems = ["Base", "Hair", "Clothes"]
+    static let bodyTabItems = ["skin", "eyes", "eyebrows"]
+    static let hairTabItems = ["base", "front", "side", "back"]
+    static let clothesTabItems = ["tops", "bottoms", "socks"]
+    static let parentTabItems = ["body", "hair", "clothes"]
     
     // Subcategory mapping
     private static let subcategoryMap: [String: String] = [
         skin: skin,
         eyes: eyes,
         eyebrows: eyebrows,
-        hairBase: "base",
-        hairFront: "front",
-        hairSide: "side",
-        hairBack: "back",
+        base: base,
+        front: front,
+        side: side,
+        back: back,
         tops: tops,
         bottoms: bottoms,
         socks: socks
@@ -68,8 +78,8 @@ enum AvatarCategory {
     
     // Helper function to get parent category
     static func getParentCategory(for category: String) -> String {
-        if baseCategories.contains(category) {
-            return base
+        if bodyCategories.contains(category) {
+            return body
         } else if hairCategories.contains(category) {
             return hair
         } else if clothingCategories.contains(category) {
