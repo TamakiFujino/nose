@@ -20,7 +20,7 @@ final class AvatarResourceManager {
     private var modelEntities: [String: ModelEntity] = [:]
     private var modelFileURLs: [String: URL] = [:]
     private let thumbnailCache = NSCache<NSString, UIImage>()
-    private var cachedColors: [ColorModel] = []
+    private var cachedColors: [String] = [] // Store hex strings directly
     private var cachedModels: [String: [String: [String]]] = [:]
     private let cache = URLCache.shared
     private let maxCacheSize: Int = 100 * 1024 * 1024 // 100MB
@@ -56,7 +56,7 @@ final class AvatarResourceManager {
         
         // Store the loaded data
         cachedColors = colors.map { color in
-            ColorModel(name: color.toHexString() ?? "", hex: color.toHexString() ?? "")
+            color.toHexString() ?? ""
         }
         cachedModels = models
         
@@ -91,6 +91,8 @@ final class AvatarResourceManager {
                     print("⚠️ Failed to convert hex '\(hex)' to UIColor")
                     return nil
                 }
+                // Store hex in cachedColors
+                cachedColors.append(hex)
                 print("🎨 Converted hex \(hex) to color: \(color.toHexString() ?? "n/a")")
                 return color
             }
@@ -153,7 +155,7 @@ final class AvatarResourceManager {
     }
 
     // MARK: - API for color/model index
-    var colorModels: [ColorModel] {
+    var colorModels: [String] {  // Return hex strings directly
         cachedColors
     }
 

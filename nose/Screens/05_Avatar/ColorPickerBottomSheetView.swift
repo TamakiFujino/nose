@@ -9,7 +9,7 @@ struct ColorModel: Codable {
 class ColorPickerBottomSheetView: UIView {
     // MARK: - Properties
     var onColorSelected: ((UIColor) -> Void)?
-    private var colors: [ColorModel] = []
+    private var colors: [String] = [] // Store hex strings directly
     private var scrollView: UIScrollView!
     private var contentView: UIView!
 
@@ -63,29 +63,41 @@ class ColorPickerBottomSheetView: UIView {
     }
 
     // MARK: - Data Loading
+    @MainActor
     private func loadColors() {
-        guard let url = Bundle.main.url(forResource: "colors", withExtension: "json") else {
-            print("Failed to locate colors.json in bundle.")
-            return
-        }
-
-        do {
-            let data = try Data(contentsOf: url)
-            colors = try JSONDecoder().decode([ColorModel].self, from: data)
-            setupColorButtons()
-        } catch {
-            print("Failed to load or decode colors.json: \(error)")
+        Task {
+            do {
+                // Get colors from AvatarResourceManager
+                colors = AvatarResourceManager.shared.colorModels
+                
+                // If colors are empty, try to preload resources
+                if colors.isEmpty {
+                    try await AvatarResourceManager.shared.preloadAllResources()
+                    colors = AvatarResourceManager.shared.colorModels
+                }
+                
+                // Setup UI with loaded colors
+                setupColorButtons()
+            } catch {
+                print("❌ Failed to load colors: \(error)")
+            }
         }
     }
 
     // MARK: - UI Setup
     private func setupColorButtons() {
+        // Clear existing buttons
+        contentView.subviews.forEach { $0.removeFromSuperview() }
+        
         let buttonSize: CGFloat = 40
         let padding: CGFloat = 16
         var lastButton: UIButton?
 
-        for (index, colorModel) in colors.enumerated() {
-            guard let color = UIColor(hex: colorModel.hex) else { continue }
+        for (index, hexColor) in colors.enumerated() {
+            guard let color = UIColor(hex: hexColor) else { 
+                print("⚠️ Failed to create color from hex: \(hexColor)")
+                continue 
+            }
             let button = createColorButton(color: color, size: buttonSize, index: index)
             contentView.addSubview(button)
             lastButton = button
@@ -116,8 +128,9 @@ class ColorPickerBottomSheetView: UIView {
 
     // MARK: - Actions
     @objc private func colorButtonTapped(_ sender: UIButton) {
-        let selectedColor = colors[sender.tag]
-        if let color = UIColor(hex: selectedColor.hex) {
+        guard sender.tag >= 0 && sender.tag < colors.count else { return }
+        let hexColor = colors[sender.tag]
+        if let color = UIColor(hex: hexColor) {
             onColorSelected?(color)
         }
     }
