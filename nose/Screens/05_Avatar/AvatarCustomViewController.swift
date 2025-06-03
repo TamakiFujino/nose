@@ -81,7 +81,7 @@ class AvatarCustomViewController: UIViewController {
                 partSelectorView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
                 partSelectorView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
                 partSelectorView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-                partSelectorView.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.4)
+                partSelectorView.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.47)
             ])
         }
         

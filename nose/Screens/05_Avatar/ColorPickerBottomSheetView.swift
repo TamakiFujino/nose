@@ -13,6 +13,7 @@ class ColorPickerBottomSheetView: UIView {
     private var scrollView: UIScrollView!
     private var contentView: UIView!
     private var colorButtons: [UIButton] = []
+    private var selectedButton: UIButton?
 
     // MARK: - Initialization
     override init(frame: CGRect) {
@@ -87,9 +88,10 @@ class ColorPickerBottomSheetView: UIView {
         // Clear existing buttons
         colorButtons.forEach { $0.removeFromSuperview() }
         colorButtons.removeAll()
+        selectedButton = nil
         
         let buttonSize: CGFloat = 40
-        let padding: CGFloat = 16
+        let padding: CGFloat = 12 // Reduced from 16 to 12
         var lastButton: UIButton?
 
         // Create a container view for buttons
@@ -115,6 +117,11 @@ class ColorPickerBottomSheetView: UIView {
             let button = createColorButton(color: color, size: buttonSize, index: index, container: buttonContainer)
             colorButtons.append(button)
             lastButton = button
+            
+            // Select first button by default
+            if index == 0 {
+                selectButton(button)
+            }
         }
 
         // Update content view width based on last button
@@ -128,6 +135,8 @@ class ColorPickerBottomSheetView: UIView {
         button.backgroundColor = color
         button.tag = index
         button.layer.cornerRadius = size / 2
+        button.layer.borderWidth = 1
+        button.layer.borderColor = UIColor.secondColor.cgColor
         button.addTarget(self, action: #selector(colorButtonTapped(_:)), for: .touchUpInside)
         button.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(button)
@@ -136,10 +145,19 @@ class ColorPickerBottomSheetView: UIView {
             button.widthAnchor.constraint(equalToConstant: size),
             button.heightAnchor.constraint(equalToConstant: size),
             button.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            button.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 16 + CGFloat(index) * (size + 16))
+            button.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 12 + CGFloat(index) * (size + 12)) // Reduced padding
         ])
 
         return button
+    }
+    
+    private func selectButton(_ button: UIButton) {
+        // Deselect previous button
+        selectedButton?.layer.borderColor = UIColor.secondColor.cgColor
+        
+        // Select new button
+        button.layer.borderColor = UIColor.fourthColor.cgColor
+        selectedButton = button
     }
 
     // MARK: - Actions
@@ -147,6 +165,7 @@ class ColorPickerBottomSheetView: UIView {
         guard sender.tag >= 0 && sender.tag < colors.count else { return }
         let hexColor = colors[sender.tag]
         if let color = UIColor(hex: hexColor) {
+            selectButton(sender)
             onColorSelected?(color)
         }
     }
