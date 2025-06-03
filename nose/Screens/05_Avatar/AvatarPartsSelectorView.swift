@@ -6,7 +6,7 @@ struct Model: Codable {
     let name: String
 }
 
-class BottomSheetContentView: UIView {
+class AvatarPartSelectorView: UIView {
     // MARK: - Properties
     weak var avatar3DViewController: Avatar3DViewController?
 

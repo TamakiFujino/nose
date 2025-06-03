@@ -12,7 +12,7 @@ class AvatarCustomViewController: UIViewController {
     private let collectionId: String
     private var currentAvatarData: CollectionAvatar.AvatarData?
     private var avatar3DViewController: Avatar3DViewController!
-    private var avatarUIManager: AvatarUIManager!
+    private var customizationCoordinator: AvatarCustomizationCoordinator!
     // var selectedBookmarkList: BookmarkList?
 
     weak var delegate: AvatarCustomViewControllerDelegate?
@@ -71,33 +71,39 @@ class AvatarCustomViewController: UIViewController {
         view.addSubview(avatar3DViewController.view)
         avatar3DViewController.didMove(toParent: self)
         
-        avatarUIManager = AvatarUIManager(viewController: self, avatar3DViewController: avatar3DViewController)
+        setupCustomizationCoordinator()
         
-        if let bottomSheetView = avatarUIManager.bottomSheetView {
-            view.addSubview(bottomSheetView)
-            bottomSheetView.translatesAutoresizingMaskIntoConstraints = false
+        if let partSelectorView = customizationCoordinator.partSelectorView {
+            view.addSubview(partSelectorView)
+            partSelectorView.translatesAutoresizingMaskIntoConstraints = false
+            
             NSLayoutConstraint.activate([
-                bottomSheetView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-                bottomSheetView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-                bottomSheetView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-                bottomSheetView.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.47)
+                partSelectorView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                partSelectorView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+                partSelectorView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+                partSelectorView.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.4)
             ])
         }
         
-        if let additionalBottomSheetView = avatarUIManager.additionalBottomSheetView {
-            view.addSubview(additionalBottomSheetView)
-            additionalBottomSheetView.translatesAutoresizingMaskIntoConstraints = false
+        if let colorPickerView = customizationCoordinator.colorPickerView {
+            view.addSubview(colorPickerView)
+            colorPickerView.translatesAutoresizingMaskIntoConstraints = false
+            
             NSLayoutConstraint.activate([
-                additionalBottomSheetView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-                additionalBottomSheetView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-                additionalBottomSheetView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-                additionalBottomSheetView.heightAnchor.constraint(equalToConstant: 100)
+                colorPickerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                colorPickerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+                colorPickerView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+                colorPickerView.heightAnchor.constraint(equalToConstant: 80)
             ])
         }
         
         if let avatarData = currentAvatarData {
             avatar3DViewController.loadAvatarData(avatarData)
         }
+    }
+
+    private func setupCustomizationCoordinator() {
+        customizationCoordinator = AvatarCustomizationCoordinator(viewController: self, avatar3DViewController: avatar3DViewController)
     }
 
     private func setupGestures() {

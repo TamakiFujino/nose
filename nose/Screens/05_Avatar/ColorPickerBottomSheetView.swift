@@ -12,6 +12,7 @@ class ColorPickerBottomSheetView: UIView {
     private var colors: [String] = [] // Store hex strings directly
     private var scrollView: UIScrollView!
     private var contentView: UIView!
+    private var colorButtons: [UIButton] = []
 
     // MARK: - Initialization
     override init(frame: CGRect) {
@@ -30,30 +31,27 @@ class ColorPickerBottomSheetView: UIView {
     private func setupView() {
         backgroundColor = .white
         clipsToBounds = true
-        setupScrollView()
-        setupContentView()
-    }
-
-    private func setupScrollView() {
+        
+        // Setup scroll view first
         scrollView = UIScrollView()
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.showsHorizontalScrollIndicator = false
         addSubview(scrollView)
-
-        NSLayoutConstraint.activate([
-            scrollView.topAnchor.constraint(equalTo: topAnchor),
-            scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: bottomAnchor)
-        ])
-    }
-
-    private func setupContentView() {
+        
+        // Setup content view
         contentView = UIView()
         contentView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.addSubview(contentView)
-
+        
+        // Setup constraints
         NSLayoutConstraint.activate([
+            // Scroll view constraints
+            scrollView.topAnchor.constraint(equalTo: topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            
+            // Content view constraints
             contentView.topAnchor.constraint(equalTo: scrollView.topAnchor),
             contentView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
             contentView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
@@ -87,40 +85,58 @@ class ColorPickerBottomSheetView: UIView {
     // MARK: - UI Setup
     private func setupColorButtons() {
         // Clear existing buttons
-        contentView.subviews.forEach { $0.removeFromSuperview() }
+        colorButtons.forEach { $0.removeFromSuperview() }
+        colorButtons.removeAll()
         
         let buttonSize: CGFloat = 40
         let padding: CGFloat = 16
         var lastButton: UIButton?
+
+        // Create a container view for buttons
+        let buttonContainer = UIView()
+        buttonContainer.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(buttonContainer)
+        
+        // Constrain button container
+        NSLayoutConstraint.activate([
+            buttonContainer.topAnchor.constraint(equalTo: contentView.topAnchor),
+            buttonContainer.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+            buttonContainer.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+            buttonContainer.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+            buttonContainer.heightAnchor.constraint(equalTo: contentView.heightAnchor)
+        ])
 
         for (index, hexColor) in colors.enumerated() {
             guard let color = UIColor(hex: hexColor) else { 
                 print("⚠️ Failed to create color from hex: \(hexColor)")
                 continue 
             }
-            let button = createColorButton(color: color, size: buttonSize, index: index)
-            contentView.addSubview(button)
+            
+            let button = createColorButton(color: color, size: buttonSize, index: index, container: buttonContainer)
+            colorButtons.append(button)
             lastButton = button
         }
 
+        // Update content view width based on last button
         if let lastButton = lastButton {
             contentView.trailingAnchor.constraint(equalTo: lastButton.trailingAnchor, constant: padding).isActive = true
         }
     }
 
-    private func createColorButton(color: UIColor, size: CGFloat, index: Int) -> UIButton {
+    private func createColorButton(color: UIColor, size: CGFloat, index: Int, container: UIView) -> UIButton {
         let button = UIButton(type: .system)
         button.backgroundColor = color
         button.tag = index
         button.layer.cornerRadius = size / 2
         button.addTarget(self, action: #selector(colorButtonTapped(_:)), for: .touchUpInside)
         button.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(button)
 
         NSLayoutConstraint.activate([
             button.widthAnchor.constraint(equalToConstant: size),
             button.heightAnchor.constraint(equalToConstant: size),
-            button.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
-            button.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16 + CGFloat(index) * (size + 16))
+            button.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            button.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 16 + CGFloat(index) * (size + 16))
         ])
 
         return button
