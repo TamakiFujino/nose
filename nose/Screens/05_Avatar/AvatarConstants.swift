@@ -11,16 +11,16 @@ enum AvatarCategory {
     static let eyes = "eyes"
     static let eyebrows = "eyebrows"
     
+    // Hair categories
+    static let hairBase = "base"
+    static let hairFront = "front"
+    static let hairSide = "side"
+    static let hairBack = "back"
+    
     // Clothing categories
     static let tops = "tops"
     static let bottoms = "bottoms"
     static let socks = "socks"
-    
-    // Hair categories
-    static let hairBase = "hairbase"
-    static let hairFront = "hairfront"
-    static let hairSide = "hairside"
-    static let hairBack = "hairback"
     
     // All categories array
     static let all: [String] = [

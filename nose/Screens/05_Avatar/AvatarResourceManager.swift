@@ -259,22 +259,53 @@ final class AvatarResourceManager {
     }
     
     private func loadModelFromFile(_ fileURL: URL) async throws -> ModelEntity {
-        if #available(iOS 15.0, *) {
-            let entity = try await ModelEntity.loadModel(contentsOf: fileURL)
-            // Optimize entity settings
-            entity.generateCollisionShapes(recursive: false)
-            entity.components[PhysicsBodyComponent.self] = nil
-            return entity
-        } else {
-            let entity = try await ModelEntity.load(contentsOf: fileURL)
-            guard let modelEntity = entity as? ModelEntity else {
-                throw NSError(domain: "AvatarResourceManager", code: 422, userInfo: [NSLocalizedDescriptionKey: "Loaded entity is not a ModelEntity"])
-            }
-            // Optimize entity settings
-            modelEntity.generateCollisionShapes(recursive: false)
-            modelEntity.components[PhysicsBodyComponent.self] = nil
-            return modelEntity
+        // Validate file
+        guard fileManager.fileExists(atPath: fileURL.path) else {
+            throw NSError(domain: "AvatarResourceManager", code: 404, userInfo: [NSLocalizedDescriptionKey: "Model file not found at path: \(fileURL.path)"])
         }
+        
+        // Check file size
+        let attributes = try? fileManager.attributesOfItem(atPath: fileURL.path)
+        let fileSize = attributes?[.size] as? Int64 ?? 0
+        guard fileSize > 0 else {
+            throw NSError(domain: "AvatarResourceManager", code: 422, userInfo: [NSLocalizedDescriptionKey: "Model file is empty"])
+        }
+        
+        print("🔍 Loading model from file: \(fileURL.lastPathComponent)")
+        print("📊 File size: \(fileSize) bytes")
+        
+        // Load model based on iOS version
+        let entity: ModelEntity
+        if #available(iOS 15.0, *) {
+            do {
+                print("🔄 Using ModelEntity.loadModel...")
+                entity = try await ModelEntity.loadModel(contentsOf: fileURL)
+            } catch {
+                print("❌ ModelEntity.loadModel failed: \(error)")
+                throw error
+            }
+        } else {
+            do {
+                print("🔄 Using ModelEntity.load...")
+                let loadedEntity = try await ModelEntity.load(contentsOf: fileURL)
+                guard let modelEntity = loadedEntity as? ModelEntity else {
+                    print("❌ Loaded entity is not a ModelEntity")
+                    throw NSError(domain: "AvatarResourceManager", code: 422, userInfo: [NSLocalizedDescriptionKey: "Invalid model type"])
+                }
+                entity = modelEntity
+            } catch {
+                print("❌ ModelEntity.load failed: \(error)")
+                throw error
+            }
+        }
+        
+        // Optimize entity settings
+        print("⚙️ Optimizing entity settings...")
+        entity.generateCollisionShapes(recursive: false)
+        entity.components[PhysicsBodyComponent.self] = nil
+        
+        print("✅ Model loaded and optimized successfully")
+        return entity
     }
 
     private func downloadModel(named modelName: String, to fileURL: URL) async throws {
@@ -421,40 +452,30 @@ final class AvatarResourceManager {
 
     // MARK: - Utility: Category/Subcategory Mapping
     static func getCategoryAndSubcategory(from modelName: String) -> (category: String, subcategory: String) {
-        // Handle base categories first
-        if modelName == "skin" {
-            return ("base", "skin")
-        } else if modelName == "eyes" {
-            return ("base", "eyes")
-        } else if modelName == "eyebrows" {
-            return ("base", "eyebrows")
-        }
-        
-        // Handle prefixed categories
-        if modelName.hasPrefix("tops_") {
-            return ("clothes", "tops")
-        } else if modelName.hasPrefix("bottoms_") {
-            return ("clothes", "bottoms")
-        } else if modelName.hasPrefix("socks_") {
-            return ("clothes", "socks")
-        } else if modelName.hasPrefix("hair_") {
-            if modelName.contains("_base") {
-                return ("hair", "base")
-            } else if modelName.contains("_front") {
-                return ("hair", "front")
-            } else if modelName.contains("_side") {
-                return ("hair", "side")
-            } else if modelName.contains("_back") {
-                return ("hair", "back")
+        // Check base categories
+        for category in AvatarCategory.baseCategories {
+            if modelName.contains(category) {
+                return (AvatarCategory.base, category)
             }
-        } else if modelName.hasPrefix("eye_") {
-            return ("base", "eyes")
-        } else if modelName.hasPrefix("eyebrow_") {
-            return ("base", "eyebrows")
         }
         
-        // Default case
-        return ("base", "skin")
+        // Check clothing categories
+        for category in AvatarCategory.clothingCategories {
+            if modelName.contains(category) {
+                return (AvatarCategory.clothes, category)
+            }
+        }
+        
+        // Check hair categories
+        for category in AvatarCategory.hairCategories {
+            if modelName.contains(category) {
+                return (AvatarCategory.hair, category)
+            }
+        }
+        
+        // If we can't determine the category, log an error and return a safe default
+        print("⚠️ Warning: Could not determine category for model: \(modelName)")
+        return (AvatarCategory.base, AvatarCategory.eyes)
     }
 
     // MARK: - Cache Management
