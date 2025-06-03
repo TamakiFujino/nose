@@ -17,8 +17,6 @@ class BottomSheetContentView: UIView {
     private var models: [Model] = []
     private var selectedModels: [String: String] = [:]
     private let modelsQueue = DispatchQueue(label: "com.nose.modelsQueue", attributes: .concurrent)
-    private var loadingIndicator: UIActivityIndicatorView!
-    private var loadingOverlay: UIView!
     
     private let storage = Storage.storage()
 
@@ -51,11 +49,11 @@ class BottomSheetContentView: UIView {
         setupChildTabBar()
         setupScrollView()
         setupContentView()
-        setupLoadingIndicator()
         
-        // Use Task to handle async call
+        // Use Task to handle async call with initial category
         Task {
-            await loadModels(for: "base")
+            let initialCategory = getCurrentCategory()
+            await loadModels(for: initialCategory)
             loadContentForSelectedTab()
         }
     }
@@ -115,40 +113,15 @@ class BottomSheetContentView: UIView {
         ])
     }
 
-    private func setupLoadingIndicator() {
-        loadingOverlay = UIView()
-        loadingOverlay.backgroundColor = UIColor.black.withAlphaComponent(0.3)
-        loadingOverlay.isHidden = true
-        loadingOverlay.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(loadingOverlay)
-        
-        loadingIndicator = UIActivityIndicatorView(style: .large)
-        loadingIndicator.color = .white
-        loadingIndicator.translatesAutoresizingMaskIntoConstraints = false
-        loadingOverlay.addSubview(loadingIndicator)
-        
-        NSLayoutConstraint.activate([
-            loadingOverlay.topAnchor.constraint(equalTo: topAnchor),
-            loadingOverlay.leadingAnchor.constraint(equalTo: leadingAnchor),
-            loadingOverlay.trailingAnchor.constraint(equalTo: trailingAnchor),
-            loadingOverlay.bottomAnchor.constraint(equalTo: bottomAnchor),
-            
-            loadingIndicator.centerXAnchor.constraint(equalTo: loadingOverlay.centerXAnchor),
-            loadingIndicator.centerYAnchor.constraint(equalTo: loadingOverlay.centerYAnchor)
-        ])
-    }
-
     private func showLoading() {
         Task { @MainActor in
-            loadingOverlay.isHidden = false
-            loadingIndicator.startAnimating()
+            LoadingView.shared.showOverlayLoading(on: self, backgroundColor: UIColor.black.withAlphaComponent(0.3))
         }
     }
 
     private func hideLoading() {
         Task { @MainActor in
-            loadingOverlay.isHidden = true
-            loadingIndicator.stopAnimating()
+            LoadingView.shared.hideOverlayLoading()
         }
     }
 

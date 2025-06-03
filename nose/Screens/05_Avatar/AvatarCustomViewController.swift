@@ -18,32 +18,14 @@ class AvatarCustomViewController: UIViewController {
     weak var delegate: AvatarCustomViewControllerDelegate?
 
     // MARK: - UI Components
-    private lazy var loadingView: UIView = {
-        let view = UIView()
-        view.translatesAutoresizingMaskIntoConstraints = false
-        view.backgroundColor = .systemBackground
-        view.alpha = 0
-        return view
-    }()
-    
-    private lazy var activityIndicator: UIActivityIndicatorView = {
-        let indicator = UIActivityIndicatorView(style: .large)
-        indicator.translatesAutoresizingMaskIntoConstraints = false
-        indicator.color = .fourthColor
-        return indicator
-    }()
-    
-    private lazy var loadingLabel: UILabel = {
+    private lazy var titleLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "Loading Avatar..."
-        label.font = .systemFont(ofSize: 16, weight: .medium)
-        label.textColor = .fourthColor
-        label.textAlignment = .center
+        label.text = "Customize Avatar"
+        label.font = .systemFont(ofSize: 20, weight: .bold)
+        label.textColor = .label
         return label
     }()
-
-    private var loadingIndicator: UIActivityIndicatorView!
 
     // MARK: - Initialization
     init(collectionId: String) {
@@ -59,7 +41,6 @@ class AvatarCustomViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
-        setupLoadingIndicator()
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -71,71 +52,19 @@ class AvatarCustomViewController: UIViewController {
     private func setupUI() {
         view.backgroundColor = .systemBackground
         title = "Customize Avatar"
-        setupLoadingView()
+        setupTitleLabel()
     }
 
-    private func setupLoadingView() {
-        view.addSubview(loadingView)
-        loadingView.addSubview(activityIndicator)
-        loadingView.addSubview(loadingLabel)
+    private func setupTitleLabel() {
+        view.addSubview(titleLabel)
         
         NSLayoutConstraint.activate([
-            loadingView.topAnchor.constraint(equalTo: view.topAnchor),
-            loadingView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            loadingView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            loadingView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            
-            activityIndicator.centerXAnchor.constraint(equalTo: loadingView.centerXAnchor),
-            activityIndicator.centerYAnchor.constraint(equalTo: loadingView.centerYAnchor),
-            
-            loadingLabel.topAnchor.constraint(equalTo: activityIndicator.bottomAnchor, constant: 16),
-            loadingLabel.centerXAnchor.constraint(equalTo: loadingView.centerXAnchor)
+            titleLabel.topAnchor.constraint(equalTo: view.topAnchor, constant: 20),
+            titleLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor)
         ])
-    }
-
-    private func setupLoadingIndicator() {
-        loadingIndicator = UIActivityIndicatorView(style: .large)
-        loadingIndicator.translatesAutoresizingMaskIntoConstraints = false
-        loadingIndicator.hidesWhenStopped = true
-        loadingIndicator.color = .fourthColor
-        view.addSubview(loadingIndicator)
-        
-        NSLayoutConstraint.activate([
-            loadingIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            loadingIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor)
-        ])
-    }
-
-    private func setupNavigationBar() {
-        navigationController?.setNavigationBarHidden(false, animated: false)
-        
-        let appearance = UINavigationBarAppearance()
-        appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = .systemBackground
-        navigationController?.navigationBar.standardAppearance = appearance
-        navigationController?.navigationBar.scrollEdgeAppearance = appearance
-        
-        navigationItem.rightBarButtonItem = UIBarButtonItem(
-            title: "Save",
-            style: .plain,
-            target: self,
-            action: #selector(saveButtonTapped)
-        )
-        
-        navigationItem.leftBarButtonItem = UIBarButtonItem(
-            barButtonSystemItem: .close,
-            target: self,
-            action: #selector(closeButtonTapped)
-        )
-        
-        [navigationItem.rightBarButtonItem, navigationItem.leftBarButtonItem].forEach {
-            $0?.tintColor = .black
-        }
     }
 
     private func setupAvatar3DView() {
-        showLoading()
-        
         avatar3DViewController = Avatar3DViewController()
         avatar3DViewController.cameraPosition = SIMD3<Float>(0.0, 0.0, 14.0)
         addChild(avatar3DViewController)
@@ -168,10 +97,6 @@ class AvatarCustomViewController: UIViewController {
         
         if let avatarData = currentAvatarData {
             avatar3DViewController.loadAvatarData(avatarData)
-        }
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-            self?.hideLoading()
         }
     }
 
@@ -242,11 +167,8 @@ class AvatarCustomViewController: UIViewController {
 
     private func loadSavedAvatarData() {
         guard let currentUserId = Auth.auth().currentUser?.uid else {
-            hideLoading()
             return
         }
-        
-        showLoading()
         
         let db = Firestore.firestore()
         db.collection("users")
@@ -255,7 +177,7 @@ class AvatarCustomViewController: UIViewController {
             .document(collectionId)
             .getDocument { [weak self] snapshot, error in
                 if let error = error {
-                    self?.hideLoading()
+                    print("Error loading collection: \(error.localizedDescription)")
                     return
                 }
                 
@@ -265,25 +187,16 @@ class AvatarCustomViewController: UIViewController {
                     self?.currentAvatarData = avatarData
                     self?.avatar3DViewController.loadAvatarData(avatarData)
                 }
-                
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-                    self?.hideLoading()
-                }
             }
     }
 
     // MARK: - Loading State
     private func showLoading() {
-        loadingView.alpha = 1
-        activityIndicator.startAnimating()
+        LoadingView.shared.showOverlayLoading(on: view, message: "Loading Avatar...")
     }
     
     private func hideLoading() {
-        UIView.animate(withDuration: 0.3) {
-            self.loadingView.alpha = 0
-        } completion: { _ in
-            self.activityIndicator.stopAnimating()
-        }
+        LoadingView.shared.hideOverlayLoading()
     }
 
     // MARK: - Public Interface
@@ -302,12 +215,16 @@ class AvatarCustomViewController: UIViewController {
                 print("✅ Resources preloaded successfully")
                 
                 await MainActor.run {
-                    self.hideLoading()
-                    self.view.isUserInteractionEnabled = true
                     self.setupNavigationBar()
                     self.setupAvatar3DView()
                     self.setupGestures()
                     self.loadSavedAvatarData()
+                    
+                    // Hide loading after everything is set up
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        self.hideLoading()
+                        self.view.isUserInteractionEnabled = true
+                    }
                 }
             } catch {
                 print("❌ Error preloading resources: \(error)")
@@ -324,6 +241,33 @@ class AvatarCustomViewController: UIViewController {
                     self.present(alert, animated: true)
                 }
             }
+        }
+    }
+
+    private func setupNavigationBar() {
+        navigationController?.setNavigationBarHidden(false, animated: false)
+        
+        let appearance = UINavigationBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = .systemBackground
+        navigationController?.navigationBar.standardAppearance = appearance
+        navigationController?.navigationBar.scrollEdgeAppearance = appearance
+        
+        navigationItem.rightBarButtonItem = UIBarButtonItem(
+            title: "Save",
+            style: .plain,
+            target: self,
+            action: #selector(saveButtonTapped)
+        )
+        
+        navigationItem.leftBarButtonItem = UIBarButtonItem(
+            barButtonSystemItem: .close,
+            target: self,
+            action: #selector(closeButtonTapped)
+        )
+        
+        [navigationItem.rightBarButtonItem, navigationItem.leftBarButtonItem].forEach {
+            $0?.tintColor = .black
         }
     }
 }

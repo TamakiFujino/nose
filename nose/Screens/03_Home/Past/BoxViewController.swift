@@ -81,13 +81,7 @@ class BoxViewController: UIViewController {
     }
     
     private func showLoadingAlert(title: String) {
-        let loadingAlert = UIAlertController(title: title, message: "Please wait...", preferredStyle: .alert)
-        let loadingIndicator = UIActivityIndicatorView(frame: CGRect(x: 10, y: 5, width: 50, height: 50))
-        loadingIndicator.hidesWhenStopped = true
-        loadingIndicator.style = .medium
-        loadingIndicator.startAnimating()
-        loadingAlert.view.addSubview(loadingIndicator)
-        present(loadingAlert, animated: true)
+        LoadingView.shared.showAlertLoading(title: title, on: self)
     }
 }
 
