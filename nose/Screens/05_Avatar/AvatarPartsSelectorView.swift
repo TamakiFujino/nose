@@ -128,8 +128,9 @@ class AvatarPartSelectorView: UIView {
     // MARK: - Data Loading
     private func loadModels(for category: String) async {
         // Skip loading models for color-only categories
-        if category == AvatarCategory.skin {
+        if category == "skin" {
             await setModels([])
+            hideLoading()
             return
         }
 
@@ -139,6 +140,7 @@ class AvatarPartSelectorView: UIView {
             guard !mainCategory.isEmpty else {
                 print("Unknown category: \(category)")
                 await setModels([])
+                hideLoading()
                 return
             }
 
@@ -168,10 +170,10 @@ class AvatarPartSelectorView: UIView {
                 let newModels = modelsArray.map { Model(name: $0) }
                 await setModels(newModels)
                 
-                // ✅ Preload all models in this category
+                // Preload all models in this category
                 await preloadModelEntities(modelNames: modelsArray)
                 
-                // ✅ Prefetch thumbnails as you already do
+                // Prefetch thumbnails
                 await prefetchThumbnails(for: modelsArray.prefix(8))
             } else {
                 print("No models found for subcategory: \(subcategory) in \(mainCategory).json")
@@ -180,36 +182,44 @@ class AvatarPartSelectorView: UIView {
         } catch {
             print("Failed to load or decode \(category) from main category JSON: \(error)")
             await setModels([])
+            await MainActor.run {
+                hideLoading()
+            }
         }
     }
 
     private func preloadModelEntities(modelNames: [String]) async {
-        for modelName in modelNames {
-            Task {
-                do {
-                    _ = try await AvatarResourceManager.shared.loadModelEntity(named: modelName)
-                } catch {
-                    print("❌ Failed to preload model: \(modelName), error: \(error)")
+        // Create a task group to handle concurrent loading
+        await withTaskGroup(of: Void.self) { group in
+            for modelName in modelNames {
+                group.addTask {
+                    do {
+                        _ = try await AvatarResourceManager.shared.loadModelEntity(named: modelName)
+                    } catch {
+                        print("❌ Failed to preload model: \(modelName), error: \(error)")
+                    }
                 }
             }
         }
     }
 
     private func prefetchThumbnails(for models: ArraySlice<String>) async {
-        for modelName in models {
-            guard !pendingThumbnailLoads.contains(modelName) else { continue }
-            pendingThumbnailLoads.insert(modelName)
-            
-            Task {
-                thumbnailLoadSemaphore.wait()
-                defer { thumbnailLoadSemaphore.signal() }
+        // Create a task group to handle concurrent loading
+        await withTaskGroup(of: Void.self) { group in
+            for modelName in models {
+                guard !pendingThumbnailLoads.contains(modelName) else { continue }
+                pendingThumbnailLoads.insert(modelName)
                 
-                do {
-                    _ = try await AvatarResourceManager.shared.loadThumbnail(for: modelName)
-                    pendingThumbnailLoads.remove(modelName)
-                } catch {
-                    print("Failed to prefetch thumbnail for \(modelName): \(error)")
-                    pendingThumbnailLoads.remove(modelName)
+                group.addTask { [weak self] in
+                    guard let self = self else { return }
+                    
+                    do {
+                        _ = try await AvatarResourceManager.shared.loadThumbnail(for: modelName)
+                        self.pendingThumbnailLoads.remove(modelName)
+                    } catch {
+                        print("Failed to prefetch thumbnail for \(modelName): \(error)")
+                        self.pendingThumbnailLoads.remove(modelName)
+                    }
                 }
             }
         }
@@ -266,7 +276,10 @@ class AvatarPartSelectorView: UIView {
         
         // Use Task to handle async call with timeout
         Task { [weak self] in
-            guard let self = self else { return }
+            guard let self = self else { 
+                hideLoading()
+                return 
+            }
             
             do {
                 try await withTimeout(seconds: 10) {
@@ -276,7 +289,9 @@ class AvatarPartSelectorView: UIView {
             } catch {
                 print("Failed to load content: \(error)")
                 // Ensure loading indicator is hidden even on error
-                self.hideLoading()
+                await MainActor.run {
+                    self.hideLoading()
+                }
             }
         }
     }
@@ -329,7 +344,9 @@ class AvatarPartSelectorView: UIView {
         }
         
         // Hide loading indicator after setup is complete
-        hideLoading()
+        await MainActor.run {
+            hideLoading()
+        }
     }
 
     private func queueUIUpdate(_ update: @escaping () -> Void) async {

@@ -23,8 +23,6 @@ enum AvatarCategory {
     // MARK: - Body Categories
     static let eyes = "eyes"
     static let eyebrows = "eyebrows"
-    static let nose = "nose"
-    static let mouth = "mouth"
     static let skin = "skin"
     
     // Body categories

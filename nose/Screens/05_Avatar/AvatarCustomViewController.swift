@@ -131,6 +131,12 @@ class AvatarCustomViewController: UIViewController {
     private func createAvatarData() -> CollectionAvatar.AvatarData? {
         var selections: [String: [String: String]] = [:]
         
+        // Add skin color if it exists
+        if let skinColor = avatar3DViewController.chosenColors["skin"] {
+            selections["skin"] = ["color": skinColor.toHexString()]
+        }
+        
+        // Add other models and their colors
         for (category, modelName) in avatar3DViewController.chosenModels {
             var entry: [String: String] = ["model": modelName]
             
