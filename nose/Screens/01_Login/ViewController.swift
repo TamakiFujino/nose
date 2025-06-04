@@ -12,9 +12,10 @@ final class ViewController: UIViewController {
     private lazy var sloganLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "Travel Through Time\nChange for the Future"
+        label.text = "Map your journey\nStyle your future"
         label.textAlignment = .center
-        label.font = .systemFont(ofSize: 28, weight: .bold)
+        // set font to gotham
+        label.font = UIFont(name: "Gotham-Bold", size: 32) ?? UIFont.systemFont(ofSize: 32, weight: .bold)
         label.textColor = .white
         label.numberOfLines = 0
         return label

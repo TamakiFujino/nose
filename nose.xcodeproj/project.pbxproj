@@ -541,7 +541,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = nose/nose.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = Y365Z93L4K;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				EXCLUDED_ARCHS = "";
@@ -552,9 +552,8 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = nose/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "";
-				INFOPLIST_KEY_LSApplicationCategoryType = "";
-				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "アプリに常に位置情報の連携を許可する";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "アプリ利用中だけ位置情報の連携を許可する";
+				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "Always allow";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Allow when using the app";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
@@ -583,7 +582,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = nose/nose.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = Y365Z93L4K;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				EXCLUDED_ARCHS = "";
@@ -594,9 +593,8 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = nose/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "";
-				INFOPLIST_KEY_LSApplicationCategoryType = "";
-				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "アプリに常に位置情報の連携を許可する";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "アプリ利用中だけ位置情報の連携を許可する";
+				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "Always allow";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Allow when using the app";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
