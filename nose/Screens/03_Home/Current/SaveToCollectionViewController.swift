@@ -10,9 +10,16 @@ protocol SaveToCollectionViewControllerDelegate: AnyObject {
 class SaveToCollectionViewController: UIViewController {
     // MARK: - Properties
     private let place: GMSPlace
-    private var collections: [PlaceCollection] = []
+    private var ownedCollections: [PlaceCollection] = []
+    private var sharedCollections: [PlaceCollection] = []
     private var selectedCollection: PlaceCollection?
     private var newCollectionName: String = ""
+    private var currentTab: CollectionTab = .personal
+    
+    private enum CollectionTab {
+        case personal
+        case shared
+    }
     
     weak var delegate: SaveToCollectionViewControllerDelegate?
     
@@ -42,6 +49,15 @@ class SaveToCollectionViewController: UIViewController {
         label.numberOfLines = 0
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
+    }()
+    
+    private lazy var segmentedControl: UISegmentedControl = {
+        let items = ["Your Collections", "From Friends"]
+        let control = UISegmentedControl(items: items)
+        control.translatesAutoresizingMaskIntoConstraints = false
+        control.selectedSegmentIndex = 0
+        control.addTarget(self, action: #selector(segmentedControlChanged), for: .valueChanged)
+        return control
     }()
     
     private lazy var collectionsTableView: UITableView = {
@@ -100,6 +116,7 @@ class SaveToCollectionViewController: UIViewController {
         view.addSubview(closeButton)
         view.addSubview(titleLabel)
         view.addSubview(placeNameLabel)
+        view.addSubview(segmentedControl)
         view.addSubview(collectionsTableView)
         view.addSubview(createNewCollectionButton)
         view.addSubview(saveButton)
@@ -120,8 +137,13 @@ class SaveToCollectionViewController: UIViewController {
             placeNameLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             placeNameLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             
+            // Segmented control constraints
+            segmentedControl.topAnchor.constraint(equalTo: placeNameLabel.bottomAnchor, constant: 16),
+            segmentedControl.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            segmentedControl.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            
             // Collections table view constraints
-            collectionsTableView.topAnchor.constraint(equalTo: placeNameLabel.bottomAnchor, constant: 24),
+            collectionsTableView.topAnchor.constraint(equalTo: segmentedControl.bottomAnchor, constant: 16),
             collectionsTableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             collectionsTableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             collectionsTableView.bottomAnchor.constraint(equalTo: saveButton.topAnchor, constant: -16),
@@ -155,7 +177,7 @@ class SaveToCollectionViewController: UIViewController {
             .collection("owned")
             .getDocuments { [weak self] (snapshot: QuerySnapshot?, error: Error?) in
                 if let error = error {
-                    print("❌ Error loading collections: \(error.localizedDescription)")
+                    print("❌ Error loading owned collections: \(error.localizedDescription)")
                     self?.createDefaultCollections()
                     return
                 }
@@ -165,13 +187,12 @@ class SaveToCollectionViewController: UIViewController {
                     data["id"] = document.documentID
                     data["isOwner"] = true
                     
-                    // If status is missing, treat it as active
                     if data["status"] == nil {
                         data["status"] = PlaceCollection.Status.active.rawValue
                     }
                     
                     if let collection = PlaceCollection(dictionary: data) {
-                        print("✅ Loaded collection: '\(collection.name)' with \(collection.places.count) places")
+                        print("✅ Loaded owned collection: '\(collection.name)' with \(collection.places.count) places")
                         return collection
                     }
                     return nil
@@ -181,9 +202,43 @@ class SaveToCollectionViewController: UIViewController {
                     if fetchedCollections.isEmpty {
                         self?.createDefaultCollections()
                     } else {
-                        self?.collections = fetchedCollections.filter { $0.status == .active }
+                        self?.ownedCollections = fetchedCollections.filter { $0.status == .active }
                         self?.collectionsTableView.reloadData()
                     }
+                }
+            }
+            
+        // Load shared collections
+        db.collection("users")
+            .document(currentUserId)
+            .collection("collections")
+            .document("shared")
+            .collection("shared")
+            .getDocuments { [weak self] (snapshot: QuerySnapshot?, error: Error?) in
+                if let error = error {
+                    print("❌ Error loading shared collections: \(error.localizedDescription)")
+                    return
+                }
+                
+                let fetchedCollections = snapshot?.documents.compactMap { document -> PlaceCollection? in
+                    var data = document.data()
+                    data["id"] = document.documentID
+                    data["isOwner"] = false
+                    
+                    if data["status"] == nil {
+                        data["status"] = PlaceCollection.Status.active.rawValue
+                    }
+                    
+                    if let collection = PlaceCollection(dictionary: data) {
+                        print("✅ Loaded shared collection: '\(collection.name)' with \(collection.places.count) places")
+                        return collection
+                    }
+                    return nil
+                } ?? []
+                
+                DispatchQueue.main.async {
+                    self?.sharedCollections = fetchedCollections.filter { $0.status == .active }
+                    self?.collectionsTableView.reloadData()
                 }
             }
     }
@@ -209,7 +264,7 @@ class SaveToCollectionViewController: UIViewController {
             }
         }
         
-        collections = defaultCollections
+        ownedCollections = defaultCollections
         collectionsTableView.reloadData()
     }
     
@@ -239,7 +294,7 @@ class SaveToCollectionViewController: UIViewController {
                 DispatchQueue.main.async {
                     switch result {
                     case .success(let newCollection):
-                        self?.collections.append(newCollection)
+                        self?.ownedCollections.append(newCollection)
                         self?.selectedCollection = newCollection
                         self?.collectionsTableView.reloadData()
                         self?.updateSaveButtonState()
@@ -330,16 +385,23 @@ class SaveToCollectionViewController: UIViewController {
             }
         }
     }
+    
+    @objc private func segmentedControlChanged(_ sender: UISegmentedControl) {
+        currentTab = sender.selectedSegmentIndex == 0 ? .personal : .shared
+        createNewCollectionButton.isHidden = currentTab == .shared
+        collectionsTableView.reloadData()
+    }
 }
 
 // MARK: - UITableViewDelegate & UITableViewDataSource
 extension SaveToCollectionViewController: UITableViewDelegate, UITableViewDataSource {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return collections.count
+        return currentTab == .personal ? ownedCollections.count : sharedCollections.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "CollectionCell", for: indexPath)
+        let collections = currentTab == .personal ? ownedCollections : sharedCollections
         let collection = collections[indexPath.row]
         
         print("📱 Configuring cell for collection '\(collection.name)' with \(collection.places.count) places")
@@ -358,6 +420,7 @@ extension SaveToCollectionViewController: UITableViewDelegate, UITableViewDataSo
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        let collections = currentTab == .personal ? ownedCollections : sharedCollections
         selectedCollection = collections[indexPath.row]
         print("👆 Selected collection '\(selectedCollection?.name ?? "Unknown")' with \(selectedCollection?.places.count ?? 0) places")
         collectionsTableView.reloadData()
