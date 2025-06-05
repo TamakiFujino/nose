@@ -7,6 +7,7 @@ public struct PlaceCollection: Codable {
     public var places: [Place]
     public let userId: String
     public var status: Status
+    public let createdAt: Date
     
     public enum Status: String, Codable {
         case active
@@ -39,7 +40,8 @@ public struct PlaceCollection: Codable {
             "name": name,
             "places": places.map { $0.dictionary },
             "userId": userId,
-            "status": status.rawValue
+            "status": status.rawValue,
+            "createdAt": Timestamp(date: createdAt)
         ]
     }
     
@@ -49,6 +51,7 @@ public struct PlaceCollection: Codable {
         self.places = places
         self.userId = userId
         self.status = status
+        self.createdAt = Date()
     }
     
     public init?(dictionary: [String: Any]) {
@@ -69,6 +72,13 @@ public struct PlaceCollection: Codable {
             self.status = status
         } else {
             self.status = .active
+        }
+        
+        // Parse createdAt, default to current date if not found
+        if let timestamp = dictionary["createdAt"] as? Timestamp {
+            self.createdAt = timestamp.dateValue()
+        } else {
+            self.createdAt = Date()
         }
         
         if let placesData = dictionary["places"] as? [[String: Any]] {

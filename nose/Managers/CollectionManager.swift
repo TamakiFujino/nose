@@ -27,7 +27,9 @@ class CollectionManager {
             "name": name,
             "places": [],
             "userId": currentUserId,
-            "createdAt": Timestamp(date: createdAt)
+            "createdAt": Timestamp(date: createdAt),
+            "isOwner": true,
+            "status": PlaceCollection.Status.active.rawValue
         ]
         Firestore.firestore()
             .collection("users")
@@ -251,24 +253,52 @@ class CollectionManager {
         
         print("📤 Sharing collection '\(collection.name)' with \(friends.count) friends...")
         
-        let sharedData = [
-            "sharedWith": friends.map { $0.id },
-            "sharedAt": FieldValue.serverTimestamp()
-        ] as [String: Any]
+        // Create a batch write
+        let batch = db.batch()
         
-        db.collection("users")
+        // Update owner's collection with sharedWith field
+        let ownerCollectionRef = db.collection("users")
             .document(userId)
             .collection("collections")
             .document(collection.id)
-            .updateData(sharedData) { error in
-                if let error = error {
-                    print("❌ Error sharing collection: \(error.localizedDescription)")
-                    completion(.failure(error))
-                } else {
-                    print("✅ Successfully shared collection")
-                    completion(.success(()))
-                }
+        
+        batch.updateData([
+            "sharedWith": friends.map { $0.id },
+            "sharedAt": FieldValue.serverTimestamp()
+        ], forDocument: ownerCollectionRef)
+        
+        // Create shared collection in each friend's shared_collections
+        for friend in friends {
+            let sharedCollectionRef = db.collection("users")
+                .document(friend.id)
+                .collection("shared_collections")
+                .document(collection.id)
+            
+            let sharedCollectionData: [String: Any] = [
+                "id": collection.id,
+                "name": collection.name,
+                "places": collection.places.map { $0.dictionary },
+                "userId": userId,
+                "createdAt": collection.createdAt,
+                "isOwner": false,
+                "status": collection.status.rawValue,
+                "sharedBy": userId,
+                "sharedAt": FieldValue.serverTimestamp()
+            ]
+            
+            batch.setData(sharedCollectionData, forDocument: sharedCollectionRef)
+        }
+        
+        // Commit the batch
+        batch.commit { error in
+            if let error = error {
+                print("❌ Error sharing collection: \(error.localizedDescription)")
+                completion(.failure(error))
+            } else {
+                print("✅ Successfully shared collection with \(friends.count) friends")
+                completion(.success(()))
             }
+        }
     }
     
     func updateAvatarData(_ avatarData: CollectionAvatar.AvatarData, for collection: PlaceCollection, completion: @escaping (Result<Void, Error>) -> Void) {

@@ -333,23 +333,44 @@ class AddFriendViewController: UIViewController {
         let db = Firestore.firestore()
         print("DEBUG: Adding friend relationship to Firestore")
         
-        // Add friend relationship
-        db.collection("users").document(currentUserId)
-            .collection("friends").document(user.id).setData([
-                "addedAt": FieldValue.serverTimestamp()
-            ]) { [weak self] error in
-                if let error = error {
-                    print("DEBUG: Error adding friend: \(error.localizedDescription)")
-                    return
-                }
-                
-                print("DEBUG: Friend added successfully")
-                DispatchQueue.main.async {
-                    self?.showAlert(title: "Success", message: "Friend added successfully") { _ in
-                        self?.navigationController?.popViewController(animated: true)
-                    }
+        // Create a batch write
+        let batch = db.batch()
+        
+        // Add friend relationship for current user
+        let currentUserFriendRef = db.collection("users")
+            .document(currentUserId)
+            .collection("friends")
+            .document(user.id)
+        
+        // Add friend relationship for the other user
+        let otherUserFriendRef = db.collection("users")
+            .document(user.id)
+            .collection("friends")
+            .document(currentUserId)
+        
+        // Add data to both documents
+        batch.setData([
+            "addedAt": FieldValue.serverTimestamp()
+        ], forDocument: currentUserFriendRef)
+        
+        batch.setData([
+            "addedAt": FieldValue.serverTimestamp()
+        ], forDocument: otherUserFriendRef)
+        
+        // Commit the batch
+        batch.commit { [weak self] error in
+            if let error = error {
+                print("DEBUG: Error adding friend: \(error.localizedDescription)")
+                return
+            }
+            
+            print("DEBUG: Friend added successfully for both users")
+            DispatchQueue.main.async {
+                self?.showAlert(title: "Success", message: "Friend added successfully") { _ in
+                    self?.navigationController?.popViewController(animated: true)
                 }
             }
+        }
     }
     
     private func showAlert(title: String, message: String, completion: ((UIAlertAction) -> Void)? = nil) {

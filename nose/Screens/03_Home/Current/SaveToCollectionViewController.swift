@@ -1,6 +1,7 @@
 import UIKit
 import GooglePlaces
 import FirebaseAuth
+import FirebaseFirestore
 
 protocol SaveToCollectionViewControllerDelegate: AnyObject {
     func saveToCollectionViewController(_ controller: SaveToCollectionViewController, didSavePlace place: GMSPlace, toCollection collection: PlaceCollection)
@@ -141,23 +142,50 @@ class SaveToCollectionViewController: UIViewController {
     
     // MARK: - Helper Methods
     private func loadCollections() {
-        CollectionManager.shared.fetchCollections { [weak self] result in
-            DispatchQueue.main.async {
-                switch result {
-                case .success(let fetchedCollections):
-                    fetchedCollections.forEach { collection in
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        let db = Firestore.firestore()
+        
+        print("📥 Fetching collections for user \(currentUserId)...")
+        
+        // Load owned collections
+        db.collection("users")
+            .document(currentUserId)
+            .collection("collections")
+            .document("owned")
+            .collection("owned")
+            .getDocuments { [weak self] (snapshot: QuerySnapshot?, error: Error?) in
+                if let error = error {
+                    print("❌ Error loading collections: \(error.localizedDescription)")
+                    self?.createDefaultCollections()
+                    return
+                }
+                
+                let fetchedCollections = snapshot?.documents.compactMap { document -> PlaceCollection? in
+                    var data = document.data()
+                    data["id"] = document.documentID
+                    data["isOwner"] = true
+                    
+                    // If status is missing, treat it as active
+                    if data["status"] == nil {
+                        data["status"] = PlaceCollection.Status.active.rawValue
                     }
+                    
+                    if let collection = PlaceCollection(dictionary: data) {
+                        print("✅ Loaded collection: '\(collection.name)' with \(collection.places.count) places")
+                        return collection
+                    }
+                    return nil
+                } ?? []
+                
+                DispatchQueue.main.async {
                     if fetchedCollections.isEmpty {
+                        self?.createDefaultCollections()
                     } else {
-                        self?.collections = fetchedCollections
+                        self?.collections = fetchedCollections.filter { $0.status == .active }
                         self?.collectionsTableView.reloadData()
                     }
-                case .failure(let error):
-                    // show toast message to user
-                    self?.createDefaultCollections()
                 }
             }
-        }
     }
     
     private func createDefaultCollections() {
@@ -171,7 +199,7 @@ class SaveToCollectionViewController: UIViewController {
         // Save default collections to Firestore
         for collection in defaultCollections {
             print("📚 Creating default collection: \(collection.name)")
-            CollectionManager.shared.createCollection(name: collection.name) { result in
+            CollectionContainerManager.shared.createCollection(name: collection.name) { result in
                 switch result {
                 case .success(let collection):
                     print("✅ Successfully created collection: \(collection.name)")
@@ -207,7 +235,7 @@ class SaveToCollectionViewController: UIViewController {
             }
             
             // Create new collection in Firestore
-            CollectionManager.shared.createCollection(name: collectionName) { [weak self] result in
+            CollectionContainerManager.shared.createCollection(name: collectionName) { [weak self] result in
                 DispatchQueue.main.async {
                     switch result {
                     case .success(let newCollection):
@@ -255,19 +283,32 @@ class SaveToCollectionViewController: UIViewController {
         let loadingAlert = UIAlertController(title: "Saving...", message: nil, preferredStyle: .alert)
         present(loadingAlert, animated: true)
         
+        // Create place data
+        let placeData: [String: Any] = [
+            "name": place.name ?? "",
+            "placeId": place.placeID ?? "",
+            "rating": place.rating,
+            "latitude": place.coordinate.latitude,
+            "longitude": place.coordinate.longitude,
+            "formattedAddress": place.formattedAddress ?? "",
+            "phoneNumber": place.phoneNumber ?? "",
+            "addedAt": Timestamp(date: Date())
+        ]
+        
         // Save place to collection in Firestore
-        CollectionManager.shared.addPlaceToCollection(place, collectionId: collection.id) { [weak self] result in
+        let collectionRef = Firestore.firestore().collection("users")
+            .document(Auth.auth().currentUser?.uid ?? "")
+            .collection("collections")
+            .document("owned")
+            .collection("owned")
+            .document(collection.id)
+        
+        collectionRef.updateData([
+            "places": FieldValue.arrayUnion([placeData])
+        ]) { [weak self] (error: Error?) in
             DispatchQueue.main.async {
                 loadingAlert.dismiss(animated: true) {
-                    switch result {
-                    case .success:
-                        print("✅ Successfully saved place to collection")
-                        // Refresh collections to update the count
-                        self?.loadCollections()
-                        // Notify delegate and dismiss
-                        self?.delegate?.saveToCollectionViewController(self!, didSavePlace: self!.place, toCollection: collection)
-                        self?.dismiss(animated: true)
-                    case .failure(let error):
+                    if let error = error {
                         print("❌ Error saving place: \(error.localizedDescription)")
                         // Show error alert
                         let errorAlert = UIAlertController(
@@ -277,6 +318,13 @@ class SaveToCollectionViewController: UIViewController {
                         )
                         errorAlert.addAction(UIAlertAction(title: "OK", style: .default))
                         self?.present(errorAlert, animated: true)
+                    } else {
+                        print("✅ Successfully saved place to collection")
+                        // Refresh collections to update the count
+                        self?.loadCollections()
+                        // Notify delegate and dismiss
+                        self?.delegate?.saveToCollectionViewController(self!, didSavePlace: self!.place, toCollection: collection)
+                        self?.dismiss(animated: true)
                     }
                 }
             }
