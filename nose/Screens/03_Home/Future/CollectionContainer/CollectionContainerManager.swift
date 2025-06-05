@@ -11,31 +11,81 @@ class CollectionContainerManager {
     func completeCollection(_ collection: PlaceCollection, completion: @escaping (Error?) -> Void) {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         
-        let collectionRef = db.collection("users")
+        // Create a batch write
+        let batch = db.batch()
+        
+        // Update owner's collection
+        let ownerCollectionRef = db.collection("users")
             .document(currentUserId)
             .collection("collections")
             .document("owned")
             .collection("owned")
             .document(collection.id)
         
-        collectionRef.updateData(["status": PlaceCollection.Status.completed.rawValue]) { error in
-            completion(error)
-        }
+        batch.updateData(["status": PlaceCollection.Status.completed.rawValue], forDocument: ownerCollectionRef)
+        
+        // Find and update all shared copies
+        db.collectionGroup("shared")
+            .whereField("id", isEqualTo: collection.id)
+            .whereField("sharedBy", isEqualTo: currentUserId)
+            .getDocuments { [weak self] snapshot, error in
+                guard let self = self else { return }
+                
+                if let error = error {
+                    completion(error)
+                    return
+                }
+                
+                // Update each shared copy
+                snapshot?.documents.forEach { document in
+                    batch.updateData(["status": PlaceCollection.Status.completed.rawValue], forDocument: document.reference)
+                }
+                
+                // Commit all updates
+                batch.commit { error in
+                    completion(error)
+                }
+            }
     }
     
     func putBackCollection(_ collection: PlaceCollection, completion: @escaping (Error?) -> Void) {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         
-        let collectionRef = db.collection("users")
+        // Create a batch write
+        let batch = db.batch()
+        
+        // Update owner's collection
+        let ownerCollectionRef = db.collection("users")
             .document(currentUserId)
             .collection("collections")
             .document("owned")
             .collection("owned")
             .document(collection.id)
         
-        collectionRef.updateData(["status": PlaceCollection.Status.active.rawValue]) { error in
-            completion(error)
-        }
+        batch.updateData(["status": PlaceCollection.Status.active.rawValue], forDocument: ownerCollectionRef)
+        
+        // Find and update all shared copies
+        db.collectionGroup("shared")
+            .whereField("id", isEqualTo: collection.id)
+            .whereField("sharedBy", isEqualTo: currentUserId)
+            .getDocuments { [weak self] snapshot, error in
+                guard let self = self else { return }
+                
+                if let error = error {
+                    completion(error)
+                    return
+                }
+                
+                // Update each shared copy
+                snapshot?.documents.forEach { document in
+                    batch.updateData(["status": PlaceCollection.Status.active.rawValue], forDocument: document.reference)
+                }
+                
+                // Commit all updates
+                batch.commit { error in
+                    completion(error)
+                }
+            }
     }
     
     func deleteCollection(_ collection: PlaceCollection, completion: @escaping (Error?) -> Void) {
