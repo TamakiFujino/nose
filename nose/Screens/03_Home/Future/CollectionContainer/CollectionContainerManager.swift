@@ -101,56 +101,99 @@ class CollectionContainerManager {
     func shareCollection(_ collection: PlaceCollection, with friends: [User], completion: @escaping (Error?) -> Void) {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         
-        print("📤 Sharing collection '\(collection.name)' with \(friends.count) friends...")
+        print("📤 Updating collection sharing for '\(collection.name)'...")
         
         // Create a batch write
         let batch = db.batch()
         
-        // Update owner's collection with sharedWith field
-        let ownerCollectionRef = db.collection("users")
+        // Get current shared friends
+        db.collection("users")
             .document(currentUserId)
             .collection("collections")
             .document("owned")
             .collection("owned")
             .document(collection.id)
-        
-        batch.updateData([
-            "sharedWith": friends.map { $0.id },
-            "sharedAt": FieldValue.serverTimestamp()
-        ], forDocument: ownerCollectionRef)
-        
-        // Create shared collection reference in each friend's collections/shared subcollection
-        for friend in friends {
-            let sharedCollectionRef = db.collection("users")
-                .document(friend.id)
-                .collection("collections")
-                .document("shared")
-                .collection("shared")
-                .document(collection.id)
-            
-            let sharedCollectionData: [String: Any] = [
-                "id": collection.id,
-                "name": collection.name,
-                "userId": currentUserId,
-                "sharedBy": currentUserId,
-                "sharedAt": FieldValue.serverTimestamp(),
-                "isOwner": false,
-                "status": collection.status.rawValue
-            ]
-            
-            batch.setData(sharedCollectionData, forDocument: sharedCollectionRef)
-        }
-        
-        // Commit the batch
-        batch.commit { error in
-            if let error = error {
-                print("❌ Error sharing collection: \(error.localizedDescription)")
-                completion(error)
-            } else {
-                print("✅ Successfully shared collection with \(friends.count) friends")
-                completion(nil)
+            .getDocument { [weak self] snapshot, error in
+                guard let self = self else { return }
+                
+                if let error = error {
+                    print("❌ Error getting current shared friends: \(error.localizedDescription)")
+                    completion(error)
+                    return
+                }
+                
+                // Get current shared friends
+                let currentSharedWith = snapshot?.data()?["sharedWith"] as? [String] ?? []
+                let newSharedWith = friends.map { $0.id }
+                
+                // Find friends to add and remove
+                let friendsToAdd = Set(newSharedWith).subtracting(currentSharedWith)
+                let friendsToRemove = Set(currentSharedWith).subtracting(newSharedWith)
+                
+                print("📊 Sharing stats:")
+                print("- Current shared friends: \(currentSharedWith.count)")
+                print("- New shared friends: \(newSharedWith.count)")
+                print("- Friends to add: \(friendsToAdd.count)")
+                print("- Friends to remove: \(friendsToRemove.count)")
+                
+                // Update owner's collection with new sharedWith field
+                let ownerCollectionRef = self.db.collection("users")
+                    .document(currentUserId)
+                    .collection("collections")
+                    .document("owned")
+                    .collection("owned")
+                    .document(collection.id)
+                
+                batch.updateData([
+                    "sharedWith": newSharedWith,
+                    "sharedAt": FieldValue.serverTimestamp()
+                ], forDocument: ownerCollectionRef)
+                
+                // Add new shared collections
+                for friendId in friendsToAdd {
+                    let sharedCollectionRef = self.db.collection("users")
+                        .document(friendId)
+                        .collection("collections")
+                        .document("shared")
+                        .collection("shared")
+                        .document(collection.id)
+                    
+                    let sharedCollectionData: [String: Any] = [
+                        "id": collection.id,
+                        "name": collection.name,
+                        "userId": currentUserId,
+                        "sharedBy": currentUserId,
+                        "sharedAt": FieldValue.serverTimestamp(),
+                        "isOwner": false,
+                        "status": collection.status.rawValue
+                    ]
+                    
+                    batch.setData(sharedCollectionData, forDocument: sharedCollectionRef)
+                }
+                
+                // Remove old shared collections
+                for friendId in friendsToRemove {
+                    let sharedCollectionRef = self.db.collection("users")
+                        .document(friendId)
+                        .collection("collections")
+                        .document("shared")
+                        .collection("shared")
+                        .document(collection.id)
+                    
+                    batch.deleteDocument(sharedCollectionRef)
+                }
+                
+                // Commit the batch
+                batch.commit { error in
+                    if let error = error {
+                        print("❌ Error updating collection sharing: \(error.localizedDescription)")
+                        completion(error)
+                    } else {
+                        print("✅ Successfully updated collection sharing")
+                        completion(nil)
+                    }
+                }
             }
-        }
     }
     
     func updateAvatarData(_ avatarData: CollectionAvatar.AvatarData, for collection: PlaceCollection, completion: @escaping (Error?) -> Void) {

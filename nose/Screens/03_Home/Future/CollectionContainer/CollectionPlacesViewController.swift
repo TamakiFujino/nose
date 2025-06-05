@@ -144,6 +144,9 @@ class CollectionPlacesViewController: UIViewController {
         headerView.addSubview(avatarContainer)
         view.addSubview(tableView)
 
+        // Hide menu button if user is not the owner
+        menuButton.isHidden = !collection.isOwner
+
         NSLayoutConstraint.activate([
             headerView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             headerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -574,22 +577,12 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
 // MARK: - ShareCollectionViewControllerDelegate
 extension CollectionPlacesViewController: ShareCollectionViewControllerDelegate {
     func shareCollectionViewController(_ controller: ShareCollectionViewController, didSelectFriends friends: [User]) {
-        let shareText = "Check out my collection: \(collection.name)"
-        let activityViewController = UIActivityViewController(
-            activityItems: [shareText],
-            applicationActivities: nil
-        )
+        LoadingView.shared.showOverlayLoading(on: view, message: "Sharing Collection...")
         
-        if let popoverController = activityViewController.popoverPresentationController {
-            popoverController.sourceView = menuButton
-            popoverController.sourceRect = menuButton.bounds
-        }
-        
-        present(activityViewController, animated: true)
-        
-        showLoadingAlert(title: "Sharing Collection")
         CollectionContainerManager.shared.shareCollection(collection, with: friends) { [weak self] error in
-            self?.dismiss(animated: true) {
+            DispatchQueue.main.async {
+                LoadingView.shared.hideOverlayLoading()
+                
                 if let error = error {
                     ToastManager.showToast(message: "Failed to share collection", type: .error)
                 } else {

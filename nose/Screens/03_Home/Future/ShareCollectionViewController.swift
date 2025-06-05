@@ -12,6 +12,7 @@ final class ShareCollectionViewController: UIViewController {
     private let collection: PlaceCollection
     private var friends: [User] = []
     private var selectedFriends: Set<String> = []
+    private var previouslySharedFriends: Set<String> = [] // Track previously shared friends
     weak var delegate: ShareCollectionViewControllerDelegate?
     
     // MARK: - UI Components
@@ -28,7 +29,7 @@ final class ShareCollectionViewController: UIViewController {
     private lazy var shareButton: UIButton = {
         let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.setTitle("Share", for: .normal)
+        button.setTitle("Update Sharing", for: .normal)
         button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
         button.backgroundColor = .fourthColor
         button.setTitleColor(.white, for: .normal)
@@ -90,11 +91,6 @@ final class ShareCollectionViewController: UIViewController {
         dismiss(animated: true)
     }
     
-    @objc private func shareButtonTapped() {
-        let selectedFriendsList = friends.filter { selectedFriends.contains($0.id) }
-        didSelectFriends(selectedFriendsList)
-    }
-    
     // MARK: - Data Loading
     private func loadFriends() {
         guard let currentUserId = Auth.auth().currentUser?.uid else {
@@ -108,6 +104,8 @@ final class ShareCollectionViewController: UIViewController {
         db.collection("users")
             .document(currentUserId)
             .collection("collections")
+            .document("owned")
+            .collection("owned")
             .document(collection.id)
             .getDocument { [weak self] snapshot, error in
                 if let error = error {
@@ -117,6 +115,7 @@ final class ShareCollectionViewController: UIViewController {
                 
                 // Get the list of currently shared friends
                 let sharedWith = snapshot?.data()?["sharedWith"] as? [String] ?? []
+                self?.previouslySharedFriends = Set(sharedWith)
                 
                 // Then load all friends
                 db.collection("users")
@@ -165,16 +164,20 @@ final class ShareCollectionViewController: UIViewController {
     }
     
     private func updateShareButtonState() {
-        if selectedFriends.isEmpty {
-            shareButton.setTitle("Remove All Friends", for: .normal)
-        } else {
-            shareButton.setTitle("Share", for: .normal)
-        }
+        // Enable button if there are changes
+        let hasChanges = selectedFriends != self.previouslySharedFriends
+        shareButton.isEnabled = hasChanges
+        shareButton.alpha = hasChanges ? 1.0 : 0.5
+    }
+    
+    @objc private func shareButtonTapped() {
+        let selectedFriendsList = friends.filter { selectedFriends.contains($0.id) }
+        didSelectFriends(selectedFriendsList)
     }
     
     func didSelectFriends(_ friends: [User]) {
         delegate?.shareCollectionViewController(self, didSelectFriends: friends)
-        // Don't dismiss the view controller
+        dismiss(animated: true)
     }
 }
 
@@ -187,7 +190,9 @@ extension ShareCollectionViewController: UITableViewDelegate, UITableViewDataSou
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "FriendCell", for: indexPath) as! FriendSelectionCell
         let friend = friends[indexPath.row]
-        cell.configure(with: friend, isSelected: selectedFriends.contains(friend.id))
+        let isSelected = selectedFriends.contains(friend.id)
+        let wasPreviouslyShared = previouslySharedFriends.contains(friend.id)
+        cell.configure(with: friend, isSelected: isSelected, wasPreviouslyShared: wasPreviouslyShared)
         return cell
     }
     
@@ -221,6 +226,14 @@ final class FriendSelectionCell: UITableViewCell {
         return imageView
     }()
     
+    private let statusLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.font = .systemFont(ofSize: 12)
+        label.textColor = .secondaryLabel
+        return label
+    }()
+    
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         setupUI()
@@ -233,10 +246,15 @@ final class FriendSelectionCell: UITableViewCell {
     private func setupUI() {
         contentView.addSubview(nameLabel)
         contentView.addSubview(checkmarkImageView)
+        contentView.addSubview(statusLabel)
         
         NSLayoutConstraint.activate([
             nameLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            nameLabel.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            nameLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 8),
+            
+            statusLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            statusLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 4),
+            statusLabel.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -8),
             
             checkmarkImageView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
             checkmarkImageView.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
@@ -245,8 +263,19 @@ final class FriendSelectionCell: UITableViewCell {
         ])
     }
     
-    func configure(with user: User, isSelected: Bool) {
+    func configure(with user: User, isSelected: Bool, wasPreviouslyShared: Bool) {
         nameLabel.text = user.name
         checkmarkImageView.isHidden = !isSelected
+        
+        if wasPreviouslyShared && !isSelected {
+            statusLabel.text = "Will be removed"
+            statusLabel.textColor = .systemRed
+        } else if !wasPreviouslyShared && isSelected {
+            statusLabel.text = "Will be added"
+            statusLabel.textColor = .systemGreen
+        } else {
+            statusLabel.text = wasPreviouslyShared ? "Currently shared" : "Not shared"
+            statusLabel.textColor = .secondaryLabel
+        }
     }
 } 
