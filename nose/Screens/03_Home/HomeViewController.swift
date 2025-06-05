@@ -11,6 +11,7 @@ final class HomeViewController: UIViewController {
     private var searchResults: [GMSPlace] = []
     private var sessionToken: GMSAutocompleteSessionToken?
     private var currentLocationMarker: GMSMarker?
+    private var currentDotIndex: Int = 1  // Track current dot index (0: left, 1: middle, 2: right)
     
     // MARK: - UI Components
     private lazy var headerView: UIView = {
@@ -72,6 +73,15 @@ final class HomeViewController: UIViewController {
         // Add tap gesture recognizer
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(dotSliderTapped(_:)))
         view.addGestureRecognizer(tapGesture)
+        
+        // Add swipe gesture recognizers
+        let leftSwipe = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipe(_:)))
+        leftSwipe.direction = .left
+        view.addGestureRecognizer(leftSwipe)
+        
+        let rightSwipe = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipe(_:)))
+        rightSwipe.direction = .right
+        view.addGestureRecognizer(rightSwipe)
         
         return view
     }()
@@ -391,6 +401,81 @@ final class HomeViewController: UIViewController {
         }
     }
     
+    @objc private func handleSwipe(_ gesture: UISwipeGestureRecognizer) {
+        let newIndex: Int
+        
+        switch gesture.direction {
+        case .left:
+            newIndex = min(currentDotIndex + 1, 2)
+        case .right:
+            newIndex = max(currentDotIndex - 1, 0)
+        default:
+            return
+        }
+        
+        if newIndex != currentDotIndex {
+            switchToDot(at: newIndex)
+        }
+    }
+    
+    private func switchToDot(at index: Int) {
+        // Add haptic feedback
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.prepare()
+        generator.impactOccurred()
+        
+        // Update dots
+        leftDot?.backgroundColor = index == 0 ? .firstColor : .sixthColor
+        middleDot?.backgroundColor = index == 1 ? .firstColor : .sixthColor
+        rightDot?.backgroundColor = index == 2 ? .firstColor : .sixthColor
+        
+        // Update current index
+        currentDotIndex = index
+        
+        // Always show the map view
+        mapView.isHidden = false
+        
+        // Update gradient colors
+        (headerView as? GradientHeaderView)?.updateGradient(for: index)
+        
+        // Show message based on selected dot
+        switch index {
+        case 0:
+            showMessage(title: "Past", subtitle: "relive the moments")
+        case 1:
+            showMessage(title: "Current", subtitle: "explore what's happening")
+        case 2:
+            showMessage(title: "Future", subtitle: "plan and get ready")
+        default:
+            break
+        }
+        
+        // Handle different dot selections with fade animation
+        UIView.animate(withDuration: 0.3, animations: {
+            switch index {
+            case 0: // Left dot - show box
+                self.searchButton.alpha = 0
+                self.sparkButton.alpha = 0
+                self.boxButton.alpha = 1
+            case 1: // Middle dot - show search
+                self.searchButton.alpha = 1
+                self.sparkButton.alpha = 0
+                self.boxButton.alpha = 0
+            case 2: // Right dot - show collections
+                self.searchButton.alpha = 0
+                self.sparkButton.alpha = 1
+                self.boxButton.alpha = 0
+            default:
+                break
+            }
+        }) { _ in
+            // Update visibility after fade
+            self.searchButton.isHidden = index != 1
+            self.sparkButton.isHidden = index != 2
+            self.boxButton.isHidden = index != 0
+        }
+    }
+    
     @objc private func dotSliderTapped(_ gesture: UITapGestureRecognizer) {
         let location = gesture.location(in: dotSlider)
         let width = dotSlider.bounds.width
@@ -398,6 +483,11 @@ final class HomeViewController: UIViewController {
         
         // Determine which segment was tapped
         let segment = Int(location.x / segmentWidth)
+        
+        // Add haptic feedback
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.prepare()
+        generator.impactOccurred()
         
         // Update dots using stored references
         leftDot?.backgroundColor = segment == 0 ? .firstColor : .sixthColor
