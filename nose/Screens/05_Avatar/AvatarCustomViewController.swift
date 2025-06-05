@@ -13,7 +13,7 @@ class AvatarCustomViewController: UIViewController {
     private var currentAvatarData: CollectionAvatar.AvatarData?
     private var avatar3DViewController: Avatar3DViewController!
     private var customizationCoordinator: AvatarCustomizationCoordinator!
-    // var selectedBookmarkList: BookmarkList?
+    private let isOwner: Bool
 
     weak var delegate: AvatarCustomViewControllerDelegate?
 
@@ -28,8 +28,9 @@ class AvatarCustomViewController: UIViewController {
     }()
 
     // MARK: - Initialization
-    init(collectionId: String) {
+    init(collectionId: String, isOwner: Bool) {
         self.collectionId = collectionId
+        self.isOwner = isOwner
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -157,13 +158,21 @@ class AvatarCustomViewController: UIViewController {
             return
         }
         
+        // Determine the collection type based on ownership
+        let collectionType = isOwner ? "owned" : "shared"
+        
         // Save to Firestore in the user's collection
         let db = Firestore.firestore()
         db.collection("users")
             .document(currentUserId)
             .collection("collections")
+            .document(collectionType)
+            .collection(collectionType)
             .document(collectionId)
-            .setData(["avatarData": avatarData.toFirestoreDict()], merge: true) { [weak self] error in
+            .setData([
+                "avatarData": avatarData.toFirestoreDict(),
+                "isOwner": isOwner
+            ], merge: true) { [weak self] error in
                 if let error = error {
                     print("Error saving avatar: \(error.localizedDescription)")
                     return
@@ -182,10 +191,15 @@ class AvatarCustomViewController: UIViewController {
             return
         }
         
+        // Determine the collection type based on ownership
+        let collectionType = isOwner ? "owned" : "shared"
+        
         let db = Firestore.firestore()
         db.collection("users")
             .document(currentUserId)
             .collection("collections")
+            .document(collectionType)
+            .collection(collectionType)
             .document(collectionId)
             .getDocument { [weak self] snapshot, error in
                 if let error = error {

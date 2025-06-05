@@ -156,14 +156,20 @@ class CollectionContainerManager {
     func updateAvatarData(_ avatarData: CollectionAvatar.AvatarData, for collection: PlaceCollection, completion: @escaping (Error?) -> Void) {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         
+        // Determine the collection type based on ownership
+        let collectionType = collection.isOwner ? "owned" : "shared"
+        
         let collectionRef = db.collection("users")
             .document(currentUserId)
             .collection("collections")
-            .document("owned")
-            .collection("owned")
+            .document(collectionType)
+            .collection(collectionType)
             .document(collection.id)
         
-        collectionRef.setData(["avatarData": avatarData.toFirestoreDict()], merge: true) { error in
+        collectionRef.setData([
+            "avatarData": avatarData.toFirestoreDict(),
+            "isOwner": collection.isOwner
+        ], merge: true) { error in
             completion(error)
         }
     }

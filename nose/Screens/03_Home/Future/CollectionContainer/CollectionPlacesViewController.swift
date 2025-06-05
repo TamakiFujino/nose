@@ -211,9 +211,13 @@ class CollectionPlacesViewController: UIViewController {
         let db = Firestore.firestore()
         
         print("DEBUG: Loading avatar data for collection: \(collection.id)")
+        let collectionType = collection.isOwner ? "owned" : "shared"
+        
         db.collection("users")
             .document(currentUserId)
             .collection("collections")
+            .document(collectionType)
+            .collection(collectionType)
             .document(collection.id)
             .getDocument { [weak self] snapshot, error in
                 if let error = error {
@@ -243,11 +247,7 @@ class CollectionPlacesViewController: UIViewController {
 
     // MARK: - Actions
     @objc private func avatarContainerTapped() {
-        let avatarVC = AvatarCustomViewController(collectionId: collection.id)
-        avatarVC.delegate = self
-        let navController = UINavigationController(rootViewController: avatarVC)
-        navController.modalPresentationStyle = .fullScreen
-        present(navController, animated: true)
+        showAvatarCustomization()
     }
 
     @objc private func menuButtonTapped() {
@@ -479,6 +479,16 @@ class CollectionPlacesViewController: UIViewController {
                     }
                 }
             }
+    }
+
+    private func showAvatarCustomization() {
+        // If the current user is the collection's userId, they are the owner
+        let isOwner = collection.userId == Auth.auth().currentUser?.uid
+        let avatarVC = AvatarCustomViewController(collectionId: collection.id, isOwner: isOwner)
+        avatarVC.delegate = self
+        let navController = UINavigationController(rootViewController: avatarVC)
+        navController.modalPresentationStyle = .fullScreen
+        present(navController, animated: true)
     }
 }
 

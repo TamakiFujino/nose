@@ -6,6 +6,7 @@ struct CollectionAvatar: Codable {
     let collectionId: String
     let avatarData: AvatarData
     let createdAt: Date
+    let isOwner: Bool
     
     // MARK: - Nested Types
     struct AvatarData: Codable {
@@ -48,7 +49,8 @@ struct CollectionAvatar: Codable {
     func toFirestoreData() -> [String: Any] {
         return [
             "avatarData": avatarData.toFirestoreDict(),
-            "createdAt": Timestamp(date: createdAt)
+            "createdAt": Timestamp(date: createdAt),
+            "isOwner": isOwner
         ]
     }
     
@@ -56,14 +58,22 @@ struct CollectionAvatar: Codable {
         guard let collectionId = data["collectionId"] as? String,
               let avatarDataDict = data["avatarData"] as? [String: Any],
               let avatarData = AvatarData.fromFirestoreDict(avatarDataDict),
-              let timestamp = data["createdAt"] as? Timestamp else {
+              let timestamp = data["createdAt"] as? Timestamp,
+              let isOwner = data["isOwner"] as? Bool else {
             return nil
         }
         
         return CollectionAvatar(
             collectionId: collectionId,
             avatarData: avatarData,
-            createdAt: timestamp.dateValue()
+            createdAt: timestamp.dateValue(),
+            isOwner: isOwner
         )
+    }
+    
+    // MARK: - Firestore Path
+    static func getPath(for collectionId: String, isOwner: Bool) -> String {
+        let type = isOwner ? "owned" : "shared"
+        return "collections/\(type)/\(type)/\(collectionId)"
     }
 }
