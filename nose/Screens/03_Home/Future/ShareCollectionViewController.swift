@@ -16,6 +16,16 @@ final class ShareCollectionViewController: UIViewController {
     weak var delegate: ShareCollectionViewControllerDelegate?
     
     // MARK: - UI Components
+    private lazy var infoLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.font = .systemFont(ofSize: 14)
+        label.textColor = .secondaryLabel
+        label.numberOfLines = 0
+        label.text = "Shared users can save spots to this collection, but cannot add friends, delete, or complete the collection."
+        return label
+    }()
+    
     private lazy var tableView: UITableView = {
         let tableView = UITableView()
         tableView.translatesAutoresizingMaskIntoConstraints = false
@@ -70,11 +80,16 @@ final class ShareCollectionViewController: UIViewController {
         navigationItem.leftBarButtonItem = closeButton
         
         // Add subviews
+        view.addSubview(infoLabel)
         view.addSubview(tableView)
         view.addSubview(shareButton)
         
         NSLayoutConstraint.activate([
-            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            infoLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
+            infoLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            infoLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            
+            tableView.topAnchor.constraint(equalTo: infoLabel.bottomAnchor, constant: 16),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: shareButton.topAnchor, constant: -16),
