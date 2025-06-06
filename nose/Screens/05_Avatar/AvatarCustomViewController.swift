@@ -188,32 +188,54 @@ class AvatarCustomViewController: UIViewController {
 
     private func loadSavedAvatarData() {
         guard let currentUserId = Auth.auth().currentUser?.uid else {
+            print("❌ No current user ID found")
             return
         }
         
         // Determine the collection type based on ownership
         let collectionType = isOwner ? "owned" : "shared"
+        print("📂 Loading avatar data for collection type: \(collectionType)")
         
         let db = Firestore.firestore()
-        db.collection("users")
+        let docRef = db.collection("users")
             .document(currentUserId)
             .collection("collections")
             .document(collectionType)
             .collection(collectionType)
             .document(collectionId)
-            .getDocument { [weak self] snapshot, error in
-                if let error = error {
-                    print("Error loading collection: \(error.localizedDescription)")
-                    return
-                }
-                
-                if let data = snapshot?.data(),
-                   let avatarDict = data["avatarData"] as? [String: Any],
-                   let avatarData = CollectionAvatar.AvatarData.fromFirestoreDict(avatarDict) {
-                    self?.currentAvatarData = avatarData
-                    self?.avatar3DViewController.loadAvatarData(avatarData)
-                }
+        
+        print("🔍 Fetching document at path: \(docRef.path)")
+        
+        docRef.getDocument { [weak self] snapshot, error in
+            if let error = error {
+                print("❌ Error loading collection: \(error.localizedDescription)")
+                return
             }
+            
+            guard let data = snapshot?.data() else {
+                print("ℹ️ No data found for collection")
+                return
+            }
+            
+            print("📄 Document data: \(data)")
+            
+            guard let avatarDict = data["avatarData"] as? [String: Any] else {
+                print("❌ No avatar data found in document")
+                return
+            }
+            
+            guard let avatarData = CollectionAvatar.AvatarData.fromFirestoreDict(avatarDict) else {
+                print("❌ Failed to parse avatar data from dictionary")
+                return
+            }
+            
+            print("✅ Successfully loaded avatar data: \(avatarData)")
+            
+            DispatchQueue.main.async {
+                self?.currentAvatarData = avatarData
+                self?.avatar3DViewController.loadAvatarData(avatarData)
+            }
+        }
     }
 
     // MARK: - Loading State
@@ -244,12 +266,16 @@ class AvatarCustomViewController: UIViewController {
                     self.setupNavigationBar()
                     self.setupAvatar3DView()
                     self.setupGestures()
-                    self.loadSavedAvatarData()
                     
-                    // Hide loading after everything is set up
+                    // Ensure 3D view is ready before loading avatar data
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        self.hideLoading()
-                        self.view.isUserInteractionEnabled = true
+                        self.loadSavedAvatarData()
+                        
+                        // Hide loading after everything is set up
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            self.hideLoading()
+                            self.view.isUserInteractionEnabled = true
+                        }
                     }
                 }
             } catch {
