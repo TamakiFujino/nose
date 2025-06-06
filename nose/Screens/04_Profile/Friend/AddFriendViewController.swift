@@ -367,7 +367,10 @@ class AddFriendViewController: UIViewController {
             print("DEBUG: Friend added successfully for both users")
             DispatchQueue.main.async {
                 self?.showAlert(title: "Success", message: "Friend added successfully") { _ in
-                    self?.navigationController?.popViewController(animated: true)
+                    // Clear the search field and result container
+                    self?.searchBar.text = ""
+                    self?.resultContainer.isHidden = true
+                    self?.searchResults = []
                 }
             }
         }
