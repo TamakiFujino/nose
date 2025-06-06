@@ -13,10 +13,18 @@ final class HomeViewController: UIViewController {
     private var currentLocationMarker: GMSMarker?
     private var currentDotIndex: Int = 1  // Track current dot index (0: left, 1: middle, 2: right)
     
+    // Add properties to track dots and line
+    private var leftDot: UIView?
+    private var middleDot: UIView?
+    private var rightDot: UIView?
+    private var dotLine: UIView?
+    private var containerView: UIView?
+    
     // MARK: - UI Components
     private lazy var headerView: UIView = {
-        let view = GradientHeaderView()
+        let view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
+        view.backgroundColor = .clear
         return view
     }()
     
@@ -25,87 +33,94 @@ final class HomeViewController: UIViewController {
         view.translatesAutoresizingMaskIntoConstraints = false
         view.backgroundColor = .clear
         
+        // Create container view for dots and line
+        let container = UIView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        container.backgroundColor = UIColor.fourthColor.withAlphaComponent(0.3)
+        container.layer.cornerRadius = 27.5  // Half of height for perfect round
+        view.addSubview(container)
+        self.containerView = container
+        
         // Create the line
         let line = UIView()
         line.translatesAutoresizingMaskIntoConstraints = false
-        line.backgroundColor = .sixthColor
-        view.addSubview(line)
+        line.backgroundColor = .firstColor
+        container.addSubview(line)
+        self.dotLine = line
         
         // Create the dots - middle one selected by default
         let dot1 = createDot(isSelected: false)
         let dot2 = createDot(isSelected: true)  // Middle dot selected
         let dot3 = createDot(isSelected: false)
         
-        view.addSubview(dot1)
-        view.addSubview(dot2)
-        view.addSubview(dot3)
+        // Add tap gestures to individual dots
+        let tap1 = UITapGestureRecognizer(target: self, action: #selector(dotTapped(_:)))
+        let tap2 = UITapGestureRecognizer(target: self, action: #selector(dotTapped(_:)))
+        let tap3 = UITapGestureRecognizer(target: self, action: #selector(dotTapped(_:)))
+        
+        dot1.addGestureRecognizer(tap1)
+        dot2.addGestureRecognizer(tap2)
+        dot3.addGestureRecognizer(tap3)
+        
+        container.addSubview(dot1)
+        container.addSubview(dot2)
+        container.addSubview(dot3)
         
         // Store references to dots
         self.leftDot = dot1
         self.middleDot = dot2
         self.rightDot = dot3
         
-        // Setup constraints
-        NSLayoutConstraint.activate([
-            // Line constraints
-            line.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            line.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            line.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            line.heightAnchor.constraint(equalToConstant: 2),
-            
-            // Dot constraints
-            dot1.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            dot1.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            dot1.widthAnchor.constraint(equalToConstant: 12),
-            dot1.heightAnchor.constraint(equalToConstant: 12),
-            
-            dot2.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            dot2.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            dot2.widthAnchor.constraint(equalToConstant: 12),
-            dot2.heightAnchor.constraint(equalToConstant: 12),
-            
-            dot3.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            dot3.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            dot3.widthAnchor.constraint(equalToConstant: 12),
-            dot3.heightAnchor.constraint(equalToConstant: 12)
-        ])
-        
-        // Add tap gesture recognizer
-        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(dotSliderTapped(_:)))
-        view.addGestureRecognizer(tapGesture)
-        
         // Add swipe gesture recognizers
         let leftSwipe = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipe(_:)))
         leftSwipe.direction = .left
-        view.addGestureRecognizer(leftSwipe)
+        container.addGestureRecognizer(leftSwipe)
         
         let rightSwipe = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipe(_:)))
         rightSwipe.direction = .right
-        view.addGestureRecognizer(rightSwipe)
+        container.addGestureRecognizer(rightSwipe)
         
         return view
     }()
     
-    // Add properties to track dots
-    private var leftDot: UIView?
-    private var middleDot: UIView?
-    private var rightDot: UIView?
-    
     private func createDot(isSelected: Bool) -> UIView {
+        let container = UIView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        container.backgroundColor = .clear
+        container.isUserInteractionEnabled = true  // Enable interaction for container
+        
         let dot = UIView()
         dot.translatesAutoresizingMaskIntoConstraints = false
-        dot.backgroundColor = isSelected ? .firstColor : .sixthColor
+        dot.backgroundColor = .firstColor
         dot.layer.cornerRadius = 6
-        return dot
+        dot.isUserInteractionEnabled = true  // Enable interaction for dot
+        
+        container.addSubview(dot)
+        
+        // Setup constraints
+        NSLayoutConstraint.activate([
+            dot.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            dot.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            dot.widthAnchor.constraint(equalToConstant: 12),
+            dot.heightAnchor.constraint(equalToConstant: 12)
+        ])
+        
+        if isSelected {
+            container.layer.borderWidth = 2
+            container.layer.borderColor = UIColor.firstColor.cgColor
+            container.layer.cornerRadius = 10
+        }
+        
+        return container
     }
     
     private lazy var profileButton: UIButton = {
         let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setImage(UIImage(systemName: "person.fill"), for: .normal)
-        button.tintColor = .sixthColor
-        button.backgroundColor = .clear
-        button.layer.cornerRadius = 20
+        button.tintColor = .firstColor
+        button.backgroundColor = UIColor.fourthColor.withAlphaComponent(0.3)
+        button.layer.cornerRadius = 27.5
         button.addTarget(self, action: #selector(profileButtonTapped), for: .touchUpInside)
         return button
     }()
@@ -114,9 +129,9 @@ final class HomeViewController: UIViewController {
         let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setImage(UIImage(systemName: "magnifyingglass"), for: .normal)
-        button.tintColor = .sixthColor
-        button.backgroundColor = .clear
-        button.layer.cornerRadius = 20
+        button.tintColor = .firstColor
+        button.backgroundColor = UIColor.fourthColor.withAlphaComponent(0.3)
+        button.layer.cornerRadius = 27.5
         button.addTarget(self, action: #selector(searchButtonTapped), for: .touchUpInside)
         return button
     }()
@@ -125,9 +140,9 @@ final class HomeViewController: UIViewController {
         let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setImage(UIImage(systemName: "sparkle"), for: .normal)
-        button.tintColor = .sixthColor
-        button.backgroundColor = .clear
-        button.layer.cornerRadius = 20
+        button.tintColor = .firstColor
+        button.backgroundColor = UIColor.fourthColor.withAlphaComponent(0.3)
+        button.layer.cornerRadius = 27.5
         button.addTarget(self, action: #selector(sparkButtonTapped), for: .touchUpInside)
         button.isHidden = true
         return button
@@ -137,9 +152,9 @@ final class HomeViewController: UIViewController {
         let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setImage(UIImage(systemName: "archivebox.fill"), for: .normal)
-        button.tintColor = .sixthColor
-        button.backgroundColor = .clear
-        button.layer.cornerRadius = 20
+        button.tintColor = .firstColor
+        button.backgroundColor = UIColor.fourthColor.withAlphaComponent(0.3)
+        button.layer.cornerRadius = 27.5
         button.addTarget(self, action: #selector(boxButtonTapped), for: .touchUpInside)
         button.isHidden = true
         return button
@@ -184,12 +199,9 @@ final class HomeViewController: UIViewController {
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setImage(UIImage(systemName: "location.fill"), for: .normal)
         button.backgroundColor = .white
-        button.tintColor = .sixthColor
-        button.layer.cornerRadius = 25
-        button.layer.shadowColor = UIColor.sixthColor.cgColor
-        button.layer.shadowOffset = CGSize(width: 0, height: 2)
-        button.layer.shadowRadius = 4
-        button.layer.shadowOpacity = 0.2
+        button.tintColor = .firstColor
+        button.layer.cornerRadius = 27.5
+        button.backgroundColor = UIColor.fourthColor.withAlphaComponent(0.3)
         button.addTarget(self, action: #selector(currentLocationButtonTapped), for: .touchUpInside)
         return button
     }()
@@ -237,71 +249,90 @@ final class HomeViewController: UIViewController {
     // MARK: - Setup
     private func setupUI() {
         view.backgroundColor = .white
-        // Remove title
-        navigationItem.title = nil
-       // navigationController?.navigationBar.isHidden = true
-        
-        // Configure navigation bar for pushed view controllers
-        navigationController?.navigationBar.tintColor = .label
-        navigationController?.navigationBar.prefersLargeTitles = false
         
         // Add subviews in correct order
         view.addSubview(mapView)
         view.addSubview(headerView)
+        view.addSubview(dotSlider)
         view.addSubview(searchButton)
         view.addSubview(sparkButton)
         view.addSubview(boxButton)
         view.addSubview(searchResultsTableView)
         view.addSubview(currentLocationButton)
         view.addSubview(profileButton)
-        view.addSubview(dotSlider)
         view.addSubview(messageView)
         messageView.addSubview(titleLabel)
         messageView.addSubview(subtitleLabel)
         
         // Setup constraints
         NSLayoutConstraint.activate([
-            // Map view constraints - now extends to top of screen
+            // Map view constraints
             mapView.topAnchor.constraint(equalTo: view.topAnchor),
             mapView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             mapView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             mapView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             
-            // Header view constraints - now overlaps with map
+            // Header view constraints
             headerView.topAnchor.constraint(equalTo: view.topAnchor),
             headerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             headerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             headerView.bottomAnchor.constraint(equalTo: dotSlider.bottomAnchor, constant: 16),
             
+            // Dot slider constraints
+            dotSlider.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            dotSlider.heightAnchor.constraint(equalToConstant: 55),
+            
+            // Container view constraints
+            containerView!.topAnchor.constraint(equalTo: dotSlider.topAnchor),
+            containerView!.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            containerView!.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            containerView!.heightAnchor.constraint(equalToConstant: 55),
+            
+            // Line constraints
+            dotLine!.centerYAnchor.constraint(equalTo: containerView!.centerYAnchor),
+            dotLine!.leadingAnchor.constraint(equalTo: leftDot!.centerXAnchor),
+            dotLine!.trailingAnchor.constraint(equalTo: rightDot!.centerXAnchor),
+            dotLine!.heightAnchor.constraint(equalToConstant: 2),
+            
+            // Dot constraints
+            leftDot!.centerYAnchor.constraint(equalTo: containerView!.centerYAnchor),
+            leftDot!.leadingAnchor.constraint(equalTo: containerView!.leadingAnchor, constant: 16),
+            leftDot!.widthAnchor.constraint(equalToConstant: 20),
+            leftDot!.heightAnchor.constraint(equalToConstant: 20),
+            
+            middleDot!.centerYAnchor.constraint(equalTo: containerView!.centerYAnchor),
+            middleDot!.centerXAnchor.constraint(equalTo: containerView!.centerXAnchor),
+            middleDot!.widthAnchor.constraint(equalToConstant: 20),
+            middleDot!.heightAnchor.constraint(equalToConstant: 20),
+            
+            rightDot!.centerYAnchor.constraint(equalTo: containerView!.centerYAnchor),
+            rightDot!.trailingAnchor.constraint(equalTo: containerView!.trailingAnchor, constant: -16),
+            rightDot!.widthAnchor.constraint(equalToConstant: 20),
+            rightDot!.heightAnchor.constraint(equalToConstant: 20),
+            
             // Profile button constraints
-            profileButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
+            profileButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 65),
             profileButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            profileButton.widthAnchor.constraint(equalToConstant: 40),
-            profileButton.heightAnchor.constraint(equalToConstant: 40),
+            profileButton.widthAnchor.constraint(equalToConstant: 55),
+            profileButton.heightAnchor.constraint(equalToConstant: 55),
             
             // Search button constraints
-            searchButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
+            searchButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 65),
             searchButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            searchButton.widthAnchor.constraint(equalToConstant: 40),
-            searchButton.heightAnchor.constraint(equalToConstant: 40),
+            searchButton.widthAnchor.constraint(equalToConstant: 55),
+            searchButton.heightAnchor.constraint(equalToConstant: 55),
             
-            // Box button constraints (same position as search button)
-            boxButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
+            // Box button constraints
+            boxButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 65),
             boxButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            boxButton.widthAnchor.constraint(equalToConstant: 40),
-            boxButton.heightAnchor.constraint(equalToConstant: 40),
+            boxButton.widthAnchor.constraint(equalToConstant: 55),
+            boxButton.heightAnchor.constraint(equalToConstant: 55),
             
-            // Spark button constraints (same position as search button)
-            sparkButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
+            // Spark button constraints
+            sparkButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 65),
             sparkButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            sparkButton.widthAnchor.constraint(equalToConstant: 40),
-            sparkButton.heightAnchor.constraint(equalToConstant: 40),
-            
-            // Dot slider constraints
-            dotSlider.topAnchor.constraint(equalTo: profileButton.bottomAnchor, constant: 8),
-            dotSlider.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 32),
-            dotSlider.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -32),
-            dotSlider.heightAnchor.constraint(equalToConstant: 20),
+            sparkButton.widthAnchor.constraint(equalToConstant: 55),
+            sparkButton.heightAnchor.constraint(equalToConstant: 55),
             
             // Search results table view constraints
             searchResultsTableView.topAnchor.constraint(equalTo: searchButton.bottomAnchor),
@@ -425,18 +456,23 @@ final class HomeViewController: UIViewController {
         generator.impactOccurred()
         
         // Update dots
-        leftDot?.backgroundColor = index == 0 ? .firstColor : .sixthColor
-        middleDot?.backgroundColor = index == 1 ? .firstColor : .sixthColor
-        rightDot?.backgroundColor = index == 2 ? .firstColor : .sixthColor
+        leftDot?.layer.borderWidth = index == 0 ? 2 : 0
+        leftDot?.layer.borderColor = index == 0 ? UIColor.firstColor.cgColor : nil
+        leftDot?.layer.cornerRadius = index == 0 ? 10 : 0
+        
+        middleDot?.layer.borderWidth = index == 1 ? 2 : 0
+        middleDot?.layer.borderColor = index == 1 ? UIColor.firstColor.cgColor : nil
+        middleDot?.layer.cornerRadius = index == 1 ? 10 : 0
+        
+        rightDot?.layer.borderWidth = index == 2 ? 2 : 0
+        rightDot?.layer.borderColor = index == 2 ? UIColor.firstColor.cgColor : nil
+        rightDot?.layer.cornerRadius = index == 2 ? 10 : 0
         
         // Update current index
         currentDotIndex = index
         
         // Always show the map view
         mapView.isHidden = false
-        
-        // Update gradient colors
-        (headerView as? GradientHeaderView)?.updateGradient(for: index)
         
         // Show message based on selected dot
         switch index {
@@ -457,14 +493,17 @@ final class HomeViewController: UIViewController {
                 self.searchButton.alpha = 0
                 self.sparkButton.alpha = 0
                 self.boxButton.alpha = 1
+                self.boxButton.isHidden = false
             case 1: // Middle dot - show search
                 self.searchButton.alpha = 1
                 self.sparkButton.alpha = 0
                 self.boxButton.alpha = 0
+                self.searchButton.isHidden = false
             case 2: // Right dot - show collections
                 self.searchButton.alpha = 0
                 self.sparkButton.alpha = 1
                 self.boxButton.alpha = 0
+                self.sparkButton.isHidden = false
             default:
                 break
             }
@@ -476,29 +515,46 @@ final class HomeViewController: UIViewController {
         }
     }
     
-    @objc private func dotSliderTapped(_ gesture: UITapGestureRecognizer) {
-        let location = gesture.location(in: dotSlider)
-        let width = dotSlider.bounds.width
-        let segmentWidth = width / 3
+    @objc private func dotTapped(_ gesture: UITapGestureRecognizer) {
+        guard let dot = gesture.view else { return }
         
-        // Determine which segment was tapped
-        let segment = Int(location.x / segmentWidth)
+        // Determine which dot was tapped
+        let segment: Int
+        if dot == leftDot {
+            segment = 0
+        } else if dot == middleDot {
+            segment = 1
+        } else if dot == rightDot {
+            segment = 2
+        } else {
+            return
+        }
+        
+        print("Dot tapped: \(segment)")  // Debug print
         
         // Add haptic feedback
         let generator = UIImpactFeedbackGenerator(style: .medium)
         generator.prepare()
         generator.impactOccurred()
         
+        // Update current index
+        currentDotIndex = segment
+        
         // Update dots using stored references
-        leftDot?.backgroundColor = segment == 0 ? .firstColor : .sixthColor
-        middleDot?.backgroundColor = segment == 1 ? .firstColor : .sixthColor
-        rightDot?.backgroundColor = segment == 2 ? .firstColor : .sixthColor
+        leftDot?.layer.borderWidth = segment == 0 ? 2 : 0
+        leftDot?.layer.borderColor = segment == 0 ? UIColor.firstColor.cgColor : nil
+        leftDot?.layer.cornerRadius = segment == 0 ? 10 : 0
+        
+        middleDot?.layer.borderWidth = segment == 1 ? 2 : 0
+        middleDot?.layer.borderColor = segment == 1 ? UIColor.firstColor.cgColor : nil
+        middleDot?.layer.cornerRadius = segment == 1 ? 10 : 0
+        
+        rightDot?.layer.borderWidth = segment == 2 ? 2 : 0
+        rightDot?.layer.borderColor = segment == 2 ? UIColor.firstColor.cgColor : nil
+        rightDot?.layer.cornerRadius = segment == 2 ? 10 : 0
         
         // Always show the map view
         mapView.isHidden = false
-        
-        // Update gradient colors
-        (headerView as? GradientHeaderView)?.updateGradient(for: segment)
         
         // Show message based on selected dot
         switch segment {
@@ -512,30 +568,33 @@ final class HomeViewController: UIViewController {
             break
         }
         
-        // Handle different dot selections with fade animation
+        // First hide all buttons
+        searchButton.isHidden = true
+        sparkButton.isHidden = true
+        boxButton.isHidden = true
+        
+        // Then show and animate the appropriate button
         UIView.animate(withDuration: 0.3, animations: {
             switch segment {
             case 0: // Left dot - show box
+                self.boxButton.alpha = 1
+                self.boxButton.isHidden = false
                 self.searchButton.alpha = 0
                 self.sparkButton.alpha = 0
-                self.boxButton.alpha = 1
             case 1: // Middle dot - show search
                 self.searchButton.alpha = 1
+                self.searchButton.isHidden = false
                 self.sparkButton.alpha = 0
                 self.boxButton.alpha = 0
             case 2: // Right dot - show collections
-                self.searchButton.alpha = 0
                 self.sparkButton.alpha = 1
+                self.sparkButton.isHidden = false
+                self.searchButton.alpha = 0
                 self.boxButton.alpha = 0
             default:
                 break
             }
-        }) { _ in
-            // Update visibility after fade
-            self.searchButton.isHidden = segment != 1
-            self.sparkButton.isHidden = segment != 2
-            self.boxButton.isHidden = segment != 0
-        }
+        })
     }
     
     // MARK: - Helper Methods
@@ -587,13 +646,6 @@ final class HomeViewController: UIViewController {
                     }
                     
                     if let place = place {
-                        print("Successfully fetched place: \(place.name ?? "Unknown")")
-                        print("Place ID: \(place.placeID ?? "nil")")
-                        print("Has photos: \(place.photos?.count ?? 0)")
-                        print("Has rating: \(place.rating)")
-                        print("Has phone: \(place.phoneNumber != nil)")
-                        print("Has opening hours: \(place.openingHours != nil)")
-                        
                         DispatchQueue.main.async {
                             self.searchResults.append(place)
                             self.searchResultsTableView.reloadData()
@@ -605,13 +657,6 @@ final class HomeViewController: UIViewController {
     }
     
     private func showPlaceOnMap(_ place: GMSPlace) {
-        print("Showing place on map: \(place.name ?? "Unknown")")
-        print("Place ID: \(place.placeID ?? "nil")")
-        print("Has photos: \(place.photos?.count ?? 0)")
-        print("Has rating: \(place.rating)")
-        print("Has phone: \(place.phoneNumber != nil)")
-        print("Has opening hours: \(place.openingHours != nil)")
-        
         // Clear existing markers
         mapView.clear()
         
@@ -631,15 +676,11 @@ final class HomeViewController: UIViewController {
         
         // Present place detail view controller
         let detailViewController = PlaceDetailViewController(place: place, isFromCollection: false)
-        print("Presenting detail view controller")
         
         // Add a slight delay to ensure proper presentation
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             guard let self = self else { return }
-            print("Attempting to present detail view controller")
-            self.present(detailViewController, animated: true) {
-                print("Detail view controller presentation completed")
-            }
+            self.present(detailViewController, animated: true)
         }
     }
     
@@ -803,89 +844,3 @@ extension HomeViewController: SearchViewControllerDelegate {
         showPlaceOnMap(place)
     }
 }
-
-class GradientHeaderView: UIView {
-    private var gradientLayer: CAGradientLayer?
-    private var maskLayer: CAGradientLayer?
-    
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        backgroundColor = .clear
-        isOpaque = false
-        setupGradient()
-    }
-    
-    required init?(coder: NSCoder) {
-        super.init(coder: coder)
-        backgroundColor = .clear
-        isOpaque = false
-        setupGradient()
-    }
-    
-    private func setupGradient() {
-        // Color gradient
-        let gradient = CAGradientLayer()
-        gradient.colors = [
-            UIColor(hex: "C49ED9")?.cgColor ?? UIColor.yellow.cgColor,     // Gold
-            UIColor(hex: "E287B2")?.cgColor ?? UIColor.green.cgColor      // Lime green
-        ]
-        gradient.startPoint = CGPoint(x: 0.0, y: 0.5)
-        gradient.endPoint = CGPoint(x: 1.0, y: 0.5)
-        gradient.opacity = 0.8  // Make the entire gradient slightly transparent
-        layer.insertSublayer(gradient, at: 0)
-        self.gradientLayer = gradient
-        
-        // Vertical fade mask
-        let mask = CAGradientLayer()
-        mask.colors = [
-            UIColor.white.cgColor,
-            UIColor.white.cgColor,
-            UIColor.white.withAlphaComponent(0.0).cgColor
-        ]
-        mask.locations = [0.0, 0.0, 1.0]  // Start fade at 70% of height
-        mask.startPoint = CGPoint(x: 0.5, y: 0.0)
-        mask.endPoint = CGPoint(x: 0.5, y: 1.0)
-        layer.mask = mask
-        self.maskLayer = mask
-    }
-    
-    func updateGradient(for segment: Int) {
-        let colors: [CGColor]
-        switch segment {
-        case 0:
-            colors = [
-                UIColor(hex: "E3E989")?.cgColor ?? UIColor.firstColor.cgColor,
-                UIColor(hex: "D0BDDC")?.cgColor ?? UIColor.secondColor.cgColor
-            ]
-        case 1: // Middle dot - Yellow to Green
-            colors = [
-                UIColor(hex: "D0BDDC")?.cgColor ?? UIColor.secondColor.cgColor,     // Gold
-                UIColor(hex: "FBAB19")?.cgColor ?? UIColor.thirdColor.cgColor      // Lime green
-            ]
-        case 2: // Right dot - Green to Blue
-            colors = [
-                UIColor(hex: "FBAB19")?.cgColor ?? UIColor.thirdColor.cgColor,     // Lime green
-                UIColor(hex: "EE2725")?.cgColor ?? UIColor.fourthColor.cgColor       // Dodger blue
-            ]
-        default:
-            return
-        }
-        
-        // Animate the gradient color change
-        let animation = CABasicAnimation(keyPath: "colors")
-        animation.fromValue = gradientLayer?.colors
-        animation.toValue = colors
-        animation.duration = 0.3
-        animation.fillMode = .forwards
-        animation.isRemovedOnCompletion = false
-        
-        gradientLayer?.colors = colors
-        gradientLayer?.add(animation, forKey: "colors")
-    }
-    
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        gradientLayer?.frame = bounds
-        maskLayer?.frame = bounds
-    }
-} 
