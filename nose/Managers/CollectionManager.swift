@@ -4,10 +4,9 @@ import FirebaseAuth
 import GooglePlaces
 import Firebase
 
-final class CollectionManager {
+class CollectionManager {
     static let shared = CollectionManager()
     private let db = Firestore.firestore()
-    private let storage = CollectionsStorage.shared
     
     private init() {}
     
@@ -323,63 +322,5 @@ final class CollectionManager {
                     completion(.success(()))
                 }
             }
-    }
-    
-    // MARK: - Collection Operations
-    
-    func createCollection(_ collection: Collection, completion: @escaping (Error?) -> Void) {
-        storage.createCollection(collection, completion: completion)
-    }
-    
-    func updateCollection(_ collection: Collection, completion: @escaping (Error?) -> Void) {
-        storage.updateCollection(collection, completion: completion)
-    }
-    
-    func deleteCollection(collectionId: String, completion: @escaping (Error?) -> Void) {
-        storage.deleteCollection(collectionId: collectionId, completion: completion)
-    }
-    
-    func getCollections(completion: @escaping (Result<[Collection], Error>) -> Void) {
-        storage.getCollections(completion: completion)
-    }
-    
-    func getCollection(collectionId: String, completion: @escaping (Result<Collection, Error>) -> Void) {
-        storage.getCollection(collectionId: collectionId, completion: completion)
-    }
-    
-    // MARK: - Shared Collections Operations
-    
-    func shareCollection(collectionId: String, friendIds: [String], completion: @escaping (Error?) -> Void) {
-        storage.shareCollection(collectionId: collectionId, friendIds: friendIds, completion: completion)
-    }
-    
-    func getSharedCollections(completion: @escaping (Result<[Collection], Error>) -> Void) {
-        storage.getSharedCollections(completion: completion)
-    }
-    
-    func removeSharedCollection(collectionId: String, completion: @escaping (Error?) -> Void) {
-        storage.removeSharedCollection(collectionId: collectionId, completion: completion)
-    }
-    
-    // MARK: - Collection Container Operations
-    
-    func getCollectionContainer(completion: @escaping (Result<CollectionContainer, Error>) -> Void) {
-        guard let userId = Auth.auth().currentUser?.uid else {
-            completion(.failure(NSError(domain: "CollectionManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "No user logged in"])))
-            return
-        }
-        
-        let path = "users/\(userId)/collectionContainer"
-        storage.storageManager.fetchDocument(path: path, completion: completion)
-    }
-    
-    func updateCollectionContainer(_ container: CollectionContainer, completion: @escaping (Error?) -> Void) {
-        guard let userId = Auth.auth().currentUser?.uid else {
-            completion(NSError(domain: "CollectionManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "No user logged in"]))
-            return
-        }
-        
-        let path = "users/\(userId)/collectionContainer"
-        storage.storageManager.saveDocument(container, path: path, completion: completion)
     }
 }

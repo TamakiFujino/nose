@@ -114,7 +114,7 @@ final class HomeViewController: UIViewController {
             image: UIImage(systemName: "location.fill"),
             action: #selector(currentLocationButtonTapped),
             target: self,
-            size: 50
+            size: 55
         )
         return button
     }()
@@ -232,8 +232,8 @@ final class HomeViewController: UIViewController {
             // Current location button constraints
             currentLocationButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             currentLocationButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -16),
-            currentLocationButton.widthAnchor.constraint(equalToConstant: 50),
-            currentLocationButton.heightAnchor.constraint(equalToConstant: 50),
+            currentLocationButton.widthAnchor.constraint(equalToConstant: 55),
+            currentLocationButton.heightAnchor.constraint(equalToConstant: 55),
             
             // Message view constraints
             messageView.centerXAnchor.constraint(equalTo: view.centerXAnchor),

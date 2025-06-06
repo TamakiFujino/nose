@@ -11,6 +11,7 @@ final class MapManager: NSObject {
     private var currentLocationMarker: GMSMarker?
     private var searchResults: [GMSPlace] = []
     private var sessionToken: GMSAutocompleteSessionToken?
+    private var displayLink: CADisplayLink?
     
     // MARK: - Initialization
     init(mapView: GMSMapView) {
@@ -125,53 +126,55 @@ final class MapManager: NSObject {
         )
         mapView.animate(to: camera)
     }
-    
+
     private func updateCurrentLocationMarker(at location: CLLocation) {
         // Remove existing marker if any
         currentLocationMarker?.map = nil
-        
-        // Create custom marker
+
+        // Create marker
         let marker = GMSMarker(position: location.coordinate)
-        
-        // Create custom marker view
+
+        // Marker view container size same as outer circle
         let markerView = UIView(frame: CGRect(x: 0, y: 0, width: 40, height: 40))
         markerView.backgroundColor = .clear
-        
-        // Create outer circle (pulse effect)
+
+        // Outer circle (40x40)
         let outerCircle = UIView(frame: CGRect(x: 0, y: 0, width: 40, height: 40))
-        outerCircle.backgroundColor = UIColor.firstColor.withAlphaComponent(0.2)
-        outerCircle.layer.cornerRadius = 20
+        outerCircle.backgroundColor = UIColor.sixthColor.withAlphaComponent(0.3)
+        outerCircle.layer.cornerRadius = 20  // Half of width for perfect circle
         outerCircle.layer.masksToBounds = true
         markerView.addSubview(outerCircle)
-        
-        // Create inner circle (solid)
+
+        // Inner circle (20x20), centered inside outer circle
         let innerCircle = UIView(frame: CGRect(x: 10, y: 10, width: 20, height: 20))
-        innerCircle.backgroundColor = .firstColor
-        innerCircle.layer.cornerRadius = 10
+        innerCircle.backgroundColor = UIColor.firstColor
+        innerCircle.layer.cornerRadius = 10  // Half of width for perfect circle
         innerCircle.layer.masksToBounds = true
         markerView.addSubview(innerCircle)
-        
-        // Add pulse animation
-        let pulseAnimation = CABasicAnimation(keyPath: "transform.scale")
-        pulseAnimation.duration = 1.0
-        pulseAnimation.fromValue = 1.0
-        pulseAnimation.toValue = 1.2
-        pulseAnimation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-        pulseAnimation.autoreverses = true
-        pulseAnimation.repeatCount = .infinity
-        
-        // Ensure the animation maintains the circular shape
-        outerCircle.layer.add(pulseAnimation, forKey: "pulse")
-        outerCircle.layer.allowsEdgeAntialiasing = true
-        
+
         // Set the custom marker view
         marker.iconView = markerView
-        marker.groundAnchor = CGPoint(x: 0.5, y: 0.5)
+        marker.groundAnchor = CGPoint(x: 0.5, y: 0.5) // Center anchor
         marker.map = mapView
-        
-        // Store reference to marker
+
+        // Store reference for later removal
         currentLocationMarker = marker
     }
+
+
+
+    @objc private func updateOuterCircleCornerRadius() {
+        guard
+            let markerView = mapView.subviews.first(where: { $0.tag == 888 }),
+            let outerCircle = markerView.viewWithTag(999)
+        else { return }
+
+        let currentScale = outerCircle.layer.presentation()?.value(forKeyPath: "transform.scale") as? CGFloat ?? 1.0
+        let baseWidth: CGFloat = 40.0
+        let scaledWidth = baseWidth * currentScale
+        outerCircle.layer.cornerRadius = scaledWidth / 2
+    }
+
 }
 
 // MARK: - CLLocationManagerDelegate
