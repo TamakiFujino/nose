@@ -30,17 +30,6 @@ class FriendsViewController: UIViewController {
         return tableView
     }()
     
-    private lazy var addFriendButton: UIButton = {
-        let button = UIButton(type: .system)
-        button.translatesAutoresizingMaskIntoConstraints = false
-        // set button icon
-        button.setImage(UIImage(systemName: "person.fill.badge.plus"), for: .normal)
-        button.tintColor = .fourthColor
-        button.backgroundColor = .clear
-        button.addTarget(self, action: #selector(addFriendButtonTapped), for: .touchUpInside)
-        return button
-    }()
-    
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -62,7 +51,6 @@ class FriendsViewController: UIViewController {
         // Add subviews
         view.addSubview(segmentedControl)
         view.addSubview(tableView)
-        view.addSubview(addFriendButton)
         
         // Setup constraints
         NSLayoutConstraint.activate([
@@ -73,12 +61,7 @@ class FriendsViewController: UIViewController {
             tableView.topAnchor.constraint(equalTo: segmentedControl.bottomAnchor, constant: 16),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            
-            addFriendButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            addFriendButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -16),
-            addFriendButton.widthAnchor.constraint(equalToConstant: 50),
-            addFriendButton.heightAnchor.constraint(equalToConstant: 50)
+            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
     }
     
@@ -189,11 +172,6 @@ class FriendsViewController: UIViewController {
     @objc private func segmentChanged(_ sender: UISegmentedControl) {
         currentSegment = sender.selectedSegmentIndex
         tableView.reloadData()
-    }
-    
-    @objc private func addFriendButtonTapped() {
-        let addFriendVC = AddFriendViewController()
-        navigationController?.pushViewController(addFriendVC, animated: true)
     }
     
     private func addFriend(withEmail email: String) {

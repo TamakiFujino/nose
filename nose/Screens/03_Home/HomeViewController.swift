@@ -259,8 +259,8 @@ final class HomeViewController: UIViewController {
     }
     
     @objc private func profileButtonTapped() {
-        let profileVC = ProfileViewController()
-        navigationController?.pushViewController(profileVC, animated: true)
+        let settingVC = SettingsViewController()
+        navigationController?.pushViewController(settingVC, animated: true)
     }
     
     @objc private func searchButtonTapped() {

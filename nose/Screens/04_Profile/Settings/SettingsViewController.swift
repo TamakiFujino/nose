@@ -7,6 +7,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     // Define setting categories and items
     var settingsData: [(category: String, items: [String])] = [
         ("Profile", ["Name", "Account"]),
+        ("Friends", ["Friend List", "Add Friend"]),
         ("About", ["Privacy Policy", "Terms of Service", "App Version", "Licenses"])
     ]
 
@@ -95,6 +96,12 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         } else if selectedSetting == "Account" {
             let accountVC = AccountViewController()
             navigationController?.pushViewController(accountVC, animated: true)
+        } else if selectedSetting == "Friend List" {
+            let friendsVC = FriendsViewController()
+            navigationController?.pushViewController(friendsVC, animated: true)
+        } else if selectedSetting == "Add Friend" {
+            let addFriendVC = AddFriendViewController()
+            navigationController?.pushViewController(addFriendVC, animated: true)
         } else if selectedSetting == "Privacy Policy" {
             let privacypolicyVC = PrivacyPolicyViewController()
             navigationController?.pushViewController(privacypolicyVC, animated: true)
