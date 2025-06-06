@@ -414,9 +414,13 @@ class CollectionPlacesViewController: UIViewController {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         
         let db = Firestore.firestore()
+        let collectionType = collection.isOwner ? "owned" : "shared"
+        
         db.collection("users")
             .document(currentUserId)
             .collection("collections")
+            .document(collectionType)
+            .collection(collectionType)
             .document(collection.id)
             .getDocument { [weak self] snapshot, error in
                 if let error = error {
