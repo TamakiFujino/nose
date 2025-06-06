@@ -178,7 +178,6 @@ class SaveToCollectionViewController: UIViewController {
             .getDocuments { [weak self] (snapshot: QuerySnapshot?, error: Error?) in
                 if let error = error {
                     print("❌ Error loading owned collections: \(error.localizedDescription)")
-                    self?.createDefaultCollections()
                     return
                 }
                 
@@ -199,12 +198,8 @@ class SaveToCollectionViewController: UIViewController {
                 } ?? []
                 
                 DispatchQueue.main.async {
-                    if fetchedCollections.isEmpty {
-                        self?.createDefaultCollections()
-                    } else {
-                        self?.ownedCollections = fetchedCollections.filter { $0.status == .active }
-                        self?.collectionsTableView.reloadData()
-                    }
+                    self?.ownedCollections = fetchedCollections.filter { $0.status == .active }
+                    self?.collectionsTableView.reloadData()
                 }
             }
             
@@ -241,31 +236,6 @@ class SaveToCollectionViewController: UIViewController {
                     self?.collectionsTableView.reloadData()
                 }
             }
-    }
-    
-    private func createDefaultCollections() {
-        print("📚 Creating default collections...")
-        let defaultCollections = [
-            PlaceCollection(id: UUID().uuidString, name: "Favorites", places: [], userId: Auth.auth().currentUser?.uid ?? ""),
-            PlaceCollection(id: UUID().uuidString, name: "Want to Visit", places: [], userId: Auth.auth().currentUser?.uid ?? ""),
-            PlaceCollection(id: UUID().uuidString, name: "Been There", places: [], userId: Auth.auth().currentUser?.uid ?? "")
-        ]
-        
-        // Save default collections to Firestore
-        for collection in defaultCollections {
-            print("📚 Creating default collection: \(collection.name)")
-            CollectionContainerManager.shared.createCollection(name: collection.name) { result in
-                switch result {
-                case .success(let collection):
-                    print("✅ Successfully created collection: \(collection.name)")
-                case .failure(let error):
-                    print("❌ Failed to create collection: \(error.localizedDescription)")
-                }
-            }
-        }
-        
-        ownedCollections = defaultCollections
-        collectionsTableView.reloadData()
     }
     
     private func updateSaveButtonState() {

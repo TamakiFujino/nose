@@ -187,10 +187,18 @@ final class ShareCollectionViewController: UIViewController {
     
     @objc private func shareButtonTapped() {
         let selectedFriendsList = friends.filter { selectedFriends.contains($0.id) }
+        print("📤 Selected friends to share with:")
+        selectedFriendsList.forEach { friend in
+            print("📤 Friend ID: \(friend.id), Name: \(friend.name)")
+        }
         didSelectFriends(selectedFriendsList)
     }
     
     func didSelectFriends(_ friends: [User]) {
+        print("📤 Passing friends to delegate:")
+        friends.forEach { friend in
+            print("📤 Friend ID: \(friend.id), Name: \(friend.name)")
+        }
         delegate?.shareCollectionViewController(self, didSelectFriends: friends)
         dismiss(animated: true)
     }

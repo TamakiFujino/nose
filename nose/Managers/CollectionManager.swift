@@ -252,6 +252,7 @@ class CollectionManager {
         }
         
         print("📤 Sharing collection '\(collection.name)' with \(friends.count) friends...")
+        print("📤 Current user ID: \(userId)")
         
         // Create a batch write
         let batch = db.batch()
@@ -260,6 +261,8 @@ class CollectionManager {
         let ownerCollectionRef = db.collection("users")
             .document(userId)
             .collection("collections")
+            .document("owned")
+            .collection("owned")
             .document(collection.id)
         
         batch.updateData([
@@ -269,22 +272,29 @@ class CollectionManager {
         
         // Create shared collection in each friend's shared_collections
         for friend in friends {
+            print("📤 Sharing with friend ID: \(friend.id)")
+            
             let sharedCollectionRef = db.collection("users")
-                .document(friend.id)
-                .collection("shared_collections")
+                .document(friend.id)  // Use friend's ID here
+                .collection("collections")
+                .document("shared")
+                .collection("shared")
                 .document(collection.id)
             
             let sharedCollectionData: [String: Any] = [
                 "id": collection.id,
                 "name": collection.name,
                 "places": collection.places.map { $0.dictionary },
-                "userId": userId,
-                "createdAt": collection.createdAt,
+                "userId": userId,  // This is the owner's ID
+                "createdAt": Timestamp(date: collection.createdAt),
                 "isOwner": false,
                 "status": collection.status.rawValue,
-                "sharedBy": userId,
+                "sharedBy": userId,  // This is the owner's ID
                 "sharedAt": FieldValue.serverTimestamp()
             ]
+            
+            print("📤 Creating shared collection in path: users/\(friend.id)/collections/shared/shared/\(collection.id)")
+            print("📤 Shared collection data: \(sharedCollectionData)")
             
             batch.setData(sharedCollectionData, forDocument: sharedCollectionRef)
         }

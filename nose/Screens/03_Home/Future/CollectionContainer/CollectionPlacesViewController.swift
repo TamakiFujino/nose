@@ -563,15 +563,80 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         let place = places[indexPath.row]
         showLoadingAlert(title: "Removing Place")
         
-        CollectionContainerManager.shared.deletePlace(place, from: collection) { [weak self] error in
-            self?.dismiss(animated: true) {
-                if let error = error {
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        let db = Firestore.firestore()
+        
+        // Determine the correct collection type and path
+        let collectionType = collection.isOwner ? "owned" : "shared"
+        print("📄 Collection type: \(collectionType)")
+        print("📄 Collection ID: \(collection.id)")
+        
+        // Get the collection reference using the correct path
+        let collectionRef = db.collection("users")
+            .document(currentUserId)
+            .collection("collections")
+            .document(collectionType)
+            .collection(collectionType)
+            .document(collection.id)
+        
+        print("📄 Firestore path: users/\(currentUserId)/collections/\(collectionType)/\(collectionType)/\(collection.id)")
+        
+        // First get the current collection data
+        collectionRef.getDocument { [weak self] snapshot, error in
+            if let error = error {
+                print("Error getting collection: \(error.localizedDescription)")
+                self?.dismiss(animated: true) {
                     ToastManager.showToast(message: "Failed to remove place", type: .error)
-                } else {
-                    self?.places.remove(at: indexPath.row)
-                    self?.tableView.deleteRows(at: [indexPath], with: .automatic)
-                    ToastManager.showToast(message: "Place removed", type: .success)
-                    NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
+                }
+                return
+            }
+            
+            guard let data = snapshot?.data() else {
+                print("No data found in collection document")
+                self?.dismiss(animated: true) {
+                    ToastManager.showToast(message: "Failed to remove place", type: .error)
+                }
+                return
+            }
+            
+            print("📄 Collection data before removal: \(data)")
+            
+            // Create a mutable copy of the data
+            var updatedData = data
+            
+            // Get current places array
+            if var places = data["places"] as? [[String: Any]] {
+                // Remove the place with matching placeId
+                places.removeAll { placeDict in
+                    guard let placeId = placeDict["placeId"] as? String else { return false }
+                    return placeId == place.placeId
+                }
+                
+                // Update the places array in the data
+                updatedData["places"] = places
+                
+                // Update Firestore with the new places array
+                collectionRef.updateData([
+                    "places": places
+                ]) { error in
+                    self?.dismiss(animated: true) {
+                        if let error = error {
+                            print("Error removing place: \(error.localizedDescription)")
+                            ToastManager.showToast(message: "Failed to remove place", type: .error)
+                        } else {
+                            // Update local data
+                            self?.places.remove(at: indexPath.row)
+                            self?.tableView.deleteRows(at: [indexPath], with: .automatic)
+                            self?.updatePlacesCountLabel()
+                            ToastManager.showToast(message: "Place removed", type: .success)
+                            NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
+                        }
+                    }
+                }
+            } else {
+                print("Failed to parse places array from collection data")
+                self?.dismiss(animated: true) {
+                    ToastManager.showToast(message: "Failed to remove place", type: .error)
                 }
             }
         }
@@ -581,6 +646,11 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
 // MARK: - ShareCollectionViewControllerDelegate
 extension CollectionPlacesViewController: ShareCollectionViewControllerDelegate {
     func shareCollectionViewController(_ controller: ShareCollectionViewController, didSelectFriends friends: [User]) {
+        print("📤 Received friends in CollectionPlacesViewController:")
+        friends.forEach { friend in
+            print("📤 Friend ID: \(friend.id), Name: \(friend.name)")
+        }
+        
         LoadingView.shared.showOverlayLoading(on: view, message: "Sharing Collection...")
         
         CollectionContainerManager.shared.shareCollection(collection, with: friends) { [weak self] error in
@@ -588,6 +658,7 @@ extension CollectionPlacesViewController: ShareCollectionViewControllerDelegate 
                 LoadingView.shared.hideOverlayLoading()
                 
                 if let error = error {
+                    print("❌ Error sharing collection: \(error.localizedDescription)")
                     ToastManager.showToast(message: "Failed to share collection", type: .error)
                 } else {
                     ToastManager.showToast(message: "Collection shared successfully", type: .success)
