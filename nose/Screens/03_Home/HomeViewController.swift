@@ -20,6 +20,8 @@ final class HomeViewController: UIViewController {
     private var dotLine: UIView?
     private var containerView: UIView?
     
+    private var mapManager: MapManager?
+    
     // MARK: - UI Components
     private lazy var headerView: UIView = {
         let view = UIView()
@@ -244,6 +246,7 @@ final class HomeViewController: UIViewController {
         setupUI()
         setupLocationManager()
         sessionToken = GMSAutocompleteSessionToken()
+        mapManager = MapManager(mapView: mapView)
     }
     
     // MARK: - Setup
@@ -372,19 +375,7 @@ final class HomeViewController: UIViewController {
     
     // MARK: - Actions
     @objc private func currentLocationButtonTapped() {
-        guard let location = currentLocation else {
-            // Request location update if not available
-            locationManager.requestLocation()
-            return
-        }
-        
-        // Animate to current location
-        let camera = GMSCameraPosition.camera(
-            withLatitude: location.coordinate.latitude,
-            longitude: location.coordinate.longitude,
-            zoom: 15
-        )
-        mapView.animate(to: camera)
+        mapManager?.moveToCurrentLocation()
     }
     
     @objc private func profileButtonTapped() {
@@ -599,80 +590,14 @@ final class HomeViewController: UIViewController {
     
     // MARK: - Helper Methods
     private func searchPlaces(query: String) {
-        let placesClient = GMSPlacesClient.shared()
-        let filter = GMSAutocompleteFilter()
-        filter.types = ["establishment"]
-        
-        // Clear previous results
-        searchResults = []
-        searchResultsTableView.reloadData()
-        
-        placesClient.findAutocompletePredictions(
-            fromQuery: query,
-            filter: filter,
-            sessionToken: sessionToken
-        ) { [weak self] results, error in
-            guard let self = self else { return }
-            
-            if let error = error {
-                print("Error searching places: \(error.localizedDescription)")
-                return
-            }
-            
-            guard let results = results else { return }
-            
-            // Get place details for each prediction
-            for prediction in results {
-                let placeID = prediction.placeID
-                let fields: GMSPlaceField = [
-                    .name,
-                    .coordinate,
-                    .formattedAddress,
-                    .phoneNumber,
-                    .rating,
-                    .openingHours,
-                    .photos,
-                    .placeID,
-                    .website,
-                    .priceLevel,
-                    .userRatingsTotal,
-                    .types
-                ]
-                
-                placesClient.fetchPlace(fromPlaceID: placeID, placeFields: fields, sessionToken: self.sessionToken) { place, error in
-                    if let error = error {
-                        print("Error fetching place details: \(error.localizedDescription)")
-                        return
-                    }
-                    
-                    if let place = place {
-                        DispatchQueue.main.async {
-                            self.searchResults.append(place)
-                            self.searchResultsTableView.reloadData()
-                        }
-                    }
-                }
-            }
+        mapManager?.searchPlaces(query: query) { [weak self] results in
+            self?.searchResults = results
+            self?.searchResultsTableView.reloadData()
         }
     }
     
     private func showPlaceOnMap(_ place: GMSPlace) {
-        // Clear existing markers
-        mapView.clear()
-        
-        // Create marker for the place
-        let marker = GMSMarker(position: place.coordinate)
-        marker.title = place.name
-        marker.snippet = place.formattedAddress
-        marker.map = mapView
-        
-        // Animate camera to the place
-        let camera = GMSCameraPosition.camera(
-            withLatitude: place.coordinate.latitude,
-            longitude: place.coordinate.longitude,
-            zoom: 15
-        )
-        mapView.animate(to: camera)
+        mapManager?.showPlaceOnMap(place)
         
         // Present place detail view controller
         let detailViewController = PlaceDetailViewController(place: place, isFromCollection: false)
