@@ -7,12 +7,17 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		39C2839AF024FCAEFBADAD12 /* Pods_nose_noseUITests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DAEABA69A3D3871510B022FC /* Pods_nose_noseUITests.framework */; };
 		4984E6CB2D731BC600A6288A /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 4984E6CA2D731BC600A6288A /* Localizable.xcstrings */; };
+		49BE7FBA2DF4454C006D6E16 /* Info-Development.plist in Resources */ = {isa = PBXBuildFile; fileRef = 49BE7FB32DF444A8006D6E16 /* Info-Development.plist */; };
+		49BE7FBB2DF44556006D6E16 /* Info-Production.plist in Resources */ = {isa = PBXBuildFile; fileRef = 49BE7FB42DF444A8006D6E16 /* Info-Production.plist */; };
+		49BE7FBC2DF4455D006D6E16 /* Info-Staging.plist in Resources */ = {isa = PBXBuildFile; fileRef = 49BE7FB52DF444A8006D6E16 /* Info-Staging.plist */; };
+		49BE80712DF4559C006D6E16 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 49BE80702DF4559C006D6E16 /* LaunchScreen.storyboard */; };
+		49BE80732DF45931006D6E16 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 49BE80722DF45931006D6E16 /* Main.storyboard */; };
+		57F5337D85E99C4A21D785F6 /* Pods_noseTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 312A9D10F92AD4AC6B98F711 /* Pods_noseTests.framework */; };
 		90E1384E390AC4D7DCDC4D2F /* Pods-nose-metadata.plist in Resources */ = {isa = PBXBuildFile; fileRef = 6BAD938A99764361A6E14FC3 /* Pods-nose-metadata.plist */; };
-		B5FE1B1C0859821FC6BFC45D /* Pods_noseTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 642B15B15E22FCAFC85E11BD /* Pods_noseTests.framework */; };
+		91CD46407E2EDDD0C40362EF /* Pods_nose.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B915CAA5A41A6C145FBB9A8E /* Pods_nose.framework */; };
+		B7CAEC479D70B5D8F8894E97 /* Pods_noseUITests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1EA110E7250EA988152DF452 /* Pods_noseUITests.framework */; };
 		F48FCEE9B776081042DD07E7 /* Pods-nose-noseUITests-metadata.plist in Resources */ = {isa = PBXBuildFile; fileRef = 76DC80AC657D4235EC30D629 /* Pods-nose-noseUITests-metadata.plist */; };
-		FB9484992ADE8C4398DD5722 /* Pods_nose.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F68D1EC5FEC707CA41BC458F /* Pods_nose.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -46,32 +51,36 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		24074159E34F8A3F4DAE29DE /* Pods-nose.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-nose.debug.xcconfig"; path = "Target Support Files/Pods-nose/Pods-nose.debug.xcconfig"; sourceTree = "<group>"; };
+		00E3D4FEC9749AF0761692A9 /* Pods-noseTests.production.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseTests.production.xcconfig"; path = "Target Support Files/Pods-noseTests/Pods-noseTests.production.xcconfig"; sourceTree = "<group>"; };
+		1EA110E7250EA988152DF452 /* Pods_noseUITests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_noseUITests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		2B7F922E0F5C4EA04FBCABDB /* Pods-noseUITests.development.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseUITests.development.xcconfig"; path = "Target Support Files/Pods-noseUITests/Pods-noseUITests.development.xcconfig"; sourceTree = "<group>"; };
+		312A9D10F92AD4AC6B98F711 /* Pods_noseTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_noseTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		350B317CA55C81FEF179C2D9 /* Pods-nose.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-nose.release.xcconfig"; path = "Target Support Files/Pods-nose/Pods-nose.release.xcconfig"; sourceTree = "<group>"; };
+		488D4BC551BCE45C96E9422C /* Pods-noseUITests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseUITests.release.xcconfig"; path = "Target Support Files/Pods-noseUITests/Pods-noseUITests.release.xcconfig"; sourceTree = "<group>"; };
 		4984E6CA2D731BC600A6288A /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		49BE7FB32DF444A8006D6E16 /* Info-Development.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-Development.plist"; sourceTree = "<group>"; };
+		49BE7FB42DF444A8006D6E16 /* Info-Production.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-Production.plist"; sourceTree = "<group>"; };
+		49BE7FB52DF444A8006D6E16 /* Info-Staging.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-Staging.plist"; sourceTree = "<group>"; };
+		49BE80702DF4559C006D6E16 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		49BE80722DF45931006D6E16 /* Main.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = Main.storyboard; sourceTree = "<group>"; };
 		49E99BF62D3BE432000F3CE5 /* nose.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = nose.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		49E99C0C2D3BE433000F3CE5 /* noseTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = noseTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		49E99C162D3BE433000F3CE5 /* noseUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = noseUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		50F4F0044EBA294BFBD5199E /* Pods-noseTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseTests.debug.xcconfig"; path = "Target Support Files/Pods-noseTests/Pods-noseTests.debug.xcconfig"; sourceTree = "<group>"; };
-		642B15B15E22FCAFC85E11BD /* Pods_noseTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_noseTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		61B56A5F18E714D56FE0DCC0 /* Pods-noseUITests.production.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseUITests.production.xcconfig"; path = "Target Support Files/Pods-noseUITests/Pods-noseUITests.production.xcconfig"; sourceTree = "<group>"; };
+		62E67CA96EB1D1DD36F0F7A1 /* Pods-noseTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseTests.debug.xcconfig"; path = "Target Support Files/Pods-noseTests/Pods-noseTests.debug.xcconfig"; sourceTree = "<group>"; };
+		6311D356F595772C8A2D0B95 /* Pods-noseTests.development.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseTests.development.xcconfig"; path = "Target Support Files/Pods-noseTests/Pods-noseTests.development.xcconfig"; sourceTree = "<group>"; };
 		6BAD938A99764361A6E14FC3 /* Pods-nose-metadata.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "Pods-nose-metadata.plist"; sourceTree = "<group>"; };
+		75DA98C5BACAD72BA88915E8 /* Pods-noseUITests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseUITests.debug.xcconfig"; path = "Target Support Files/Pods-noseUITests/Pods-noseUITests.debug.xcconfig"; sourceTree = "<group>"; };
 		76DC80AC657D4235EC30D629 /* Pods-nose-noseUITests-metadata.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "Pods-nose-noseUITests-metadata.plist"; sourceTree = "<group>"; };
-		9D36CA6DE8E2821B0D91FE0C /* Pods-nose.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-nose.release.xcconfig"; path = "Target Support Files/Pods-nose/Pods-nose.release.xcconfig"; sourceTree = "<group>"; };
-		C7C30550BA83C2795A6BB51B /* Pods-noseTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseTests.release.xcconfig"; path = "Target Support Files/Pods-noseTests/Pods-noseTests.release.xcconfig"; sourceTree = "<group>"; };
-		DAEABA69A3D3871510B022FC /* Pods_nose_noseUITests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_nose_noseUITests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		DEA9C7D684866483CDCA91D6 /* Pods-nose-noseUITests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-nose-noseUITests.release.xcconfig"; path = "Target Support Files/Pods-nose-noseUITests/Pods-nose-noseUITests.release.xcconfig"; sourceTree = "<group>"; };
-		E69C201A2C160C709BD88D93 /* Pods-nose-noseUITests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-nose-noseUITests.debug.xcconfig"; path = "Target Support Files/Pods-nose-noseUITests/Pods-nose-noseUITests.debug.xcconfig"; sourceTree = "<group>"; };
-		F68D1EC5FEC707CA41BC458F /* Pods_nose.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_nose.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		81F8F52F5F57F5B8B9F9C0E1 /* Pods-nose.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-nose.debug.xcconfig"; path = "Target Support Files/Pods-nose/Pods-nose.debug.xcconfig"; sourceTree = "<group>"; };
+		965570F488B3E805CCC59F04 /* Pods-noseUITests.staging.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseUITests.staging.xcconfig"; path = "Target Support Files/Pods-noseUITests/Pods-noseUITests.staging.xcconfig"; sourceTree = "<group>"; };
+		B4446BD5333C2343244A270D /* Pods-noseTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseTests.release.xcconfig"; path = "Target Support Files/Pods-noseTests/Pods-noseTests.release.xcconfig"; sourceTree = "<group>"; };
+		B915CAA5A41A6C145FBB9A8E /* Pods_nose.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_nose.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		D4DA86044569CF6E1673F2DE /* Pods-nose.production.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-nose.production.xcconfig"; path = "Target Support Files/Pods-nose/Pods-nose.production.xcconfig"; sourceTree = "<group>"; };
+		DFCECA97C560C40982DCFDA4 /* Pods-noseTests.staging.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseTests.staging.xcconfig"; path = "Target Support Files/Pods-noseTests/Pods-noseTests.staging.xcconfig"; sourceTree = "<group>"; };
+		E8780BB7672D195B5EAA5BD5 /* Pods-nose.staging.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-nose.staging.xcconfig"; path = "Target Support Files/Pods-nose/Pods-nose.staging.xcconfig"; sourceTree = "<group>"; };
+		F1BCB3623F34C0020E1D1F3E /* Pods-nose.development.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-nose.development.xcconfig"; path = "Target Support Files/Pods-nose/Pods-nose.development.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
-
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		49E99C1E2D3BE433000F3CE5 /* Exceptions for "nose" folder in "nose" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = 49E99BF52D3BE432000F3CE5 /* nose */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		4984014E2D886D9F00A6288A /* .github */ = {
@@ -79,11 +88,13 @@
 			path = .github;
 			sourceTree = "<group>";
 		};
+		49BE7E332DF41122006D6E16 /* FirebaseConfig */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = FirebaseConfig;
+			sourceTree = "<group>";
+		};
 		49E99BF82D3BE432000F3CE5 /* nose */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				49E99C1E2D3BE433000F3CE5 /* Exceptions for "nose" folder in "nose" target */,
-			);
 			path = nose;
 			sourceTree = "<group>";
 		};
@@ -104,7 +115,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				FB9484992ADE8C4398DD5722 /* Pods_nose.framework in Frameworks */,
+				91CD46407E2EDDD0C40362EF /* Pods_nose.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,7 +123,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B5FE1B1C0859821FC6BFC45D /* Pods_noseTests.framework in Frameworks */,
+				57F5337D85E99C4A21D785F6 /* Pods_noseTests.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -120,16 +131,30 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				39C2839AF024FCAEFBADAD12 /* Pods_nose_noseUITests.framework in Frameworks */,
+				B7CAEC479D70B5D8F8894E97 /* Pods_noseUITests.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		49BE7FB62DF444A8006D6E16 /* InfoPlist */ = {
+			isa = PBXGroup;
+			children = (
+				49BE7FB32DF444A8006D6E16 /* Info-Development.plist */,
+				49BE7FB42DF444A8006D6E16 /* Info-Production.plist */,
+				49BE7FB52DF444A8006D6E16 /* Info-Staging.plist */,
+			);
+			path = InfoPlist;
+			sourceTree = "<group>";
+		};
 		49E99BED2D3BE432000F3CE5 = {
 			isa = PBXGroup;
 			children = (
+				49BE80722DF45931006D6E16 /* Main.storyboard */,
+				49BE80702DF4559C006D6E16 /* LaunchScreen.storyboard */,
+				49BE7FB62DF444A8006D6E16 /* InfoPlist */,
+				49BE7E332DF41122006D6E16 /* FirebaseConfig */,
 				4984014E2D886D9F00A6288A /* .github */,
 				4984E6CA2D731BC600A6288A /* Localizable.xcstrings */,
 				49E99BF82D3BE432000F3CE5 /* nose */,
@@ -137,7 +162,7 @@
 				49E99C192D3BE433000F3CE5 /* noseUITests */,
 				49E99BF72D3BE432000F3CE5 /* Products */,
 				50579441D3777C7C7B70948F /* Pods */,
-				B79C33C14735EA0DB6835BE6 /* Frameworks */,
+				8FBDA29887B8DBD5028A9EBC /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -156,22 +181,31 @@
 			children = (
 				6BAD938A99764361A6E14FC3 /* Pods-nose-metadata.plist */,
 				76DC80AC657D4235EC30D629 /* Pods-nose-noseUITests-metadata.plist */,
-				24074159E34F8A3F4DAE29DE /* Pods-nose.debug.xcconfig */,
-				9D36CA6DE8E2821B0D91FE0C /* Pods-nose.release.xcconfig */,
-				E69C201A2C160C709BD88D93 /* Pods-nose-noseUITests.debug.xcconfig */,
-				DEA9C7D684866483CDCA91D6 /* Pods-nose-noseUITests.release.xcconfig */,
-				50F4F0044EBA294BFBD5199E /* Pods-noseTests.debug.xcconfig */,
-				C7C30550BA83C2795A6BB51B /* Pods-noseTests.release.xcconfig */,
+				F1BCB3623F34C0020E1D1F3E /* Pods-nose.development.xcconfig */,
+				81F8F52F5F57F5B8B9F9C0E1 /* Pods-nose.debug.xcconfig */,
+				E8780BB7672D195B5EAA5BD5 /* Pods-nose.staging.xcconfig */,
+				D4DA86044569CF6E1673F2DE /* Pods-nose.production.xcconfig */,
+				350B317CA55C81FEF179C2D9 /* Pods-nose.release.xcconfig */,
+				6311D356F595772C8A2D0B95 /* Pods-noseTests.development.xcconfig */,
+				62E67CA96EB1D1DD36F0F7A1 /* Pods-noseTests.debug.xcconfig */,
+				DFCECA97C560C40982DCFDA4 /* Pods-noseTests.staging.xcconfig */,
+				00E3D4FEC9749AF0761692A9 /* Pods-noseTests.production.xcconfig */,
+				B4446BD5333C2343244A270D /* Pods-noseTests.release.xcconfig */,
+				2B7F922E0F5C4EA04FBCABDB /* Pods-noseUITests.development.xcconfig */,
+				75DA98C5BACAD72BA88915E8 /* Pods-noseUITests.debug.xcconfig */,
+				965570F488B3E805CCC59F04 /* Pods-noseUITests.staging.xcconfig */,
+				61B56A5F18E714D56FE0DCC0 /* Pods-noseUITests.production.xcconfig */,
+				488D4BC551BCE45C96E9422C /* Pods-noseUITests.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
 		};
-		B79C33C14735EA0DB6835BE6 /* Frameworks */ = {
+		8FBDA29887B8DBD5028A9EBC /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				F68D1EC5FEC707CA41BC458F /* Pods_nose.framework */,
-				DAEABA69A3D3871510B022FC /* Pods_nose_noseUITests.framework */,
-				642B15B15E22FCAFC85E11BD /* Pods_noseTests.framework */,
+				B915CAA5A41A6C145FBB9A8E /* Pods_nose.framework */,
+				312A9D10F92AD4AC6B98F711 /* Pods_noseTests.framework */,
+				1EA110E7250EA988152DF452 /* Pods_noseUITests.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -183,14 +217,15 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 49E99C1F2D3BE433000F3CE5 /* Build configuration list for PBXNativeTarget "nose" */;
 			buildPhases = (
-				D6C6F498F70C13B1AB16D83D /* [CP] Check Pods Manifest.lock */,
+				19E4CCA204B3DDB8011C5C0C /* [CP] Check Pods Manifest.lock */,
 				4984FE652D87CD8800A6288A /* Run SwiftLint */,
 				49E99BF22D3BE432000F3CE5 /* Sources */,
 				49E99BF32D3BE432000F3CE5 /* Frameworks */,
 				49E99BF42D3BE432000F3CE5 /* Resources */,
 				4905FC472D663428000EDA11 /* Embed Frameworks */,
-				3E27DC57C125C47E01203AA4 /* [CP] Embed Pods Frameworks */,
-				3316AA54E907BF23E9FB71B1 /* [CP] Copy Pods Resources */,
+				49BE6D8B2DF3048E006D6E16 /* Copy GoogleService-Info.plist */,
+				95F20719DE856AA053E0E49B /* [CP] Embed Pods Frameworks */,
+				B3178C5D05511F7854D09D86 /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -198,6 +233,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				4984014E2D886D9F00A6288A /* .github */,
+				49BE7E332DF41122006D6E16 /* FirebaseConfig */,
 				49E99BF82D3BE432000F3CE5 /* nose */,
 			);
 			name = nose;
@@ -209,7 +245,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 49E99C242D3BE433000F3CE5 /* Build configuration list for PBXNativeTarget "noseTests" */;
 			buildPhases = (
-				5B2679CF59DF9D8925238EE8 /* [CP] Check Pods Manifest.lock */,
+				C9D1EC3599C4747996284A42 /* [CP] Check Pods Manifest.lock */,
 				49E99C082D3BE433000F3CE5 /* Sources */,
 				49E99C092D3BE433000F3CE5 /* Frameworks */,
 				49E99C0A2D3BE433000F3CE5 /* Resources */,
@@ -231,12 +267,10 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 49E99C272D3BE433000F3CE5 /* Build configuration list for PBXNativeTarget "noseUITests" */;
 			buildPhases = (
-				F23641BE3D2F6F4E30D0697C /* [CP] Check Pods Manifest.lock */,
+				3C3928482DE1E009AE467F0A /* [CP] Check Pods Manifest.lock */,
 				49E99C122D3BE433000F3CE5 /* Sources */,
 				49E99C132D3BE433000F3CE5 /* Frameworks */,
 				49E99C142D3BE433000F3CE5 /* Resources */,
-				C492FCF7AC24D57205511F00 /* [CP] Embed Pods Frameworks */,
-				F24B7EC3504233A888C69DEF /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -301,8 +335,13 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				49BE7FBA2DF4454C006D6E16 /* Info-Development.plist in Resources */,
+				49BE7FBC2DF4455D006D6E16 /* Info-Staging.plist in Resources */,
+				49BE80712DF4559C006D6E16 /* LaunchScreen.storyboard in Resources */,
 				4984E6CB2D731BC600A6288A /* Localizable.xcstrings in Resources */,
 				90E1384E390AC4D7DCDC4D2F /* Pods-nose-metadata.plist in Resources */,
+				49BE80732DF45931006D6E16 /* Main.storyboard in Resources */,
+				49BE7FBB2DF44556006D6E16 /* Info-Production.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -324,111 +363,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		3316AA54E907BF23E9FB71B1 /* [CP] Copy Pods Resources */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-nose/Pods-nose-resources-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			inputPaths = (
-			);
-			name = "[CP] Copy Pods Resources";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-nose/Pods-nose-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-nose/Pods-nose-resources.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		3E27DC57C125C47E01203AA4 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-nose/Pods-nose-frameworks-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			inputPaths = (
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-nose/Pods-nose-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-nose/Pods-nose-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		4984FE652D87CD8800A6288A /* Run SwiftLint */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "Run SwiftLint";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "export PATH=\"/opt/homebrew/bin:$PATH\"\nif which swiftlint >/dev/null; then\n    swiftlint --quiet --reporter xcode\nelse\n    echo \"warning: SwiftLint not installed, run 'brew install swiftlint'\"\nfi\n";
-		};
-		5B2679CF59DF9D8925238EE8 /* [CP] Check Pods Manifest.lock */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
-				"${PODS_ROOT}/Manifest.lock",
-			);
-			name = "[CP] Check Pods Manifest.lock";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-noseTests-checkManifestLockResult.txt",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
-		C492FCF7AC24D57205511F00 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-nose-noseUITests/Pods-nose-noseUITests-frameworks-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			inputPaths = (
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-nose-noseUITests/Pods-nose-noseUITests-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-nose-noseUITests/Pods-nose-noseUITests-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		D6C6F498F70C13B1AB16D83D /* [CP] Check Pods Manifest.lock */ = {
+		19E4CCA204B3DDB8011C5C0C /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -450,7 +385,7 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		F23641BE3D2F6F4E30D0697C /* [CP] Check Pods Manifest.lock */ = {
+		3C3928482DE1E009AE467F0A /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -465,32 +400,114 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-nose-noseUITests-checkManifestLockResult.txt",
+				"$(DERIVED_FILE_DIR)/Pods-noseUITests-checkManifestLockResult.txt",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		F24B7EC3504233A888C69DEF /* [CP] Copy Pods Resources */ = {
+		4984FE652D87CD8800A6288A /* Run SwiftLint */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-nose-noseUITests/Pods-nose-noseUITests-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
 			inputPaths = (
 			);
-			name = "[CP] Copy Pods Resources";
+			name = "Run SwiftLint";
 			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-nose-noseUITests/Pods-nose-noseUITests-resources-${CONFIGURATION}-output-files.xcfilelist",
 			);
 			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-nose-noseUITests/Pods-nose-noseUITests-resources.sh\"\n";
+			shellScript = "export PATH=\"/opt/homebrew/bin:$PATH\"\nif which swiftlint >/dev/null; then\n    swiftlint --quiet --reporter xcode\nelse\n    echo \"warning: SwiftLint not installed, run 'brew install swiftlint'\"\nfi\n";
+		};
+		49BE6D8B2DF3048E006D6E16 /* Copy GoogleService-Info.plist */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(PROJECT_DIR)/FirebaseConfig/GoogleService-Info-$(CONFIGURATION).plist\n",
+			);
+			name = "Copy GoogleService-Info.plist";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(BUILT_PRODUCTS_DIR)/$(PRODUCT_NAME).app/GoogleService-Info.plist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# 例: 環境変数 CONFIGURATION を使ってコピー先のGoogleService-Info.plistを切り替え\necho \"Copy GoogleService-Info plist for configuration: $CONFIGURATION\"\n\nif [ \"$CONFIGURATION\" == \"Development\" ]; then\n  cp \"${PROJECT_DIR}/FirebaseConfig/GoogleService-Info-Development.plist\" \"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/GoogleService-Info.plist\"\nelif [ \"$CONFIGURATION\" == \"Staging\" ]; then\n  cp \"${PROJECT_DIR}/FirebaseConfig/GoogleService-Info-Staging.plist\" \"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/GoogleService-Info.plist\"\nelif [ \"$CONFIGURATION\" == \"Production\" ]; then\n  cp \"${PROJECT_DIR}/FirebaseConfig/GoogleService-Info-Production.plist\" \"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/GoogleService-Info.plist\"\nelse\n  echo \"No matching GoogleService-Info plist for configuration: $CONFIGURATION\"\n  exit 1\nfi\n";
+		};
+		95F20719DE856AA053E0E49B /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-nose/Pods-nose-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			inputPaths = (
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-nose/Pods-nose-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-nose/Pods-nose-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		B3178C5D05511F7854D09D86 /* [CP] Copy Pods Resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-nose/Pods-nose-resources-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			inputPaths = (
+			);
+			name = "[CP] Copy Pods Resources";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-nose/Pods-nose-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-nose/Pods-nose-resources.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		C9D1EC3599C4747996284A42 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-noseTests-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
@@ -533,87 +550,7 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		49E99C202D3BE433000F3CE5 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			baseConfigurationReference = 24074159E34F8A3F4DAE29DE /* Pods-nose.debug.xcconfig */;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = nose/nose.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
-				DEVELOPMENT_TEAM = Y365Z93L4K;
-				ENABLE_USER_SCRIPT_SANDBOXING = NO;
-				EXCLUDED_ARCHS = "";
-				FRAMEWORK_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(PROJECT_DIR)",
-				);
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = nose/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "";
-				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "Always allow";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Allow when using the app";
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
-				INFOPLIST_KEY_UIMainStoryboardFile = Main;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.tamakifujino.nose;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "";
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
-		49E99C212D3BE433000F3CE5 /* Release */ = {
-			isa = XCBuildConfiguration;
-			baseConfigurationReference = 9D36CA6DE8E2821B0D91FE0C /* Pods-nose.release.xcconfig */;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = nose/nose.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
-				DEVELOPMENT_TEAM = Y365Z93L4K;
-				ENABLE_USER_SCRIPT_SANDBOXING = NO;
-				EXCLUDED_ARCHS = "";
-				FRAMEWORK_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(PROJECT_DIR)",
-				);
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = nose/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "";
-				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "Always allow";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Allow when using the app";
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
-				INFOPLIST_KEY_UIMainStoryboardFile = Main;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.tamakifujino.nose;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "";
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
-		49E99C222D3BE433000F3CE5 /* Debug */ = {
+		49BE6D872DF30415006D6E16 /* Staging */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -676,9 +613,230 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
-			name = Debug;
+			name = Staging;
 		};
-		49E99C232D3BE433000F3CE5 /* Release */ = {
+		49BE6D882DF30415006D6E16 /* Staging */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = E8780BB7672D195B5EAA5BD5 /* Pods-nose.staging.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = nose/nose.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 6;
+				DEVELOPMENT_TEAM = Y365Z93L4K;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				EXCLUDED_ARCHS = "";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)",
+				);
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "$(PROJECT_DIR)/InfoPlist/Info-$(CONFIGURATION).plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "";
+				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "Always allow";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Allow when using the app";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+				INFOPLIST_KEY_UIMainStoryboardFile = Main;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tamakifujino.nose;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Staging;
+		};
+		49BE6D892DF30415006D6E16 /* Staging */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = DFCECA97C560C40982DCFDA4 /* Pods-noseTests.staging.xcconfig */;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tamakifujino.noseTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/nose.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/nose";
+			};
+			name = Staging;
+		};
+		49BE6D8A2DF30415006D6E16 /* Staging */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 965570F488B3E805CCC59F04 /* Pods-noseUITests.staging.xcconfig */;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tamakifujino.noseUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = nose;
+			};
+			name = Staging;
+		};
+		49E99C202D3BE433000F3CE5 /* Development */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = F1BCB3623F34C0020E1D1F3E /* Pods-nose.development.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = nose/nose.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 6;
+				DEVELOPMENT_TEAM = Y365Z93L4K;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				EXCLUDED_ARCHS = "";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)",
+				);
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "$(PROJECT_DIR)/InfoPlist/Info-$(CONFIGURATION).plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "";
+				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "Always allow";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Allow when using the app";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+				INFOPLIST_KEY_UIMainStoryboardFile = Main;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tamakifujino.nose;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Development;
+		};
+		49E99C212D3BE433000F3CE5 /* Production */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D4DA86044569CF6E1673F2DE /* Pods-nose.production.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = nose/nose.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 6;
+				DEVELOPMENT_TEAM = Y365Z93L4K;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				EXCLUDED_ARCHS = "";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)",
+				);
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "$(PROJECT_DIR)/InfoPlist/Info-$(CONFIGURATION).plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "";
+				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "Always allow";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Allow when using the app";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+				INFOPLIST_KEY_UIMainStoryboardFile = Main;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tamakifujino.nose;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Production;
+		};
+		49E99C222D3BE433000F3CE5 /* Development */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Development;
+		};
+		49E99C232D3BE433000F3CE5 /* Production */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -734,11 +892,11 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				VALIDATE_PRODUCT = YES;
 			};
-			name = Release;
+			name = Production;
 		};
-		49E99C252D3BE433000F3CE5 /* Debug */ = {
+		49E99C252D3BE433000F3CE5 /* Development */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 50F4F0044EBA294BFBD5199E /* Pods-noseTests.debug.xcconfig */;
+			baseConfigurationReference = 6311D356F595772C8A2D0B95 /* Pods-noseTests.development.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
@@ -753,11 +911,11 @@
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/nose.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/nose";
 			};
-			name = Debug;
+			name = Development;
 		};
-		49E99C262D3BE433000F3CE5 /* Release */ = {
+		49E99C262D3BE433000F3CE5 /* Production */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = C7C30550BA83C2795A6BB51B /* Pods-noseTests.release.xcconfig */;
+			baseConfigurationReference = 00E3D4FEC9749AF0761692A9 /* Pods-noseTests.production.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
@@ -772,11 +930,11 @@
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/nose.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/nose";
 			};
-			name = Release;
+			name = Production;
 		};
-		49E99C282D3BE433000F3CE5 /* Debug */ = {
+		49E99C282D3BE433000F3CE5 /* Development */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = E69C201A2C160C709BD88D93 /* Pods-nose-noseUITests.debug.xcconfig */;
+			baseConfigurationReference = 2B7F922E0F5C4EA04FBCABDB /* Pods-noseUITests.development.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -789,11 +947,11 @@
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = nose;
 			};
-			name = Debug;
+			name = Development;
 		};
-		49E99C292D3BE433000F3CE5 /* Release */ = {
+		49E99C292D3BE433000F3CE5 /* Production */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = DEA9C7D684866483CDCA91D6 /* Pods-nose-noseUITests.release.xcconfig */;
+			baseConfigurationReference = 61B56A5F18E714D56FE0DCC0 /* Pods-noseUITests.production.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -806,7 +964,7 @@
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = nose;
 			};
-			name = Release;
+			name = Production;
 		};
 /* End XCBuildConfiguration section */
 
@@ -814,38 +972,42 @@
 		49E99BF12D3BE432000F3CE5 /* Build configuration list for PBXProject "nose" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				49E99C222D3BE433000F3CE5 /* Debug */,
-				49E99C232D3BE433000F3CE5 /* Release */,
+				49E99C222D3BE433000F3CE5 /* Development */,
+				49BE6D872DF30415006D6E16 /* Staging */,
+				49E99C232D3BE433000F3CE5 /* Production */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Production;
 		};
 		49E99C1F2D3BE433000F3CE5 /* Build configuration list for PBXNativeTarget "nose" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				49E99C202D3BE433000F3CE5 /* Debug */,
-				49E99C212D3BE433000F3CE5 /* Release */,
+				49E99C202D3BE433000F3CE5 /* Development */,
+				49BE6D882DF30415006D6E16 /* Staging */,
+				49E99C212D3BE433000F3CE5 /* Production */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Production;
 		};
 		49E99C242D3BE433000F3CE5 /* Build configuration list for PBXNativeTarget "noseTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				49E99C252D3BE433000F3CE5 /* Debug */,
-				49E99C262D3BE433000F3CE5 /* Release */,
+				49E99C252D3BE433000F3CE5 /* Development */,
+				49BE6D892DF30415006D6E16 /* Staging */,
+				49E99C262D3BE433000F3CE5 /* Production */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Production;
 		};
 		49E99C272D3BE433000F3CE5 /* Build configuration list for PBXNativeTarget "noseUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				49E99C282D3BE433000F3CE5 /* Debug */,
-				49E99C292D3BE433000F3CE5 /* Release */,
+				49E99C282D3BE433000F3CE5 /* Development */,
+				49BE6D8A2DF30415006D6E16 /* Staging */,
+				49E99C292D3BE433000F3CE5 /* Production */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Production;
 		};
 /* End XCConfigurationList section */
 	};
