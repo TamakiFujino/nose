@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
 	<key>UIRequiresFullScreen</key>
 	<true/>
 	<key>CFBundleURLTypes</key>
@@ -11,7 +13,7 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.489383670741-rv2v85atn42kgfv1d8ot96r06omhoogg</string>
+				<string>com.googleusercontent.apps.233262718811-74avijm91vnklsk8h03mdto7vfapvctt</string>
 			</array>
 		</dict>
 		<dict>
@@ -22,7 +24,6 @@
 				<string>nose</string>
 			</array>
 		</dict>
-		<dict/>
 	</array>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
@@ -47,7 +48,14 @@
 			</array>
 		</dict>
 	</dict>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>com.apple.developer.applesignin</key>
 	<string>Default</string>
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIImageName</key>
+		<string></string>
+	</dict>
 </dict>
 </plist>

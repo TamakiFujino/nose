@@ -3,6 +3,7 @@ import FirebaseCore
 import GoogleSignIn
 import GoogleMaps
 import GooglePlaces
+import Firebase
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -15,6 +16,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     ) -> Bool {
         // Configure Firebase
         FirebaseApp.configure()
+        
+        if let options = FirebaseApp.app()?.options {
+            print("✅ Firebase App Config:")
+            print("Project ID: \(options.projectID ?? "nil")")
+            print("Google App ID: \(options.googleAppID)")
+            print("Database URL: \(options.databaseURL ?? "nil")")
+        }
         
         // Get API keys from Config.plist
         guard let filePath = Bundle.main.path(forResource: "Config", ofType: "plist"),
@@ -30,6 +38,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         
         return true
     }
+    
     
     func application(
         _ app: UIApplication,
