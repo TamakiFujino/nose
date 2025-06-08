@@ -186,12 +186,7 @@ class AddFriendViewController: UIViewController {
             if let user = User.fromFirestore(snapshot) {
                 DispatchQueue.main.async {
                     self?.currentUser = user
-                    if let userId = snapshot.data()?["userId"] as? String {
-                        self?.userIdValueLabel.text = userId
-                    } else {
-                        print("Warning: userId not found in Firestore document")
-                        self?.userIdValueLabel.text = user.userId
-                    }
+                    self?.userIdValueLabel.text = user.userId
                 }
             }
         }
@@ -199,7 +194,7 @@ class AddFriendViewController: UIViewController {
     
     // MARK: - Actions
     @objc private func copyButtonTapped() {
-        guard let userId = currentUser?.userId else { return }
+        guard let userId = userIdValueLabel.text else { return }
         UIPasteboard.general.string = userId
         
         // Show feedback

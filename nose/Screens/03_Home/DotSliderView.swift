@@ -6,9 +6,24 @@ protocol DotSliderViewDelegate: AnyObject {
 
 final class DotSliderView: UIView {
     // MARK: - Properties
-    private var leftDot: UIView?
-    private var middleDot: UIView?
-    private var rightDot: UIView?
+    private var leftDot: UIView? {
+        didSet {
+            leftDot?.accessibilityIdentifier = "left_dot"
+        }
+    }
+
+    private var middleDot: UIView? {
+        didSet {
+            middleDot?.accessibilityIdentifier = "middle_dot"
+        }
+    }
+
+    private var rightDot: UIView? {
+        didSet {
+            rightDot?.accessibilityIdentifier = "right_dot"
+        }
+    }
+
     private var dotLine: UIView?
     private var containerView: UIView?
     private var currentDotIndex: Int = 1  // Track current dot index (0: left, 1: middle, 2: right)

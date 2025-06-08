@@ -23,9 +23,9 @@ struct User: Codable {
         }
     }
     
-    init(id: String, name: String) {
+    init(id: String, name: String, userId: String? = nil) {
         self.id = id
-        self.userId = String(format: "USER%06d", Int.random(in: 100000...999999))  // Generate a random 6-digit ID
+        self.userId = userId ?? String(format: "USER%06d", Int.random(in: 100000...999999))
         self.name = name
         self.createdAt = Date()
         self.lastLoginAt = Date()
@@ -66,7 +66,7 @@ struct User: Codable {
             notifications: preferencesData["notifications"] as? Bool ?? true
         )
         
-        var user = User(id: id, name: name)
+        var user = User(id: id, name: name, userId: userId)
         user.preferences = preferences
         return user
     }
