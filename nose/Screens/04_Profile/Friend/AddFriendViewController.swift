@@ -81,6 +81,7 @@ class AddFriendViewController: UIViewController {
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setTitle("Add Friend", for: .normal)
         button.addTarget(self, action: #selector(addFriendButtonTapped), for: .touchUpInside)
+        button.accessibilityIdentifier = "add_friend_button"
         return button
     }()
     
