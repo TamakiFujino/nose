@@ -22,7 +22,7 @@ class LoginTest(BaseTest):
 
         # for logged in account
         # click one of the account
-        element = self.driver.find_element(By.XPATH, '//XCUIElementTypeLink[@name="Tamaki Fujino tamakifujino526@gmail.com"]')
+        element = self.driver.find_element(By.XPATH, f'//XCUIElementTypeLink[@name="{config.TEST_USERS["user_a"]["name"]} {config.TEST_USERS["user_a"]["email"]}"]')
         element.click()
         time.sleep(2)
         # find and click the button with accessibility id "Continue"
