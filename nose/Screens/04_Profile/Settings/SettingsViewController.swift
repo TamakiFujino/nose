@@ -35,6 +35,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         tableView.delegate = self
         tableView.dataSource = self
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
+        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "versionCell")
         tableView.translatesAutoresizingMaskIntoConstraints = false
         tableView.backgroundColor = .clear // Remove the background color
         view.addSubview(tableView)
@@ -66,7 +67,13 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             cell = UITableViewCell(style: .value1, reuseIdentifier: "versionCell")
             cell.textLabel?.text = item
             if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
+                print("DEBUG: App version found: \(version)")
                 cell.detailTextLabel?.text = version
+                cell.detailTextLabel?.textColor = .secondaryLabel
+            } else {
+                print("DEBUG: Could not find app version in Bundle.main.infoDictionary")
+                cell.detailTextLabel?.text = "Unknown"
+                cell.detailTextLabel?.textColor = .secondaryLabel
             }
             cell.selectionStyle = .none  // Disable selection for app version cell
         } else {

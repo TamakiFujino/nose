@@ -4,6 +4,12 @@ import FirebaseFirestore
 
 class EditNameViewController: UIViewController {
     
+    // MARK: - Constants
+    private enum Constants {
+        static let minNameLength = 2
+        static let maxNameLength = 30
+    }
+    
     // MARK: - Properties
     private var currentName: String?
     
@@ -16,7 +22,18 @@ class EditNameViewController: UIViewController {
         textField.autocapitalizationType = .words
         textField.returnKeyType = .done
         textField.delegate = self
+        textField.addTarget(self, action: #selector(textFieldDidChange), for: .editingChanged)
         return textField
+    }()
+    
+    private lazy var characterCountLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.textAlignment = .right
+        label.font = .systemFont(ofSize: 12)
+        label.textColor = .gray
+        label.text = "0/\(Constants.maxNameLength)"
+        return label
     }()
     
     private lazy var saveButton: UIButton = {
@@ -41,6 +58,7 @@ class EditNameViewController: UIViewController {
         title = "Edit Name"
         
         view.addSubview(nameTextField)
+        view.addSubview(characterCountLabel)
         view.addSubview(saveButton)
         
         NSLayoutConstraint.activate([
@@ -48,7 +66,10 @@ class EditNameViewController: UIViewController {
             nameTextField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             nameTextField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             
-            saveButton.topAnchor.constraint(equalTo: nameTextField.bottomAnchor, constant: 24),
+            characterCountLabel.topAnchor.constraint(equalTo: nameTextField.bottomAnchor, constant: 4),
+            characterCountLabel.trailingAnchor.constraint(equalTo: nameTextField.trailingAnchor),
+            
+            saveButton.topAnchor.constraint(equalTo: characterCountLabel.bottomAnchor, constant: 24),
             saveButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             saveButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             saveButton.heightAnchor.constraint(equalToConstant: 50)
@@ -80,10 +101,35 @@ class EditNameViewController: UIViewController {
     }
     
     // MARK: - Actions
+    @objc private func textFieldDidChange(_ textField: UITextField) {
+        let count = textField.text?.count ?? 0
+        characterCountLabel.text = "\(count)/\(Constants.maxNameLength)"
+        
+        // Update label color based on character count
+        if count > Constants.maxNameLength {
+            characterCountLabel.textColor = .systemRed
+        } else if count < Constants.minNameLength {
+            characterCountLabel.textColor = .systemOrange
+        } else {
+            characterCountLabel.textColor = .gray
+        }
+    }
+    
     @objc private func saveButtonTapped() {
         guard let newName = nameTextField.text?.trimmingCharacters(in: .whitespacesAndNewlines),
               !newName.isEmpty else {
             showAlert(title: "Invalid Name", message: "Please enter a valid name")
+            return
+        }
+        
+        // Validate name length
+        if newName.count < Constants.minNameLength {
+            showAlert(title: "Invalid Name", message: "Name must be at least \(Constants.minNameLength) characters long")
+            return
+        }
+        
+        if newName.count > Constants.maxNameLength {
+            showAlert(title: "Invalid Name", message: "Name must be no more than \(Constants.maxNameLength) characters long")
             return
         }
         
@@ -94,15 +140,18 @@ class EditNameViewController: UIViewController {
         db.collection("users").document(currentUserId).updateData([
             "name": newName
         ]) { [weak self] error in
-            if let error = error {
-                print("Error updating name: \(error.localizedDescription)")
-                self?.showAlert(title: "Error", message: "Failed to update name. Please try again.")
-                return
-            }
+            guard let self = self else { return }
             
             DispatchQueue.main.async {
-                self?.showAlert(title: "Success", message: "Name updated successfully") { _ in
-                    self?.navigationController?.popViewController(animated: true)
+                if let error = error {
+                    print("Error updating name: \(error.localizedDescription)")
+                    self.showAlert(title: "Error", message: "Failed to update name. Please try again.")
+                    return
+                }
+                
+                // Only navigate back after successful save
+                self.showAlert(title: "Success", message: "Name updated successfully") { _ in
+                    self.navigationController?.popViewController(animated: true)
                 }
             }
         }
