@@ -70,10 +70,12 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
                 print("DEBUG: App version found: \(version)")
                 cell.detailTextLabel?.text = version
                 cell.detailTextLabel?.textColor = .secondaryLabel
+                cell.detailTextLabel?.accessibilityIdentifier = "app_version_text"
             } else {
                 print("DEBUG: Could not find app version in Bundle.main.infoDictionary")
                 cell.detailTextLabel?.text = "Unknown"
                 cell.detailTextLabel?.textColor = .secondaryLabel
+                cell.detailTextLabel?.accessibilityIdentifier = "app_version_text"
             }
             cell.selectionStyle = .none  // Disable selection for app version cell
         } else {

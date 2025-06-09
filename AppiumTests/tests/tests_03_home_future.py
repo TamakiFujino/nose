@@ -10,7 +10,6 @@ from tests.base_test import BaseTest
 
 class HomeFutureTest(BaseTest):
     def test_home_future(self):
-        # find a element with elementid 27000000-0000-0000-CBAC-000000000000
         # which is the future dot
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'right_dot')
         element.click()
@@ -37,12 +36,16 @@ class HomeFutureTest(BaseTest):
         element.click()
         time.sleep(2)
         # tap "Share with Friends"
-        # element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Share with Friends')
-        # element.click()
-        # time.sleep(2)
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Share with Friends')
+        element.click()
+        time.sleep(2)
+        # select User B
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, '{config.TEST_USERS["user_b"]["display_name"]}')
+        element.click()
+        time.sleep(2)
         # tap "Share"
-        # element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Share')
-        # element.click()
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Share')
+        element.click()
         # tap "close"
         # element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'close')
         # element.click()

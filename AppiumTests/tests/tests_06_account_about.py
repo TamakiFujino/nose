@@ -19,6 +19,7 @@ class AccountAboutTest(BaseTest):
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Settings')
         element.click()
         time.sleep(2)
+
         # tap Terms of Service
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Terms of Service')
         element.click()
@@ -28,10 +29,15 @@ class AccountAboutTest(BaseTest):
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Settings')
         element.click()
         time.sleep(2)
+
         # check app version in App Version cell
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'App Version')
-        assert element.text == 'App Version'
-        # check the actual version number later
+        # make sure the element is visible
+        assert element.is_displayed()
+        # check the actual version number, accessbility app_version_text
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'app_version_text')
+        # make sure the element is visible
+        assert element.is_displayed()
 
         # tap Lisences
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Licenses')
