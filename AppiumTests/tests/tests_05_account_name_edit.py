@@ -18,7 +18,47 @@ class AccountNameEditTest(BaseTest):
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Name')
         element.click()
         time.sleep(2)
+
         # find class XCUIElementTypeTextField and tap
+        element = self.driver.find_element(By.CLASS_NAME, 'XCUIElementTypeTextField')
+        element.click()
+        # clear the text
+        element.clear()
+
+        # input 1 character
+        element.send_keys('1')
+        # tap button "Save"
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Save')
+        element.click()
+        # see the alert class name XCUIElementTypeAlert
+        element = self.driver.find_element(By.CLASS_NAME, 'XCUIElementTypeAlert')
+        assert element.is_displayed()
+        time.sleep(1)
+        # tap "OK"
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'OK')
+        element.click()
+        time.sleep(1)
+
+        # input 31 characters
+        element = self.driver.find_element(By.CLASS_NAME, 'XCUIElementTypeTextField')
+        
+        element.click()
+        # clear the text
+        element.clear()
+        element.send_keys('1234567890123456789012345678901')
+        # tap button "Save"
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Save')
+        element.click()
+        # see the alert class name XCUIElementTypeAlert
+        element = self.driver.find_element(By.CLASS_NAME, 'XCUIElementTypeAlert')
+        assert element.is_displayed()
+        time.sleep(1)
+        # tap "OK"
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'OK')
+        element.click()
+        time.sleep(1)
+
+        # input an updated name
         element = self.driver.find_element(By.CLASS_NAME, 'XCUIElementTypeTextField')
         element.click()
         # clear the text
@@ -33,9 +73,9 @@ class AccountNameEditTest(BaseTest):
         element.click()
         time.sleep(2)
         # make sure the screen goes back to the Settings
-        # check "Settings" title
-        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Settings')
-        assert element.text == 'Settings'
+        # find "Name"
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Name')
+        assert element.text == 'Name'
         time.sleep(2)
 
 if __name__ == '__main__':
