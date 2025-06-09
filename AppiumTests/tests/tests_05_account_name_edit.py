@@ -32,10 +32,6 @@ class AccountNameEditTest(BaseTest):
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'OK')
         element.click()
         time.sleep(2)
-        # tap "Personal Library"
-        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Personal Library')
-        element.click()
-        time.sleep(2)
         # make sure the screen goes back to the Settings
         # check "Settings" title
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Settings')
