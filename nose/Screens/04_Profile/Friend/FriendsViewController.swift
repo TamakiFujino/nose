@@ -217,6 +217,38 @@ class FriendsViewController: UIViewController {
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
     }
+    
+    private func blockUser(_ user: User) {
+        // Show confirmation alert
+        let alert = UIAlertController(
+            title: "Are you sure you block user \"\(user.name)\"?",
+            message: "You will not be able to share a collection or add as a friend",
+            preferredStyle: .alert
+        )
+        
+        // Add cancel action
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        // Add block action
+        alert.addAction(UIAlertAction(title: "Block", style: .destructive) { [weak self] _ in
+            guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+            let db = Firestore.firestore()
+            
+            // Remove from friends
+            db.collection("users").document(currentUserId)
+                .collection("friends").document(user.id).delete()
+            
+            // Add to blocked
+            db.collection("users").document(currentUserId)
+                .collection("blocked").document(user.id).setData([
+                    "blockedAt": FieldValue.serverTimestamp()
+                ])
+            
+            self?.loadFriends()
+        })
+        
+        present(alert, animated: true)
+    }
 }
 
 // MARK: - UITableViewDelegate & UITableViewDataSource
@@ -305,23 +337,6 @@ extension FriendsViewController: UITableViewDelegate, UITableViewDataSource {
                     self?.loadFriends()
                 }
             }
-    }
-    
-    private func blockUser(_ user: User) {
-        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
-        let db = Firestore.firestore()
-        
-        // Remove from friends
-        db.collection("users").document(currentUserId)
-            .collection("friends").document(user.id).delete()
-        
-        // Add to blocked
-        db.collection("users").document(currentUserId)
-            .collection("blocked").document(user.id).setData([
-                "blockedAt": FieldValue.serverTimestamp()
-            ])
-        
-        loadFriends()
     }
     
     private func unblockUser(_ user: User) {
