@@ -306,6 +306,13 @@ class SaveToCollectionViewController: UIViewController {
         print("💾 Saving place '\(place.name ?? "Unknown")' to collection '\(collection.name)'")
         print("💾 Current places in collection: \(collection.places.count)")
         
+        // Check if place is already in the collection
+        if collection.places.contains(where: { $0.placeId == place.placeID }) {
+            print("⚠️ Place is already in this collection")
+            showAlert(title: "Already Saved", message: "This place is already saved in this collection.")
+            return
+        }
+        
         // Show loading indicator
         let loadingAlert = UIAlertController(title: "Saving...", message: nil, preferredStyle: .alert)
         present(loadingAlert, animated: true)
@@ -429,6 +436,12 @@ class SaveToCollectionViewController: UIViewController {
                 }
             }
         }
+    }
+    
+    private func showAlert(title: String, message: String) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
     }
     
     @objc private func segmentedControlChanged(_ sender: UISegmentedControl) {
