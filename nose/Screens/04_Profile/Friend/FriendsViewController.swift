@@ -178,38 +178,74 @@ class FriendsViewController: UIViewController {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         let db = Firestore.firestore()
         
-        // Find user by email
-        db.collection("users").whereField("email", isEqualTo: email).getDocuments { [weak self] snapshot, error in
-            if let error = error {
-                print("Error finding user: \(error.localizedDescription)")
-                return
-            }
-            
-            guard let userDoc = snapshot?.documents.first else {
-                DispatchQueue.main.async {
-                    self?.showAlert(title: "Error", message: "User not found")
+        // First check if the user is in blocked list
+        db.collection("users").document(currentUserId)
+            .collection("blocked").getDocuments { [weak self] snapshot, error in
+                if let error = error {
+                    print("Error checking blocked users: \(error.localizedDescription)")
+                    return
                 }
-                return
-            }
-            
-            let friendId = userDoc.documentID
-            
-            // Add friend relationship
-            db.collection("users").document(currentUserId)
-                .collection("friends").document(friendId).setData([
-                    "addedAt": FieldValue.serverTimestamp()
-                ]) { error in
+                
+                // Find user by email
+                db.collection("users").whereField("email", isEqualTo: email).getDocuments { [weak self] snapshot, error in
                     if let error = error {
-                        print("Error adding friend: \(error.localizedDescription)")
+                        print("Error finding user: \(error.localizedDescription)")
                         return
                     }
                     
-                    DispatchQueue.main.async {
-                        self?.loadFriends()
-                        self?.showAlert(title: "Success", message: "Friend added successfully")
+                    guard let userDoc = snapshot?.documents.first else {
+                        DispatchQueue.main.async {
+                            self?.showAlert(title: "Error", message: "User not found")
+                        }
+                        return
                     }
+                    
+                    let friendId = userDoc.documentID
+                    
+                    // Check if the user is blocked
+                    if let blockedDoc = snapshot?.documents.first(where: { $0.documentID == friendId }) {
+                        DispatchQueue.main.async {
+                            self?.showAlert(
+                                title: "Cannot Add Friend",
+                                message: "You have blocked this user. Please unblock them first to add them as a friend."
+                            )
+                        }
+                        return
+                    }
+                    
+                    // Check if the other user has blocked the current user
+                    db.collection("users").document(friendId)
+                        .collection("blocked").document(currentUserId).getDocument { [weak self] snapshot, error in
+                            if let error = error {
+                                print("Error checking if blocked: \(error.localizedDescription)")
+                                return
+                            }
+                            
+                            if snapshot?.exists == true {
+                                DispatchQueue.main.async {
+                                    self?.showAlert(title: "Error", message: "User not found")
+                                }
+                                return
+                            }
+                            
+                            // Add friend relationship
+                            db.collection("users").document(currentUserId)
+                                .collection("friends").document(friendId).setData([
+                                    "addedAt": FieldValue.serverTimestamp()
+                                ]) { error in
+                                    if let error = error {
+                                        print("Error adding friend: \(error.localizedDescription)")
+                                        return
+                                    }
+                                    
+                                    DispatchQueue.main.async {
+                                        self?.loadFriends()
+                                        self?.showAlert(title: "Success", message: "Friend added successfully")
+                                    }
+                                }
+                        }
                 }
-        }
+            }
     }
     
     private func showAlert(title: String, message: String) {
@@ -234,17 +270,47 @@ class FriendsViewController: UIViewController {
             guard let currentUserId = Auth.auth().currentUser?.uid else { return }
             let db = Firestore.firestore()
             
-            // Remove from friends
-            db.collection("users").document(currentUserId)
-                .collection("friends").document(user.id).delete()
+            // Create a batch to handle all operations atomically
+            let batch = db.batch()
             
-            // Add to blocked
-            db.collection("users").document(currentUserId)
-                .collection("blocked").document(user.id).setData([
-                    "blockedAt": FieldValue.serverTimestamp()
-                ])
+            // 1. Remove User B from User A's friends list
+            let userAFriendsRef = db.collection("users")
+                .document(currentUserId)
+                .collection("friends")
+                .document(user.id)
+            batch.deleteDocument(userAFriendsRef)
             
-            self?.loadFriends()
+            // 2. Add User B to User A's blocked list
+            let userABlockedRef = db.collection("users")
+                .document(currentUserId)
+                .collection("blocked")
+                .document(user.id)
+            batch.setData([
+                "blockedAt": FieldValue.serverTimestamp()
+            ], forDocument: userABlockedRef)
+            
+            // 3. Remove User A from User B's friends list
+            let userBFriendsRef = db.collection("users")
+                .document(user.id)
+                .collection("friends")
+                .document(currentUserId)
+            batch.deleteDocument(userBFriendsRef)
+            
+            // Commit all changes
+            batch.commit { error in
+                if let error = error {
+                    print("DEBUG: Error blocking user: \(error.localizedDescription)")
+                    DispatchQueue.main.async {
+                        self?.showAlert(title: "Error", message: "Failed to block user")
+                    }
+                    return
+                }
+                
+                print("DEBUG: Successfully blocked user and updated both sides")
+                DispatchQueue.main.async {
+                    self?.loadFriends()
+                }
+            }
         })
         
         present(alert, animated: true)
