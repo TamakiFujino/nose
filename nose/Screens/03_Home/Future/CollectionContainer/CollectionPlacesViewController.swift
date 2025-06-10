@@ -571,18 +571,26 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         print("📄 Collection type: \(collectionType)")
         print("📄 Collection ID: \(collection.id)")
         
-        // Get the collection reference using the correct path
-        let collectionRef = db.collection("users")
+        // Get references to both collections
+        let userCollectionRef = db.collection("users")
             .document(currentUserId)
             .collection("collections")
             .document(collectionType)
             .collection(collectionType)
             .document(collection.id)
+            
+        let ownerCollectionRef = db.collection("users")
+            .document(collection.userId)  // This is the owner's ID
+            .collection("collections")
+            .document("owned")
+            .collection("owned")
+            .document(collection.id)
         
         print("📄 Firestore path: users/\(currentUserId)/collections/\(collectionType)/\(collectionType)/\(collection.id)")
+        print("📄 Owner path: users/\(collection.userId)/collections/owned/owned/\(collection.id)")
         
         // First get the current collection data
-        collectionRef.getDocument { [weak self] snapshot, error in
+        userCollectionRef.getDocument { [weak self] snapshot, error in
             if let error = error {
                 print("Error getting collection: \(error.localizedDescription)")
                 self?.dismiss(animated: true) {
@@ -615,10 +623,17 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
                 // Update the places array in the data
                 updatedData["places"] = places
                 
-                // Update Firestore with the new places array
-                collectionRef.updateData([
-                    "places": places
-                ]) { error in
+                // Create a batch to update both collections
+                let batch = db.batch()
+                
+                // Update user's collection
+                batch.updateData(["places": places], forDocument: userCollectionRef)
+                
+                // Update owner's collection
+                batch.updateData(["places": places], forDocument: ownerCollectionRef)
+                
+                // Commit the batch
+                batch.commit { error in
                     self?.dismiss(animated: true) {
                         if let error = error {
                             print("Error removing place: \(error.localizedDescription)")
