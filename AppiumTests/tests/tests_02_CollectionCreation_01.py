@@ -15,6 +15,8 @@ class CollectionCreationTest(BaseTest):
         """login"""
         google_login(self.driver, 'user_a')
 
+        print(f"Done login: {__file__}")
+
         """search a spot"""
         # click the search button icon
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Search')
@@ -54,6 +56,8 @@ class CollectionCreationTest(BaseTest):
         # check the title of the modal
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Save to Collection')
 
+        print(f"Done searching a spot: {__file__}")
+
         """create a collection"""
         # click add button
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'add')
@@ -68,6 +72,8 @@ class CollectionCreationTest(BaseTest):
         create_button.click()
         time.sleep(2)
 
+        print(f"Done creating a collection: {__file__}")
+
         """add a spot to the collection"""
         # click save button
         save_button = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Save')
@@ -77,6 +83,8 @@ class CollectionCreationTest(BaseTest):
         # tap the center of the screen to close the modal
         self.driver.tap([(500, 500)])
         time.sleep(2)
+
+        print(f"Done adding a spot to the collection: {__file__}")
 
         """check the collection content"""
         # which is the future dot
@@ -99,6 +107,8 @@ class CollectionCreationTest(BaseTest):
         assert element.text == 'Kings Canyon National Park'
         
         # check the number of spots is 1
+
+        print(f"Done checking the collection content: {__file__}")
 
         """share the collection with user B"""
         # tap three dot button
@@ -124,8 +134,12 @@ class CollectionCreationTest(BaseTest):
         self.driver.tap([(200, 200)])
         time.sleep(2)
 
+        print(f"Done sharing the collection with user B: {__file__}")
+
         """log out"""
         logout(self.driver)
+
+        print(f"Done log out: {__file__}")
 
 if __name__ == '__main__':
     unittest.main()
