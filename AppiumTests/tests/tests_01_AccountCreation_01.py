@@ -82,7 +82,14 @@ class AccountCreateUserATest(BaseTest):
         element.click()
         time.sleep(5)
         
-        # accept map location permission
+        """accpet map location permission"""
+        # if the alert is shown, allow
+        # if the alert is not shown, skip
+        try:
+            self.driver.switch_to.alert.accept()
+        except:
+            print("Map location permission not shown")
+        time.sleep(1)
 
         # print file name and done create an account
         print(f"Done create an account: {__file__}")
