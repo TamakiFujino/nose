@@ -296,21 +296,42 @@ class FriendsViewController: UIViewController {
                 .document(currentUserId)
             batch.deleteDocument(userBFriendsRef)
             
-            // Commit all changes
-            batch.commit { error in
-                if let error = error {
-                    print("DEBUG: Error blocking user: \(error.localizedDescription)")
-                    DispatchQueue.main.async {
-                        self?.showAlert(title: "Error", message: "Failed to block user")
+            // 4. Remove shared collections from User B's data
+            let userBSharedCollectionsRef = db.collection("users")
+                .document(user.id)
+                .collection("collections")
+                .document("shared")
+                .collection("shared")
+            
+            // Get all collections shared by User A
+            userBSharedCollectionsRef.whereField("sharedBy", isEqualTo: currentUserId)
+                .getDocuments { snapshot, error in
+                    if let error = error {
+                        print("DEBUG: Error getting shared collections: \(error.localizedDescription)")
+                        return
                     }
-                    return
+                    
+                    // Add delete operations for each shared collection to the batch
+                    snapshot?.documents.forEach { document in
+                        batch.deleteDocument(document.reference)
+                    }
+                    
+                    // Commit all changes
+                    batch.commit { error in
+                        if let error = error {
+                            print("DEBUG: Error blocking user: \(error.localizedDescription)")
+                            DispatchQueue.main.async {
+                                self?.showAlert(title: "Error", message: "Failed to block user")
+                            }
+                            return
+                        }
+                        
+                        print("DEBUG: Successfully blocked user and updated both sides")
+                        DispatchQueue.main.async {
+                            self?.loadFriends()
+                        }
+                    }
                 }
-                
-                print("DEBUG: Successfully blocked user and updated both sides")
-                DispatchQueue.main.async {
-                    self?.loadFriends()
-                }
-            }
         })
         
         present(alert, animated: true)
