@@ -91,6 +91,13 @@ class DeleteSpotTest(BaseTest):
         elements = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Pinnacles National Park')
         assert len(elements) == 0, "Element 'More' was found when it should not exist"
 
+        # swipe down to close the modal
+        self.driver.swipe(200, 350, 500, 650)
+        time.sleep(2)
+        # tap somewhere on the screen to close the modal
+        self.driver.tap([(200, 200)])
+        time.sleep(2)
+
         """log out"""
         logout(self.driver)
 

@@ -13,7 +13,7 @@ from tests import google_login, logout
 
 class AccountCreateUserBTest(BaseTest):
     def test_create_user_b(self):
-        """Test creating User B and adding User A as friend"""
+        """create an account"""
         # Find a google login button says "Continue with Google"
         google_login_button = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Continue with Google')
         google_login_button.click()
@@ -48,7 +48,9 @@ class AccountCreateUserBTest(BaseTest):
 
         # accept map location permission
 
-        """Add A User A as a Friend"""
+        print(f"Done create an account: {__file__}")
+
+        """Add user A as a friend"""
         # tap "Personal Library"
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Personal Library')
         element.click()
@@ -83,7 +85,9 @@ class AccountCreateUserBTest(BaseTest):
         element.click()
         time.sleep(1)
 
-        """Update Name"""
+        print(f"Done add user A as a friend: {__file__}")
+
+        """Update user B's name"""
         # find "Name" and tap it
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Name')
         element.click()
@@ -152,8 +156,12 @@ class AccountCreateUserBTest(BaseTest):
         element.click()
         time.sleep(1)
 
+        print(f"Done update user B's name: {__file__}")
+
         """Log out"""
         logout(self.driver)
+
+        print(f"Done log out: {__file__}")
 
 if __name__ == '__main__':
     unittest.main() 
