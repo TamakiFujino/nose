@@ -15,6 +15,15 @@ class DeleteAccountUserATest(BaseTest):
         """login"""
         google_login(self.driver, 'user_a')
 
+        """accpet map location permission"""
+        # if the alert is shown, allow
+        # if the alert is not shown, skip
+        try:
+            self.driver.switch_to.alert.accept()
+        except:
+            print("Map location permission not shown")
+        time.sleep(1)
+
         """check setting items"""
          # tap "Personal Library"
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Personal Library')

@@ -15,6 +15,15 @@ class CollectionSharedTest(BaseTest):
         """login"""
         google_login(self.driver, 'user_b')
 
+        """accpet map location permission"""
+        # if the alert is shown, allow
+        # if the alert is not shown, skip
+        try:
+            self.driver.switch_to.alert.accept()
+        except:
+            print("Map location permission not shown")
+        time.sleep(1)
+
         """search a spot"""
         # click the search button icon
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Search')

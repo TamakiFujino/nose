@@ -17,6 +17,15 @@ class CollectionCreationTest(BaseTest):
 
         print(f"Done login: {__file__}")
 
+        """accpet map location permission"""
+        # if the alert is shown, allow
+        # if the alert is not shown, skip
+        try:
+            self.driver.switch_to.alert.accept()
+        except:
+            print("Map location permission not shown")
+        time.sleep(1)
+
         """search a spot"""
         # click the search button icon
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Search')
@@ -86,6 +95,9 @@ class CollectionCreationTest(BaseTest):
 
         print(f"Done adding a spot to the collection: {__file__}")
 
+        """cannot add a same spot to the collection"""
+        # add later
+
         """check the collection content"""
         # which is the future dot
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'right_dot')
@@ -105,8 +117,10 @@ class CollectionCreationTest(BaseTest):
         # check the saved spot is listed
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Kings Canyon National Park')
         assert element.text == 'Kings Canyon National Park'
-        
-        # check the number of spots is 1
+
+        """check the number of spots is 1"""
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'places_count_label').get_attribute("value")
+        assert element == '1', "Number of spots is not 1"
 
         print(f"Done checking the collection content: {__file__}")
 
@@ -127,6 +141,11 @@ class CollectionCreationTest(BaseTest):
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Update Sharing')
         element.click()
         time.sleep(2)
+        """check the number of shared collections is 1"""
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'shared_friends_count_label')
+        # make sure the element value is 1
+        assert element.get_attribute("value") == '1', "Number of shared spots is not 1"
+
         # swipe down to close the modal
         self.driver.swipe(200, 350, 500, 650)
         time.sleep(2)

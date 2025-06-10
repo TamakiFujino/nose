@@ -15,6 +15,15 @@ class CollectionPutBackTest(BaseTest):
         """login"""
         google_login(self.driver, 'user_a')
 
+        """accpet map location permission"""
+        # if the alert is shown, allow
+        # if the alert is not shown, skip
+        try:
+            self.driver.switch_to.alert.accept()
+        except:
+            print("Map location permission not shown")
+        time.sleep(1)
+
         """put back the collection"""
         # tap past dot
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'left_dot')

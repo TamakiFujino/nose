@@ -46,10 +46,17 @@ class AccountCreateUserBTest(BaseTest):
         element.click()
         time.sleep(5)
 
-        # accept map location permission
-
         print(f"Done create an account: {__file__}")
 
+        """accpet map location permission"""
+        # if the alert is shown, allow
+        # if the alert is not shown, skip
+        try:
+            self.driver.switch_to.alert.accept()
+        except:
+            print("Map location permission not shown")
+        time.sleep(1)
+            
         """Add user A as a friend"""
         # tap "Personal Library"
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Personal Library')
@@ -69,9 +76,9 @@ class AccountCreateUserBTest(BaseTest):
         if not user_a_id:
             raise Exception("User A ID not found in stored data. Please run User A creation test first.")
         element.send_keys(user_a_id)
-        
         # enter
         element.send_keys(Keys.RETURN)
+        time.sleep(1)
         # find and tap a button "Add Friend"
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'add_friend_button')
         element.click()
@@ -80,6 +87,17 @@ class AccountCreateUserBTest(BaseTest):
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'OK')
         element.click()
         time.sleep(1)
+
+        """Copy user B's user ID and store in shared_data"""
+        # tap copy icon and save the text for later use
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'copy')
+        element.click()
+        time.sleep(1)
+        user_id = self.driver.get_clipboard_text()
+        print(f"User B User ID: {user_id}")
+        # Save the user ID for later use
+        shared_data.save_user_id('user_b', user_id)
+
         # Go back to the settings
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Settings')
         element.click()
@@ -162,6 +180,13 @@ class AccountCreateUserBTest(BaseTest):
         logout(self.driver)
 
         print(f"Done log out: {__file__}")
+
+        # swipe down to close the modal
+        self.driver.swipe(200, 350, 200, 650)
+        time.sleep(2)
+        # tap somewhere on the screen to close the modal
+        self.driver.tap([(200, 200)])
+        time.sleep(2)
 
 if __name__ == '__main__':
     unittest.main() 
