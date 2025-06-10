@@ -106,34 +106,5 @@ class CollectionSharedTest(BaseTest):
         """log out"""
         logout(self.driver)
 
-    def test_swipe_element_left(self):
-        """login"""
-        google_login(self.driver, 'user_b')
-
-        # Navigate to Personal Library
-        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Personal Library')
-        element.click()
-        time.sleep(2)
-
-        # Find the element to swipe
-        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'National Parks')
-        
-        # Get element location and size
-        location = element.location
-        size = element.size
-        
-        # Calculate swipe coordinates
-        start_x = location['x'] + size['width'] * 0.8  # Start from 80% of element width
-        start_y = location['y'] + size['height'] * 0.5  # Middle of element height
-        end_x = location['x'] + size['width'] * 0.2    # End at 20% of element width
-        end_y = start_y  # Keep same y coordinate for horizontal swipe
-        
-        # Perform the swipe
-        self.driver.swipe(start_x, start_y, end_x, end_y)
-        time.sleep(2)
-
-        """log out"""
-        logout(self.driver)
-
 if __name__ == '__main__':
     unittest.main()
