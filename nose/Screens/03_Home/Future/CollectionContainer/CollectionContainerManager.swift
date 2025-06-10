@@ -91,9 +91,10 @@ class CollectionContainerManager {
     func deleteCollection(_ collection: PlaceCollection, completion: @escaping (Error?) -> Void) {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         
-        // First, delete any shared collections
-        db.collection("users")
-            .whereField("collections.shared.shared.\(collection.id).sharedBy", isEqualTo: currentUserId)
+        // First, find all users who have this collection shared with them
+        db.collectionGroup("shared")
+            .whereField("id", isEqualTo: collection.id)
+            .whereField("sharedBy", isEqualTo: currentUserId)
             .getDocuments { [weak self] snapshot, error in
                 guard let self = self else { return }
                 
@@ -104,20 +105,16 @@ class CollectionContainerManager {
                 
                 let group = DispatchGroup()
                 
+                // Delete each shared copy
                 snapshot?.documents.forEach { document in
                     group.enter()
-                    self.db.collection("users")
-                        .document(document.documentID)
-                        .collection("collections")
-                        .document("shared")
-                        .collection("shared")
-                        .document(collection.id)
-                        .delete { _ in
-                            group.leave()
-                        }
+                    document.reference.delete { _ in
+                        group.leave()
+                    }
                 }
                 
                 group.notify(queue: .main) {
+                    // Finally delete the owner's copy
                     self.db.collection("users")
                         .document(currentUserId)
                         .collection("collections")

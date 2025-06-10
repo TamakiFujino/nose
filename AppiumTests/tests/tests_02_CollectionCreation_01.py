@@ -24,12 +24,20 @@ class CollectionCreationTest(BaseTest):
         # type "Kings Canyon national park" in the sarch bar
         search_bar = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Search for a place')
         search_bar.click()
-        search_bar.send_keys('Ki')
-        time.sleep(5)
-        search_bar.send_keys('ngs ')
-        time.sleep(3)
-        search_bar.send_keys('Canyon')
-        time.sleep(3)
+        search_bar.send_keys('K')
+        time.sleep(1)
+        search_bar.send_keys('i')
+        time.sleep(1)
+        search_bar.send_keys('n')
+        time.sleep(1)
+        search_bar.send_keys('g')
+        time.sleep(1)
+        search_bar.send_keys('s ')
+        time.sleep(1)
+        search_bar.send_keys('Canyon ')
+        time.sleep(2)
+        search_bar.send_keys('National ')
+        time.sleep(2)
 
         # click the first suggestion from the search result, not mentioning the name
         element = self.driver.find_element(By.XPATH, '//XCUIElementTypeCell[1]')
@@ -109,20 +117,9 @@ class CollectionCreationTest(BaseTest):
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Update Sharing')
         element.click()
         time.sleep(2)
-        
-        """complete the collection"""
-        # tap three dot button
-        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'More')
-        element.click()
+        # swipe down to close the modal
+        self.driver.swipe(200, 350, 500, 650)
         time.sleep(2)
-        # tap "Complete the Collection"
-        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Complete the Collection')
-        element.click()
-        time.sleep(2)
-        # tap "Complete"
-        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Complete')
-        element.click()
-        time.sleep(5)
         # tap somewhere on the screen to close the modal
         self.driver.tap([(200, 200)])
         time.sleep(2)

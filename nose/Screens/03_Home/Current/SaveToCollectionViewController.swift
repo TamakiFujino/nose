@@ -198,6 +198,7 @@ class SaveToCollectionViewController: UIViewController {
                 } ?? []
                 
                 DispatchQueue.main.async {
+                    // Only show active collections in the save modal
                     self?.ownedCollections = fetchedCollections.filter { $0.status == .active }
                     self?.collectionsTableView.reloadData()
                 }
@@ -232,6 +233,7 @@ class SaveToCollectionViewController: UIViewController {
                 } ?? []
                 
                 DispatchQueue.main.async {
+                    // Only show active collections in the save modal
                     self?.sharedCollections = fetchedCollections.filter { $0.status == .active }
                     self?.collectionsTableView.reloadData()
                 }
@@ -320,36 +322,109 @@ class SaveToCollectionViewController: UIViewController {
             "addedAt": Timestamp(date: Date())
         ]
         
-        // Save place to collection in Firestore
-        let collectionRef = Firestore.firestore().collection("users")
-            .document(Auth.auth().currentUser?.uid ?? "")
+        // Determine the correct collection type and path
+        let collectionType = collection.isOwner ? "owned" : "shared"
+        print("📄 Collection type: \(collectionType)")
+        print("📄 Collection ID: \(collection.id)")
+        print("📄 Is owner: \(collection.isOwner)")
+        print("📄 Owner ID: \(collection.userId)")
+        
+        // Get references for both shared and owner copies
+        let db = Firestore.firestore()
+        let currentUserId = Auth.auth().currentUser?.uid ?? ""
+        
+        // Reference to the current user's copy (shared or owned)
+        let userCollectionRef = db.collection("users")
+            .document(currentUserId)
+            .collection("collections")
+            .document(collectionType)
+            .collection(collectionType)
+            .document(collection.id)
+        
+        print("📄 User's collection path: \(userCollectionRef.path)")
+        
+        // If this is a shared collection, also get reference to owner's copy
+        let ownerCollectionRef = collection.isOwner ? nil : db.collection("users")
+            .document(collection.userId)
             .collection("collections")
             .document("owned")
             .collection("owned")
             .document(collection.id)
         
-        collectionRef.updateData([
-            "places": FieldValue.arrayUnion([placeData])
-        ]) { [weak self] (error: Error?) in
-            DispatchQueue.main.async {
-                loadingAlert.dismiss(animated: true) {
-                    if let error = error {
-                        print("❌ Error saving place: \(error.localizedDescription)")
-                        // Show error alert
-                        let errorAlert = UIAlertController(
-                            title: "Error",
-                            message: "Failed to save place. Please try again.",
-                            preferredStyle: .alert
-                        )
-                        errorAlert.addAction(UIAlertAction(title: "OK", style: .default))
-                        self?.present(errorAlert, animated: true)
-                    } else {
-                        print("✅ Successfully saved place to collection")
-                        // Refresh collections to update the count
-                        self?.loadCollections()
-                        // Notify delegate and dismiss
-                        self?.delegate?.saveToCollectionViewController(self!, didSavePlace: self!.place, toCollection: collection)
-                        self?.dismiss(animated: true)
+        if let ownerRef = ownerCollectionRef {
+            print("📄 Owner's collection path: \(ownerRef.path)")
+        }
+        
+        // First, verify both collections exist
+        let group = DispatchGroup()
+        var userCollectionExists = false
+        var ownerCollectionExists = false
+        
+        group.enter()
+        userCollectionRef.getDocument { snapshot, error in
+            if let error = error {
+                print("❌ Error checking user collection: \(error.localizedDescription)")
+            } else {
+                userCollectionExists = snapshot?.exists ?? false
+                print("📄 User collection exists: \(userCollectionExists)")
+            }
+            group.leave()
+        }
+        
+        if let ownerRef = ownerCollectionRef {
+            group.enter()
+            ownerRef.getDocument { snapshot, error in
+                if let error = error {
+                    print("❌ Error checking owner collection: \(error.localizedDescription)")
+                } else {
+                    ownerCollectionExists = snapshot?.exists ?? false
+                    print("📄 Owner collection exists: \(ownerCollectionExists)")
+                }
+                group.leave()
+            }
+        }
+        
+        group.notify(queue: .main) { [weak self] in
+            guard let self = self else { return }
+            
+            // Create a batch write
+            let batch = db.batch()
+            
+            // Update user's copy
+            batch.updateData([
+                "places": FieldValue.arrayUnion([placeData])
+            ], forDocument: userCollectionRef)
+            
+            // If this is a shared collection, also update owner's copy
+            if let ownerRef = ownerCollectionRef {
+                batch.updateData([
+                    "places": FieldValue.arrayUnion([placeData])
+                ], forDocument: ownerRef)
+            }
+            
+            // Commit the batch
+            batch.commit { error in
+                DispatchQueue.main.async {
+                    loadingAlert.dismiss(animated: true) {
+                        if let error = error {
+                            print("❌ Error saving place: \(error.localizedDescription)")
+                            print("❌ Error details: \(error)")
+                            // Show error alert
+                            let errorAlert = UIAlertController(
+                                title: "Error",
+                                message: "Failed to save place. Please try again.",
+                                preferredStyle: .alert
+                            )
+                            errorAlert.addAction(UIAlertAction(title: "OK", style: .default))
+                            self.present(errorAlert, animated: true)
+                        } else {
+                            print("✅ Successfully saved place to collection")
+                            // Refresh collections to update the count
+                            self.loadCollections()
+                            // Notify delegate and dismiss
+                            self.delegate?.saveToCollectionViewController(self, didSavePlace: self.place, toCollection: collection)
+                            self.dismiss(animated: true)
+                        }
                     }
                 }
             }
