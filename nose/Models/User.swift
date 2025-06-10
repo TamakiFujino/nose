@@ -7,6 +7,7 @@ struct User: Codable {
     let name: String
     let createdAt: Date
     var lastLoginAt: Date
+    var isDeleted: Bool
     
     // Additional user data fields
     var preferences: UserPreferences
@@ -30,6 +31,7 @@ struct User: Codable {
         self.createdAt = Date()
         self.lastLoginAt = Date()
         self.preferences = UserPreferences()
+        self.isDeleted = false
     }
     
     // Convert to Firestore data
@@ -44,7 +46,8 @@ struct User: Codable {
                 "language": preferences.language,
                 "theme": preferences.theme,
                 "notifications": preferences.notifications
-            ]
+            ],
+            "status": isDeleted ? "deleted" : "active"
         ]
     }
     
@@ -68,6 +71,7 @@ struct User: Codable {
         
         var user = User(id: id, name: name, userId: userId)
         user.preferences = preferences
+        user.isDeleted = data["status"] as? String == "deleted"
         return user
     }
 } 

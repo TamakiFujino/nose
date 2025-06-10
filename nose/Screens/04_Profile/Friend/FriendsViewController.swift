@@ -315,6 +315,43 @@ class FriendsViewController: UIViewController {
         
         present(alert, animated: true)
     }
+    
+    private func unblockUser(_ user: User) {
+        // Show confirmation alert
+        let alert = UIAlertController(
+            title: "Are you sure you unblock user \"\(user.name)\"?",
+            message: "\(user.name) will be able to add you as a friend with your User ID",
+            preferredStyle: .alert
+        )
+        
+        // Add cancel action
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        // Add unblock action
+        alert.addAction(UIAlertAction(title: "Unblock", style: .default) { [weak self] _ in
+            guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+            let db = Firestore.firestore()
+            
+            // Remove from blocked
+            db.collection("users").document(currentUserId)
+                .collection("blocked").document(user.id).delete { error in
+                    if let error = error {
+                        print("DEBUG: Error unblocking user: \(error.localizedDescription)")
+                        DispatchQueue.main.async {
+                            self?.showAlert(title: "Error", message: "Failed to unblock user")
+                        }
+                        return
+                    }
+                    
+                    print("DEBUG: Successfully unblocked user")
+                    DispatchQueue.main.async {
+                        self?.loadFriends()
+                    }
+                }
+        })
+        
+        present(alert, animated: true)
+    }
 }
 
 // MARK: - UITableViewDelegate & UITableViewDataSource
@@ -400,16 +437,5 @@ extension FriendsViewController: UITableViewDelegate, UITableViewDataSource {
                     self?.loadFriends()
                 }
             }
-    }
-    
-    private func unblockUser(_ user: User) {
-        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
-        let db = Firestore.firestore()
-        
-        // Remove from blocked
-        db.collection("users").document(currentUserId)
-            .collection("blocked").document(user.id).delete()
-        
-        loadFriends()
     }
 }

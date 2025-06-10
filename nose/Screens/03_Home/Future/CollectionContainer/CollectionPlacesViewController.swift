@@ -88,6 +88,9 @@ class CollectionPlacesViewController: UIViewController {
         attributedText.append(textString)
         
         label.attributedText = attributedText
+        label.accessibilityLabel = "Number of shared friends"
+        label.accessibilityValue = "0"
+        label.accessibilityIdentifier = "shared_friends_count_label"
         return label
     }()
 
@@ -108,6 +111,9 @@ class CollectionPlacesViewController: UIViewController {
         attributedText.append(textString)
         
         label.attributedText = attributedText
+        label.accessibilityLabel = "Number of places saved"
+        label.accessibilityValue = "0"
+        label.accessibilityIdentifier = "places_count_label"
         return label
     }()
 
@@ -414,26 +420,43 @@ class CollectionPlacesViewController: UIViewController {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         
         let db = Firestore.firestore()
-        let collectionType = collection.isOwner ? "owned" : "shared"
         
+        // First get the blocked users
         db.collection("users")
             .document(currentUserId)
-            .collection("collections")
-            .document(collectionType)
-            .collection(collectionType)
-            .document(collection.id)
-            .getDocument { [weak self] snapshot, error in
-                if let error = error {
-                    print("Error loading collection: \(error.localizedDescription)")
+            .collection("blocked")
+            .getDocuments { [weak self] blockedSnapshot, blockedError in
+                if let blockedError = blockedError {
+                    print("Error loading blocked users: \(blockedError.localizedDescription)")
                     return
                 }
                 
-                if let sharedWith = snapshot?.data()?["sharedWith"] as? [String] {
-                    self?.sharedFriendsCount = sharedWith.count
-                } else {
-                    self?.sharedFriendsCount = 0
+                // Get list of blocked user IDs
+                let blockedUserIds = blockedSnapshot?.documents.map { $0.documentID } ?? []
+                
+                // Now get the collection data
+                let collectionRef = db.collection("users")
+                    .document(self?.collection.userId ?? "")  // Use the collection owner's ID
+                    .collection("collections")
+                    .document("owned")
+                    .collection("owned")
+                    .document(self?.collection.id ?? "")
+                
+                collectionRef.getDocument { [weak self] snapshot, error in
+                    if let error = error {
+                        print("Error loading collection: \(error.localizedDescription)")
+                        return
+                    }
+                    
+                    if let sharedWith = snapshot?.data()?["sharedWith"] as? [String] {
+                        // Filter out blocked users from the count
+                        let activeSharedUsers = sharedWith.filter { !blockedUserIds.contains($0) }
+                        self?.sharedFriendsCount = activeSharedUsers.count
+                    } else {
+                        self?.sharedFriendsCount = 0
+                    }
+                    self?.updateSharedFriendsLabel()
                 }
-                self?.updateSharedFriendsLabel()
             }
     }
 
@@ -449,6 +472,7 @@ class CollectionPlacesViewController: UIViewController {
         attributedText.append(textString)
         
         sharedFriendsLabel.attributedText = attributedText
+        sharedFriendsLabel.accessibilityValue = "\(sharedFriendsCount)"
     }
 
     private func updatePlacesCountLabel() {
@@ -463,6 +487,7 @@ class CollectionPlacesViewController: UIViewController {
         attributedText.append(textString)
         
         placesCountLabel.attributedText = attributedText
+        placesCountLabel.accessibilityValue = "\(places.count)"
     }
     
     private func showLoadingAlert(title: String) {

@@ -33,7 +33,35 @@ final class MapManager: NSObject {
     private func setupLocationManager() {
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
-        locationManager.requestWhenInUseAuthorization()
+        
+        // Check current authorization status
+        switch locationManager.authorizationStatus {
+        case .notDetermined:
+            // Request permission - this will show the system permission dialog
+            locationManager.requestWhenInUseAuthorization()
+        case .restricted, .denied:
+            // Show alert to enable location services
+            if let topVC = UIApplication.shared.windows.first?.rootViewController {
+                let alert = UIAlertController(
+                    title: "Location Access Required",
+                    message: "Please enable location access in Settings to use this feature.",
+                    preferredStyle: .alert
+                )
+                alert.addAction(UIAlertAction(title: "Settings", style: .default) { _ in
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                })
+                alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+                topVC.present(alert, animated: true)
+            }
+        case .authorizedWhenInUse, .authorizedAlways:
+            // Already authorized, start updating location
+            locationManager.startUpdatingLocation()
+            mapView.isMyLocationEnabled = true
+        @unknown default:
+            break
+        }
     }
     
     // MARK: - Public Methods

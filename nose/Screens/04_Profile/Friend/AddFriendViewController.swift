@@ -283,6 +283,15 @@ class AddFriendViewController: UIViewController {
             } ?? []
             
             if let foundUser = self.searchResults.first {
+                // Check if the user is deleted
+                if foundUser.isDeleted {
+                    print("DEBUG: Found user is deleted")
+                    self.searchResults = []
+                    self.resultContainer.isHidden = true
+                    self.showAlert(title: "User Not Found", message: "No user found with this User ID. Please check the ID and try again.")
+                    return
+                }
+                
                 // Check if the current user has blocked the found user
                 db.collection("users").document(currentUserId)
                     .collection("blocked").document(foundUser.id).getDocument { [weak self] blockedSnapshot, blockedError in

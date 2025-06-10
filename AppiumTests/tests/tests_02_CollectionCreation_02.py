@@ -15,6 +15,15 @@ class CollectionSharedTest(BaseTest):
         """login"""
         google_login(self.driver, 'user_b')
 
+        """accpet map location permission"""
+        # if the alert is shown, allow
+        # if the alert is not shown, skip
+        try:
+            self.driver.switch_to.alert.accept()
+        except:
+            print("Map location permission not shown")
+        time.sleep(1)
+
         """search a spot"""
         # click the search button icon
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Search')
@@ -63,6 +72,9 @@ class CollectionSharedTest(BaseTest):
         self.driver.tap([(500, 500)])
         time.sleep(2)
 
+        """cannot add a same spot to the collection"""
+        # add later
+
         """see the shared collection detail"""
         # the future dot
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'right_dot')
@@ -82,6 +94,10 @@ class CollectionSharedTest(BaseTest):
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'National Parks')
         element.click()
         time.sleep(2)
+
+        """check the number of spots is 2"""
+        places_value = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'places_count_label').get_attribute("value")
+        assert places_value == '2', "Number of spots is not 2"
 
         # check the saved spot from a friend is listed
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Kings Canyon National Park')
