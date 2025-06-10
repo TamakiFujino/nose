@@ -368,9 +368,6 @@ extension FriendsViewController: UITableViewDelegate, UITableViewDataSource {
         let alert = UIAlertController(title: user.name, message: nil, preferredStyle: .actionSheet)
         
         if currentSegment == 0 {
-            alert.addAction(UIAlertAction(title: "Unfriend", style: .destructive) { [weak self] _ in
-                self?.unfriendUser(user)
-            })
             alert.addAction(UIAlertAction(title: "Block User", style: .destructive) { [weak self] _ in
                 self?.blockUser(user)
             })
