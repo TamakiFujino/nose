@@ -27,7 +27,10 @@ def google_login(driver, user_key):
     time.sleep(2)
 
     # Click Continue
-    element = driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Continue')
+    try:
+        element = driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Continue')
+    except:
+        element = driver.find_element(AppiumBy.ACCESSIBILITY_ID, '次へ')
     element.click()
     time.sleep(10)
 
