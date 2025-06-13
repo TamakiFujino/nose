@@ -161,6 +161,15 @@ class AvatarCustomViewController: UIViewController {
         // Determine the collection type based on ownership
         let collectionType = isOwner ? "owned" : "shared"
         
+        // Create a new CollectionAvatar with current version
+        let avatar = CollectionAvatar(
+            collectionId: collectionId,
+            avatarData: avatarData,
+            createdAt: Date(),
+            isOwner: isOwner,
+            version: .current
+        )
+        
         // Save to Firestore in the user's collection
         let db = Firestore.firestore()
         db.collection("users")
@@ -169,10 +178,7 @@ class AvatarCustomViewController: UIViewController {
             .document(collectionType)
             .collection(collectionType)
             .document(collectionId)
-            .setData([
-                "avatarData": avatarData.toFirestoreDict(),
-                "isOwner": isOwner
-            ], merge: true) { [weak self] error in
+            .setData(avatar.toFirestoreData(), merge: true) { [weak self] error in
                 if let error = error {
                     print("Error saving avatar: \(error.localizedDescription)")
                     return
@@ -224,7 +230,7 @@ class AvatarCustomViewController: UIViewController {
                 return
             }
             
-            guard let avatarData = CollectionAvatar.AvatarData.fromFirestoreDict(avatarDict) else {
+            guard let avatarData = CollectionAvatar.AvatarData.fromFirestoreDict(avatarDict, version: .v1) else {
                 print("❌ Failed to parse avatar data from dictionary")
                 return
             }
