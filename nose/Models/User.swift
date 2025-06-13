@@ -2,12 +2,17 @@ import Foundation
 import FirebaseFirestore
 
 struct User: Codable {
+    // MARK: - Constants
+    static let currentVersion = 1
+    
+    // MARK: - Properties
     let id: String
     let userId: String  // Public user ID for friend search
     let name: String
     let createdAt: Date
     var lastLoginAt: Date
     var isDeleted: Bool
+    let version: Int
     
     // Additional user data fields
     var preferences: UserPreferences
@@ -32,6 +37,7 @@ struct User: Codable {
         self.lastLoginAt = Date()
         self.preferences = UserPreferences()
         self.isDeleted = false
+        self.version = Self.currentVersion
     }
     
     // Convert to Firestore data
@@ -47,7 +53,8 @@ struct User: Codable {
                 "theme": preferences.theme,
                 "notifications": preferences.notifications
             ],
-            "status": isDeleted ? "deleted" : "active"
+            "status": isDeleted ? "deleted" : "active",
+            "version": version
         ]
     }
     
@@ -58,6 +65,7 @@ struct User: Codable {
         let id = document.documentID
         let userId = data["userId"] as? String ?? ""
         let name = data["name"] as? String ?? ""
+        let version = data["version"] as? Int ?? 1
         
         let createdAt = (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
         let lastLoginAt = (data["lastLoginAt"] as? Timestamp)?.dateValue() ?? Date()
@@ -73,5 +81,20 @@ struct User: Codable {
         user.preferences = preferences
         user.isDeleted = data["status"] as? String == "deleted"
         return user
+    }
+    
+    // MARK: - Migration
+    static func migrate(_ data: [String: Any], from version: Int) -> [String: Any] {
+        var migratedData = data
+        
+        // Example migration from version 1 to 2
+        if version < 2 {
+            // Add new fields or modify existing ones
+            // migratedData["newField"] = defaultValue
+        }
+        
+        // Update version
+        migratedData["version"] = currentVersion
+        return migratedData
     }
 } 

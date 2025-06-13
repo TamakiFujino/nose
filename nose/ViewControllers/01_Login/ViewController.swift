@@ -24,103 +24,16 @@ final class ViewController: UIViewController {
     private lazy var appleButton: CustomGlassButton = {
         let button = CustomGlassButton()
         button.translatesAutoresizingMaskIntoConstraints = false
-        
-        // Create a container view for icon and text
-        let containerView = UIView()
-        containerView.translatesAutoresizingMaskIntoConstraints = false
-        
-        // Create and configure the icon
-        let iconImageView = UIImageView()
-        iconImageView.translatesAutoresizingMaskIntoConstraints = false
-        iconImageView.image = UIImage(systemName: "apple.logo")?.withRenderingMode(.alwaysTemplate)
-        iconImageView.tintColor = .firstColor
-        iconImageView.contentMode = .scaleAspectFit
-        
-        // Create and configure the label
-        let titleLabel = UILabel()
-        titleLabel.translatesAutoresizingMaskIntoConstraints = false
-        titleLabel.text = "Continue with Apple"
-        titleLabel.font = .systemFont(ofSize: 18, weight: .bold)
-        titleLabel.textColor = .firstColor
-        
-        // Add subviews to container
-        containerView.addSubview(iconImageView)
-        containerView.addSubview(titleLabel)
-        
-        // Set up constraints for the container
-        NSLayoutConstraint.activate([
-            iconImageView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
-            iconImageView.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
-            iconImageView.widthAnchor.constraint(equalToConstant: 24),
-            iconImageView.heightAnchor.constraint(equalToConstant: 24),
-            
-            titleLabel.leadingAnchor.constraint(equalTo: iconImageView.trailingAnchor, constant: 8),
-            titleLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
-            titleLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor)
-        ])
-        
-        // Add container to button
-        button.addSubview(containerView)
-        
-        // Center the container in the button
-        NSLayoutConstraint.activate([
-            containerView.centerXAnchor.constraint(equalTo: button.centerXAnchor),
-            containerView.centerYAnchor.constraint(equalTo: button.centerYAnchor)
-        ])
-        
+        setupSocialButton(button: button, iconName: "apple.logo", title: "Continue with Apple")
+        button.addTarget(self, action: #selector(appleButtonTapped), for: .touchUpInside)
         return button
     }()
     
     private lazy var googleButton: CustomGlassButton = {
         let button = CustomGlassButton()
         button.translatesAutoresizingMaskIntoConstraints = false
-        
-        // Create a container view for icon and text
-        let containerView = UIView()
-        containerView.translatesAutoresizingMaskIntoConstraints = false
-        
-        // Create and configure the icon
-        let iconImageView = UIImageView()
-        iconImageView.translatesAutoresizingMaskIntoConstraints = false
-        iconImageView.image = UIImage(named: "google_logo")?.withRenderingMode(.alwaysTemplate)
-        iconImageView.tintColor = .firstColor
-        iconImageView.contentMode = .scaleAspectFit
-        
-        // Create and configure the label
-        let titleLabel = UILabel()
-        titleLabel.translatesAutoresizingMaskIntoConstraints = false
-        titleLabel.text = "Continue with Google"
-        titleLabel.font = .systemFont(ofSize: 18, weight: .bold)
-        titleLabel.textColor = .firstColor
-        
-        // Add subviews to container
-        containerView.addSubview(iconImageView)
-        containerView.addSubview(titleLabel)
-        
-        // Set up constraints for the container
-        NSLayoutConstraint.activate([
-            iconImageView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
-            iconImageView.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
-            iconImageView.widthAnchor.constraint(equalToConstant: 19),
-            iconImageView.heightAnchor.constraint(equalToConstant: 19),
-            
-            titleLabel.leadingAnchor.constraint(equalTo: iconImageView.trailingAnchor, constant: 8),
-            titleLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
-            titleLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor)
-        ])
-        
-        // Add container to button
-        button.addSubview(containerView)
-        
-        // Center the container in the button
-        NSLayoutConstraint.activate([
-            containerView.centerXAnchor.constraint(equalTo: button.centerXAnchor),
-            containerView.centerYAnchor.constraint(equalTo: button.centerYAnchor)
-        ])
-        
-        // Add tap action
+        setupSocialButton(button: button, iconName: "google_logo", title: "Continue with Google")
         button.addTarget(self, action: #selector(googleButtonTapped), for: .touchUpInside)
-        
         return button
     }()
     
@@ -151,60 +64,87 @@ final class ViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
-        setupAppleSignIn()
     }
     
     // MARK: - Setup
     private func setupUI() {
-        // set background using image
+        setupBackground()
+        setupConstraints()
+    }
+    
+    private func setupBackground() {
         let backgroundImage = UIImageView(frame: UIScreen.main.bounds)
         backgroundImage.image = UIImage(named: "splash")
-        backgroundImage.contentMode = .scaleAspectFill  // or .scaleAspectFit if you want full image visible
+        backgroundImage.contentMode = .scaleAspectFill
         backgroundImage.clipsToBounds = true
         view.addSubview(backgroundImage)
         view.sendSubviewToBack(backgroundImage)
         
-        // Add subviews
-        view.addSubview(sloganLabel)
-        view.addSubview(appleButton)
-        view.addSubview(googleButton)
-        view.addSubview(loadingView)
-        
-        // Setup constraints
+        [sloganLabel, appleButton, googleButton, loadingView].forEach {
+            view.addSubview($0)
+        }
+    }
+    
+    private func setupConstraints() {
         NSLayoutConstraint.activate([
-            // Slogan constraints
             sloganLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             sloganLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor),
             sloganLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             sloganLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
             
-            // Apple button constraints
             appleButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             appleButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
             appleButton.heightAnchor.constraint(equalToConstant: 50),
             appleButton.bottomAnchor.constraint(equalTo: googleButton.topAnchor, constant: -16),
             
-            // Google button constraints
             googleButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             googleButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
             googleButton.heightAnchor.constraint(equalToConstant: 50),
             googleButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
             
-            // Loading view constraints
             loadingView.topAnchor.constraint(equalTo: view.topAnchor),
             loadingView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             loadingView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             loadingView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
-        
-        // Add tap action for Apple button
-        appleButton.addTarget(self, action: #selector(appleButtonTapped), for: .touchUpInside)
     }
     
-    private func setupAppleSignIn() {
-        // Configure Apple Sign In button
-        let appleButton = ASAuthorizationAppleIDButton(type: .signIn, style: .black)
-        appleButton.addTarget(self, action: #selector(appleButtonTapped), for: .touchUpInside)
+    private func setupSocialButton(button: CustomGlassButton, iconName: String, title: String) {
+        let containerView = UIView()
+        containerView.translatesAutoresizingMaskIntoConstraints = false
+        
+        let iconImageView = UIImageView()
+        iconImageView.translatesAutoresizingMaskIntoConstraints = false
+        iconImageView.image = UIImage(named: iconName)?.withRenderingMode(.alwaysTemplate)
+        iconImageView.tintColor = .firstColor
+        iconImageView.contentMode = .scaleAspectFit
+        
+        let titleLabel = UILabel()
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        titleLabel.text = title
+        titleLabel.font = .systemFont(ofSize: 18, weight: .bold)
+        titleLabel.textColor = .firstColor
+        
+        containerView.addSubview(iconImageView)
+        containerView.addSubview(titleLabel)
+        
+        NSLayoutConstraint.activate([
+            iconImageView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            iconImageView.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            iconImageView.widthAnchor.constraint(equalToConstant: 24),
+            iconImageView.heightAnchor.constraint(equalToConstant: 24),
+            
+            titleLabel.leadingAnchor.constraint(equalTo: iconImageView.trailingAnchor, constant: 8),
+            titleLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            titleLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor)
+        ])
+        
+        button.addSubview(containerView)
+        
+        NSLayoutConstraint.activate([
+            containerView.centerXAnchor.constraint(equalTo: button.centerXAnchor),
+            containerView.centerYAnchor.constraint(equalTo: button.centerYAnchor)
+        ])
     }
     
     // MARK: - Helper Methods
@@ -216,37 +156,24 @@ final class ViewController: UIViewController {
             fatalError("Unable to generate nonce. SecRandomCopyBytes failed with OSStatus \(errorCode)")
         }
         
-        let charset: [Character] =
-        Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
-        
-        let nonce = randomBytes.map { byte in
-            // Pick a random character from the set, wrapping around if needed.
-            charset[Int(byte) % charset.count]
-        }
-        
-        return String(nonce)
+        let charset: [Character] = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
+        return String(randomBytes.map { charset[Int($0) % charset.count] })
     }
     
     private func sha256(_ input: String) -> String {
         let inputData = Data(input.utf8)
         let hashedData = SHA256.hash(data: inputData)
-        let hashString = hashedData.compactMap {
-            String(format: "%02x", $0)
-        }.joined()
-        
-        return hashString
+        return hashedData.compactMap { String(format: "%02x", $0) }.joined()
     }
     
     private func showLoading() {
         loadingView.isHidden = false
-        appleButton.isEnabled = false
-        googleButton.isEnabled = false
+        [appleButton, googleButton].forEach { $0.isEnabled = false }
     }
     
     private func hideLoading() {
         loadingView.isHidden = true
-        appleButton.isEnabled = true
-        googleButton.isEnabled = true
+        [appleButton, googleButton].forEach { $0.isEnabled = true }
     }
     
     private func checkExistingUserAndNavigate() {
@@ -256,32 +183,35 @@ final class ViewController: UIViewController {
             return
         }
         
-        // Check if user already exists in Firestore
         UserManager.shared.getUser(id: firebaseUser.uid) { [weak self] user, error in
             guard let self = self else { return }
-            
             self.hideLoading()
             
             if let error = error {
                 print("Error checking user: \(error.localizedDescription)")
+                self.showError(message: "Failed to check user status. Please try again.")
                 return
             }
             
             if let existingUser = user {
-                // User already exists, navigate to home screen
                 print("User already exists, navigating to home screen")
                 let homeViewController = HomeViewController()
                 let navigationController = UINavigationController(rootViewController: homeViewController)
                 navigationController.modalPresentationStyle = .fullScreen
                 self.present(navigationController, animated: true)
             } else {
-                // User doesn't exist, navigate to name registration
                 print("New user, navigating to name registration")
                 let nameRegistrationVC = NameRegistrationViewController()
                 nameRegistrationVC.modalPresentationStyle = .fullScreen
                 self.present(nameRegistrationVC, animated: true)
             }
         }
+    }
+    
+    private func showError(message: String) {
+        let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
     }
     
     // MARK: - Actions
@@ -292,11 +222,9 @@ final class ViewController: UIViewController {
             return
         }
         
-        // Create Google Sign In configuration object
         let config = GIDConfiguration(clientID: clientID)
         GIDSignIn.sharedInstance.configuration = config
         
-        // Start the sign in flow
         GIDSignIn.sharedInstance.signIn(withPresenting: self) { [weak self] result, error in
             guard let self = self else { return }
             
@@ -318,7 +246,6 @@ final class ViewController: UIViewController {
                 accessToken: authentication.accessToken.tokenString
             )
             
-            // Sign in to Firebase with Google credential
             Auth.auth().signIn(with: credential) { [weak self] authResult, error in
                 guard let self = self else { return }
                 
@@ -328,10 +255,7 @@ final class ViewController: UIViewController {
                     return
                 }
                 
-                // Successfully signed in
                 print("Successfully signed in with Google")
-                
-                // Check if user exists and navigate accordingly
                 self.checkExistingUserAndNavigate()
             }
         }
@@ -361,25 +285,19 @@ extension ViewController: ASAuthorizationControllerDelegate {
             guard let nonce = currentNonce else {
                 fatalError("Invalid state: A login callback was received, but no login request was sent.")
             }
-            guard let appleIDToken = appleIDCredential.identityToken else {
+            guard let appleIDToken = appleIDCredential.identityToken,
+                  let idTokenString = String(data: appleIDToken, encoding: .utf8) else {
                 print("Unable to fetch identity token")
                 hideLoading()
                 return
             }
-            guard let idTokenString = String(data: appleIDToken, encoding: .utf8) else {
-                print("Unable to serialize token string from data: \(appleIDToken.debugDescription)")
-                hideLoading()
-                return
-            }
             
-            // Initialize a Firebase credential
             let credential = OAuthProvider.credential(
                 withProviderID: "apple.com",
                 idToken: idTokenString,
                 rawNonce: nonce
             )
             
-            // Sign in with Firebase
             Auth.auth().signIn(with: credential) { [weak self] authResult, error in
                 guard let self = self else { return }
                 
@@ -389,10 +307,7 @@ extension ViewController: ASAuthorizationControllerDelegate {
                     return
                 }
                 
-                // Successfully signed in
                 print("Successfully signed in with Apple")
-                
-                // Check if user exists and navigate accordingly
                 self.checkExistingUserAndNavigate()
             }
         }
