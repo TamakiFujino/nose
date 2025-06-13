@@ -11,7 +11,7 @@ class CollectionPlacesViewController: UIViewController {
     private var places: [PlaceCollection.Place] = []
     private var sessionToken: GMSAutocompleteSessionToken?
     private var sharedFriendsCount: Int = 0
-    private var avatar3DView: Avatar3DView?
+    private var avatarViewController: Avatar3DViewController?
     private var isCompleted: Bool = false
 
     // MARK: - UI Components
@@ -185,31 +185,32 @@ class CollectionPlacesViewController: UIViewController {
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
 
-        setupAvatarPreview()
+        setupAvatarView()
     }
 
-    private func setupAvatarPreview() {
-        avatar3DView = Avatar3DView()
-        avatar3DView?.isPreviewMode = true
+    private func setupAvatarView() {
+        let avatarVC = Avatar3DViewController()
+        avatarVC.cameraPosition = SIMD3<Float>(0.0, 3.0, 7.0)
+        avatarViewController = avatarVC
 
-        addChild(avatar3DView!)
-        avatarContainer.addSubview(avatar3DView!.view)
-        avatar3DView!.view.translatesAutoresizingMaskIntoConstraints = false
+        addChild(avatarVC)
+        avatarContainer.addSubview(avatarVC.view)
+        avatarVC.view.translatesAutoresizingMaskIntoConstraints = false
         
         // Add loading indicator
         avatarContainer.addSubview(loadingIndicator)
         
         NSLayoutConstraint.activate([
-            avatar3DView!.view.topAnchor.constraint(equalTo: avatarContainer.topAnchor),
-            avatar3DView!.view.leadingAnchor.constraint(equalTo: avatarContainer.leadingAnchor),
-            avatar3DView!.view.trailingAnchor.constraint(equalTo: avatarContainer.trailingAnchor),
-            avatar3DView!.view.bottomAnchor.constraint(equalTo: avatarContainer.bottomAnchor),
+            avatarVC.view.topAnchor.constraint(equalTo: avatarContainer.topAnchor),
+            avatarVC.view.leadingAnchor.constraint(equalTo: avatarContainer.leadingAnchor),
+            avatarVC.view.trailingAnchor.constraint(equalTo: avatarContainer.trailingAnchor),
+            avatarVC.view.bottomAnchor.constraint(equalTo: avatarContainer.bottomAnchor),
             
             loadingIndicator.centerXAnchor.constraint(equalTo: avatarContainer.centerXAnchor),
             loadingIndicator.centerYAnchor.constraint(equalTo: avatarContainer.centerYAnchor)
         ])
         
-        avatar3DView!.didMove(toParent: self)
+        avatarVC.didMove(toParent: self)
         loadingIndicator.startAnimating()
         loadAvatarData()
     }
@@ -239,7 +240,7 @@ class CollectionPlacesViewController: UIViewController {
                     if let avatarData = CollectionAvatar.AvatarData.fromFirestoreDict(avatarData) {
                         DispatchQueue.main.async {
                             print("DEBUG: Loading avatar data into view controller")
-                            self?.avatar3DView?.loadAvatarData(avatarData)
+                            self?.avatarViewController?.loadAvatarData(avatarData)
                             self?.loadingIndicator.stopAnimating()
                         }
                     } else {
@@ -255,7 +256,7 @@ class CollectionPlacesViewController: UIViewController {
 
     // MARK: - Actions
     @objc private func avatarContainerTapped() {
-        showAvatarCustomization(for: collection.id, isOwner: collection.userId == Auth.auth().currentUser?.uid)
+        showAvatarCustomization()
     }
 
     @objc private func menuButtonTapped() {
@@ -512,11 +513,14 @@ class CollectionPlacesViewController: UIViewController {
             }
     }
 
-    private func showAvatarCustomization(for collectionId: String, isOwner: Bool) {
-        let customizationVC = AvatarCustomizationViewController(collectionId: collectionId, isOwner: isOwner)
-        customizationVC.delegate = self
-        customizationVC.modalPresentationStyle = .fullScreen
-        present(customizationVC, animated: true)
+    private func showAvatarCustomization() {
+        // If the current user is the collection's userId, they are the owner
+        let isOwner = collection.userId == Auth.auth().currentUser?.uid
+        let avatarVC = AvatarCustomViewController(collectionId: collection.id, isOwner: isOwner)
+        avatarVC.delegate = self
+        let navController = UINavigationController(rootViewController: avatarVC)
+        navController.modalPresentationStyle = .fullScreen
+        present(navController, animated: true)
     }
 }
 
@@ -705,10 +709,10 @@ extension CollectionPlacesViewController: ShareCollectionViewControllerDelegate 
     }
 }
 
-// MARK: - AvatarCustomizationViewControllerDelegate
-extension CollectionPlacesViewController: AvatarCustomizationViewControllerDelegate {
-    func avatarCustomizationViewController(_ controller: AvatarCustomizationViewController, didSaveAvatar avatarData: CollectionAvatar.AvatarData) {
-        avatar3DView?.loadAvatarData(avatarData)
+// MARK: - AvatarCustomViewControllerDelegate
+extension CollectionPlacesViewController: AvatarCustomViewControllerDelegate {
+    func avatarCustomViewController(_ controller: AvatarCustomViewController, didSaveAvatar avatarData: CollectionAvatar.AvatarData) {
+        avatarViewController?.loadAvatarData(avatarData)
         
         CollectionContainerManager.shared.updateAvatarData(avatarData, for: collection) { error in
             if let error = error {
