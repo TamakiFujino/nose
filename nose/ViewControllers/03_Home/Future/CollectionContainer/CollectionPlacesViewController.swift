@@ -237,7 +237,7 @@ class CollectionPlacesViewController: UIViewController {
                 
                 if let avatarData = snapshot?.data()?["avatarData"] as? [String: Any] {
                     print("DEBUG: Found avatar data: \(avatarData)")
-                    if let avatarData = CollectionAvatar.AvatarData.fromFirestoreDict(avatarData) {
+                    if let avatarData = CollectionAvatar.AvatarData.fromFirestoreDict(avatarData, version: .v1) {
                         DispatchQueue.main.async {
                             print("DEBUG: Loading avatar data into view controller")
                             self?.avatarViewController?.loadAvatarData(avatarData)
