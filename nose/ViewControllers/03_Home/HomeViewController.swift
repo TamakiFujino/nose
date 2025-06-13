@@ -2,6 +2,8 @@ import UIKit
 import GoogleMaps
 import CoreLocation
 import GooglePlaces
+import FirebaseFirestore
+import FirebaseAuth
 
 final class HomeViewController: UIViewController {
     
@@ -18,6 +20,7 @@ final class HomeViewController: UIViewController {
     private var searchResults: [GMSPlace] = []
     private var sessionToken: GMSAutocompleteSessionToken?
     private var currentDotIndex: Int = 1  // Track current dot index (0: left, 1: middle, 2: right)
+    private var collections: [PlaceCollection] = []
     
     // Add properties to track dots and line
     private var leftDot: UIView?
@@ -255,6 +258,24 @@ final class HomeViewController: UIViewController {
         mapManager = GoogleMapManager(mapView: mapView)
         searchManager = SearchManager()
         searchManager?.delegate = self
+        
+        // Load collections
+        loadCollections()
+    }
+    
+    private func loadCollections() {
+        guard let userId = Auth.auth().currentUser?.uid else { return }
+        
+        CollectionManager.shared.fetchCollections(userId: userId) { [weak self] result in
+            switch result {
+            case .success(let collections):
+                self?.collections = collections
+                print("✅ Loaded \(collections.count) collections")
+            case .failure(let error):
+                print("❌ Failed to load collections: \(error.localizedDescription)")
+                self?.showMessage(title: "Error", subtitle: "Failed to load collections")
+            }
+        }
     }
     
     // MARK: - Actions
@@ -315,6 +336,28 @@ final class HomeViewController: UIViewController {
     
     private func showPlaceOnMap(_ place: GMSPlace) {
         mapManager?.showPlaceOnMap(place)
+        
+        // Create a Place object from GMSPlace
+        let placeData: [String: Any] = [
+            "id": UUID().uuidString,
+            "name": place.name ?? "",
+            "latitude": place.coordinate.latitude,
+            "longitude": place.coordinate.longitude,
+            "address": place.formattedAddress ?? "",
+            "placeId": place.placeID ?? "",
+            "types": place.types ?? [],
+            "rating": place.rating,
+            "userRatingsTotal": place.userRatingsTotal,
+            "priceLevel": place.priceLevel.rawValue,
+            "photos": (place.photos ?? []).map { photo in
+                [
+                    "width": photo.maxSize.width,
+                    "height": photo.maxSize.height,
+                    "attributions": photo.attributions?.string ?? ""
+                ]
+            },
+            "createdAt": Timestamp(date: Date())
+        ]
         
         // Present place detail view controller
         let detailViewController = PlaceDetailViewController(place: place, isFromCollection: false)
