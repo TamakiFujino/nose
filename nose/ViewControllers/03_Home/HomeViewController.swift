@@ -5,6 +5,15 @@ import GooglePlaces
 
 final class HomeViewController: UIViewController {
     
+    // MARK: - Constants
+    private enum Constants {
+        static let standardPadding: CGFloat = 16
+        static let buttonSize: CGFloat = 55
+        static let searchResultsHeight: CGFloat = 200
+        static let messageViewPadding: CGFloat = 24
+        static let messageViewSpacing: CGFloat = 8
+    }
+    
     // MARK: - Properties
     private var searchResults: [GMSPlace] = []
     private var sessionToken: GMSAutocompleteSessionToken?
@@ -17,7 +26,7 @@ final class HomeViewController: UIViewController {
     private var dotLine: UIView?
     private var containerView: UIView?
     
-    private var mapManager: MapManager?
+    private var mapManager: GoogleMapManager?
     private var searchManager: SearchManager?
     
     // MARK: - UI Components
@@ -28,51 +37,43 @@ final class HomeViewController: UIViewController {
         return view
     }()
     
-    private lazy var dotSlider: DotSliderView = {
-        let view = DotSliderView()
+    private lazy var dotSlider: TimelineSliderView = {
+        let view = TimelineSliderView()
         view.translatesAutoresizingMaskIntoConstraints = false
         view.delegate = self
         return view
     }()
     
     private lazy var profileButton: IconButton = {
-        let button = IconButton(
+        IconButton(
             image: UIImage(systemName: "person.fill"),
             action: #selector(profileButtonTapped),
             target: self
         )
-        button.isHidden = false
-        return button
     }()
     
     private lazy var searchButton: IconButton = {
-        let button = IconButton(
+        IconButton(
             image: UIImage(systemName: "magnifyingglass"),
             action: #selector(searchButtonTapped),
             target: self
         )
-        button.isHidden = false
-        return button
     }()
     
     private lazy var sparkButton: IconButton = {
-        let button = IconButton(
+        IconButton(
             image: UIImage(systemName: "sparkle"),
             action: #selector(sparkButtonTapped),
             target: self
         )
-        button.isHidden = true
-        return button
     }()
     
     private lazy var boxButton: IconButton = {
-        let button = IconButton(
+        IconButton(
             image: UIImage(systemName: "archivebox.fill"),
             action: #selector(boxButtonTapped),
             target: self
         )
-        button.isHidden = true
-        return button
     }()
     
     private lazy var mapView: GMSMapView = {
@@ -110,13 +111,12 @@ final class HomeViewController: UIViewController {
     }()
     
     private lazy var currentLocationButton: IconButton = {
-        let button = IconButton(
+        IconButton(
             image: UIImage(systemName: "location.fill"),
             action: #selector(currentLocationButtonTapped),
             target: self,
-            size: 55
+            size: Constants.buttonSize
         )
-        return button
     }()
     
     private lazy var messageView: UIView = {
@@ -155,31 +155,28 @@ final class HomeViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
-        sessionToken = GMSAutocompleteSessionToken()
-        mapManager = MapManager(mapView: mapView)
-        searchManager = SearchManager()
-        searchManager?.delegate = self
+        setupManagers()
     }
     
     // MARK: - Setup
     private func setupUI() {
         view.backgroundColor = .white
+        setupSubviews()
+        setupConstraints()
+    }
+    
+    private func setupSubviews() {
+        [mapView, headerView, dotSlider, searchButton, sparkButton, boxButton,
+         searchResultsTableView, currentLocationButton, profileButton, messageView].forEach {
+            view.addSubview($0)
+        }
         
-        // Add subviews in correct order
-        view.addSubview(mapView)
-        view.addSubview(headerView)
-        view.addSubview(dotSlider)
-        view.addSubview(searchButton)
-        view.addSubview(sparkButton)
-        view.addSubview(boxButton)
-        view.addSubview(searchResultsTableView)
-        view.addSubview(currentLocationButton)
-        view.addSubview(profileButton)
-        view.addSubview(messageView)
-        messageView.addSubview(titleLabel)
-        messageView.addSubview(subtitleLabel)
-        
-        // Setup constraints
+        [titleLabel, subtitleLabel].forEach {
+            messageView.addSubview($0)
+        }
+    }
+    
+    private func setupConstraints() {
         NSLayoutConstraint.activate([
             // Map view constraints
             mapView.topAnchor.constraint(equalTo: view.topAnchor),
@@ -195,45 +192,45 @@ final class HomeViewController: UIViewController {
             
             // Dot slider constraints
             dotSlider.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            dotSlider.heightAnchor.constraint(equalToConstant: 55),
+            dotSlider.heightAnchor.constraint(equalToConstant: Constants.buttonSize),
             dotSlider.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             dotSlider.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             
             // Profile button constraints
             profileButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 65),
-            profileButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            profileButton.widthAnchor.constraint(equalToConstant: 55),
-            profileButton.heightAnchor.constraint(equalToConstant: 55),
+            profileButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: Constants.standardPadding),
+            profileButton.widthAnchor.constraint(equalToConstant: Constants.buttonSize),
+            profileButton.heightAnchor.constraint(equalToConstant: Constants.buttonSize),
             
             // Search button constraints
             searchButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 65),
-            searchButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            searchButton.widthAnchor.constraint(equalToConstant: 55),
-            searchButton.heightAnchor.constraint(equalToConstant: 55),
+            searchButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -Constants.standardPadding),
+            searchButton.widthAnchor.constraint(equalToConstant: Constants.buttonSize),
+            searchButton.heightAnchor.constraint(equalToConstant: Constants.buttonSize),
             
             // Box button constraints
             boxButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 65),
-            boxButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            boxButton.widthAnchor.constraint(equalToConstant: 55),
-            boxButton.heightAnchor.constraint(equalToConstant: 55),
+            boxButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -Constants.standardPadding),
+            boxButton.widthAnchor.constraint(equalToConstant: Constants.buttonSize),
+            boxButton.heightAnchor.constraint(equalToConstant: Constants.buttonSize),
             
             // Spark button constraints
             sparkButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 65),
-            sparkButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            sparkButton.widthAnchor.constraint(equalToConstant: 55),
-            sparkButton.heightAnchor.constraint(equalToConstant: 55),
+            sparkButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -Constants.standardPadding),
+            sparkButton.widthAnchor.constraint(equalToConstant: Constants.buttonSize),
+            sparkButton.heightAnchor.constraint(equalToConstant: Constants.buttonSize),
             
             // Search results table view constraints
             searchResultsTableView.topAnchor.constraint(equalTo: searchButton.bottomAnchor),
-            searchResultsTableView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            searchResultsTableView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            searchResultsTableView.heightAnchor.constraint(equalToConstant: 200),
+            searchResultsTableView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: Constants.standardPadding),
+            searchResultsTableView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -Constants.standardPadding),
+            searchResultsTableView.heightAnchor.constraint(equalToConstant: Constants.searchResultsHeight),
             
             // Current location button constraints
-            currentLocationButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            currentLocationButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -16),
-            currentLocationButton.widthAnchor.constraint(equalToConstant: 55),
-            currentLocationButton.heightAnchor.constraint(equalToConstant: 55),
+            currentLocationButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -Constants.standardPadding),
+            currentLocationButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -Constants.standardPadding),
+            currentLocationButton.widthAnchor.constraint(equalToConstant: Constants.buttonSize),
+            currentLocationButton.heightAnchor.constraint(equalToConstant: Constants.buttonSize),
             
             // Message view constraints
             messageView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -241,16 +238,23 @@ final class HomeViewController: UIViewController {
             messageView.widthAnchor.constraint(lessThanOrEqualTo: view.widthAnchor, constant: -64),
             
             // Title label constraints
-            titleLabel.topAnchor.constraint(equalTo: messageView.topAnchor, constant: 16),
-            titleLabel.leadingAnchor.constraint(equalTo: messageView.leadingAnchor, constant: 24),
-            titleLabel.trailingAnchor.constraint(equalTo: messageView.trailingAnchor, constant: -24),
+            titleLabel.topAnchor.constraint(equalTo: messageView.topAnchor, constant: Constants.messageViewPadding),
+            titleLabel.leadingAnchor.constraint(equalTo: messageView.leadingAnchor, constant: Constants.messageViewPadding),
+            titleLabel.trailingAnchor.constraint(equalTo: messageView.trailingAnchor, constant: -Constants.messageViewPadding),
             
             // Subtitle label constraints
-            subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
-            subtitleLabel.leadingAnchor.constraint(equalTo: messageView.leadingAnchor, constant: 24),
-            subtitleLabel.trailingAnchor.constraint(equalTo: messageView.trailingAnchor, constant: -24),
-            subtitleLabel.bottomAnchor.constraint(equalTo: messageView.bottomAnchor, constant: -16)
+            subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: Constants.messageViewSpacing),
+            subtitleLabel.leadingAnchor.constraint(equalTo: messageView.leadingAnchor, constant: Constants.messageViewPadding),
+            subtitleLabel.trailingAnchor.constraint(equalTo: messageView.trailingAnchor, constant: -Constants.messageViewPadding),
+            subtitleLabel.bottomAnchor.constraint(equalTo: messageView.bottomAnchor, constant: -Constants.messageViewPadding)
         ])
+    }
+    
+    private func setupManagers() {
+        sessionToken = GMSAutocompleteSessionToken()
+        mapManager = GoogleMapManager(mapView: mapView)
+        searchManager = SearchManager()
+        searchManager?.delegate = self
     }
     
     // MARK: - Actions
@@ -264,10 +268,8 @@ final class HomeViewController: UIViewController {
     }
     
     @objc private func searchButtonTapped() {
-        let searchViewController = SearchViewController()
-        searchViewController.delegate = self
-        searchViewController.modalPresentationStyle = .fullScreen
-        present(searchViewController, animated: true)
+        searchResultsTableView.isHidden = false
+        searchResultsTableView.reloadData()
     }
     
     @objc private func sparkButtonTapped() {
@@ -305,7 +307,7 @@ final class HomeViewController: UIViewController {
     
     // MARK: - Helper Methods
     private func searchPlaces(query: String) {
-        mapManager?.searchPlaces(query: query) { [weak self] results in
+        mapManager?.searchPlaces(query: query) { [weak self] (results: [GMSPlace]) in
             self?.searchResults = results
             self?.searchResultsTableView.reloadData()
         }
@@ -386,10 +388,9 @@ extension HomeViewController: SearchViewControllerDelegate {
     }
 }
 
-// MARK: - DotSliderViewDelegate
-extension HomeViewController: DotSliderViewDelegate {
-    func dotSliderView(_ view: DotSliderView, didSelectDotAt index: Int) {
-        // Update current index
+// MARK: - TimelineSliderViewDelegate
+extension HomeViewController: TimelineSliderViewDelegate {
+    func timelineSliderView(_ view: TimelineSliderView, didSelectDotAt index: Int) {
         currentDotIndex = index
         
         // Always show the map view
