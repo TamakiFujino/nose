@@ -1,5 +1,9 @@
 import UIKit
 
+protocol ColorPickerBottomSheetViewDelegate: AnyObject {
+    func colorPickerBottomSheetView(_ view: ColorPickerBottomSheetView, didSelectColor color: UIColor, forCategory category: String)
+}
+
 // MARK: - Model
 struct ColorModel: Codable {
     let name: String
@@ -8,6 +12,8 @@ struct ColorModel: Codable {
 
 class ColorPickerBottomSheetView: UIView {
     // MARK: - Properties
+    weak var delegate: ColorPickerBottomSheetViewDelegate?
+    private var currentCategory: String = "skin"
     var onColorSelected: ((UIColor) -> Void)?
     private var colors: [String] = [] // Store hex strings directly
     private var scrollView: UIScrollView!
@@ -166,7 +172,16 @@ class ColorPickerBottomSheetView: UIView {
         let hexColor = colors[sender.tag]
         if let color = UIColor(hex: hexColor) {
             selectButton(sender)
-            onColorSelected?(color)
+            handleColorSelection(color)
         }
+    }
+
+    // Update the color selection handler to use the delegate
+    private func handleColorSelection(_ color: UIColor) {
+        delegate?.colorPickerBottomSheetView(self, didSelectColor: color, forCategory: currentCategory)
+    }
+    
+    func setCurrentCategory(_ category: String) {
+        currentCategory = category
     }
 }
