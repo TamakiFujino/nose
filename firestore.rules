@@ -1,0 +1,309 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    // Check if the user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Check if the user is the owner of the document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Check if the user is friends with the document owner
+    function isFriend(userId) {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)/friends/$(userId));
+    }
+    
+    // Check if the collection is shared with the current user
+    function isSharedWith(userId) {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(userId)/collections/shared/shared/$(request.auth.uid));
+    }
+    
+    // Check if a specific collection is shared with the current user
+    function isCollectionSharedWithMe(collectionId) {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)/collections/shared/shared/$(collectionId));
+    }
+    
+    // Check if the user has a shared copy of a collection
+    function hasSharedCopy(collectionId) {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)/collections/shared/shared/$(collectionId));
+    }
+    
+    // Validate place data structure
+    function isValidPlaceData() {
+      let version = request.resource.data.version != null ? request.resource.data.version : 1;
+      return request.resource.data.keys().hasAll(['name', 'placeId', 'rating', 'latitude', 'longitude', 'version']) &&
+        request.resource.data.name is string &&
+        request.resource.data.placeId is string &&
+        request.resource.data.rating is number &&
+        request.resource.data.latitude is number &&
+        request.resource.data.longitude is number &&
+        request.resource.data.version is number &&
+        version >= 1;
+    }
+    
+    // Validate collection data structure
+    function isValidCollectionData() {
+      let version = request.resource.data.version != null ? request.resource.data.version : 1;
+      return request.resource.data.keys().hasAll(['name', 'userId', 'createdAt', 'isOwner', 'places', 'version']) &&
+        request.resource.data.name is string &&
+        request.resource.data.userId is string &&
+        request.resource.data.createdAt is timestamp &&
+        request.resource.data.isOwner is bool &&
+        request.resource.data.places is list &&
+        request.resource.data.version is number &&
+        version >= 1;
+    }
+    
+    // Validate avatar data structure
+    function isValidAvatarData() {
+      let version = request.resource.data.version != null ? request.resource.data.version : 1;
+      let avatarData = request.resource.data.avatarData;
+      
+      // Base validation for all versions
+      let baseValidation = request.resource.data.keys().hasAll(['avatarData', 'createdAt', 'isOwner', 'version']) &&
+        avatarData is map &&
+        request.resource.data.createdAt is timestamp &&
+        request.resource.data.isOwner is bool &&
+        request.resource.data.version is number &&
+        version >= 1;
+      
+      // Version-specific validation
+      return baseValidation && (
+        (version == 1 && 
+         avatarData.keys().hasAll(['selections']) &&
+         avatarData.selections is map) ||
+        (version == 2 && 
+         avatarData.keys().hasAll(['selections', 'customizations', 'customizationVersion']) &&
+         avatarData.selections is map &&
+         avatarData.customizations is map &&
+         avatarData.customizationVersion is number)
+      );
+    }
+    
+    // Validate profile avatar data structure
+    function isValidProfileAvatarData() {
+      let version = request.resource.data.version != null ? request.resource.data.version : 1;
+      let avatarData = request.resource.data.avatarData;
+      
+      // Base validation for all versions
+      let baseValidation = request.resource.data.keys().hasAll(['avatarData', 'updatedAt', 'version']) &&
+        avatarData is map &&
+        request.resource.data.updatedAt is timestamp &&
+        request.resource.data.version is number &&
+        version >= 1;
+      
+      // Version-specific validation
+      return baseValidation && (
+        (version == 1 && 
+         avatarData.keys().hasAll(['selections']) &&
+         avatarData.selections is map) ||
+        (version == 2 && 
+         avatarData.keys().hasAll(['selections', 'customizations', 'customizationVersion']) &&
+         avatarData.selections is map &&
+         avatarData.customizations is map &&
+         avatarData.customizationVersion is number)
+      );
+    }
+
+    // Collection group rules - These apply to all shared collections regardless of path
+    match /{path=**}/shared/{sharedCollectionId} {
+      // Anyone can read shared collections
+      allow read: if isAuthenticated();
+      // Allow updates if:
+      // 1. User is the owner of the collection
+      // 2. User has a shared copy of the collection
+      // 3. Version is maintained or incremented
+      allow update: if isAuthenticated() && (
+        isOwner(resource.data.userId) || 
+        hasSharedCopy(sharedCollectionId)
+      ) && (
+        request.resource.data.version == resource.data.version ||
+        request.resource.data.version == resource.data.version + 1
+      );
+    }
+
+    // Users collection rules
+    match /users/{userId} {
+      // Anyone can read user documents
+      allow read: if isAuthenticated();
+      // Only the user can write to their own document
+      allow write: if isOwner(userId);
+      
+      // Friends subcollection rules
+      match /friends/{friendId} {
+        // Anyone can read friends list
+        allow read: if isAuthenticated();
+        // Allow writes if:
+        // 1. User is the owner of the document
+        // 2. User is the friend being added/removed
+        allow write: if isAuthenticated() && (
+          isOwner(userId) || 
+          request.auth.uid == friendId
+        );
+      }
+      
+      // Blocked users subcollection rules
+      match /blocked/{blockedId} {
+        // Anyone can read blocked users list
+        allow read: if isAuthenticated();
+        // Only the user can modify their blocked users list
+        allow write: if isOwner(userId);
+      }
+      
+      // Collections subcollection rules
+      match /collections/{collectionId} {
+        // Anyone can read collections
+        allow read: if isAuthenticated();
+        // Only the owner can create/update/delete collections
+        allow create: if isAuthenticated() && isOwner(userId);
+        allow update: if isAuthenticated() && isOwner(userId) && (
+          request.resource.data.version == resource.data.version ||
+          request.resource.data.version == resource.data.version + 1
+        );
+        allow delete: if isAuthenticated() && isOwner(userId);
+        
+        // Owned collections rules
+        match /owned/{ownedCollectionId} {
+          // Allow read if:
+          // 1. User is the owner
+          // 2. Collection is shared with the user
+          allow read: if isAuthenticated() && (
+            isOwner(userId) || 
+            isCollectionSharedWithMe(ownedCollectionId)
+          );
+          // Only the owner can create owned collections
+          allow create: if isAuthenticated() && isOwner(userId);
+          // Allow updates if:
+          // 1. User is the owner
+          // 2. User has a shared copy of the collection
+          // 3. Version is maintained or incremented
+          allow update: if isAuthenticated() && (
+            isOwner(userId) || 
+            hasSharedCopy(ownedCollectionId)
+          ) && (
+            request.resource.data.version == resource.data.version ||
+            request.resource.data.version == resource.data.version + 1
+          );
+          // Only the owner can delete owned collections
+          allow delete: if isOwner(userId);
+          
+          // Double owned collections rules (nested owned collections)
+          match /owned/{doubleOwnedCollectionId} {
+            // Same rules as owned collections
+            allow read: if isAuthenticated() && (
+              isOwner(userId) || 
+              isCollectionSharedWithMe(doubleOwnedCollectionId)
+            );
+            allow create: if isAuthenticated() && isOwner(userId);
+            allow update: if isAuthenticated() && (
+              isOwner(userId) || 
+              hasSharedCopy(doubleOwnedCollectionId)
+            ) && (
+              request.resource.data.version == resource.data.version ||
+              request.resource.data.version == resource.data.version + 1
+            );
+            allow delete: if isOwner(userId);
+          }
+        }
+        
+        // Shared collections rules
+        match /shared/{sharedCollectionId} {
+          // Anyone can read shared collections
+          allow read: if isAuthenticated();
+          // Allow create if:
+          // 1. User is the owner
+          // 2. User is sharing the collection
+          allow create: if isAuthenticated() && (
+            isOwner(userId) || 
+            request.resource.data.sharedBy == request.auth.uid
+          );
+          // Allow updates if:
+          // 1. User is the owner
+          // 2. User has a shared copy of the collection
+          // 3. Version is maintained or incremented
+          allow update: if isAuthenticated() && (
+            isOwner(userId) || 
+            hasSharedCopy(sharedCollectionId)
+          ) && (
+            request.resource.data.version == resource.data.version ||
+            request.resource.data.version == resource.data.version + 1
+          );
+          // Allow delete if:
+          // 1. User is the owner
+          // 2. User is the one who shared the collection
+          allow delete: if isAuthenticated() && (
+            isOwner(userId) || 
+            request.auth.uid == resource.data.sharedBy
+          );
+          
+          // Double shared collections rules (nested shared collections)
+          match /shared/{doubleSharedCollectionId} {
+            // Same rules as shared collections
+            allow read: if isAuthenticated();
+            allow create: if isAuthenticated() && (
+              isOwner(userId) || 
+              request.resource.data.sharedBy == request.auth.uid ||
+              (request.resource.data.sharedBy == request.auth.uid && 
+               request.resource.data.userId == userId)
+            );
+            allow update: if isAuthenticated() && (
+              isOwner(userId) || 
+              hasSharedCopy(doubleSharedCollectionId)
+            ) && (
+              request.resource.data.version == resource.data.version ||
+              request.resource.data.version == resource.data.version + 1
+            );
+            allow delete: if isAuthenticated() && (
+              isOwner(userId) || 
+              request.auth.uid == resource.data.sharedBy
+            );
+          }
+        }
+      }
+      
+      // User's places subcollection
+      match /places/{placeId} {
+        allow read: if isAuthenticated();
+        allow write: if isOwner(userId) && isValidPlaceData();
+      }
+    }
+
+    // Root-level collections (shared or public collections)
+    match /collections/{collectionId} {
+      allow read: if isAuthenticated();
+      // Allow create if the user is owner
+      allow create: if isAuthenticated() && 
+        request.auth.uid == request.resource.data.userId && 
+        isValidCollectionData();
+      // Allow update if the user is owner, and either only avatarData is being changed, or the basic data is valid
+      allow update: if isAuthenticated() && 
+        request.auth.uid == resource.data.userId && (
+          // Allow updating only avatarData (and any other allowed fields you specify)
+          (request.resource.data.keys().hasOnly(['avatarData', 'isOwner', 'version']) && 
+           request.resource.data.avatarData is map && 
+           request.resource.data.isOwner is bool &&
+           request.resource.data.version is number &&
+           (request.resource.data.version == resource.data.version ||
+            request.resource.data.version == resource.data.version + 1)) ||
+          isValidCollectionData()
+        );
+      // Allow delete if the user is owner
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    // Public collections (if any)
+    match /publicCollections/{collectionId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Only allow writes through admin SDK
+    }
+  }
+}
