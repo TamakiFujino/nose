@@ -1,10 +1,6 @@
 import UIKit
 import FirebaseStorage
 
-protocol AvatarPartSelectorViewDelegate: AnyObject {
-    func avatarPartSelectorView(_ view: AvatarPartSelectorView, didSelectPart partName: String, forCategory category: String)
-}
-
 // MARK: - Model
 struct Model: Codable {
     let name: String
@@ -12,8 +8,7 @@ struct Model: Codable {
 
 class AvatarPartSelectorView: UIView {
     // MARK: - Properties
-    weak var delegate: AvatarPartSelectorViewDelegate?
-    private var avatar3DView: Avatar3DView?
+    weak var avatar3DViewController: Avatar3DViewController?
 
     private var parentTabBar: UISegmentedControl!
     private var childTabBar: UISegmentedControl!
@@ -445,11 +440,11 @@ class AvatarPartSelectorView: UIView {
             if selectedModels[category] == model.name {
                 // Deselect if tapping the same item
                 selectedModels[category] = nil
-                avatar3DView?.removeAvatarPart(for: category)
+                avatar3DViewController?.removeAvatarPart(for: category)
             } else {
                 // Select new item
                 selectedModels[category] = model.name
-                avatar3DView?.loadAvatarPart(named: model.name, category: category)
+                avatar3DViewController?.loadAvatarPart(named: model.name, category: category)
                 // Highlight the selected button
                 await MainActor.run {
                     sender.layer.borderColor = UIColor.fourthColor.cgColor
@@ -464,9 +459,9 @@ class AvatarPartSelectorView: UIView {
         let category = getCurrentCategory()
         // Call the efficient color change method on the 3D view controller
         if category == "skin" {
-            avatar3DView?.changeSkinColor(to: color)
+            avatar3DViewController?.changeSkinColor(to: color)
         } else {
-            avatar3DView?.changeAvatarPartColor(for: category, to: color)
+            avatar3DViewController?.changeAvatarPartColor(for: category, to: color)
         }
     }
 
@@ -511,20 +506,16 @@ class AvatarPartSelectorView: UIView {
     }
 
     private func removeCurrentModel(for category: String) {
-        guard let avatar3DView = avatar3DView else { return }
-        avatar3DView.removeAvatarPart(for: category)
+        guard let avatar3DViewController = avatar3DViewController else { return }
+        avatar3DViewController.removeAvatarPart(for: category)
     }
     
     private func applyColor(_ color: UIColor, to category: String) {
-        guard let avatar3DView = avatar3DView else { return }
+        guard let avatar3DViewController = avatar3DViewController else { return }
         if category == AvatarCategory.skin {
-            avatar3DView.changeSkinColor(to: color)
+            avatar3DViewController.changeSkinColor(to: color)
         } else {
-            avatar3DView.changeAvatarPartColor(for: category, to: color)
+            avatar3DViewController.changeAvatarPartColor(for: category, to: color)
         }
-    }
-
-    func setAvatar3DView(_ view: Avatar3DView) {
-        self.avatar3DView = view
     }
 }
