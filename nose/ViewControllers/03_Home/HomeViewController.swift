@@ -166,6 +166,14 @@ final class HomeViewController: UIViewController {
         view.backgroundColor = .white
         setupSubviews()
         setupConstraints()
+        
+        // Set initial button visibility based on default selected dot (middle dot, index 1)
+        searchButton.isHidden = false
+        searchButton.alpha = 1
+        sparkButton.isHidden = true
+        sparkButton.alpha = 0
+        boxButton.isHidden = true
+        boxButton.alpha = 0
     }
     
     private func setupSubviews() {
@@ -289,8 +297,13 @@ final class HomeViewController: UIViewController {
     }
     
     @objc private func searchButtonTapped() {
-        searchResultsTableView.isHidden = false
-        searchResultsTableView.reloadData()
+        let searchVC = SearchViewController()
+        searchVC.delegate = self
+        if let sheet = searchVC.sheetPresentationController {
+            sheet.detents = [.medium(), .large()]
+            sheet.prefersGrabberVisible = true
+        }
+        present(searchVC, animated: true)
     }
     
     @objc private func sparkButtonTapped() {
