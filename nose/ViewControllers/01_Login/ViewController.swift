@@ -24,7 +24,7 @@ final class ViewController: UIViewController {
     private lazy var appleButton: CustomGlassButton = {
         let button = CustomGlassButton()
         button.translatesAutoresizingMaskIntoConstraints = false
-        setupSocialButton(button: button, iconName: "apple.logo", title: "Continue with Apple")
+        setupSocialButton(button: button, iconName: "applelogo", title: "Continue with Apple")
         button.addTarget(self, action: #selector(appleButtonTapped), for: .touchUpInside)
         return button
     }()
@@ -115,7 +115,13 @@ final class ViewController: UIViewController {
         
         let iconImageView = UIImageView()
         iconImageView.translatesAutoresizingMaskIntoConstraints = false
-        iconImageView.image = UIImage(named: iconName)?.withRenderingMode(.alwaysTemplate)
+        if iconName == "applelogo" {
+            // Use SF Symbol for Apple logo
+            iconImageView.image = UIImage(systemName: "apple.logo")?.withRenderingMode(.alwaysTemplate)
+        } else {
+            // Use asset catalog for other icons
+            iconImageView.image = UIImage(named: iconName)?.withRenderingMode(.alwaysTemplate)
+        }
         iconImageView.tintColor = .firstColor
         iconImageView.contentMode = .scaleAspectFit
         
@@ -131,8 +137,8 @@ final class ViewController: UIViewController {
         NSLayoutConstraint.activate([
             iconImageView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
             iconImageView.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
-            iconImageView.widthAnchor.constraint(equalToConstant: 24),
-            iconImageView.heightAnchor.constraint(equalToConstant: 24),
+            iconImageView.widthAnchor.constraint(equalToConstant: iconName == "applelogo" ? 24 : 20),
+            iconImageView.heightAnchor.constraint(equalToConstant: iconName == "applelogo" ? 24 : 20),
             
             titleLabel.leadingAnchor.constraint(equalTo: iconImageView.trailingAnchor, constant: 8),
             titleLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
