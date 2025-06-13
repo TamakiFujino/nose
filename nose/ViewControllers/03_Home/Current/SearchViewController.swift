@@ -47,6 +47,11 @@ final class SearchViewController: UIViewController {
         super.viewDidLoad()
         setupUI()
         sessionToken = GMSAutocompleteSessionToken()
+        
+        // Make the view controller full screen
+        modalPresentationStyle = .fullScreen
+        // Prevent swipe-to-dismiss
+        isModalInPresentation = true
     }
     
     // MARK: - Setup
