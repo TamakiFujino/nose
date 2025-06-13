@@ -85,6 +85,185 @@ final class UserManager {
         }
     }
     
+    // MARK: - Friend Operations
+    
+    func getFriends(userId: String, completion: @escaping (Result<[User], Error>) -> Void) {
+        db.collection("users").document(userId)
+            .collection("friends").getDocuments { [weak self] snapshot, error in
+                guard let self = self else { return }
+                
+                if let error = error {
+                    completion(.failure(error))
+                    return
+                }
+                
+                let group = DispatchGroup()
+                var loadedFriends: [User] = []
+                
+                snapshot?.documents.forEach { document in
+                    group.enter()
+                    let friendId = document.documentID
+                    
+                    self.getUser(id: friendId) { user, error in
+                        defer { group.leave() }
+                        
+                        if let user = user {
+                            loadedFriends.append(user)
+                        }
+                    }
+                }
+                
+                group.notify(queue: .main) {
+                    completion(.success(loadedFriends))
+                }
+            }
+    }
+    
+    func getBlockedUsers(userId: String, completion: @escaping (Result<[User], Error>) -> Void) {
+        db.collection("users").document(userId)
+            .collection("blocked").getDocuments { [weak self] snapshot, error in
+                guard let self = self else { return }
+                
+                if let error = error {
+                    completion(.failure(error))
+                    return
+                }
+                
+                let group = DispatchGroup()
+                var loadedBlockedUsers: [User] = []
+                
+                snapshot?.documents.forEach { document in
+                    group.enter()
+                    let blockedUserId = document.documentID
+                    
+                    self.getUser(id: blockedUserId) { user, error in
+                        defer { group.leave() }
+                        
+                        if let user = user {
+                            loadedBlockedUsers.append(user)
+                        }
+                    }
+                }
+                
+                group.notify(queue: .main) {
+                    completion(.success(loadedBlockedUsers))
+                }
+            }
+    }
+    
+    func addFriend(currentUserId: String, friendId: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        // First check if the user is blocked
+        db.collection("users").document(currentUserId)
+            .collection("blocked").document(friendId).getDocument { [weak self] snapshot, error in
+                guard let self = self else { return }
+                
+                if let error = error {
+                    completion(.failure(error))
+                    return
+                }
+                
+                if snapshot?.exists == true {
+                    completion(.failure(NSError(domain: "UserManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "User is blocked"])))
+                    return
+                }
+                
+                // Check if the other user has blocked the current user
+                self.db.collection("users").document(friendId)
+                    .collection("blocked").document(currentUserId).getDocument { [weak self] snapshot, error in
+                        guard let self = self else { return }
+                        
+                        if let error = error {
+                            completion(.failure(error))
+                            return
+                        }
+                        
+                        if snapshot?.exists == true {
+                            completion(.failure(NSError(domain: "UserManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "User not found"])))
+                            return
+                        }
+                        
+                        // Add friend relationship
+                        self.db.collection("users").document(currentUserId)
+                            .collection("friends").document(friendId).setData([
+                                "addedAt": FieldValue.serverTimestamp()
+                            ]) { error in
+                                if let error = error {
+                                    completion(.failure(error))
+                                } else {
+                                    completion(.success(()))
+                                }
+                            }
+                    }
+            }
+    }
+    
+    func blockUser(currentUserId: String, blockedUserId: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        let batch = db.batch()
+        
+        // 1. Remove from friends list
+        let userAFriendsRef = db.collection("users")
+            .document(currentUserId)
+            .collection("friends")
+            .document(blockedUserId)
+        batch.deleteDocument(userAFriendsRef)
+        
+        // 2. Add to blocked list
+        let userABlockedRef = db.collection("users")
+            .document(currentUserId)
+            .collection("blocked")
+            .document(blockedUserId)
+        batch.setData([
+            "blockedAt": FieldValue.serverTimestamp()
+        ], forDocument: userABlockedRef)
+        
+        // 3. Remove from other user's friends list
+        let userBFriendsRef = db.collection("users")
+            .document(blockedUserId)
+            .collection("friends")
+            .document(currentUserId)
+        batch.deleteDocument(userBFriendsRef)
+        
+        // 4. Remove shared collections
+        let userBSharedCollectionsRef = db.collection("users")
+            .document(blockedUserId)
+            .collection("collections")
+            .document("shared")
+            .collection("shared")
+        
+        userBSharedCollectionsRef.whereField("sharedBy", isEqualTo: currentUserId)
+            .getDocuments { [weak self] snapshot, error in
+                guard let self = self else { return }
+                
+                if let error = error {
+                    completion(.failure(error))
+                    return
+                }
+                
+                snapshot?.documents.forEach { document in
+                    batch.deleteDocument(document.reference)
+                }
+                
+                batch.commit { error in
+                    if let error = error {
+                        completion(.failure(error))
+                    } else {
+                        completion(.success(()))
+                    }
+                }
+            }
+    }
+    
+    func unblockUser(currentUserId: String, blockedUserId: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        db.collection("users").document(currentUserId)
+            .collection("blocked").document(blockedUserId).delete { error in
+                if let error = error {
+                    completion(.failure(error))
+                } else {
+                    completion(.success(()))
+                }
+            }
+    }
+    
     // MARK: - Current User Operations
     
     func getCurrentUser(completion: @escaping (User?, Error?) -> Void) {
