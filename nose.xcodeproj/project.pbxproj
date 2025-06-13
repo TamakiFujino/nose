@@ -83,11 +83,6 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		4984014E2D886D9F00A6288A /* .github */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = .github;
-			sourceTree = "<group>";
-		};
 		49BE7E332DF41122006D6E16 /* FirebaseConfig */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = FirebaseConfig;
@@ -155,7 +150,6 @@
 				49BE80702DF4559C006D6E16 /* LaunchScreen.storyboard */,
 				49BE7FB62DF444A8006D6E16 /* InfoPlist */,
 				49BE7E332DF41122006D6E16 /* FirebaseConfig */,
-				4984014E2D886D9F00A6288A /* .github */,
 				4984E6CA2D731BC600A6288A /* Localizable.xcstrings */,
 				49E99BF82D3BE432000F3CE5 /* nose */,
 				49E99C0F2D3BE433000F3CE5 /* noseTests */,
@@ -218,7 +212,6 @@
 			buildConfigurationList = 49E99C1F2D3BE433000F3CE5 /* Build configuration list for PBXNativeTarget "nose" */;
 			buildPhases = (
 				19E4CCA204B3DDB8011C5C0C /* [CP] Check Pods Manifest.lock */,
-				4984FE652D87CD8800A6288A /* Run SwiftLint */,
 				49E99BF22D3BE432000F3CE5 /* Sources */,
 				49E99BF32D3BE432000F3CE5 /* Frameworks */,
 				49E99BF42D3BE432000F3CE5 /* Resources */,
@@ -232,7 +225,6 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				4984014E2D886D9F00A6288A /* .github */,
 				49BE7E332DF41122006D6E16 /* FirebaseConfig */,
 				49E99BF82D3BE432000F3CE5 /* nose */,
 			);
@@ -406,25 +398,6 @@
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
-		};
-		4984FE652D87CD8800A6288A /* Run SwiftLint */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "Run SwiftLint";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "export PATH=\"/opt/homebrew/bin:$PATH\"\nif which swiftlint >/dev/null; then\n    swiftlint --quiet --reporter xcode\nelse\n    echo \"warning: SwiftLint not installed, run 'brew install swiftlint'\"\nfi\n";
 		};
 		49BE6D8B2DF3048E006D6E16 /* Copy GoogleService-Info.plist */ = {
 			isa = PBXShellScriptBuildPhase;
