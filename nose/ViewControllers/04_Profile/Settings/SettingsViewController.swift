@@ -66,17 +66,22 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         if item == "App Version" {
             cell = UITableViewCell(style: .value1, reuseIdentifier: "versionCell")
             cell.textLabel?.text = item
-            if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
-                print("DEBUG: App version found: \(version)")
-                cell.detailTextLabel?.text = version
-                cell.detailTextLabel?.textColor = .secondaryLabel
-                cell.detailTextLabel?.accessibilityIdentifier = "app_version_text"
-            } else {
-                print("DEBUG: Could not find app version in Bundle.main.infoDictionary")
-                cell.detailTextLabel?.text = "Unknown"
-                cell.detailTextLabel?.textColor = .secondaryLabel
-                cell.detailTextLabel?.accessibilityIdentifier = "app_version_text"
-            }
+            
+            // Get version and build number
+            let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
+            let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
+            let fullVersion = "\(version) (\(build))"
+            
+            print("DEBUG: App version info:")
+            print("  - Version: \(version)")
+            print("  - Build: \(build)")
+            print("  - Full version: \(fullVersion)")
+            print("  - Bundle identifier: \(Bundle.main.bundleIdentifier ?? "Unknown")")
+            print("  - Info dictionary keys: \(Bundle.main.infoDictionary?.keys.joined(separator: ", ") ?? "None")")
+            
+            cell.detailTextLabel?.text = fullVersion
+            cell.detailTextLabel?.textColor = .secondaryLabel
+            cell.detailTextLabel?.accessibilityIdentifier = "app_version_text"
             cell.selectionStyle = .none  // Disable selection for app version cell
         } else {
             cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
