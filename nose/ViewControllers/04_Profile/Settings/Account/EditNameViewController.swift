@@ -2,10 +2,12 @@ import UIKit
 import FirebaseAuth
 import FirebaseFirestore
 
-class EditNameViewController: UIViewController {
+final class EditNameViewController: UIViewController {
     
     // MARK: - Constants
     private enum Constants {
+        static let standardPadding: CGFloat = 16
+        static let buttonHeight: CGFloat = 50
         static let minNameLength = 2
         static let maxNameLength = 30
     }
@@ -37,9 +39,12 @@ class EditNameViewController: UIViewController {
     }()
     
     private lazy var saveButton: UIButton = {
-        let button = CustomButton()
+        let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setTitle("Save", for: .normal)
+        button.backgroundColor = .systemBlue
+        button.setTitleColor(.white, for: .normal)
+        button.layer.cornerRadius = 8
         button.addTarget(self, action: #selector(saveButtonTapped), for: .touchUpInside)
         return button
     }()
@@ -54,47 +59,51 @@ class EditNameViewController: UIViewController {
     // MARK: - Setup
     private func setupUI() {
         view.backgroundColor = .firstColor
-        
         title = "Edit Name"
+        navigationController?.navigationBar.tintColor = .label
+        navigationItem.largeTitleDisplayMode = .never
         
-        view.addSubview(nameTextField)
-        view.addSubview(characterCountLabel)
-        view.addSubview(saveButton)
-        
+        setupSubviews()
+        setupConstraints()
+    }
+    
+    private func setupSubviews() {
+        [nameTextField, characterCountLabel, saveButton].forEach {
+            view.addSubview($0)
+        }
+    }
+    
+    private func setupConstraints() {
         NSLayoutConstraint.activate([
-            nameTextField.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 24),
-            nameTextField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            nameTextField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            nameTextField.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: Constants.standardPadding),
+            nameTextField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: Constants.standardPadding),
+            nameTextField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -Constants.standardPadding),
             
             characterCountLabel.topAnchor.constraint(equalTo: nameTextField.bottomAnchor, constant: 4),
             characterCountLabel.trailingAnchor.constraint(equalTo: nameTextField.trailingAnchor),
             
-            saveButton.topAnchor.constraint(equalTo: characterCountLabel.bottomAnchor, constant: 24),
-            saveButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            saveButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            saveButton.heightAnchor.constraint(equalToConstant: 50)
+            saveButton.topAnchor.constraint(equalTo: characterCountLabel.bottomAnchor, constant: Constants.standardPadding),
+            saveButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: Constants.standardPadding),
+            saveButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -Constants.standardPadding),
+            saveButton.heightAnchor.constraint(equalToConstant: Constants.buttonHeight)
         ])
     }
     
+    // MARK: - Data Loading
     private func loadCurrentName() {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
-        let db = Firestore.firestore()
         
-        db.collection("users").document(currentUserId).getDocument { [weak self] snapshot, error in
+        UserManager.shared.getUser(id: currentUserId) { [weak self] user, error in
             if let error = error {
-                print("Error loading user data: \(error.localizedDescription)")
+                self?.showAlert(title: "Error", message: "Failed to load user data: \(error.localizedDescription)")
                 return
             }
             
-            guard let snapshot = snapshot else {
-                print("No document found for current user")
-                return
-            }
-            
-            if let user = User.fromFirestore(snapshot) {
+            if let user = user {
                 DispatchQueue.main.async {
                     self?.currentName = user.name
                     self?.nameTextField.text = user.name
+                    self?.updateCharacterCount(for: user.name)
                 }
             }
         }
@@ -102,7 +111,11 @@ class EditNameViewController: UIViewController {
     
     // MARK: - Actions
     @objc private func textFieldDidChange(_ textField: UITextField) {
-        let count = textField.text?.count ?? 0
+        updateCharacterCount(for: textField.text)
+    }
+    
+    private func updateCharacterCount(for text: String?) {
+        let count = text?.count ?? 0
         characterCountLabel.text = "\(count)/\(Constants.maxNameLength)"
         
         // Update label color based on character count
@@ -134,29 +147,24 @@ class EditNameViewController: UIViewController {
         }
         
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
-        let db = Firestore.firestore()
         
-        // Update name in Firestore
-        db.collection("users").document(currentUserId).updateData([
-            "name": newName
-        ]) { [weak self] error in
-            guard let self = self else { return }
-            
-            DispatchQueue.main.async {
-                if let error = error {
-                    print("Error updating name: \(error.localizedDescription)")
-                    self.showAlert(title: "Error", message: "Failed to update name. Please try again.")
-                    return
+        UserManager.shared.updateUserName(userId: currentUserId, newName: newName) { [weak self] result in
+            switch result {
+            case .success:
+                DispatchQueue.main.async {
+                    self?.showAlert(title: "Success", message: "Name updated successfully") { _ in
+                        self?.navigationController?.popViewController(animated: true)
+                    }
                 }
-                
-                // Only navigate back after successful save
-                self.showAlert(title: "Success", message: "Name updated successfully") { _ in
-                    self.navigationController?.popViewController(animated: true)
+            case .failure(let error):
+                DispatchQueue.main.async {
+                    self?.showAlert(title: "Error", message: "Failed to update name: \(error.localizedDescription)")
                 }
             }
         }
     }
     
+    // MARK: - Helper Methods
     private func showAlert(title: String, message: String, completion: ((UIAlertAction) -> Void)? = nil) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default, handler: completion))

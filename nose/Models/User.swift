@@ -12,6 +12,7 @@ struct User: Codable {
     let createdAt: Date
     var lastLoginAt: Date
     var isDeleted: Bool
+    var deletedAt: Date?
     let version: Int
     
     // Additional user data fields
@@ -39,6 +40,7 @@ struct User: Codable {
         self.lastLoginAt = Date()
         self.preferences = UserPreferences()
         self.isDeleted = false
+        self.deletedAt = nil
         self.version = Self.currentVersion
         self.friends = []
         self.blockedUsers = []
@@ -46,7 +48,7 @@ struct User: Codable {
     
     // Convert to Firestore data
     func toFirestoreData() -> [String: Any] {
-        return [
+        var data: [String: Any] = [
             "id": id,
             "userId": userId,
             "name": name,
@@ -57,11 +59,17 @@ struct User: Codable {
                 "theme": preferences.theme,
                 "notifications": preferences.notifications
             ],
-            "status": isDeleted ? "deleted" : "active",
+            "isDeleted": isDeleted,
             "version": version,
             "friends": friends ?? [],
             "blockedUsers": blockedUsers ?? []
         ]
+        
+        if let deletedAt = deletedAt {
+            data["deletedAt"] = Timestamp(date: deletedAt)
+        }
+        
+        return data
     }
     
     // Create from Firestore document
@@ -75,6 +83,7 @@ struct User: Codable {
         
         let createdAt = (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
         let lastLoginAt = (data["lastLoginAt"] as? Timestamp)?.dateValue() ?? Date()
+        let deletedAt = (data["deletedAt"] as? Timestamp)?.dateValue()
         
         let preferencesData = data["preferences"] as? [String: Any] ?? [:]
         let preferences = UserPreferences(
@@ -85,7 +94,8 @@ struct User: Codable {
         
         var user = User(id: id, name: name, userId: userId)
         user.preferences = preferences
-        user.isDeleted = data["status"] as? String == "deleted"
+        user.isDeleted = data["isDeleted"] as? Bool ?? false
+        user.deletedAt = deletedAt
         user.friends = data["friends"] as? [String]
         user.blockedUsers = data["blockedUsers"] as? [String]
         return user
@@ -137,5 +147,16 @@ struct User: Codable {
     
     func isFriend(_ userId: String) -> Bool {
         return friends?.contains(userId) ?? false
+    }
+    
+    // MARK: - Account Operations
+    
+    mutating func markAsDeleted() {
+        isDeleted = true
+        deletedAt = Date()
+    }
+    
+    var isActive: Bool {
+        return !isDeleted
     }
 } 

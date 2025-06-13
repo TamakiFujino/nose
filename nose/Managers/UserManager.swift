@@ -85,6 +85,109 @@ final class UserManager {
         }
     }
     
+    // MARK: - Account Operations
+    
+    func updateUserName(userId: String, newName: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard !newName.isEmpty else {
+            completion(.failure(NSError(domain: "UserManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Name cannot be empty"])))
+            return
+        }
+        
+        db.collection("users").document(userId).updateData([
+            "name": newName,
+            "lastLoginAt": FieldValue.serverTimestamp(),
+            "version": User.currentVersion
+        ]) { error in
+            if let error = error {
+                completion(.failure(error))
+            } else {
+                completion(.success(()))
+            }
+        }
+    }
+    
+    func deleteAccount(userId: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        let batch = db.batch()
+        
+        // 1. Mark user as deleted
+        let userRef = db.collection("users").document(userId)
+        batch.updateData([
+            "isDeleted": true,
+            "deletedAt": FieldValue.serverTimestamp(),
+            "version": User.currentVersion
+        ], forDocument: userRef)
+        
+        // 2. Delete user's friends collection
+        let friendsRef = userRef.collection("friends")
+        friendsRef.getDocuments { [weak self] snapshot, error in
+            guard let self = self else { return }
+            
+            if let error = error {
+                completion(.failure(error))
+                return
+            }
+            
+            snapshot?.documents.forEach { document in
+                batch.deleteDocument(document.reference)
+            }
+            
+            // 3. Delete user's blocked collection
+            let blockedRef = userRef.collection("blocked")
+            blockedRef.getDocuments { [weak self] snapshot, error in
+                guard let self = self else { return }
+                
+                if let error = error {
+                    completion(.failure(error))
+                    return
+                }
+                
+                snapshot?.documents.forEach { document in
+                    batch.deleteDocument(document.reference)
+                }
+                
+                // 4. Delete user's collections
+                let collectionsRef = userRef.collection("collections")
+                collectionsRef.getDocuments { [weak self] snapshot, error in
+                    guard let self = self else { return }
+                    
+                    if let error = error {
+                        completion(.failure(error))
+                        return
+                    }
+                    
+                    snapshot?.documents.forEach { document in
+                        batch.deleteDocument(document.reference)
+                    }
+                    
+                    // Commit all changes
+                    batch.commit { error in
+                        if let error = error {
+                            completion(.failure(error))
+                        } else {
+                            // Delete Firebase Auth account
+                            Auth.auth().currentUser?.delete { error in
+                                if let error = error {
+                                    completion(.failure(error))
+                                } else {
+                                    completion(.success(()))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    func logout(completion: @escaping (Result<Void, Error>) -> Void) {
+        do {
+            try Auth.auth().signOut()
+            completion(.success(()))
+        } catch {
+            completion(.failure(error))
+        }
+    }
+    
     // MARK: - Friend Operations
     
     func getFriends(userId: String, completion: @escaping (Result<[User], Error>) -> Void) {
