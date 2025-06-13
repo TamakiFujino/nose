@@ -74,30 +74,189 @@ struct User: Codable {
     
     // Create from Firestore document
     static func fromFirestore(_ document: DocumentSnapshot) -> User? {
-        guard let data = document.data() else { return nil }
+        guard let data = document.data() else {
+            print("❌ No data found in Firestore document")
+            return nil
+        }
         
         let id = document.documentID
-        let userId = data["userId"] as? String ?? ""
-        let name = data["name"] as? String ?? ""
-        let version = data["version"] as? Int ?? 1
+        guard !id.isEmpty else {
+            print("❌ Empty document ID")
+            return nil
+        }
         
-        let createdAt = (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
-        let lastLoginAt = (data["lastLoginAt"] as? Timestamp)?.dateValue() ?? Date()
-        let deletedAt = (data["deletedAt"] as? Timestamp)?.dateValue()
+        // Track invalid fields for logging
+        var invalidFields: [String] = []
         
-        let preferencesData = data["preferences"] as? [String: Any] ?? [:]
-        let preferences = UserPreferences(
-            language: preferencesData["language"] as? String ?? "en",
-            theme: preferencesData["theme"] as? String ?? "light",
-            notifications: preferencesData["notifications"] as? Bool ?? true
-        )
+        // Handle userId with type safety
+        let userId: String
+        if let stringValue = data["userId"] as? String {
+            userId = stringValue
+        } else if let intValue = data["userId"] as? Int {
+            userId = String(intValue)
+        } else {
+            print("⚠️ Invalid userId type, using document ID")
+            userId = id
+            invalidFields.append("userId")
+        }
+        
+        // Handle name with type safety
+        let name: String
+        if let stringValue = data["name"] as? String {
+            name = stringValue
+        } else if let intValue = data["name"] as? Int {
+            name = String(intValue)
+        } else {
+            print("⚠️ Invalid name type, using default name")
+            name = "User \(id.prefix(6))"
+            invalidFields.append("name")
+        }
+        
+        // Handle version with type safety
+        let version: Int
+        if let intValue = data["version"] as? Int {
+            version = intValue
+        } else if let stringValue = data["version"] as? String,
+                  let intValue = Int(stringValue) {
+            version = intValue
+        } else {
+            print("⚠️ Invalid version type. Defaulting to 1")
+            version = 1
+            invalidFields.append("version")
+        }
+        
+        // Handle timestamps with type safety
+        let createdAt: Date
+        if let timestamp = data["createdAt"] as? Timestamp {
+            createdAt = timestamp.dateValue()
+        } else if let date = data["createdAt"] as? Date {
+            createdAt = date
+        } else {
+            print("⚠️ Invalid createdAt type. Using current date")
+            createdAt = Date()
+            invalidFields.append("createdAt")
+        }
+        
+        let lastLoginAt: Date
+        if let timestamp = data["lastLoginAt"] as? Timestamp {
+            lastLoginAt = timestamp.dateValue()
+        } else if let date = data["lastLoginAt"] as? Date {
+            lastLoginAt = date
+        } else {
+            print("⚠️ Invalid lastLoginAt type. Using current date")
+            lastLoginAt = Date()
+            invalidFields.append("lastLoginAt")
+        }
+        
+        let deletedAt: Date?
+        if let timestamp = data["deletedAt"] as? Timestamp {
+            deletedAt = timestamp.dateValue()
+        } else if let date = data["deletedAt"] as? Date {
+            deletedAt = date
+        } else {
+            deletedAt = nil
+        }
+        
+        // Handle preferences with type safety
+        var preferences = UserPreferences()
+        if let preferencesData = data["preferences"] as? [String: Any] {
+            if let language = preferencesData["language"] as? String {
+                preferences.language = language
+            } else if let language = preferencesData["language"] as? Int {
+                preferences.language = String(language)
+            } else {
+                print("⚠️ Invalid language type in preferences")
+                invalidFields.append("preferences.language")
+            }
+            
+            if let theme = preferencesData["theme"] as? String {
+                preferences.theme = theme
+            } else if let theme = preferencesData["theme"] as? Int {
+                preferences.theme = String(theme)
+            } else {
+                print("⚠️ Invalid theme type in preferences")
+                invalidFields.append("preferences.theme")
+            }
+            
+            if let notifications = preferencesData["notifications"] as? Bool {
+                preferences.notifications = notifications
+            } else if let notifications = preferencesData["notifications"] as? Int {
+                preferences.notifications = notifications != 0
+            } else if let notifications = preferencesData["notifications"] as? String {
+                preferences.notifications = notifications.lowercased() == "true"
+            } else {
+                print("⚠️ Invalid notifications type in preferences")
+                invalidFields.append("preferences.notifications")
+            }
+        } else {
+            print("⚠️ Invalid preferences structure")
+            invalidFields.append("preferences")
+        }
         
         var user = User(id: id, name: name, userId: userId)
         user.preferences = preferences
-        user.isDeleted = data["isDeleted"] as? Bool ?? false
+        
+        // Handle isDeleted with type safety
+        if let isDeleted = data["isDeleted"] as? Bool {
+            user.isDeleted = isDeleted
+        } else if let isDeleted = data["isDeleted"] as? Int {
+            user.isDeleted = isDeleted != 0
+        } else if let isDeleted = data["isDeleted"] as? String {
+            user.isDeleted = isDeleted.lowercased() == "true"
+        } else {
+            print("⚠️ Invalid isDeleted type. Defaulting to false")
+            user.isDeleted = false
+            invalidFields.append("isDeleted")
+        }
+        
         user.deletedAt = deletedAt
-        user.friends = data["friends"] as? [String]
-        user.blockedUsers = data["blockedUsers"] as? [String]
+        
+        // Handle arrays with type safety
+        if let friendsArray = data["friends"] as? [String] {
+            user.friends = friendsArray
+        } else if let friendsArray = data["friends"] as? [Int] {
+            user.friends = friendsArray.map { String($0) }
+        } else if let friendsArray = data["friends"] as? [Any] {
+            // Try to convert mixed array types
+            user.friends = friendsArray.compactMap { value in
+                if let stringValue = value as? String {
+                    return stringValue
+                } else if let intValue = value as? Int {
+                    return String(intValue)
+                }
+                return nil
+            }
+        } else {
+            print("⚠️ Invalid friends array type")
+            user.friends = []
+            invalidFields.append("friends")
+        }
+        
+        if let blockedArray = data["blockedUsers"] as? [String] {
+            user.blockedUsers = blockedArray
+        } else if let blockedArray = data["blockedUsers"] as? [Int] {
+            user.blockedUsers = blockedArray.map { String($0) }
+        } else if let blockedArray = data["blockedUsers"] as? [Any] {
+            // Try to convert mixed array types
+            user.blockedUsers = blockedArray.compactMap { value in
+                if let stringValue = value as? String {
+                    return stringValue
+                } else if let intValue = value as? Int {
+                    return String(intValue)
+                }
+                return nil
+            }
+        } else {
+            print("⚠️ Invalid blockedUsers array type")
+            user.blockedUsers = []
+            invalidFields.append("blockedUsers")
+        }
+        
+        if !invalidFields.isEmpty {
+            print("⚠️ User \(id) has \(invalidFields.count) invalid fields: \(invalidFields.joined(separator: ", "))")
+        }
+        
+        print("✅ Successfully parsed user: \(id)")
         return user
     }
     

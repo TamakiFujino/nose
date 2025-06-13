@@ -148,7 +148,15 @@ class AvatarCustomViewController: UIViewController {
             selections[category] = entry
         }
         
-        return CollectionAvatar.AvatarData(selections: selections)
+        // Create avatar data
+        let avatarData = CollectionAvatar.AvatarData(
+            selections: selections,
+            customizations: [:],
+            lastCustomizedAt: nil,
+            customizationVersion: 1
+        )
+        
+        return avatarData
     }
 
     private func saveAvatar() {
