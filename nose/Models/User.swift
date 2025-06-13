@@ -16,6 +16,8 @@ struct User: Codable {
     
     // Additional user data fields
     var preferences: UserPreferences
+    var friends: [String]?  // Array of friend user IDs
+    var blockedUsers: [String]?  // Array of blocked user IDs
     
     struct UserPreferences: Codable {
         var language: String
@@ -38,6 +40,8 @@ struct User: Codable {
         self.preferences = UserPreferences()
         self.isDeleted = false
         self.version = Self.currentVersion
+        self.friends = []
+        self.blockedUsers = []
     }
     
     // Convert to Firestore data
@@ -54,7 +58,9 @@ struct User: Codable {
                 "notifications": preferences.notifications
             ],
             "status": isDeleted ? "deleted" : "active",
-            "version": version
+            "version": version,
+            "friends": friends ?? [],
+            "blockedUsers": blockedUsers ?? []
         ]
     }
     
@@ -80,6 +86,8 @@ struct User: Codable {
         var user = User(id: id, name: name, userId: userId)
         user.preferences = preferences
         user.isDeleted = data["status"] as? String == "deleted"
+        user.friends = data["friends"] as? [String]
+        user.blockedUsers = data["blockedUsers"] as? [String]
         return user
     }
     
@@ -96,5 +104,38 @@ struct User: Codable {
         // Update version
         migratedData["version"] = currentVersion
         return migratedData
+    }
+    
+    // MARK: - Friend Operations
+    
+    mutating func addFriend(_ friendId: String) {
+        if friends == nil {
+            friends = []
+        }
+        friends?.append(friendId)
+    }
+    
+    mutating func removeFriend(_ friendId: String) {
+        friends?.removeAll { $0 == friendId }
+    }
+    
+    mutating func blockUser(_ userId: String) {
+        if blockedUsers == nil {
+            blockedUsers = []
+        }
+        blockedUsers?.append(userId)
+        removeFriend(userId)
+    }
+    
+    mutating func unblockUser(_ userId: String) {
+        blockedUsers?.removeAll { $0 == userId }
+    }
+    
+    func isBlocked(_ userId: String) -> Bool {
+        return blockedUsers?.contains(userId) ?? false
+    }
+    
+    func isFriend(_ userId: String) -> Bool {
+        return friends?.contains(userId) ?? false
     }
 } 
