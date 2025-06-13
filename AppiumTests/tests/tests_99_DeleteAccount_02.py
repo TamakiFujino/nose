@@ -41,7 +41,7 @@ class DeleteAccountUserBTest(BaseTest):
         element.send_keys(shared_data.load_user_id('user_a'))
         # enter
         element.send_keys(Keys.RETURN)
-        time.sleep(1)
+        time.sleep(2)
         # tap "Add Friend"
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'add_friend_button')
         element.click()

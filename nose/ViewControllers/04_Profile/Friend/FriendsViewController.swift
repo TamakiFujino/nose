@@ -2,13 +2,7 @@ import UIKit
 import FirebaseAuth
 import FirebaseFirestore
 
-final class FriendsViewController: UIViewController {
-    
-    // MARK: - Constants
-    private enum Constants {
-        static let standardPadding: CGFloat = 16
-        static let cellHeight: CGFloat = 60
-    }
+class FriendsViewController: UIViewController {
     
     // MARK: - Properties
     private var friends: [User] = []
@@ -45,28 +39,26 @@ final class FriendsViewController: UIViewController {
     
     // MARK: - Setup
     private func setupUI() {
+        // set background color
         view.backgroundColor = .firstColor
+        
         title = "Friends"
+        
+        // Configure navigation bar
         navigationController?.navigationBar.tintColor = .label
         navigationItem.largeTitleDisplayMode = .never
         
-        setupSubviews()
-        setupConstraints()
-    }
-    
-    private func setupSubviews() {
-        [segmentedControl, tableView].forEach {
-            view.addSubview($0)
-        }
-    }
-    
-    private func setupConstraints() {
+        // Add subviews
+        view.addSubview(segmentedControl)
+        view.addSubview(tableView)
+        
+        // Setup constraints
         NSLayoutConstraint.activate([
-            segmentedControl.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: Constants.standardPadding),
-            segmentedControl.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: Constants.standardPadding),
-            segmentedControl.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -Constants.standardPadding),
+            segmentedControl.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
+            segmentedControl.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            segmentedControl.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             
-            tableView.topAnchor.constraint(equalTo: segmentedControl.bottomAnchor, constant: Constants.standardPadding),
+            tableView.topAnchor.constraint(equalTo: segmentedControl.bottomAnchor, constant: 16),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
@@ -75,35 +67,105 @@ final class FriendsViewController: UIViewController {
     
     // MARK: - Data Loading
     private func loadFriends() {
-        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        guard let currentUserId = Auth.auth().currentUser?.uid else {
+            print("DEBUG: No current user found")
+            return
+        }
+        let db = Firestore.firestore()
         
-        UserManager.shared.getFriends(userId: currentUserId) { [weak self] result in
-            switch result {
-            case .success(let friends):
-                DispatchQueue.main.async {
-                    self?.friends = friends
+        print("DEBUG: Loading friends for user: \(currentUserId)")
+        
+        // Load friends
+        db.collection("users").document(currentUserId)
+            .collection("friends").getDocuments { [weak self] snapshot, error in
+                if let error = error {
+                    print("DEBUG: Error loading friends: \(error.localizedDescription)")
+                    return
+                }
+                
+                print("DEBUG: Found \(snapshot?.documents.count ?? 0) friend documents")
+                
+                // Create a dispatch group to handle multiple async operations
+                let group = DispatchGroup()
+                var loadedFriends: [User] = []
+                
+                snapshot?.documents.forEach { document in
+                    group.enter()
+                    let friendId = document.documentID
+                    print("DEBUG: Fetching full user data for friend ID: \(friendId)")
+                    
+                    // Fetch the complete user data from the users collection
+                    db.collection("users").document(friendId).getDocument { userSnapshot, userError in
+                        defer { group.leave() }
+                        
+                        if let userError = userError {
+                            print("DEBUG: Error fetching user data: \(userError.localizedDescription)")
+                            return
+                        }
+                        
+                        if let userSnapshot = userSnapshot, let user = User.fromFirestore(userSnapshot) {
+                            print("DEBUG: Successfully loaded friend: \(user.name) with ID: \(user.id)")
+                            loadedFriends.append(user)
+                        } else {
+                            print("DEBUG: Failed to parse user document for ID: \(friendId)")
+                        }
+                    }
+                }
+                
+                group.notify(queue: .main) {
+                    print("DEBUG: All friends loaded, total: \(loadedFriends.count)")
+                    self?.friends = loadedFriends
                     if self?.currentSegment == 0 {
                         self?.tableView.reloadData()
                     }
                 }
-            case .failure(let error):
-                print("Error loading friends: \(error.localizedDescription)")
             }
-        }
         
-        UserManager.shared.getBlockedUsers(userId: currentUserId) { [weak self] result in
-            switch result {
-            case .success(let blockedUsers):
-                DispatchQueue.main.async {
-                    self?.blockedUsers = blockedUsers
+        // Load blocked users
+        db.collection("users").document(currentUserId)
+            .collection("blocked").getDocuments { [weak self] snapshot, error in
+                if let error = error {
+                    print("DEBUG: Error loading blocked users: \(error.localizedDescription)")
+                    return
+                }
+                
+                print("DEBUG: Found \(snapshot?.documents.count ?? 0) blocked user documents")
+                
+                // Create a dispatch group to handle multiple async operations
+                let group = DispatchGroup()
+                var loadedBlockedUsers: [User] = []
+                
+                snapshot?.documents.forEach { document in
+                    group.enter()
+                    let blockedUserId = document.documentID
+                    print("DEBUG: Fetching full user data for blocked user ID: \(blockedUserId)")
+                    
+                    // Fetch the complete user data from the users collection
+                    db.collection("users").document(blockedUserId).getDocument { userSnapshot, userError in
+                        defer { group.leave() }
+                        
+                        if let userError = userError {
+                            print("DEBUG: Error fetching user data: \(userError.localizedDescription)")
+                            return
+                        }
+                        
+                        if let userSnapshot = userSnapshot, let user = User.fromFirestore(userSnapshot) {
+                            print("DEBUG: Successfully loaded blocked user: \(user.name) with ID: \(user.id)")
+                            loadedBlockedUsers.append(user)
+                        } else {
+                            print("DEBUG: Failed to parse user document for ID: \(blockedUserId)")
+                        }
+                    }
+                }
+                
+                group.notify(queue: .main) {
+                    print("DEBUG: All blocked users loaded, total: \(loadedBlockedUsers.count)")
+                    self?.blockedUsers = loadedBlockedUsers
                     if self?.currentSegment == 1 {
                         self?.tableView.reloadData()
                     }
                 }
-            case .failure(let error):
-                print("Error loading blocked users: \(error.localizedDescription)")
             }
-        }
     }
     
     // MARK: - Actions
@@ -112,7 +174,298 @@ final class FriendsViewController: UIViewController {
         tableView.reloadData()
     }
     
-    private func showUserActions(for user: User) {
+    private func addFriend(withEmail email: String) {
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        let db = Firestore.firestore()
+        
+        // First check if the user is in blocked list
+        db.collection("users").document(currentUserId)
+            .collection("blocked").getDocuments { [weak self] snapshot, error in
+                if let error = error {
+                    print("Error checking blocked users: \(error.localizedDescription)")
+                    return
+                }
+                
+                // Find user by email
+                db.collection("users").whereField("email", isEqualTo: email).getDocuments { [weak self] snapshot, error in
+                    if let error = error {
+                        print("Error finding user: \(error.localizedDescription)")
+                        return
+                    }
+                    
+                    guard let userDoc = snapshot?.documents.first else {
+                        DispatchQueue.main.async {
+                            self?.showAlert(title: "Error", message: "User not found")
+                        }
+                        return
+                    }
+                    
+                    let friendId = userDoc.documentID
+                    
+                    // Check if the user is blocked
+                    if let blockedDoc = snapshot?.documents.first(where: { $0.documentID == friendId }) {
+                        DispatchQueue.main.async {
+                            self?.showAlert(
+                                title: "Cannot Add Friend",
+                                message: "You have blocked this user. Please unblock them first to add them as a friend."
+                            )
+                        }
+                        return
+                    }
+                    
+                    // Check if the other user has blocked the current user
+                    db.collection("users").document(friendId)
+                        .collection("blocked").document(currentUserId).getDocument { [weak self] snapshot, error in
+                            if let error = error {
+                                print("Error checking if blocked: \(error.localizedDescription)")
+                                return
+                            }
+                            
+                            if snapshot?.exists == true {
+                                DispatchQueue.main.async {
+                                    self?.showAlert(title: "Error", message: "User not found")
+                                }
+                                return
+                            }
+                            
+                            // Add friend relationship
+                            db.collection("users").document(currentUserId)
+                                .collection("friends").document(friendId).setData([
+                                    "addedAt": FieldValue.serverTimestamp()
+                                ]) { error in
+                                    if let error = error {
+                                        print("Error adding friend: \(error.localizedDescription)")
+                                        return
+                                    }
+                                    
+                                    DispatchQueue.main.async {
+                                        self?.loadFriends()
+                                        self?.showAlert(title: "Success", message: "Friend added successfully")
+                                    }
+                                }
+                        }
+                }
+            }
+    }
+    
+    private func showAlert(title: String, message: String) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
+    }
+    
+    private func blockUser(_ user: User) {
+        // Show confirmation alert
+        let alert = UIAlertController(
+            title: "Are you sure you block user \"\(user.name)\"?",
+            message: "You will not be able to share a collection or add as a friend",
+            preferredStyle: .alert
+        )
+        
+        // Add cancel action
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        // Add block action
+        alert.addAction(UIAlertAction(title: "Block", style: .destructive) { [weak self] _ in
+            guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+            let db = Firestore.firestore()
+            
+            // Create a batch to handle all operations atomically
+            let batch = db.batch()
+            
+            // 1. Remove User B from User A's friends list
+            let userAFriendsRef = db.collection("users")
+                .document(currentUserId)
+                .collection("friends")
+                .document(user.id)
+            batch.deleteDocument(userAFriendsRef)
+            
+            // 2. Add User B to User A's blocked list
+            let userABlockedRef = db.collection("users")
+                .document(currentUserId)
+                .collection("blocked")
+                .document(user.id)
+            batch.setData([
+                "blockedAt": FieldValue.serverTimestamp()
+            ], forDocument: userABlockedRef)
+            
+            // 3. Remove User A from User B's friends list
+            let userBFriendsRef = db.collection("users")
+                .document(user.id)
+                .collection("friends")
+                .document(currentUserId)
+            batch.deleteDocument(userBFriendsRef)
+            
+            // 4. Remove shared collections from User B's data
+            let userBSharedCollectionsRef = db.collection("users")
+                .document(user.id)
+                .collection("collections")
+                .document("shared")
+                .collection("shared")
+            
+            // Get all collections shared by User A
+            userBSharedCollectionsRef.whereField("sharedBy", isEqualTo: currentUserId)
+                .getDocuments { snapshot, error in
+                    if let error = error {
+                        print("DEBUG: Error getting shared collections: \(error.localizedDescription)")
+                        return
+                    }
+                    
+                    // Add delete operations for each shared collection to the batch
+                    snapshot?.documents.forEach { document in
+                        batch.deleteDocument(document.reference)
+                    }
+                    
+                    // 5. Remove User B from sharedWith in User A's collections
+                    let userACollectionsRef = db.collection("users")
+                        .document(currentUserId)
+                        .collection("collections")
+                        .document("owned")
+                        .collection("owned")
+                    
+                    userACollectionsRef.whereField("sharedWith", arrayContains: user.id)
+                        .getDocuments { snapshot, error in
+                            if let error = error {
+                                print("DEBUG: Error getting collections with sharedWith: \(error.localizedDescription)")
+                                return
+                            }
+                            
+                            // Update each collection to remove the blocked user from sharedWith
+                            snapshot?.documents.forEach { document in
+                                let collectionRef = document.reference
+                                batch.updateData([
+                                    "sharedWith": FieldValue.arrayRemove([user.id])
+                                ], forDocument: collectionRef)
+                            }
+                            
+                            // 6. Remove collections shared by User B from User A's shared collections
+                            let userASharedCollectionsRef = db.collection("users")
+                                .document(currentUserId)
+                                .collection("collections")
+                                .document("shared")
+                                .collection("shared")
+                            
+                            userASharedCollectionsRef.whereField("sharedBy", isEqualTo: user.id)
+                                .getDocuments { snapshot, error in
+                                    if let error = error {
+                                        print("DEBUG: Error getting collections shared by blocked user: \(error.localizedDescription)")
+                                        return
+                                    }
+                                    
+                                    // Delete each collection shared by the blocked user
+                                    snapshot?.documents.forEach { document in
+                                        batch.deleteDocument(document.reference)
+                                    }
+                                    
+                                    // Commit all changes
+                                    batch.commit { error in
+                                        if let error = error {
+                                            print("DEBUG: Error blocking user: \(error.localizedDescription)")
+                                            DispatchQueue.main.async {
+                                                self?.showAlert(title: "Error", message: "Failed to block user")
+                                            }
+                                            return
+                                        }
+                                        
+                                        print("DEBUG: Successfully blocked user and updated both sides")
+                                        DispatchQueue.main.async {
+                                            self?.loadFriends()
+                                        }
+                                    }
+                                }
+                        }
+                }
+        })
+        
+        present(alert, animated: true)
+    }
+    
+    private func unblockUser(_ user: User) {
+        // Show confirmation alert
+        let alert = UIAlertController(
+            title: "Are you sure you unblock user \"\(user.name)\"?",
+            message: "\(user.name) will be able to add you as a friend with your User ID",
+            preferredStyle: .alert
+        )
+        
+        // Add cancel action
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        // Add unblock action
+        alert.addAction(UIAlertAction(title: "Unblock", style: .default) { [weak self] _ in
+            guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+            let db = Firestore.firestore()
+            
+            // Remove from blocked
+            db.collection("users").document(currentUserId)
+                .collection("blocked").document(user.id).delete { error in
+                    if let error = error {
+                        print("DEBUG: Error unblocking user: \(error.localizedDescription)")
+                        DispatchQueue.main.async {
+                            self?.showAlert(title: "Error", message: "Failed to unblock user")
+                        }
+                        return
+                    }
+                    
+                    print("DEBUG: Successfully unblocked user")
+                    DispatchQueue.main.async {
+                        self?.loadFriends()
+                    }
+                }
+        })
+        
+        present(alert, animated: true)
+    }
+}
+
+// MARK: - UITableViewDelegate & UITableViewDataSource
+extension FriendsViewController: UITableViewDelegate, UITableViewDataSource {
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        let count = currentSegment == 0 ? friends.count : blockedUsers.count
+        print("DEBUG: numberOfRowsInSection called. Current segment: \(currentSegment), count: \(count)")
+        return count
+    }
+    
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        print("DEBUG: cellForRowAt called for index: \(indexPath.row)")
+        let cell = tableView.dequeueReusableCell(withIdentifier: "UserCell", for: indexPath)
+        let user = currentSegment == 0 ? friends[indexPath.row] : blockedUsers[indexPath.row]
+        
+        print("DEBUG: User data - name: \(user.name), id: \(user.id)")
+        
+        var content = cell.defaultContentConfiguration()
+        content.text = user.name
+        content.textProperties.color = .label
+        content.textProperties.font = .systemFont(ofSize: 17, weight: .medium)
+        
+        // Configure cell background
+        cell.backgroundColor = .clear
+        cell.selectionStyle = .none
+        
+        // Add a custom background view for the cell
+        let backgroundView = UIView()
+        cell.backgroundView = backgroundView
+        
+        // Add a custom selected background view
+        let selectedBackgroundView = UIView()
+        selectedBackgroundView.backgroundColor = UIColor.white.withAlphaComponent(0.2)
+        cell.selectedBackgroundView = selectedBackgroundView
+        
+        cell.contentConfiguration = content
+        
+        // Debug the cell's content after configuration
+        if let configuredContent = cell.contentConfiguration as? UIListContentConfiguration {
+            print("DEBUG: Cell configured with text: \(configuredContent.text ?? "nil")")
+            print("DEBUG: Cell text color: \(configuredContent.textProperties.color)")
+        }
+        
+        return cell
+    }
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: true)
+        let user = currentSegment == 0 ? friends[indexPath.row] : blockedUsers[indexPath.row]
+        
         let alert = UIAlertController(title: user.name, message: nil, preferredStyle: .actionSheet)
         
         if currentSegment == 0 {
@@ -129,101 +482,24 @@ final class FriendsViewController: UIViewController {
         present(alert, animated: true)
     }
     
-    private func blockUser(_ user: User) {
-        let alert = UIAlertController(
-            title: "Block User",
-            message: "Are you sure you want to block \"\(user.name)\"? You will not be able to share collections or add them as a friend.",
-            preferredStyle: .alert
-        )
+    private func unfriendUser(_ user: User) {
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        let db = Firestore.firestore()
         
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        alert.addAction(UIAlertAction(title: "Block", style: .destructive) { [weak self] _ in
-            guard let currentUserId = Auth.auth().currentUser?.uid else { return }
-            
-            UserManager.shared.blockUser(currentUserId: currentUserId, blockedUserId: user.id) { result in
-                switch result {
-                case .success:
-                    DispatchQueue.main.async {
-                        self?.loadFriends()
-                    }
-                case .failure(let error):
-                    DispatchQueue.main.async {
-                        self?.showAlert(title: "Error", message: error.localizedDescription)
-                    }
+        print("DEBUG: Unfriending user: \(user.name) with ID: \(user.id)")
+        
+        // Remove from friends
+        db.collection("users").document(currentUserId)
+            .collection("friends").document(user.id).delete { [weak self] error in
+                if let error = error {
+                    print("DEBUG: Error unfriending user: \(error.localizedDescription)")
+                    return
+                }
+                
+                print("DEBUG: Successfully unfriended user")
+                DispatchQueue.main.async {
+                    self?.loadFriends()
                 }
             }
-        })
-        
-        present(alert, animated: true)
-    }
-    
-    private func unblockUser(_ user: User) {
-        let alert = UIAlertController(
-            title: "Unblock User",
-            message: "Are you sure you want to unblock \"\(user.name)\"? They will be able to add you as a friend with your User ID.",
-            preferredStyle: .alert
-        )
-        
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        alert.addAction(UIAlertAction(title: "Unblock", style: .default) { [weak self] _ in
-            guard let currentUserId = Auth.auth().currentUser?.uid else { return }
-            
-            UserManager.shared.unblockUser(currentUserId: currentUserId, blockedUserId: user.id) { result in
-                switch result {
-                case .success:
-                    DispatchQueue.main.async {
-                        self?.loadFriends()
-                    }
-                case .failure(let error):
-                    DispatchQueue.main.async {
-                        self?.showAlert(title: "Error", message: error.localizedDescription)
-                    }
-                }
-            }
-        })
-        
-        present(alert, animated: true)
-    }
-    
-    private func showAlert(title: String, message: String) {
-        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
-        present(alert, animated: true)
-    }
-}
-
-// MARK: - UITableViewDelegate & UITableViewDataSource
-extension FriendsViewController: UITableViewDelegate, UITableViewDataSource {
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return currentSegment == 0 ? friends.count : blockedUsers.count
-    }
-    
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "UserCell", for: indexPath)
-        let user = currentSegment == 0 ? friends[indexPath.row] : blockedUsers[indexPath.row]
-        
-        var content = cell.defaultContentConfiguration()
-        content.text = user.name
-        content.textProperties.color = .label
-        content.textProperties.font = .systemFont(ofSize: 17, weight: .medium)
-        
-        cell.backgroundColor = .clear
-        cell.selectionStyle = .none
-        
-        let backgroundView = UIView()
-        cell.backgroundView = backgroundView
-        
-        let selectedBackgroundView = UIView()
-        selectedBackgroundView.backgroundColor = UIColor.white.withAlphaComponent(0.2)
-        cell.selectedBackgroundView = selectedBackgroundView
-        
-        cell.contentConfiguration = content
-        return cell
-    }
-    
-    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        tableView.deselectRow(at: indexPath, animated: true)
-        let user = currentSegment == 0 ? friends[indexPath.row] : blockedUsers[indexPath.row]
-        showUserActions(for: user)
     }
 }

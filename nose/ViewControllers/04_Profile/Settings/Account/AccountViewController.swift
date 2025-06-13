@@ -44,7 +44,8 @@ final class AccountViewController: UIViewController {
         tableView.dataSource = self
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
         tableView.backgroundColor = .clear
-        tableView.separatorStyle = .none
+        tableView.separatorStyle = .singleLine
+        tableView.separatorColor = .separator
         return tableView
     }()
     
@@ -172,7 +173,7 @@ extension AccountViewController: UITableViewDelegate, UITableViewDataSource {
         cell.contentConfiguration = content
         
         cell.backgroundColor = .clear
-        cell.selectionStyle = .none
+        cell.selectionStyle = .default
         
         return cell
     }
