@@ -3,19 +3,19 @@ import RealityKit
 import FirebaseFirestore
 import FirebaseAuth
 
-protocol AvatarCustomViewControllerDelegate: AnyObject {
-    func avatarCustomViewController(_ controller: AvatarCustomViewController, didSaveAvatar avatarData: CollectionAvatar.AvatarData)
+protocol AvatarCustomizationViewControllerDelegate: AnyObject {
+    func avatarCustomizationViewController(_ controller: AvatarCustomizationViewController, didSaveAvatar avatarData: CollectionAvatar.AvatarData)
 }
 
-class AvatarCustomViewController: UIViewController {
+class AvatarCustomizationViewController: UIViewController {
     // MARK: - Properties
     private let collectionId: String
     private var currentAvatarData: CollectionAvatar.AvatarData?
-    private var avatar3DViewController: Avatar3DViewController!
+    private var avatar3DView: Avatar3DView!
     private var customizationCoordinator: AvatarCustomizationCoordinator!
     private let isOwner: Bool
 
-    weak var delegate: AvatarCustomViewControllerDelegate?
+    weak var delegate: AvatarCustomizationViewControllerDelegate?
 
     // MARK: - UI Components
     private lazy var titleLabel: UILabel = {
@@ -54,6 +54,8 @@ class AvatarCustomViewController: UIViewController {
         view.backgroundColor = .systemBackground
         title = "Customize Avatar"
         setupTitleLabel()
+        setupAvatar3DView()
+        setupGestures()
     }
 
     private func setupTitleLabel() {
@@ -66,11 +68,11 @@ class AvatarCustomViewController: UIViewController {
     }
 
     private func setupAvatar3DView() {
-        avatar3DViewController = Avatar3DViewController()
-        avatar3DViewController.cameraPosition = SIMD3<Float>(0.0, 0.0, 14.0)
-        addChild(avatar3DViewController)
-        view.addSubview(avatar3DViewController.view)
-        avatar3DViewController.didMove(toParent: self)
+        avatar3DView = Avatar3DView()
+        avatar3DView.cameraPosition = SIMD3<Float>(0.0, 0.0, 14.0)
+        addChild(avatar3DView)
+        view.addSubview(avatar3DView.view)
+        avatar3DView.didMove(toParent: self)
         
         setupCustomizationCoordinator()
         
@@ -99,12 +101,12 @@ class AvatarCustomViewController: UIViewController {
         }
         
         if let avatarData = currentAvatarData {
-            avatar3DViewController.loadAvatarData(avatarData)
+            avatar3DView.loadAvatarData(avatarData)
         }
     }
 
     private func setupCustomizationCoordinator() {
-        customizationCoordinator = AvatarCustomizationCoordinator(viewController: self, avatar3DViewController: avatar3DViewController)
+        customizationCoordinator = AvatarCustomizationCoordinator(viewController: self, avatar3DView: avatar3DView)
     }
 
     private func setupGestures() {
@@ -116,7 +118,7 @@ class AvatarCustomViewController: UIViewController {
     @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
         let translation = gesture.translation(in: view)
         let rotationAngle = Float(translation.x / view.bounds.width) * .pi
-        avatar3DViewController.baseEntity?.transform.rotation *= simd_quatf(angle: rotationAngle, axis: [0, 1, 0])
+        avatar3DView.baseEntity?.transform.rotation *= simd_quatf(angle: rotationAngle, axis: [0, 1, 0])
         gesture.setTranslation(.zero, in: view)
     }
 
@@ -133,16 +135,16 @@ class AvatarCustomViewController: UIViewController {
         var selections: [String: [String: String]] = [:]
         
         // Add skin color if it exists
-        if let skinColor = avatar3DViewController.chosenColors["skin"] {
-            selections["skin"] = ["color": skinColor.toHexString()]
+        if let skinColor = avatar3DView.chosenColors["skin"] {
+            selections["skin"] = ["color": AvatarColorManager.shared.toHexString(skinColor) ?? ""]
         }
         
         // Add other models and their colors
-        for (category, modelName) in avatar3DViewController.chosenModels {
+        for (category, modelName) in avatar3DView.chosenModels {
             var entry: [String: String] = ["model": modelName]
             
-            if let color = avatar3DViewController.chosenColors[category] {
-                entry["color"] = color.toHexString()
+            if let color = avatar3DView.chosenColors[category] {
+                entry["color"] = AvatarColorManager.shared.toHexString(color) ?? ""
             }
             
             selections[category] = entry
@@ -179,7 +181,7 @@ class AvatarCustomViewController: UIViewController {
                 }
                 
                 // Notify delegate about the save
-                self?.delegate?.avatarCustomViewController(self!, didSaveAvatar: avatarData)
+                self?.delegate?.avatarCustomizationViewController(self!, didSaveAvatar: avatarData)
                 
                 // Dismiss the view controller
                 self?.dismiss(animated: true)
@@ -233,7 +235,7 @@ class AvatarCustomViewController: UIViewController {
             
             DispatchQueue.main.async {
                 self?.currentAvatarData = avatarData
-                self?.avatar3DViewController.loadAvatarData(avatarData)
+                self?.avatar3DView.loadAvatarData(avatarData)
             }
         }
     }
@@ -247,79 +249,14 @@ class AvatarCustomViewController: UIViewController {
         LoadingView.shared.hideOverlayLoading()
     }
 
-    // MARK: - Public Interface
-    func setInitialAvatarData(_ avatarData: CollectionAvatar.AvatarData) {
-        currentAvatarData = avatarData
-    }
-
+    // MARK: - Resource Management
     private func preloadResources() {
-        showLoading()
-        view.isUserInteractionEnabled = false
-        
         Task {
             do {
-                print("🔄 Starting to preload resources...")
                 try await AvatarResourceManager.shared.preloadAllResources()
-                print("✅ Resources preloaded successfully")
-                
-                await MainActor.run {
-                    self.setupNavigationBar()
-                    self.setupAvatar3DView()
-                    self.setupGestures()
-                    
-                    // Ensure 3D view is ready before loading avatar data
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        self.loadSavedAvatarData()
-                        
-                        // Hide loading after everything is set up
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                            self.hideLoading()
-                            self.view.isUserInteractionEnabled = true
-                        }
-                    }
-                }
             } catch {
-                print("❌ Error preloading resources: \(error)")
-                await MainActor.run {
-                    self.hideLoading()
-                    self.view.isUserInteractionEnabled = true
-                    // Show error alert
-                    let alert = UIAlertController(
-                        title: "Error",
-                        message: "Failed to load avatar resources. Please try again.",
-                        preferredStyle: .alert
-                    )
-                    alert.addAction(UIAlertAction(title: "OK", style: .default))
-                    self.present(alert, animated: true)
-                }
+                print("Error preloading resources: \(error)")
             }
-        }
-    }
-
-    private func setupNavigationBar() {
-        navigationController?.setNavigationBarHidden(false, animated: false)
-        
-        let appearance = UINavigationBarAppearance()
-        appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = .systemBackground
-        navigationController?.navigationBar.standardAppearance = appearance
-        navigationController?.navigationBar.scrollEdgeAppearance = appearance
-        
-        navigationItem.rightBarButtonItem = UIBarButtonItem(
-            title: "Save",
-            style: .plain,
-            target: self,
-            action: #selector(saveButtonTapped)
-        )
-        
-        navigationItem.leftBarButtonItem = UIBarButtonItem(
-            barButtonSystemItem: .close,
-            target: self,
-            action: #selector(closeButtonTapped)
-        )
-        
-        [navigationItem.rightBarButtonItem, navigationItem.leftBarButtonItem].forEach {
-            $0?.tintColor = .black
         }
     }
 }
