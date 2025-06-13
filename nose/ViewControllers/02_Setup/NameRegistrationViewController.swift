@@ -8,6 +8,9 @@ final class NameRegistrationViewController: UIViewController {
     private enum Constants {
         static let minNameLength = 2
         static let maxNameLength = 30
+        static let standardPadding: CGFloat = 20
+        static let standardHeight: CGFloat = 50
+        static let verticalSpacing: CGFloat = 32
     }
     
     // MARK: - UI Components
@@ -68,37 +71,34 @@ final class NameRegistrationViewController: UIViewController {
     // MARK: - Setup
     private func setupUI() {
         view.backgroundColor = .white
-        
-        // Add subviews
-        view.addSubview(titleLabel)
-        view.addSubview(nameTextField)
-        view.addSubview(characterCountLabel)
-        view.addSubview(continueButton)
-        view.addSubview(activityIndicator)
-        
-        // Setup constraints
+        setupSubviews()
+        setupConstraints()
+    }
+    
+    private func setupSubviews() {
+        [titleLabel, nameTextField, characterCountLabel, continueButton, activityIndicator].forEach {
+            view.addSubview($0)
+        }
+    }
+    
+    private func setupConstraints() {
         NSLayoutConstraint.activate([
-            // Title constraints
             titleLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             titleLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 60),
             
-            // Text field constraints
-            nameTextField.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 32),
-            nameTextField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            nameTextField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-            nameTextField.heightAnchor.constraint(equalToConstant: 50),
+            nameTextField.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: Constants.verticalSpacing),
+            nameTextField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: Constants.standardPadding),
+            nameTextField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -Constants.standardPadding),
+            nameTextField.heightAnchor.constraint(equalToConstant: Constants.standardHeight),
             
-            // Character count label constraints
             characterCountLabel.topAnchor.constraint(equalTo: nameTextField.bottomAnchor, constant: 4),
             characterCountLabel.trailingAnchor.constraint(equalTo: nameTextField.trailingAnchor),
             
-            // Continue button constraints
             continueButton.topAnchor.constraint(equalTo: characterCountLabel.bottomAnchor, constant: 24),
-            continueButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            continueButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-            continueButton.heightAnchor.constraint(equalToConstant: 50),
+            continueButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: Constants.standardPadding),
+            continueButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -Constants.standardPadding),
+            continueButton.heightAnchor.constraint(equalToConstant: Constants.standardHeight),
             
-            // Activity indicator constraints
             activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor)
         ])
@@ -108,15 +108,8 @@ final class NameRegistrationViewController: UIViewController {
     @objc private func textFieldDidChange(_ textField: UITextField) {
         let count = textField.text?.count ?? 0
         characterCountLabel.text = "\(count)/\(Constants.maxNameLength)"
-        
-        // Update label color based on character count
-        if count > Constants.maxNameLength {
-            characterCountLabel.textColor = .systemRed
-        } else if count < Constants.minNameLength {
-            characterCountLabel.textColor = .systemOrange
-        } else {
-            characterCountLabel.textColor = .gray
-        }
+        characterCountLabel.textColor = count > Constants.maxNameLength ? .systemRed :
+                                      count < Constants.minNameLength ? .systemOrange : .gray
     }
     
     @objc private func continueButtonTapped() {
@@ -125,7 +118,6 @@ final class NameRegistrationViewController: UIViewController {
             return
         }
         
-        // Validate name length
         if name.count < Constants.minNameLength {
             showError(message: "Name must be at least \(Constants.minNameLength) characters long")
             return
@@ -136,27 +128,25 @@ final class NameRegistrationViewController: UIViewController {
             return
         }
         
-        // Get current user
         guard let firebaseUser = Auth.auth().currentUser else {
             print("No user is signed in")
+            showError(message: "Authentication error. Please try signing in again.")
             return
         }
         
-        // Create user object
-        let user = User(
-            id: firebaseUser.uid,
-            name: name
-        )
-        
-        // Show loading indicator
+        // Create user with current version
+        let user = User(id: firebaseUser.uid, name: name)
+        saveUser(user)
+    }
+    
+    // MARK: - Helper Methods
+    private func saveUser(_ user: User) {
         activityIndicator.startAnimating()
         continueButton.isEnabled = false
         
-        // Save user to Firestore
         UserManager.shared.saveUser(user) { [weak self] error in
             guard let self = self else { return }
             
-            // Hide loading indicator
             self.activityIndicator.stopAnimating()
             self.continueButton.isEnabled = true
             
@@ -166,19 +156,13 @@ final class NameRegistrationViewController: UIViewController {
                 return
             }
             
-            // Successfully saved user data
             print("Successfully saved user data")
             self.navigateToHomeScreen()
         }
     }
     
-    // MARK: - Helper Methods
     private func showError(message: String) {
-        let alert = UIAlertController(
-            title: "Error",
-            message: message,
-            preferredStyle: .alert
-        )
+        let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
     }
