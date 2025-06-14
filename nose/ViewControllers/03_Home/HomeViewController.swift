@@ -299,10 +299,7 @@ final class HomeViewController: UIViewController {
     @objc private func searchButtonTapped() {
         let searchVC = SearchViewController()
         searchVC.delegate = self
-        if let sheet = searchVC.sheetPresentationController {
-            sheet.detents = [.medium(), .large()]
-            sheet.prefersGrabberVisible = true
-        }
+        searchVC.modalPresentationStyle = .fullScreen
         present(searchVC, animated: true)
     }
     
