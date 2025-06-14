@@ -21,6 +21,7 @@ final class HomeViewController: UIViewController {
     private var sessionToken: GMSAutocompleteSessionToken?
     private var currentDotIndex: Int = 1  // Track current dot index (0: left, 1: middle, 2: right)
     private var collections: [PlaceCollection] = []
+    private let locationManager = CLLocationManager()
     
     // Add properties to track dots and line
     private var leftDot: UIView?
@@ -159,6 +160,12 @@ final class HomeViewController: UIViewController {
         super.viewDidLoad()
         setupUI()
         setupManagers()
+        setupLocationManager()
+        setupNotificationObservers()
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
     
     // MARK: - Setup
@@ -286,9 +293,52 @@ final class HomeViewController: UIViewController {
         }
     }
     
+    private func setupLocationManager() {
+        locationManager.delegate = self
+        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        checkLocationPermission()
+    }
+    
+    private func setupNotificationObservers() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appWillEnterForeground),
+            name: UIApplication.willEnterForegroundNotification,
+            object: nil
+        )
+    }
+    
+    private func checkLocationPermission() {
+        switch locationManager.authorizationStatus {
+        case .notDetermined:
+            locationManager.requestWhenInUseAuthorization()
+        case .restricted, .denied:
+            // Don't show alert, just continue without location
+            break
+        case .authorizedWhenInUse, .authorizedAlways:
+            locationManager.startUpdatingLocation()
+        @unknown default:
+            break
+        }
+    }
+    
+    @objc private func appWillEnterForeground() {
+        checkLocationPermission()
+    }
+    
     // MARK: - Actions
     @objc private func currentLocationButtonTapped() {
-        mapManager?.moveToCurrentLocation()
+        switch locationManager.authorizationStatus {
+        case .authorizedWhenInUse, .authorizedAlways:
+            mapManager?.moveToCurrentLocation()
+        case .notDetermined:
+            locationManager.requestWhenInUseAuthorization()
+        case .denied, .restricted:
+            // Show a gentle message that location is not available
+            showMessage(title: "Location Unavailable", subtitle: "Enable location in Settings to use this feature")
+        @unknown default:
+            break
+        }
     }
     
     @objc private func profileButtonTapped() {
@@ -500,5 +550,22 @@ extension HomeViewController: SearchManagerDelegate {
     
     func searchManager(_ manager: SearchManager, didSelectPlace place: GMSPlace) {
         showPlaceOnMap(place)
+    }
+}
+
+// MARK: - CLLocationManagerDelegate
+extension HomeViewController: CLLocationManagerDelegate {
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        checkLocationPermission()
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let location = locations.last else { return }
+        mapManager?.moveToCurrentLocation()
+        locationManager.stopUpdatingLocation() // Stop updating after getting the first location
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        print("Location manager failed with error: \(error.localizedDescription)")
     }
 }
