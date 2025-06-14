@@ -11,10 +11,10 @@ from selenium.webdriver.common.keys import Keys
 from tests.base_test import BaseTest
 from tests import google_login, logout
 
-class BlockingUserTest(BaseTest):
-    def test_being_blocked(self):
+class BlockingUserAsNonOwnerBlockedTest(BaseTest):
+    def test_blocking_user_as_non_owner_blocked(self):
         """login"""
-        google_login(self.driver, 'user_b')
+        google_login(self.driver, 'user_a')
 
         """accpet map location permission"""
         # if the alert is shown, allow
@@ -25,44 +25,8 @@ class BlockingUserTest(BaseTest):
             print("Map location permission not shown")
         time.sleep(1)
 
-        """Try to add a user as a friend"""
-        # tap "Personal Library"
-        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Personal Library')
-        element.click()
-        time.sleep(2)
-        # tap "Add Friend"
-        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Add Friend')
-        element.click()
-        time.sleep(2)
-        # tap "Search by User ID"
-        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Search by User ID')
-        element.click()
-        # Load User A's ID from the stored data
-        user_a_id = shared_data.load_user_id('user_a')
-        if not user_a_id:
-            raise Exception("User A ID not found in stored data. Please run User A creation test first.")
-        element.send_keys(user_a_id)
-        # enter
-        element.send_keys(Keys.RETURN)
-        # Check the error message //XCUIElementTypeStaticText[@name="User Not Found"]
-        element = self.driver.find_element(By.XPATH, '//XCUIElementTypeStaticText[@name="User Not Found"]')
-        assert element.is_displayed()
-        time.sleep(2)
-        # click OK
-        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'OK')
-        element.click()
-        time.sleep(2)
-
-        """Make sure the collection is not shared with the blocked user"""
-        # back to settings
-        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Settings')
-        element.click()
-        time.sleep(2)
-        # back to Home
-        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Back')
-        element.click()
-        time.sleep(2)
-        # future dot
+        """Make sure the shared collection is not listed"""
+        # tap right dot
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'right_dot')
         element.click()
         time.sleep(2)
@@ -70,13 +34,30 @@ class BlockingUserTest(BaseTest):
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'sparkle')
         element.click()
         time.sleep(2)
-        # tap "From Friends" tab
-        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'From Friends')
+        # tap National Parks
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'National Parks')
         element.click()
         time.sleep(2)
-        # do not see National Parks
-        elements = self.driver.find_elements(AppiumBy.ACCESSIBILITY_ID, 'National Parks')
-        assert len(elements) == 0, "Element 'National Parks' was found when it should not exist"
+        # the number of shared collections is 0
+        friends_value = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'shared_friends_count_label').get_attribute("value")
+        assert friends_value == '0', "Shared friends count is not 0"
+        # tap three dots
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'More')
+        element.click()
+        time.sleep(2)
+        # tap "Share with Friends"
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Share with Friends')
+        element.click()
+        time.sleep(2)
+        # you do not see the user B in the list
+        elements = self.driver.find_elements(AppiumBy.ACCESSIBILITY_ID, 'User B')
+        assert len(elements) == 0, "Element 'User B' was found when it should not exist"
+        # tap close button
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'close')
+        element.click()
+        time.sleep(2)
+        # swipe down to close the modal
+        self.driver.swipe(300, 350, 300, 650)
         time.sleep(2)
         # tap somewhere on the screen to close the modal
         self.driver.tap([(200, 200)])
@@ -84,7 +65,6 @@ class BlockingUserTest(BaseTest):
 
         """log out"""
         logout(self.driver)
-
 
 if __name__ == '__main__':
     unittest.main()
