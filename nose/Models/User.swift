@@ -34,7 +34,7 @@ struct User: Codable {
     
     init(id: String, name: String, userId: String? = nil) {
         self.id = id
-        self.userId = userId ?? String(format: "USER%06d", Int.random(in: 100000...999999))
+        self.userId = userId ?? Self.generateRandomUserId()
         self.name = name
         self.createdAt = Date()
         self.lastLoginAt = Date()
@@ -44,6 +44,11 @@ struct User: Codable {
         self.version = Self.currentVersion
         self.friends = []
         self.blockedUsers = []
+    }
+    
+    private static func generateRandomUserId() -> String {
+        let letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        return String((0..<10).map { _ in letters.randomElement()! })
     }
     
     // Convert to Firestore data
