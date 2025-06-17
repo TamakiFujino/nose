@@ -24,7 +24,8 @@ class CollectionManager {
             "status": PlaceCollection.Status.active.rawValue,
             "createdAt": Timestamp(date: Date()),
             "isOwner": true,
-            "version": PlaceCollection.currentVersion
+            "version": PlaceCollection.currentVersion,
+            "members": [userId]  // Add owner to members list by default
         ]
         
         db.collection(collectionsCollection).addDocument(data: collectionData) { error in
@@ -295,7 +296,7 @@ class CollectionManager {
         // Create a batch write
         let batch = db.batch()
         
-        // Update owner's collection with sharedWith field
+        // Update owner's collection with members field
         let ownerCollectionRef = db.collection("users")
             .document(userId)
             .collection("collections")
@@ -303,8 +304,11 @@ class CollectionManager {
             .collection("owned")
             .document(collection.id)
         
+        // Include owner in members list
+        let allMembers = [userId] + friends.map { $0.id }
+        
         batch.updateData([
-            "sharedWith": friends.map { $0.id },
+            "members": allMembers,
             "sharedAt": FieldValue.serverTimestamp()
         ], forDocument: ownerCollectionRef)
         
@@ -328,7 +332,8 @@ class CollectionManager {
                 "isOwner": false,
                 "status": collection.status.rawValue,
                 "sharedBy": userId,  // This is the owner's ID
-                "sharedAt": FieldValue.serverTimestamp()
+                "sharedAt": FieldValue.serverTimestamp(),
+                "members": allMembers  // Include all members in shared copy
             ]
             
             print("📤 Creating shared collection in path: users/\(friend.id)/collections/shared/shared/\(collection.id)")

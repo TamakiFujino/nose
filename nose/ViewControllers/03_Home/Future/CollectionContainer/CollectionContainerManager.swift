@@ -154,7 +154,7 @@ class CollectionContainerManager {
         // Create a batch write
         let batch = db.batch()
         
-        // Get current shared friends
+        // Get current members
         let ownerCollectionRef = db.collection("users")
             .document(currentUserId)
             .collection("collections")
@@ -168,39 +168,39 @@ class CollectionContainerManager {
             guard let self = self else { return }
             
             if let error = error {
-                print("❌ Error getting current shared friends: \(error.localizedDescription)")
+                print("❌ Error getting current members: \(error.localizedDescription)")
                 completion(error)
                 return
             }
             
-            // Get current shared friends
-            let currentSharedWith = snapshot?.data()?["sharedWith"] as? [String] ?? []
-            let newSharedWith = friends.map { $0.id }
+            // Get current members
+            let currentMembers = snapshot?.data()?["members"] as? [String] ?? [currentUserId]
+            let newMembers = [currentUserId] + friends.map { $0.id }
             
-            // Only add new friends, don't remove any
-            let friendsToAdd = Set(newSharedWith).subtracting(currentSharedWith)
+            // Only add new members, don't remove any
+            let membersToAdd = Set(newMembers).subtracting(currentMembers)
             
             print("📊 Sharing stats:")
-            print("- Current shared friends: \(currentSharedWith.count)")
-            print("- New shared friends: \(newSharedWith.count)")
-            print("- Friends to add: \(friendsToAdd.count)")
+            print("- Current members: \(currentMembers.count)")
+            print("- New members: \(newMembers.count)")
+            print("- Members to add: \(membersToAdd.count)")
             
-            // Update owner's collection with new sharedWith field
+            // Update owner's collection with new members field
             batch.updateData([
-                "sharedWith": newSharedWith,
+                "members": newMembers,
                 "sharedAt": FieldValue.serverTimestamp()
             ], forDocument: ownerCollectionRef)
             
             // Add new shared collections
-            for friendId in friendsToAdd {
+            for memberId in membersToAdd {
                 let sharedCollectionRef = self.db.collection("users")
-                    .document(friendId)
+                    .document(memberId)
                     .collection("collections")
                     .document("shared")
                     .collection("shared")
                     .document(collection.id)
                 
-                print("📤 Creating shared collection for friend \(friendId) at path: \(sharedCollectionRef.path)")
+                print("📤 Creating shared collection for member \(memberId) at path: \(sharedCollectionRef.path)")
                 
                 let sharedCollectionData: [String: Any] = [
                     "id": collection.id,
@@ -210,7 +210,8 @@ class CollectionContainerManager {
                     "sharedAt": FieldValue.serverTimestamp(),
                     "isOwner": false,
                     "status": collection.status.rawValue,
-                    "places": collection.places.map { $0.dictionary }
+                    "places": collection.places.map { $0.dictionary },
+                    "members": newMembers  // Include all members in shared copy
                 ]
                 
                 batch.setData(sharedCollectionData, forDocument: sharedCollectionRef)
@@ -264,7 +265,8 @@ class CollectionContainerManager {
             "userId": currentUserId,
             "createdAt": Timestamp(date: createdAt),
             "isOwner": true,
-            "status": PlaceCollection.Status.active.rawValue
+            "status": PlaceCollection.Status.active.rawValue,
+            "members": [currentUserId]  // Add owner to members list by default
         ]
         
         // Create in owned subcollection
