@@ -448,10 +448,12 @@ class CollectionPlacesViewController: UIViewController {
                         return
                     }
                     
-                    if let sharedWith = snapshot?.data()?["sharedWith"] as? [String] {
-                        // Filter out blocked users from the count
-                        let activeSharedUsers = sharedWith.filter { !blockedUserIds.contains($0) }
-                        self?.sharedFriendsCount = activeSharedUsers.count
+                    if let members = snapshot?.data()?["members"] as? [String] {
+                        // Filter out blocked users and owner from the count
+                        let activeMembers = members.filter { 
+                            !blockedUserIds.contains($0) && $0 != self?.collection.userId 
+                        }
+                        self?.sharedFriendsCount = activeMembers.count
                     } else {
                         self?.sharedFriendsCount = 0
                     }

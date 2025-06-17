@@ -115,7 +115,7 @@ final class ShareCollectionViewController: UIViewController {
         
         let db = Firestore.firestore()
         
-        // First, get the current shared friends
+        // First, get the current members
         db.collection("users")
             .document(currentUserId)
             .collection("collections")
@@ -128,9 +128,10 @@ final class ShareCollectionViewController: UIViewController {
                     return
                 }
                 
-                // Get the list of currently shared friends
-                let sharedWith = snapshot?.data()?["sharedWith"] as? [String] ?? []
-                self?.previouslySharedFriends = Set(sharedWith)
+                // Get the list of current members
+                let members = snapshot?.data()?["members"] as? [String] ?? [currentUserId]
+                // Remove owner from the list of previously shared friends
+                self?.previouslySharedFriends = Set(members.filter { $0 != currentUserId })
                 
                 // Then load all friends
                 db.collection("users")
@@ -161,8 +162,8 @@ final class ShareCollectionViewController: UIViewController {
                                 
                                 if let userSnapshot = userSnapshot, let user = User.fromFirestore(userSnapshot) {
                                     loadedFriends.append(user)
-                                    // If this friend is already shared with, add them to selectedFriends
-                                    if sharedWith.contains(friendId) {
+                                    // If this friend is already a member, add them to selectedFriends
+                                    if members.contains(friendId) {
                                         self?.selectedFriends.insert(friendId)
                                     }
                                 }
