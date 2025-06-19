@@ -20,12 +20,6 @@ service cloud.firestore {
     }
     
     // Check if the collection is shared with the current user
-    function isSharedWith(userId) {
-      return isAuthenticated() && 
-        exists(/databases/$(database)/documents/users/$(userId)/collections/shared/shared/$(request.auth.uid));
-    }
-    
-    // Check if a specific collection is shared with the current user
     function isCollectionSharedWithMe(collectionId) {
       return isAuthenticated() && 
         exists(/databases/$(database)/documents/users/$(request.auth.uid)/collections/shared/shared/$(collectionId));
@@ -52,66 +46,23 @@ service cloud.firestore {
     
     // Validate collection data structure
     function isValidCollectionData() {
-      let version = request.resource.data.version != null ? request.resource.data.version : 1;
-      return request.resource.data.keys().hasAll(['name', 'userId', 'createdAt', 'isOwner', 'places', 'version']) &&
+      return request.resource.data.keys().hasAll(['id', 'name', 'userId', 'createdAt', 'isOwner', 'places', 'status']) &&
+        request.resource.data.id is string &&
         request.resource.data.name is string &&
         request.resource.data.userId is string &&
         request.resource.data.createdAt is timestamp &&
         request.resource.data.isOwner is bool &&
         request.resource.data.places is list &&
-        request.resource.data.version is number &&
-        version >= 1;
+        request.resource.data.status is string;
     }
     
     // Validate avatar data structure
     function isValidAvatarData() {
-      let version = request.resource.data.version != null ? request.resource.data.version : 1;
       let avatarData = request.resource.data.avatarData;
       
-      // Base validation for all versions
-      let baseValidation = request.resource.data.keys().hasAll(['avatarData', 'createdAt', 'isOwner', 'version']) &&
+      return request.resource.data.keys().hasAll(['avatarData', 'isOwner']) &&
         avatarData is map &&
-        request.resource.data.createdAt is timestamp &&
-        request.resource.data.isOwner is bool &&
-        request.resource.data.version is number &&
-        version >= 1;
-      
-      // Version-specific validation
-      return baseValidation && (
-        (version == 1 && 
-         avatarData.keys().hasAll(['selections']) &&
-         avatarData.selections is map) ||
-        (version == 2 && 
-         avatarData.keys().hasAll(['selections', 'customizations', 'customizationVersion']) &&
-         avatarData.selections is map &&
-         avatarData.customizations is map &&
-         avatarData.customizationVersion is number)
-      );
-    }
-    
-    // Validate profile avatar data structure
-    function isValidProfileAvatarData() {
-      let version = request.resource.data.version != null ? request.resource.data.version : 1;
-      let avatarData = request.resource.data.avatarData;
-      
-      // Base validation for all versions
-      let baseValidation = request.resource.data.keys().hasAll(['avatarData', 'updatedAt', 'version']) &&
-        avatarData is map &&
-        request.resource.data.updatedAt is timestamp &&
-        request.resource.data.version is number &&
-        version >= 1;
-      
-      // Version-specific validation
-      return baseValidation && (
-        (version == 1 && 
-         avatarData.keys().hasAll(['selections']) &&
-         avatarData.selections is map) ||
-        (version == 2 && 
-         avatarData.keys().hasAll(['selections', 'customizations', 'customizationVersion']) &&
-         avatarData.selections is map &&
-         avatarData.customizations is map &&
-         avatarData.customizationVersion is number)
-      );
+        request.resource.data.isOwner is bool;
     }
 
     // Collection group rules - These apply to all shared collections regardless of path
@@ -121,13 +72,9 @@ service cloud.firestore {
       // Allow updates if:
       // 1. User is the owner of the collection
       // 2. User has a shared copy of the collection
-      // 3. Version is maintained or incremented
       allow update: if isAuthenticated() && (
         isOwner(resource.data.userId) || 
         hasSharedCopy(sharedCollectionId)
-      ) && (
-        request.resource.data.version == resource.data.version ||
-        request.resource.data.version == resource.data.version + 1
       );
     }
 
@@ -165,10 +112,7 @@ service cloud.firestore {
         allow read: if isAuthenticated();
         // Only the owner can create/update/delete collections
         allow create: if isAuthenticated() && isOwner(userId);
-        allow update: if isAuthenticated() && isOwner(userId) && (
-          request.resource.data.version == resource.data.version ||
-          request.resource.data.version == resource.data.version + 1
-        );
+        allow update: if isAuthenticated() && isOwner(userId);
         allow delete: if isAuthenticated() && isOwner(userId);
         
         // Owned collections rules
@@ -181,17 +125,13 @@ service cloud.firestore {
             isCollectionSharedWithMe(ownedCollectionId)
           );
           // Only the owner can create owned collections
-          allow create: if isAuthenticated() && isOwner(userId);
+          allow create: if isAuthenticated() && isOwner(userId) && isValidCollectionData();
           // Allow updates if:
           // 1. User is the owner
           // 2. User has a shared copy of the collection
-          // 3. Version is maintained or incremented
           allow update: if isAuthenticated() && (
             isOwner(userId) || 
             hasSharedCopy(ownedCollectionId)
-          ) && (
-            request.resource.data.version == resource.data.version ||
-            request.resource.data.version == resource.data.version + 1
           );
           // Only the owner can delete owned collections
           allow delete: if isOwner(userId);
@@ -203,13 +143,10 @@ service cloud.firestore {
               isOwner(userId) || 
               isCollectionSharedWithMe(doubleOwnedCollectionId)
             );
-            allow create: if isAuthenticated() && isOwner(userId);
+            allow create: if isAuthenticated() && isOwner(userId) && isValidCollectionData();
             allow update: if isAuthenticated() && (
               isOwner(userId) || 
               hasSharedCopy(doubleOwnedCollectionId)
-            ) && (
-              request.resource.data.version == resource.data.version ||
-              request.resource.data.version == resource.data.version + 1
             );
             allow delete: if isOwner(userId);
           }
@@ -229,13 +166,9 @@ service cloud.firestore {
           // Allow updates if:
           // 1. User is the owner
           // 2. User has a shared copy of the collection
-          // 3. Version is maintained or incremented
           allow update: if isAuthenticated() && (
             isOwner(userId) || 
             hasSharedCopy(sharedCollectionId)
-          ) && (
-            request.resource.data.version == resource.data.version ||
-            request.resource.data.version == resource.data.version + 1
           );
           // Allow delete if:
           // 1. User is the owner
@@ -251,16 +184,11 @@ service cloud.firestore {
             allow read: if isAuthenticated();
             allow create: if isAuthenticated() && (
               isOwner(userId) || 
-              request.resource.data.sharedBy == request.auth.uid ||
-              (request.resource.data.sharedBy == request.auth.uid && 
-               request.resource.data.userId == userId)
+              request.resource.data.sharedBy == request.auth.uid
             );
             allow update: if isAuthenticated() && (
               isOwner(userId) || 
               hasSharedCopy(doubleSharedCollectionId)
-            ) && (
-              request.resource.data.version == resource.data.version ||
-              request.resource.data.version == resource.data.version + 1
             );
             allow delete: if isAuthenticated() && (
               isOwner(userId) || 
@@ -288,12 +216,8 @@ service cloud.firestore {
       allow update: if isAuthenticated() && 
         request.auth.uid == resource.data.userId && (
           // Allow updating only avatarData (and any other allowed fields you specify)
-          (request.resource.data.keys().hasOnly(['avatarData', 'isOwner', 'version']) && 
-           request.resource.data.avatarData is map && 
-           request.resource.data.isOwner is bool &&
-           request.resource.data.version is number &&
-           (request.resource.data.version == resource.data.version ||
-            request.resource.data.version == resource.data.version + 1)) ||
+          (request.resource.data.keys().hasOnly(['avatarData', 'isOwner']) && 
+           isValidAvatarData()) ||
           isValidCollectionData()
         );
       // Allow delete if the user is owner
