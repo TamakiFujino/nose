@@ -226,12 +226,13 @@ class AddFriendViewController: UIViewController {
             return
         }
         
-        // Only search if the input matches the expected format
-        guard userId.hasPrefix("USER") else {
-            print("DEBUG: Invalid userId format - must start with 'USER'")
+        // Validate user ID format (10 alphanumeric characters)
+        let userIdRegex = "^[A-Z0-9]{10}$"
+        guard userId.range(of: userIdRegex, options: .regularExpression) != nil else {
+            print("DEBUG: Invalid userId format - must be 10 alphanumeric characters")
             searchResults = []
             resultContainer.isHidden = true
-            showAlert(title: "Invalid User ID", message: "User ID must start with 'USER' followed by numbers")
+            showAlert(title: "Invalid User ID", message: "User ID must be exactly 10 characters (letters and numbers)")
             return
         }
         

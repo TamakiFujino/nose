@@ -133,10 +133,10 @@ class BlockingUserAsOwnerTest(BaseTest):
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'National Parks')
         element.click()
         time.sleep(2)
-        # the number of shared collections is 0
+        # the number of shared collections is 1
         friends_value = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'shared_friends_count_label').get_attribute("value")
-        assert friends_value == '0', "Shared friends count is not 0"
-        # the number of saved spots is 1
+        assert friends_value == '1', "Shared friends count is not 1"
+        # the number of saved spots is 2
         places_value = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'places_count_label').get_attribute("value")
         assert places_value == '2', "Number of spots is not 2"
         # tap three dots

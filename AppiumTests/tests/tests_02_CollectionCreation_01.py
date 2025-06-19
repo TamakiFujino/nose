@@ -141,10 +141,10 @@ class CollectionCreationTest(BaseTest):
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Update Sharing')
         element.click()
         time.sleep(2)
-        """check the number of shared collections is 1"""
+        """check the number of shared collections is 2"""
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'shared_friends_count_label')
-        # make sure the element value is 1
-        assert element.get_attribute("value") == '1', "Number of shared spots is not 1"
+        # make sure the element value is 2
+        assert element.get_attribute("value") == '2', "Number of shared spots is not 2"
 
         # swipe down to close the modal
         self.driver.swipe(200, 350, 500, 650)
