@@ -11,77 +11,123 @@ class CollectionContainerManager {
     func completeCollection(_ collection: PlaceCollection, completion: @escaping (Error?) -> Void) {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         
-        // Create a batch write
-        let batch = db.batch()
+        print("✅ Completing collection '\(collection.name)'...")
         
-        // Update owner's collection
+        // Get the owner's collection to find all members
         let ownerCollectionRef = db.collection("users")
             .document(currentUserId)
             .collection("collections")
             .document(collection.id)
         
-        batch.updateData(["status": PlaceCollection.Status.completed.rawValue], forDocument: ownerCollectionRef)
-        
-        // Find and update all shared copies
-        db.collectionGroup("collections")
-            .whereField("id", isEqualTo: collection.id)
-            .whereField("sharedBy", isEqualTo: currentUserId)
-            .getDocuments { [weak self] snapshot, error in
-                guard let self = self else { return }
-                
-                if let error = error {
-                    completion(error)
-                    return
-                }
-                
-                // Update each shared copy
-                snapshot?.documents.forEach { document in
-                    batch.updateData(["status": PlaceCollection.Status.completed.rawValue], forDocument: document.reference)
-                }
-                
-                // Commit all updates
-                batch.commit { error in
-                    completion(error)
+        ownerCollectionRef.getDocument { [weak self] snapshot, error in
+            guard let self = self else { return }
+            
+            if let error = error {
+                print("❌ Error getting collection: \(error.localizedDescription)")
+                completion(error)
+                return
+            }
+            
+            // Get current members
+            let members = snapshot?.data()?["members"] as? [String] ?? [currentUserId]
+            print("✅ Found members: \(members)")
+            
+            // Create a batch write
+            let batch = self.db.batch()
+            
+            // Update owner's collection
+            batch.updateData([
+                "status": PlaceCollection.Status.completed.rawValue
+            ], forDocument: ownerCollectionRef)
+            
+            // Update all shared copies
+            for memberId in members {
+                if memberId != currentUserId { // Skip owner, already updated above
+                    let sharedCollectionRef = self.db.collection("users")
+                        .document(memberId)
+                        .collection("collections")
+                        .document(collection.id)
+                    
+                    print("✅ Updating shared collection for member: \(memberId)")
+                    
+                    batch.updateData([
+                        "status": PlaceCollection.Status.completed.rawValue
+                    ], forDocument: sharedCollectionRef)
                 }
             }
+            
+            // Commit all updates
+            batch.commit { error in
+                if let error = error {
+                    print("❌ Error completing collection: \(error.localizedDescription)")
+                    completion(error)
+                } else {
+                    print("✅ Successfully completed collection")
+                    completion(nil)
+                }
+            }
+        }
     }
     
     func putBackCollection(_ collection: PlaceCollection, completion: @escaping (Error?) -> Void) {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         
-        // Create a batch write
-        let batch = db.batch()
+        print("🔄 Putting back collection '\(collection.name)'...")
         
-        // Update owner's collection
+        // Get the owner's collection to find all members
         let ownerCollectionRef = db.collection("users")
             .document(currentUserId)
             .collection("collections")
             .document(collection.id)
         
-        batch.updateData(["status": PlaceCollection.Status.active.rawValue], forDocument: ownerCollectionRef)
-        
-        // Find and update all shared copies
-        db.collectionGroup("collections")
-            .whereField("id", isEqualTo: collection.id)
-            .whereField("sharedBy", isEqualTo: currentUserId)
-            .getDocuments { [weak self] snapshot, error in
-                guard let self = self else { return }
-                
-                if let error = error {
-                    completion(error)
-                    return
-                }
-                
-                // Update each shared copy
-                snapshot?.documents.forEach { document in
-                    batch.updateData(["status": PlaceCollection.Status.active.rawValue], forDocument: document.reference)
-                }
-                
-                // Commit all updates
-                batch.commit { error in
-                    completion(error)
+        ownerCollectionRef.getDocument { [weak self] snapshot, error in
+            guard let self = self else { return }
+            
+            if let error = error {
+                print("❌ Error getting collection: \(error.localizedDescription)")
+                completion(error)
+                return
+            }
+            
+            // Get current members
+            let members = snapshot?.data()?["members"] as? [String] ?? [currentUserId]
+            print("🔄 Found members: \(members)")
+            
+            // Create a batch write
+            let batch = self.db.batch()
+            
+            // Update owner's collection
+            batch.updateData([
+                "status": PlaceCollection.Status.active.rawValue
+            ], forDocument: ownerCollectionRef)
+            
+            // Update all shared copies
+            for memberId in members {
+                if memberId != currentUserId { // Skip owner, already updated above
+                    let sharedCollectionRef = self.db.collection("users")
+                        .document(memberId)
+                        .collection("collections")
+                        .document(collection.id)
+                    
+                    print("🔄 Updating shared collection for member: \(memberId)")
+                    
+                    batch.updateData([
+                        "status": PlaceCollection.Status.active.rawValue
+                    ], forDocument: sharedCollectionRef)
                 }
             }
+            
+            // Commit all updates
+            batch.commit { error in
+                if let error = error {
+                    print("❌ Error putting back collection: \(error.localizedDescription)")
+                    completion(error)
+                } else {
+                    print("🔄 Successfully put back collection")
+                    completion(nil)
+                }
+            }
+        }
     }
     
     func deleteCollection(_ collection: PlaceCollection, completion: @escaping (Error?) -> Void) {
