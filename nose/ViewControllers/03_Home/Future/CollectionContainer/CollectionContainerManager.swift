@@ -165,8 +165,8 @@ class CollectionContainerManager {
             let currentMembers = snapshot?.data()?["members"] as? [String] ?? [currentUserId]
             print("📤 Current members: \(currentMembers)")
             
-            // Combine current members with new members
-            let newMembers = Array(Set(currentMembers + friends.map { $0.id }))
+            // Create new members list (owner + selected friends)
+            let newMembers = [currentUserId] + friends.map { $0.id }
             print("📤 New members list: \(newMembers)")
             
             // Find members to add (those not already in the collection)
@@ -174,7 +174,13 @@ class CollectionContainerManager {
                 !currentMembers.contains(friend.id)
             }
             
+            // Find members to remove (those currently in collection but not in new selection)
+            let membersToRemove = currentMembers.filter { memberId in
+                memberId != currentUserId && !friends.map { $0.id }.contains(memberId)
+            }
+            
             print("📤 Members to add: \(membersToAdd.map { $0.name })")
+            print("📤 Members to remove: \(membersToRemove)")
             
             // Create a batch write for all operations
             let batch = self.db.batch()
@@ -209,6 +215,37 @@ class CollectionContainerManager {
                 print("📤 Shared collection data: \(sharedCollectionData)")
                 
                 batch.setData(sharedCollectionData, forDocument: sharedCollectionRef)
+            }
+            
+            // Remove shared collections for members being removed
+            for memberId in membersToRemove {
+                let sharedCollectionRef = self.db.collection("users")
+                    .document(memberId)
+                    .collection("collections")
+                    .document(collection.id)
+                
+                print("🗑 Removing shared collection for member \(memberId) at path: \(sharedCollectionRef.path)")
+                
+                batch.deleteDocument(sharedCollectionRef)
+            }
+            
+            // Update existing shared collections with new members list
+            let existingMembers = currentMembers.filter { memberId in
+                memberId != currentUserId && friends.map { $0.id }.contains(memberId)
+            }
+            
+            for memberId in existingMembers {
+                let sharedCollectionRef = self.db.collection("users")
+                    .document(memberId)
+                    .collection("collections")
+                    .document(collection.id)
+                
+                print("🔄 Updating shared collection for existing member \(memberId)")
+                
+                batch.updateData([
+                    "members": newMembers,
+                    "sharedAt": FieldValue.serverTimestamp()
+                ], forDocument: sharedCollectionRef)
             }
             
             // Commit all operations in a single batch
