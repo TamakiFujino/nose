@@ -2,6 +2,10 @@ import Foundation
 import FirebaseFirestore
 
 public struct PlaceCollection: Codable {
+    // MARK: - Constants
+    public static let currentVersion: Int = 1
+    
+    // MARK: - Properties
     public let id: String
     public let name: String
     public var places: [Place]
@@ -9,6 +13,7 @@ public struct PlaceCollection: Codable {
     public var status: Status
     public let createdAt: Date
     public let isOwner: Bool
+    public let version: Int
     
     public enum Status: String, Codable {
         case active
@@ -43,11 +48,12 @@ public struct PlaceCollection: Codable {
             "userId": userId,
             "status": status.rawValue,
             "createdAt": Timestamp(date: createdAt),
-            "isOwner": isOwner
+            "isOwner": isOwner,
+            "version": version
         ]
     }
     
-    public init(id: String, name: String, places: [Place], userId: String, status: Status = .active, isOwner: Bool = true) {
+    public init(id: String, name: String, places: [Place], userId: String, status: Status = .active, isOwner: Bool = true, version: Int = 1) {
         self.id = id
         self.name = name
         self.places = places
@@ -55,6 +61,7 @@ public struct PlaceCollection: Codable {
         self.status = status
         self.createdAt = Date()
         self.isOwner = isOwner
+        self.version = version
     }
     
     public init?(dictionary: [String: Any]) {
@@ -89,6 +96,13 @@ public struct PlaceCollection: Codable {
             self.isOwner = isOwner
         } else {
             self.isOwner = true
+        }
+        
+        // Parse version, default to 1 if not found
+        if let version = dictionary["version"] as? Int {
+            self.version = version
+        } else {
+            self.version = 1
         }
         
         if let placesData = dictionary["places"] as? [[String: Any]] {
@@ -135,5 +149,11 @@ public struct PlaceCollection: Codable {
             print("❌ No places data found or invalid format")
             self.places = []
         }
+    }
+    
+    public func migrate() -> PlaceCollection {
+        // For now, just return self since we're at version 1
+        // In the future, this method will handle migrations between versions
+        return self
     }
 } 
