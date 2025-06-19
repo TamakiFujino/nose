@@ -28,7 +28,12 @@ class CollectionManager {
             "members": [userId]  // Add owner to members list by default
         ]
         
-        db.collection(collectionsCollection).addDocument(data: collectionData) { error in
+        let collectionRef = db.collection("users")
+            .document(userId)
+            .collection("collections")
+            .document(UUID().uuidString)
+        
+        collectionRef.setData(collectionData) { error in
             if let error = error {
                 completion(.failure(error))
                 return
@@ -134,6 +139,11 @@ class CollectionManager {
     
     // MARK: - Place Management
     func addPlaceToCollection(collectionId: String, place: GMSPlace, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            completion(.failure(handleAuthError()))
+            return
+        }
+        
         let placeData: [String: Any] = [
             "id": UUID().uuidString,
             "name": place.name ?? "",
@@ -155,7 +165,12 @@ class CollectionManager {
             "createdAt": Timestamp(date: Date())
         ]
         
-        db.collection(collectionsCollection).document(collectionId).updateData([
+        let collectionRef = db.collection("users")
+            .document(userId)
+            .collection("collections")
+            .document(collectionId)
+        
+        collectionRef.updateData([
             "places": FieldValue.arrayUnion([placeData]),
             "version": PlaceCollection.currentVersion
         ]) { error in
@@ -300,8 +315,6 @@ class CollectionManager {
         let ownerCollectionRef = db.collection("users")
             .document(userId)
             .collection("collections")
-            .document("owned")
-            .collection("owned")
             .document(collection.id)
         
         // Include owner in members list
@@ -312,15 +325,13 @@ class CollectionManager {
             "sharedAt": FieldValue.serverTimestamp()
         ], forDocument: ownerCollectionRef)
         
-        // Create shared collection in each friend's shared_collections
+        // Create shared collection in each friend's collections
         for friend in friends {
             print("📤 Sharing with friend ID: \(friend.id)")
             
             let sharedCollectionRef = db.collection("users")
-                .document(friend.id)  // Use friend's ID here
+                .document(friend.id)
                 .collection("collections")
-                .document("shared")
-                .collection("shared")
                 .document(collection.id)
             
             let sharedCollectionData: [String: Any] = [
@@ -336,7 +347,7 @@ class CollectionManager {
                 "members": allMembers  // Include all members in shared copy
             ]
             
-            print("📤 Creating shared collection in path: users/\(friend.id)/collections/shared/shared/\(collection.id)")
+            print("📤 Creating shared collection in path: users/\(friend.id)/collections/\(collection.id)")
             print("📤 Shared collection data: \(sharedCollectionData)")
             
             batch.setData(sharedCollectionData, forDocument: sharedCollectionRef)

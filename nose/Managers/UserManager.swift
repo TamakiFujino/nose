@@ -330,8 +330,7 @@ final class UserManager {
         let userBSharedCollectionsRef = db.collection("users")
             .document(blockedUserId)
             .collection("collections")
-            .document("shared")
-            .collection("shared")
+            .whereField("isOwner", isEqualTo: false)
         
         userBSharedCollectionsRef.whereField("sharedBy", isEqualTo: currentUserId)
             .getDocuments { [weak self] snapshot, error in
