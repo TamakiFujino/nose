@@ -119,12 +119,10 @@ class CollectionsViewController: UIViewController {
         let ownedCollectionsRef = db.collection("users")
             .document(currentUserId)
             .collection("collections")
-            .document("owned")
-            .collection("owned")
         
         print("📂 Loading owned collections from path: \(ownedCollectionsRef.path)")
         
-        ownedCollectionsRef.getDocuments { [weak self] snapshot, error in
+        ownedCollectionsRef.whereField("isOwner", isEqualTo: true).getDocuments { [weak self] snapshot, error in
             if let error = error {
                 print("❌ Error loading owned collections: \(error.localizedDescription)")
                 return
@@ -163,12 +161,10 @@ class CollectionsViewController: UIViewController {
         let sharedCollectionsRef = db.collection("users")
             .document(currentUserId)
             .collection("collections")
-            .document("shared")
-            .collection("shared")
         
         print("📂 Loading shared collections from path: \(sharedCollectionsRef.path)")
         
-        sharedCollectionsRef.getDocuments { [weak self] snapshot, error in
+        sharedCollectionsRef.whereField("isOwner", isEqualTo: false).getDocuments { [weak self] snapshot, error in
             if let error = error {
                 print("❌ Error loading shared collections: \(error.localizedDescription)")
                 return
@@ -191,8 +187,6 @@ class CollectionsViewController: UIViewController {
                     db.collection("users")
                         .document(ownerId)
                         .collection("collections")
-                        .document("owned")
-                        .collection("owned")
                         .document(collectionId)
                         .getDocument { snapshot, error in
                             defer { group.leave() }

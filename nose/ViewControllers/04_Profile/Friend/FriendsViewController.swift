@@ -296,12 +296,11 @@ class FriendsViewController: UIViewController {
                 .document(currentUserId)
             batch.deleteDocument(userBFriendsRef)
             
-            // 4. Remove shared collections from User B's data
+            // 4. Remove shared collections
             let userBSharedCollectionsRef = db.collection("users")
                 .document(user.id)
                 .collection("collections")
-                .document("shared")
-                .collection("shared")
+                .whereField("isOwner", isEqualTo: false)
             
             // Get all collections shared by User A
             userBSharedCollectionsRef.whereField("sharedBy", isEqualTo: currentUserId)
@@ -320,21 +319,20 @@ class FriendsViewController: UIViewController {
                     let userACollectionsRef = db.collection("users")
                         .document(currentUserId)
                         .collection("collections")
-                        .document("owned")
-                        .collection("owned")
+                        .whereField("isOwner", isEqualTo: true)
                     
-                    userACollectionsRef.whereField("sharedWith", arrayContains: user.id)
+                    userACollectionsRef.whereField("members", arrayContains: user.id)
                         .getDocuments { snapshot, error in
                             if let error = error {
-                                print("DEBUG: Error getting collections with sharedWith: \(error.localizedDescription)")
+                                print("DEBUG: Error getting collections with members: \(error.localizedDescription)")
                                 return
                             }
                             
-                            // Update each collection to remove the blocked user from sharedWith
+                            // Update each collection to remove the blocked user from members
                             snapshot?.documents.forEach { document in
                                 let collectionRef = document.reference
                                 batch.updateData([
-                                    "sharedWith": FieldValue.arrayRemove([user.id])
+                                    "members": FieldValue.arrayRemove([user.id])
                                 ], forDocument: collectionRef)
                             }
                             
@@ -342,34 +340,32 @@ class FriendsViewController: UIViewController {
                             let userASharedCollectionsRef = db.collection("users")
                                 .document(currentUserId)
                                 .collection("collections")
-                                .document("shared")
-                                .collection("shared")
+                                .whereField("isOwner", isEqualTo: false)
                             
                             userASharedCollectionsRef.whereField("sharedBy", isEqualTo: user.id)
                                 .getDocuments { snapshot, error in
                                     if let error = error {
-                                        print("DEBUG: Error getting collections shared by blocked user: \(error.localizedDescription)")
+                                        print("DEBUG: Error getting collections shared by User B: \(error.localizedDescription)")
                                         return
                                     }
                                     
-                                    // Delete each collection shared by the blocked user
+                                    // Add delete operations for each shared collection to the batch
                                     snapshot?.documents.forEach { document in
                                         batch.deleteDocument(document.reference)
                                     }
                                     
-                                    // Commit all changes
+                                    // Commit all operations
                                     batch.commit { error in
                                         if let error = error {
-                                            print("DEBUG: Error blocking user: \(error.localizedDescription)")
+                                            print("DEBUG: Error committing batch: \(error.localizedDescription)")
                                             DispatchQueue.main.async {
                                                 self?.showAlert(title: "Error", message: "Failed to block user")
                                             }
-                                            return
-                                        }
-                                        
-                                        print("DEBUG: Successfully blocked user and updated both sides")
-                                        DispatchQueue.main.async {
-                                            self?.loadFriends()
+                                        } else {
+                                            print("DEBUG: Successfully blocked user")
+                                            DispatchQueue.main.async {
+                                                self?.loadFriends()
+                                            }
                                         }
                                     }
                                 }

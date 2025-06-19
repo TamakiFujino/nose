@@ -18,14 +18,12 @@ class CollectionContainerManager {
         let ownerCollectionRef = db.collection("users")
             .document(currentUserId)
             .collection("collections")
-            .document("owned")
-            .collection("owned")
             .document(collection.id)
         
         batch.updateData(["status": PlaceCollection.Status.completed.rawValue], forDocument: ownerCollectionRef)
         
         // Find and update all shared copies
-        db.collectionGroup("shared")
+        db.collectionGroup("collections")
             .whereField("id", isEqualTo: collection.id)
             .whereField("sharedBy", isEqualTo: currentUserId)
             .getDocuments { [weak self] snapshot, error in
@@ -58,14 +56,12 @@ class CollectionContainerManager {
         let ownerCollectionRef = db.collection("users")
             .document(currentUserId)
             .collection("collections")
-            .document("owned")
-            .collection("owned")
             .document(collection.id)
         
         batch.updateData(["status": PlaceCollection.Status.active.rawValue], forDocument: ownerCollectionRef)
         
         // Find and update all shared copies
-        db.collectionGroup("shared")
+        db.collectionGroup("collections")
             .whereField("id", isEqualTo: collection.id)
             .whereField("sharedBy", isEqualTo: currentUserId)
             .getDocuments { [weak self] snapshot, error in
@@ -92,7 +88,7 @@ class CollectionContainerManager {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         
         // First, find all users who have this collection shared with them
-        db.collectionGroup("shared")
+        db.collectionGroup("collections")
             .whereField("id", isEqualTo: collection.id)
             .whereField("sharedBy", isEqualTo: currentUserId)
             .getDocuments { [weak self] snapshot, error in
@@ -118,8 +114,6 @@ class CollectionContainerManager {
                     self.db.collection("users")
                         .document(currentUserId)
                         .collection("collections")
-                        .document("owned")
-                        .collection("owned")
                         .document(collection.id)
                         .delete { error in
                             completion(error)
@@ -134,8 +128,6 @@ class CollectionContainerManager {
         let collectionRef = db.collection("users")
             .document(currentUserId)
             .collection("collections")
-            .document("owned")
-            .collection("owned")
             .document(collection.id)
         
         collectionRef.updateData([
@@ -151,19 +143,15 @@ class CollectionContainerManager {
         print("📤 Updating collection sharing for '\(collection.name)'...")
         print("📤 Current user ID: \(currentUserId)")
         
-        // Create a batch write
-        let batch = db.batch()
-        
         // Get current members
         let ownerCollectionRef = db.collection("users")
             .document(currentUserId)
             .collection("collections")
-            .document("owned")
-            .collection("owned")
             .document(collection.id)
         
         print("📤 Owner collection path: \(ownerCollectionRef.path)")
         
+        // Get current members and add new ones
         ownerCollectionRef.getDocument { [weak self] snapshot, error in
             guard let self = self else { return }
             
@@ -173,31 +161,35 @@ class CollectionContainerManager {
                 return
             }
             
-            // Get current members
+            // Get current members, defaulting to just the owner if members field doesn't exist
             let currentMembers = snapshot?.data()?["members"] as? [String] ?? [currentUserId]
-            let newMembers = [currentUserId] + friends.map { $0.id }
+            print("📤 Current members: \(currentMembers)")
             
-            // Only add new members, don't remove any
-            let membersToAdd = Set(newMembers).subtracting(currentMembers)
+            // Combine current members with new members
+            let newMembers = Array(Set(currentMembers + friends.map { $0.id }))
+            print("📤 New members list: \(newMembers)")
             
-            print("📊 Sharing stats:")
-            print("- Current members: \(currentMembers.count)")
-            print("- New members: \(newMembers.count)")
-            print("- Members to add: \(membersToAdd.count)")
+            // Find members to add (those not already in the collection)
+            let membersToAdd = friends.filter { friend in
+                !currentMembers.contains(friend.id)
+            }
             
-            // Update owner's collection with new members field
+            print("📤 Members to add: \(membersToAdd.map { $0.name })")
+            
+            // Create a batch write for all operations
+            let batch = self.db.batch()
+            
+            // Update owner's collection with new members
             batch.updateData([
                 "members": newMembers,
                 "sharedAt": FieldValue.serverTimestamp()
             ], forDocument: ownerCollectionRef)
             
-            // Add new shared collections
-            for memberId in membersToAdd {
+            // Create shared collection for new members
+            for memberId in membersToAdd.map({ $0.id }) {
                 let sharedCollectionRef = self.db.collection("users")
                     .document(memberId)
                     .collection("collections")
-                    .document("shared")
-                    .collection("shared")
                     .document(collection.id)
                 
                 print("📤 Creating shared collection for member \(memberId) at path: \(sharedCollectionRef.path)")
@@ -207,20 +199,22 @@ class CollectionContainerManager {
                     "name": collection.name,
                     "userId": currentUserId,
                     "sharedBy": currentUserId,
-                    "sharedAt": FieldValue.serverTimestamp(),
+                    "createdAt": Timestamp(date: collection.createdAt),
                     "isOwner": false,
                     "status": collection.status.rawValue,
                     "places": collection.places.map { $0.dictionary },
                     "members": newMembers  // Include all members in shared copy
                 ]
                 
+                print("📤 Shared collection data: \(sharedCollectionData)")
+                
                 batch.setData(sharedCollectionData, forDocument: sharedCollectionRef)
             }
             
-            // Commit the batch
+            // Commit all operations in a single batch
             batch.commit { error in
                 if let error = error {
-                    print("❌ Error updating collection sharing: \(error.localizedDescription)")
+                    print("❌ Error committing batch: \(error.localizedDescription)")
                     completion(error)
                 } else {
                     print("✅ Successfully updated collection sharing")
@@ -233,14 +227,9 @@ class CollectionContainerManager {
     func updateAvatarData(_ avatarData: CollectionAvatar.AvatarData, for collection: PlaceCollection, completion: @escaping (Error?) -> Void) {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         
-        // Determine the collection type based on ownership
-        let collectionType = collection.isOwner ? "owned" : "shared"
-        
         let collectionRef = db.collection("users")
             .document(currentUserId)
             .collection("collections")
-            .document(collectionType)
-            .collection(collectionType)
             .document(collection.id)
         
         collectionRef.setData([
@@ -269,22 +258,20 @@ class CollectionContainerManager {
             "members": [currentUserId]  // Add owner to members list by default
         ]
         
-        // Create in owned subcollection
-        let ownedCollectionRef = db.collection("users")
+        // Create collection
+        let collectionRef = db.collection("users")
             .document(currentUserId)
             .collection("collections")
-            .document("owned")
-            .collection("owned")
             .document(collectionId)
         
-        print("📝 Creating new collection in path: \(ownedCollectionRef.path)")
+        print("📝 Creating new collection in path: \(collectionRef.path)")
         
-        ownedCollectionRef.setData(collectionData) { error in
+        collectionRef.setData(collectionData) { error in
             if let error = error {
                 print("❌ Error creating collection: \(error.localizedDescription)")
                 completion(.failure(error))
             } else {
-                print("✅ Successfully created collection in path: \(ownedCollectionRef.path)")
+                print("✅ Successfully created collection in path: \(collectionRef.path)")
                 let collection = PlaceCollection(id: collectionId, name: name, places: [], userId: currentUserId)
                 completion(.success(collection))
             }
