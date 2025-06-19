@@ -88,8 +88,7 @@ class BoxViewController: UIViewController {
         db.collection("users")
             .document(currentUserId)
             .collection("collections")
-            .document("owned")
-            .collection("owned")
+            .whereField("isOwner", isEqualTo: true)
             .whereField("status", isEqualTo: PlaceCollection.Status.completed.rawValue)
             .getDocuments { [weak self] snapshot, error in
                 if let error = error {
@@ -113,8 +112,7 @@ class BoxViewController: UIViewController {
         db.collection("users")
             .document(currentUserId)
             .collection("collections")
-            .document("shared")
-            .collection("shared")
+            .whereField("isOwner", isEqualTo: false)
             .whereField("status", isEqualTo: PlaceCollection.Status.completed.rawValue)
             .getDocuments { [weak self] snapshot, error in
                 if let error = error {
@@ -134,8 +132,6 @@ class BoxViewController: UIViewController {
                         db.collection("users")
                             .document(ownerId)
                             .collection("collections")
-                            .document("owned")
-                            .collection("owned")
                             .document(collectionId)
                             .getDocument { snapshot, error in
                                 defer { group.leave() }
