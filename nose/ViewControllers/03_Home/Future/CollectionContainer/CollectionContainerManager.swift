@@ -133,39 +133,52 @@ class CollectionContainerManager {
     func deleteCollection(_ collection: PlaceCollection, completion: @escaping (Error?) -> Void) {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         
-        // First, find all users who have this collection shared with them
-        db.collectionGroup("collections")
-            .whereField("id", isEqualTo: collection.id)
-            .whereField("sharedBy", isEqualTo: currentUserId)
-            .getDocuments { [weak self] snapshot, error in
-                guard let self = self else { return }
+        print("🗑 Deleting collection '\(collection.name)'...")
+        
+        // Get the owner's collection to find all members
+        let ownerCollectionRef = db.collection("users")
+            .document(currentUserId)
+            .collection("collections")
+            .document(collection.id)
+        
+        ownerCollectionRef.getDocument { [weak self] snapshot, error in
+            guard let self = self else { return }
+            
+            if let error = error {
+                print("❌ Error getting collection: \(error.localizedDescription)")
+                completion(error)
+                return
+            }
+            
+            // Get current members
+            let members = snapshot?.data()?["members"] as? [String] ?? [currentUserId]
+            print("🗑 Found members: \(members)")
+            
+            // Create a batch write
+            let batch = self.db.batch()
+            
+            // Delete all shared copies
+            for memberId in members {
+                let collectionRef = self.db.collection("users")
+                    .document(memberId)
+                    .collection("collections")
+                    .document(collection.id)
                 
+                print("🗑 Deleting collection for member: \(memberId)")
+                batch.deleteDocument(collectionRef)
+            }
+            
+            // Commit all deletions
+            batch.commit { error in
                 if let error = error {
+                    print("❌ Error deleting collection: \(error.localizedDescription)")
                     completion(error)
-                    return
-                }
-                
-                let group = DispatchGroup()
-                
-                // Delete each shared copy
-                snapshot?.documents.forEach { document in
-                    group.enter()
-                    document.reference.delete { _ in
-                        group.leave()
-                    }
-                }
-                
-                group.notify(queue: .main) {
-                    // Finally delete the owner's copy
-                    self.db.collection("users")
-                        .document(currentUserId)
-                        .collection("collections")
-                        .document(collection.id)
-                        .delete { error in
-                            completion(error)
-                        }
+                } else {
+                    print("🗑 Successfully deleted collection")
+                    completion(nil)
                 }
             }
+        }
     }
     
     func deletePlace(_ place: PlaceCollection.Place, from collection: PlaceCollection, completion: @escaping (Error?) -> Void) {
