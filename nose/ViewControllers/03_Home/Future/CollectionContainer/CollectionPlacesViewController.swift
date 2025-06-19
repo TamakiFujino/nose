@@ -444,13 +444,15 @@ class CollectionPlacesViewController: UIViewController {
                     }
                     
                     if let members = snapshot?.data()?["members"] as? [String] {
-                        // Filter out blocked users and owner from the count
+                        // Filter out blocked users but include the owner in the count
                         let activeMembers = members.filter { 
-                            !blockedUserIds.contains($0) && $0 != self?.collection.userId 
+                            !blockedUserIds.contains($0)
                         }
                         self?.sharedFriendsCount = activeMembers.count
+                        print("📊 Total members (including owner): \(activeMembers.count)")
                     } else {
                         self?.sharedFriendsCount = 0
+                        print("📊 No members found")
                     }
                     self?.updateSharedFriendsLabel()
                 }
