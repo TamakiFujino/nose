@@ -172,8 +172,16 @@ service cloud.firestore {
         // 1. User is the owner of the collection OR a member of the existing collection
         // 2. The update is valid
         allow update: if isAuthenticated() && 
-          (request.auth.uid == resource.data.userId || isMemberOfExisting()) &&
-          isValidCollectionUpdate();
+          (request.auth.uid == resource.data.userId || isMemberOfExisting()) && (
+            // Allow status-only updates
+            (request.resource.data.keys().hasOnly(['status']) && 
+             request.resource.data.status is number) ||
+            // Allow avatar-only updates
+            (request.resource.data.keys().hasOnly(['avatarData']) && 
+             request.resource.data.avatarData is map) ||
+            // Allow full collection updates
+            isValidCollectionUpdate()
+          );
         // Allow delete if:
         // 1. User is the owner of the collection
         allow delete: if isAuthenticated() && 
