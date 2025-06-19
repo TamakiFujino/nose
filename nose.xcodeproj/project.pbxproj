@@ -8,9 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		4984E6CB2D731BC600A6288A /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 4984E6CA2D731BC600A6288A /* Localizable.xcstrings */; };
-		49BE7FBA2DF4454C006D6E16 /* Info-Development.plist in Resources */ = {isa = PBXBuildFile; fileRef = 49BE7FB32DF444A8006D6E16 /* Info-Development.plist */; };
-		49BE7FBB2DF44556006D6E16 /* Info-Production.plist in Resources */ = {isa = PBXBuildFile; fileRef = 49BE7FB42DF444A8006D6E16 /* Info-Production.plist */; };
-		49BE7FBC2DF4455D006D6E16 /* Info-Staging.plist in Resources */ = {isa = PBXBuildFile; fileRef = 49BE7FB52DF444A8006D6E16 /* Info-Staging.plist */; };
 		49BE80712DF4559C006D6E16 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 49BE80702DF4559C006D6E16 /* LaunchScreen.storyboard */; };
 		49BE80732DF45931006D6E16 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 49BE80722DF45931006D6E16 /* Main.storyboard */; };
 		57F5337D85E99C4A21D785F6 /* Pods_noseTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 312A9D10F92AD4AC6B98F711 /* Pods_noseTests.framework */; };
@@ -58,9 +55,6 @@
 		350B317CA55C81FEF179C2D9 /* Pods-nose.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-nose.release.xcconfig"; path = "Target Support Files/Pods-nose/Pods-nose.release.xcconfig"; sourceTree = "<group>"; };
 		488D4BC551BCE45C96E9422C /* Pods-noseUITests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseUITests.release.xcconfig"; path = "Target Support Files/Pods-noseUITests/Pods-noseUITests.release.xcconfig"; sourceTree = "<group>"; };
 		4984E6CA2D731BC600A6288A /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
-		49BE7FB32DF444A8006D6E16 /* Info-Development.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-Development.plist"; sourceTree = "<group>"; };
-		49BE7FB42DF444A8006D6E16 /* Info-Production.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-Production.plist"; sourceTree = "<group>"; };
-		49BE7FB52DF444A8006D6E16 /* Info-Staging.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-Staging.plist"; sourceTree = "<group>"; };
 		49BE80702DF4559C006D6E16 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		49BE80722DF45931006D6E16 /* Main.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = Main.storyboard; sourceTree = "<group>"; };
 		49E99BF62D3BE432000F3CE5 /* nose.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = nose.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -82,19 +76,22 @@
 		F1BCB3623F34C0020E1D1F3E /* Pods-nose.development.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-nose.development.xcconfig"; path = "Target Support Files/Pods-nose/Pods-nose.development.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		49EE64AD2DFBE890004DA63B /* Exceptions for "nose" folder in "nose" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Resources/Models/body.usdz,
+			);
+			target = 49E99BF52D3BE432000F3CE5 /* nose */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		4984014E2D886D9F00A6288A /* .github */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = .github;
-			sourceTree = "<group>";
-		};
-		49BE7E332DF41122006D6E16 /* FirebaseConfig */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = FirebaseConfig;
-			sourceTree = "<group>";
-		};
 		49E99BF82D3BE432000F3CE5 /* nose */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				49EE64AD2DFBE890004DA63B /* Exceptions for "nose" folder in "nose" target */,
+			);
 			path = nose;
 			sourceTree = "<group>";
 		};
@@ -106,6 +103,16 @@
 		49E99C192D3BE433000F3CE5 /* noseUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = noseUITests;
+			sourceTree = "<group>";
+		};
+		49EE64242DFBC64F004DA63B /* FirebaseConfig */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = FirebaseConfig;
+			sourceTree = "<group>";
+		};
+		49EE642B2DFBC651004DA63B /* InfoPlist */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = InfoPlist;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -138,24 +145,11 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		49BE7FB62DF444A8006D6E16 /* InfoPlist */ = {
-			isa = PBXGroup;
-			children = (
-				49BE7FB32DF444A8006D6E16 /* Info-Development.plist */,
-				49BE7FB42DF444A8006D6E16 /* Info-Production.plist */,
-				49BE7FB52DF444A8006D6E16 /* Info-Staging.plist */,
-			);
-			path = InfoPlist;
-			sourceTree = "<group>";
-		};
 		49E99BED2D3BE432000F3CE5 = {
 			isa = PBXGroup;
 			children = (
 				49BE80722DF45931006D6E16 /* Main.storyboard */,
 				49BE80702DF4559C006D6E16 /* LaunchScreen.storyboard */,
-				49BE7FB62DF444A8006D6E16 /* InfoPlist */,
-				49BE7E332DF41122006D6E16 /* FirebaseConfig */,
-				4984014E2D886D9F00A6288A /* .github */,
 				4984E6CA2D731BC600A6288A /* Localizable.xcstrings */,
 				49E99BF82D3BE432000F3CE5 /* nose */,
 				49E99C0F2D3BE433000F3CE5 /* noseTests */,
@@ -163,6 +157,8 @@
 				49E99BF72D3BE432000F3CE5 /* Products */,
 				50579441D3777C7C7B70948F /* Pods */,
 				8FBDA29887B8DBD5028A9EBC /* Frameworks */,
+				49EE64242DFBC64F004DA63B /* FirebaseConfig */,
+				49EE642B2DFBC651004DA63B /* InfoPlist */,
 			);
 			sourceTree = "<group>";
 		};
@@ -218,7 +214,6 @@
 			buildConfigurationList = 49E99C1F2D3BE433000F3CE5 /* Build configuration list for PBXNativeTarget "nose" */;
 			buildPhases = (
 				19E4CCA204B3DDB8011C5C0C /* [CP] Check Pods Manifest.lock */,
-				4984FE652D87CD8800A6288A /* Run SwiftLint */,
 				49E99BF22D3BE432000F3CE5 /* Sources */,
 				49E99BF32D3BE432000F3CE5 /* Frameworks */,
 				49E99BF42D3BE432000F3CE5 /* Resources */,
@@ -232,9 +227,9 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				4984014E2D886D9F00A6288A /* .github */,
-				49BE7E332DF41122006D6E16 /* FirebaseConfig */,
 				49E99BF82D3BE432000F3CE5 /* nose */,
+				49EE64242DFBC64F004DA63B /* FirebaseConfig */,
+				49EE642B2DFBC651004DA63B /* InfoPlist */,
 			);
 			name = nose;
 			productName = nose;
@@ -335,13 +330,10 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				49BE7FBA2DF4454C006D6E16 /* Info-Development.plist in Resources */,
-				49BE7FBC2DF4455D006D6E16 /* Info-Staging.plist in Resources */,
 				49BE80712DF4559C006D6E16 /* LaunchScreen.storyboard in Resources */,
 				4984E6CB2D731BC600A6288A /* Localizable.xcstrings in Resources */,
 				90E1384E390AC4D7DCDC4D2F /* Pods-nose-metadata.plist in Resources */,
 				49BE80732DF45931006D6E16 /* Main.storyboard in Resources */,
-				49BE7FBB2DF44556006D6E16 /* Info-Production.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -406,25 +398,6 @@
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
-		};
-		4984FE652D87CD8800A6288A /* Run SwiftLint */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "Run SwiftLint";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "export PATH=\"/opt/homebrew/bin:$PATH\"\nif which swiftlint >/dev/null; then\n    swiftlint --quiet --reporter xcode\nelse\n    echo \"warning: SwiftLint not installed, run 'brew install swiftlint'\"\nfi\n";
 		};
 		49BE6D8B2DF3048E006D6E16 /* Copy GoogleService-Info.plist */ = {
 			isa = PBXShellScriptBuildPhase;
