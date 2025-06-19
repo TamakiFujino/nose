@@ -7,6 +7,7 @@ import Firebase
 class CollectionManager {
     static let shared = CollectionManager()
     private let db = Firestore.firestore()
+    private let collectionsCollection = "collections"
     
     private init() {}
     
@@ -15,115 +16,168 @@ class CollectionManager {
     }
     
     // MARK: - Collection Creation and Fetching
-    func createCollection(name: String, completion: @escaping (Result<PlaceCollection, Error>) -> Void) {
-        guard let currentUserId = Auth.auth().currentUser?.uid else {
-            completion(.failure(NSError(domain: "auth", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])))
-            return
-        }
-        let collectionId = UUID().uuidString
-        let createdAt = Date()
+    func createCollection(name: String, userId: String, completion: @escaping (Result<PlaceCollection, Error>) -> Void) {
         let collectionData: [String: Any] = [
-            "id": collectionId,
             "name": name,
             "places": [],
-            "userId": currentUserId,
-            "createdAt": Timestamp(date: createdAt),
+            "userId": userId,
+            "status": PlaceCollection.Status.active.rawValue,
+            "createdAt": Timestamp(date: Date()),
             "isOwner": true,
-            "status": PlaceCollection.Status.active.rawValue
+            "version": PlaceCollection.currentVersion,
+            "members": [userId]  // Add owner to members list by default
         ]
-        Firestore.firestore()
-            .collection("users")
-            .document(currentUserId)
+        
+        let collectionRef = db.collection("users")
+            .document(userId)
             .collection("collections")
-            .document(collectionId)
-            .setData(collectionData) { error in
-                if let error = error {
-                    completion(.failure(error))
-                } else {
-                    let collection = PlaceCollection(id: collectionId, name: name, places: [], userId: currentUserId)
-                    completion(.success(collection))
-                }
-            }
-    }
-    
-    func fetchCollections(completion: @escaping (Result<[PlaceCollection], Error>) -> Void) {
-        guard let userId = Auth.auth().currentUser?.uid else {
-            completion(.failure(handleAuthError()))
-            return
-        }
+            .document(UUID().uuidString)
         
-        print("📥 Fetching collections for user \(userId)...")
-        print("📥 Using path: users/\(userId)/collections")
-        
-        db.collection("users").document(userId).collection("collections")
-            .getDocuments { snapshot, error in
-                if let error = error {
-                    print("❌ Error fetching collections: \(error.localizedDescription)")
-                    completion(.failure(error))
-                    return
-                }
-                
-                let collections = snapshot?.documents.compactMap { document -> PlaceCollection? in
-                    var data = document.data()
-                    data["id"] = document.documentID
-                    print("📄 Collection document data: \(data)")
-                    return PlaceCollection(dictionary: data)
-                } ?? []
-                
-                print("✅ Fetched \(collections.count) collections")
-                collections.forEach { collection in
-                    print("📄 Collection '\(collection.name)' has \(collection.places.count) places")
-                }
-                
-                completion(.success(collections))
-            }
-    }
-    
-    // MARK: - Place Management
-    func addPlaceToCollection(_ place: GMSPlace, collectionId: String, completion: @escaping (Result<Void, Error>) -> Void) {
-        guard let userId = Auth.auth().currentUser?.uid else {
-            completion(.failure(handleAuthError()))
-            return
-        }
-        
-        let placeData = PlaceCollection.Place(
-            placeId: place.placeID ?? "",
-            name: place.name ?? "",
-            formattedAddress: place.formattedAddress ?? "",
-            rating: place.rating,
-            phoneNumber: place.phoneNumber ?? "",
-            addedAt: Date()
-        )
-        
-        print("📝 Adding place '\(place.name ?? "Unknown")' to collection \(collectionId)...")
-        print("📝 Using path: users/\(userId)/collections/\(collectionId)")
-        print("📝 Place data: \(placeData.dictionary)")
-        
-        db.collection("users").document(userId).collection("collections").document(collectionId).getDocument { [weak self] snapshot, error in
+        collectionRef.setData(collectionData) { error in
             if let error = error {
-                print("❌ Error getting collection: \(error.localizedDescription)")
                 completion(.failure(error))
                 return
             }
             
-            guard let data = snapshot?.data() else {
-                print("❌ Collection document not found")
-                completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Collection not found"])))
-                return
-            }
-            
-            print("📄 Current collection data: \(data)")
-            
-            self?.db.collection("users").document(userId).collection("collections").document(collectionId).updateData([
-                "places": FieldValue.arrayUnion([placeData.dictionary])
-            ]) { error in
-                if let error = error {
-                    print("❌ Error adding place: \(error.localizedDescription)")
+            // Fetch the newly created collection
+            self.fetchCollections(userId: userId) { result in
+                switch result {
+                case .success(let collections):
+                    if let newCollection = collections.first(where: { $0.name == name }) {
+                        completion(.success(newCollection))
+                    } else {
+                        completion(.failure(NSError(domain: "CollectionManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch created collection"])))
+                    }
+                case .failure(let error):
                     completion(.failure(error))
-                } else {
-                    print("✅ Successfully added place to collection")
-                    completion(.success(()))
                 }
+            }
+        }
+    }
+    
+    func fetchCollections(userId: String, completion: @escaping (Result<[PlaceCollection], Error>) -> Void) {
+        db.collection(collectionsCollection)
+            .whereField("userId", isEqualTo: userId)
+            .whereField("status", isEqualTo: PlaceCollection.Status.active.rawValue)
+            .getDocuments(source: .server) { [weak self] snapshot, error in
+                guard let self = self else { return }
+                
+                if let error = error {
+                    completion(.failure(error))
+                    return
+                }
+                
+                guard let documents = snapshot?.documents else {
+                    completion(.success([]))
+                    return
+                }
+                
+                var collections: [PlaceCollection] = []
+                let group = DispatchGroup()
+                
+                for document in documents {
+                    group.enter()
+                    
+                    // Check if migration is needed
+                    if let version = document.data()["version"] as? Int,
+                       version < PlaceCollection.currentVersion {
+                        // Migrate the collection
+                        self.migrateCollection(document: document) { result in
+                            switch result {
+                            case .success(let collection):
+                                collections.append(collection)
+                            case .failure(let error):
+                                print("Migration failed for collection \(document.documentID): \(error.localizedDescription)")
+                                // Try to use the original collection if migration fails
+                                var data = document.data()
+                                data["id"] = document.documentID
+                                if let collection = try? PlaceCollection(dictionary: data) {
+                                    collections.append(collection)
+                                }
+                            }
+                            group.leave()
+                        }
+                    } else {
+                        // No migration needed
+                        var data = document.data()
+                        data["id"] = document.documentID
+                        if let collection = try? PlaceCollection(dictionary: data) {
+                            collections.append(collection)
+                        }
+                        group.leave()
+                    }
+                }
+                
+                group.notify(queue: .main) {
+                    completion(.success(collections))
+                }
+            }
+    }
+    
+    // MARK: - Migration
+    private func migrateCollection(document: QueryDocumentSnapshot, completion: @escaping (Result<PlaceCollection, Error>) -> Void) {
+        var data = document.data()
+        data["id"] = document.documentID
+        
+        guard var collection = try? PlaceCollection(dictionary: data) else {
+            completion(.failure(NSError(domain: "CollectionManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to parse collection"])))
+            return
+        }
+        
+        // Migrate the collection
+        collection = collection.migrate()
+        
+        // Update the document with migrated data
+        db.collection(collectionsCollection).document(collection.id).setData(collection.dictionary, merge: true) { error in
+            if let error = error {
+                completion(.failure(error))
+            } else {
+                completion(.success(collection))
+            }
+        }
+    }
+    
+    // MARK: - Place Management
+    func addPlaceToCollection(collectionId: String, place: GMSPlace, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            completion(.failure(handleAuthError()))
+            return
+        }
+        
+        let placeData: [String: Any] = [
+            "id": UUID().uuidString,
+            "name": place.name ?? "",
+            "latitude": place.coordinate.latitude,
+            "longitude": place.coordinate.longitude,
+            "address": place.formattedAddress ?? "",
+            "placeId": place.placeID ?? "",
+            "types": place.types ?? [],
+            "rating": place.rating,
+            "userRatingsTotal": place.userRatingsTotal,
+            "priceLevel": place.priceLevel.rawValue,
+            "photos": (place.photos ?? []).map { photo in
+                [
+                    "width": photo.maxSize.width,
+                    "height": photo.maxSize.height,
+                    "attributions": photo.attributions?.string ?? ""
+                ]
+            },
+            "createdAt": Timestamp(date: Date())
+        ]
+        
+        let collectionRef = db.collection("users")
+            .document(userId)
+            .collection("collections")
+            .document(collectionId)
+        
+        collectionRef.updateData([
+            "places": FieldValue.arrayUnion([placeData]),
+            "version": PlaceCollection.currentVersion
+        ]) { error in
+            if let error = error {
+                completion(.failure(error))
+            } else {
+                completion(.success(()))
             }
         }
     }
@@ -257,28 +311,27 @@ class CollectionManager {
         // Create a batch write
         let batch = db.batch()
         
-        // Update owner's collection with sharedWith field
+        // Update owner's collection with members field
         let ownerCollectionRef = db.collection("users")
             .document(userId)
             .collection("collections")
-            .document("owned")
-            .collection("owned")
             .document(collection.id)
         
+        // Include owner in members list
+        let allMembers = [userId] + friends.map { $0.id }
+        
         batch.updateData([
-            "sharedWith": friends.map { $0.id },
+            "members": allMembers,
             "sharedAt": FieldValue.serverTimestamp()
         ], forDocument: ownerCollectionRef)
         
-        // Create shared collection in each friend's shared_collections
+        // Create shared collection in each friend's collections
         for friend in friends {
             print("📤 Sharing with friend ID: \(friend.id)")
             
             let sharedCollectionRef = db.collection("users")
-                .document(friend.id)  // Use friend's ID here
+                .document(friend.id)
                 .collection("collections")
-                .document("shared")
-                .collection("shared")
                 .document(collection.id)
             
             let sharedCollectionData: [String: Any] = [
@@ -290,10 +343,11 @@ class CollectionManager {
                 "isOwner": false,
                 "status": collection.status.rawValue,
                 "sharedBy": userId,  // This is the owner's ID
-                "sharedAt": FieldValue.serverTimestamp()
+                "sharedAt": FieldValue.serverTimestamp(),
+                "members": allMembers  // Include all members in shared copy
             ]
             
-            print("📤 Creating shared collection in path: users/\(friend.id)/collections/shared/shared/\(collection.id)")
+            print("📤 Creating shared collection in path: users/\(friend.id)/collections/\(collection.id)")
             print("📤 Shared collection data: \(sharedCollectionData)")
             
             batch.setData(sharedCollectionData, forDocument: sharedCollectionRef)
