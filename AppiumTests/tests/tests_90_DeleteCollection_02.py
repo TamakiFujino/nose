@@ -56,9 +56,9 @@ class DeleteCollectionTest(BaseTest):
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Update Sharing')
         element.click()
         time.sleep(2)
-        # make sure the shared friend number updated - (//XCUIElementTypeStaticText[@name=" 1"])[1]
-        element = self.driver.find_element(By.XPATH, '//XCUIElementTypeStaticText[@name=" 1"]')
-        assert element.is_displayed()
+        # check the number of shared collections is 1
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'shared_friends_count_label')
+        assert element.get_attribute("value") == '1', "Number of shared collections is not 1"
 
         """delete a spot from the collection"""
         # check the saved spot from myself is listed
