@@ -115,12 +115,10 @@ final class ShareCollectionViewController: UIViewController {
         
         let db = Firestore.firestore()
         
-        // First, get the current shared friends
+        // First, get the current members
         db.collection("users")
             .document(currentUserId)
             .collection("collections")
-            .document("owned")
-            .collection("owned")
             .document(collection.id)
             .getDocument { [weak self] snapshot, error in
                 if let error = error {
@@ -128,9 +126,23 @@ final class ShareCollectionViewController: UIViewController {
                     return
                 }
                 
-                // Get the list of currently shared friends
-                let sharedWith = snapshot?.data()?["sharedWith"] as? [String] ?? []
-                self?.previouslySharedFriends = Set(sharedWith)
+                // Debug: Print the entire collection data
+                if let data = snapshot?.data() {
+                    print("📋 Full collection data: \(data)")
+                } else {
+                    print("📋 No collection data found")
+                }
+                
+                // Get the list of current members
+                let members = snapshot?.data()?["members"] as? [String] ?? [currentUserId]
+                print("📋 Current members from Firestore: \(members)")
+                
+                // Remove owner from the list of previously shared friends
+                self?.previouslySharedFriends = Set(members.filter { $0 != currentUserId })
+                print("📋 Previously shared friends (excluding owner): \(self?.previouslySharedFriends ?? [])")
+                
+                // Clear selected friends and repopulate based on current members
+                self?.selectedFriends.removeAll()
                 
                 // Then load all friends
                 db.collection("users")
@@ -141,6 +153,8 @@ final class ShareCollectionViewController: UIViewController {
                             print("Error loading friends: \(error.localizedDescription)")
                             return
                         }
+                        
+                        print("📋 Found \(snapshot?.documents.count ?? 0) friends in friends collection")
                         
                         // Create a dispatch group to handle multiple async operations
                         let group = DispatchGroup()
@@ -161,9 +175,12 @@ final class ShareCollectionViewController: UIViewController {
                                 
                                 if let userSnapshot = userSnapshot, let user = User.fromFirestore(userSnapshot) {
                                     loadedFriends.append(user)
-                                    // If this friend is already shared with, add them to selectedFriends
-                                    if sharedWith.contains(friendId) {
+                                    // If this friend is already a member, add them to selectedFriends
+                                    if members.contains(friendId) {
                                         self?.selectedFriends.insert(friendId)
+                                        print("✅ Added \(user.name) (ID: \(friendId)) to selectedFriends - already a member")
+                                    } else {
+                                        print("❌ \(user.name) (ID: \(friendId)) is not a member")
                                     }
                                 }
                             }
@@ -171,6 +188,9 @@ final class ShareCollectionViewController: UIViewController {
                         
                         group.notify(queue: .main) {
                             self?.friends = loadedFriends
+                            print("📋 Final selectedFriends: \(self?.selectedFriends ?? [])")
+                            print("📋 Final previouslySharedFriends: \(self?.previouslySharedFriends ?? [])")
+                            print("📋 Friends loaded: \(loadedFriends.map { "\($0.name) (ID: \($0.id))" })")
                             self?.tableView.reloadData()
                             self?.updateShareButtonState()
                         }
@@ -215,6 +235,9 @@ extension ShareCollectionViewController: UITableViewDelegate, UITableViewDataSou
         let friend = friends[indexPath.row]
         let isSelected = selectedFriends.contains(friend.id)
         let wasPreviouslyShared = previouslySharedFriends.contains(friend.id)
+        
+        print("🔍 Configuring cell for \(friend.name) (ID: \(friend.id)) - isSelected: \(isSelected), wasPreviouslyShared: \(wasPreviouslyShared)")
+        
         cell.configure(with: friend, isSelected: isSelected, wasPreviouslyShared: wasPreviouslyShared)
         return cell
     }
@@ -290,15 +313,20 @@ final class FriendSelectionCell: UITableViewCell {
         nameLabel.text = user.name
         checkmarkImageView.isHidden = !isSelected
         
+        print("🎨 Cell config for \(user.name): isSelected=\(isSelected), wasPreviouslyShared=\(wasPreviouslyShared)")
+        
         if wasPreviouslyShared && !isSelected {
             statusLabel.text = "Will be removed"
             statusLabel.textColor = .systemRed
+            print("🎨 Status: Will be removed")
         } else if !wasPreviouslyShared && isSelected {
             statusLabel.text = "Will be added"
             statusLabel.textColor = .systemGreen
+            print("🎨 Status: Will be added")
         } else {
             statusLabel.text = wasPreviouslyShared ? "Currently shared" : "Not shared"
             statusLabel.textColor = .secondaryLabel
+            print("🎨 Status: \(wasPreviouslyShared ? "Currently shared" : "Not shared")")
         }
     }
 } 
