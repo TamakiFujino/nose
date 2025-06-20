@@ -15,25 +15,25 @@
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="logo" translatesAutoresizingMaskIntoConstraints="NO" id="2vI-2y-EiE">
-                                <rect key="frame" x="94.666666666666686" y="259.66666666666669" width="204" height="333.00000000000006"/>
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="logo" translatesAutoresizingMaskIntoConstraints="NO" id="Br1-iO-kEm">
+                                <rect key="frame" x="86" y="252" width="221" height="348"/>
                                 <constraints>
-                                    <constraint firstAttribute="height" constant="333" id="7hb-L8-LeB"/>
-                                    <constraint firstAttribute="width" constant="204" id="yv0-aG-aZl"/>
+                                    <constraint firstAttribute="width" constant="221" id="GgL-6q-YPB"/>
+                                    <constraint firstAttribute="height" constant="348" id="zOe-9t-vpN"/>
                                 </constraints>
                             </imageView>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="Bcu-3y-fUS"/>
-                        <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                        <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                         <constraints>
-                            <constraint firstItem="2vI-2y-EiE" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" id="8Vt-8g-zfX"/>
-                            <constraint firstItem="2vI-2y-EiE" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="nzK-CG-BIS"/>
+                            <constraint firstItem="Br1-iO-kEm" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="aMn-Vm-Nh4"/>
+                            <constraint firstItem="Br1-iO-kEm" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" id="cFv-WW-oUR"/>
                         </constraints>
                     </view>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="iYj-Kq-Ea1" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="52.325581395348841" y="374.56395348837208"/>
+            <point key="canvasLocation" x="51.145038167938928" y="373.94366197183098"/>
         </scene>
     </scenes>
     <resources>

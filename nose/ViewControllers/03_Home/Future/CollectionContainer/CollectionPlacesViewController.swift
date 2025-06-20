@@ -220,13 +220,10 @@ class CollectionPlacesViewController: UIViewController {
         let db = Firestore.firestore()
         
         print("DEBUG: Loading avatar data for collection: \(collection.id)")
-        let collectionType = collection.isOwner ? "owned" : "shared"
         
         db.collection("users")
             .document(currentUserId)
             .collection("collections")
-            .document(collectionType)
-            .collection(collectionType)
             .document(collection.id)
             .getDocument { [weak self] snapshot, error in
                 if let error = error {
@@ -438,8 +435,6 @@ class CollectionPlacesViewController: UIViewController {
                 let collectionRef = db.collection("users")
                     .document(self?.collection.userId ?? "")  // Use the collection owner's ID
                     .collection("collections")
-                    .document("owned")
-                    .collection("owned")
                     .document(self?.collection.id ?? "")
                 
                 collectionRef.getDocument { [weak self] snapshot, error in
@@ -448,12 +443,16 @@ class CollectionPlacesViewController: UIViewController {
                         return
                     }
                     
-                    if let sharedWith = snapshot?.data()?["sharedWith"] as? [String] {
-                        // Filter out blocked users from the count
-                        let activeSharedUsers = sharedWith.filter { !blockedUserIds.contains($0) }
-                        self?.sharedFriendsCount = activeSharedUsers.count
+                    if let members = snapshot?.data()?["members"] as? [String] {
+                        // Filter out blocked users but include the owner in the count
+                        let activeMembers = members.filter { 
+                            !blockedUserIds.contains($0)
+                        }
+                        self?.sharedFriendsCount = activeMembers.count
+                        print("📊 Total members (including owner): \(activeMembers.count)")
                     } else {
                         self?.sharedFriendsCount = 0
+                        print("📊 No members found")
                     }
                     self?.updateSharedFriendsLabel()
                 }
@@ -591,28 +590,19 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         let db = Firestore.firestore()
         
-        // Determine the correct collection type and path
-        let collectionType = collection.isOwner ? "owned" : "shared"
-        print("📄 Collection type: \(collectionType)")
-        print("📄 Collection ID: \(collection.id)")
-        
         // Get references to both collections
         let userCollectionRef = db.collection("users")
             .document(currentUserId)
             .collection("collections")
-            .document(collectionType)
-            .collection(collectionType)
             .document(collection.id)
             
         let ownerCollectionRef = db.collection("users")
             .document(collection.userId)  // This is the owner's ID
             .collection("collections")
-            .document("owned")
-            .collection("owned")
             .document(collection.id)
         
-        print("📄 Firestore path: users/\(currentUserId)/collections/\(collectionType)/\(collectionType)/\(collection.id)")
-        print("📄 Owner path: users/\(collection.userId)/collections/owned/owned/\(collection.id)")
+        print("📄 Firestore path: users/\(currentUserId)/collections/\(collection.id)")
+        print("📄 Owner path: users/\(collection.userId)/collections/\(collection.id)")
         
         // First get the current collection data
         userCollectionRef.getDocument { [weak self] snapshot, error in
@@ -674,7 +664,7 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
                     }
                 }
             } else {
-                print("Failed to parse places array from collection data")
+                print("No places array found in collection data")
                 self?.dismiss(animated: true) {
                     ToastManager.showToast(message: "Failed to remove place", type: .error)
                 }

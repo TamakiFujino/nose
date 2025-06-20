@@ -76,17 +76,17 @@
 		F1BCB3623F34C0020E1D1F3E /* Pods-nose.development.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-nose.development.xcconfig"; path = "Target Support Files/Pods-nose/Pods-nose.development.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		49EE64AD2DFBE890004DA63B /* Exceptions for "nose" folder in "nose" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Resources/Models/body.usdz,
-			);
-			target = 49E99BF52D3BE432000F3CE5 /* nose */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		4984014E2D886D9F00A6288A /* .github */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = .github;
+			sourceTree = "<group>";
+		};
+		49BE7E332DF41122006D6E16 /* FirebaseConfig */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = FirebaseConfig;
+			sourceTree = "<group>";
+		};
 		49E99BF82D3BE432000F3CE5 /* nose */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -150,6 +150,9 @@
 			children = (
 				49BE80722DF45931006D6E16 /* Main.storyboard */,
 				49BE80702DF4559C006D6E16 /* LaunchScreen.storyboard */,
+				49BE7FB62DF444A8006D6E16 /* InfoPlist */,
+				49BE7E332DF41122006D6E16 /* FirebaseConfig */,
+				4984014E2D886D9F00A6288A /* .github */,
 				4984E6CA2D731BC600A6288A /* Localizable.xcstrings */,
 				49E99BF82D3BE432000F3CE5 /* nose */,
 				49E99C0F2D3BE433000F3CE5 /* noseTests */,
@@ -227,6 +230,8 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
+				4984014E2D886D9F00A6288A /* .github */,
+				49BE7E332DF41122006D6E16 /* FirebaseConfig */,
 				49E99BF82D3BE432000F3CE5 /* nose */,
 				49EE64242DFBC64F004DA63B /* FirebaseConfig */,
 				49EE642B2DFBC651004DA63B /* InfoPlist */,

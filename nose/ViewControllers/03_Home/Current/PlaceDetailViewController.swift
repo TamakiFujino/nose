@@ -1,5 +1,7 @@
 import UIKit
 import GooglePlaces
+import FirebaseFirestore
+import FirebaseAuth
 
 final class PlaceDetailViewController: UIViewController {
     
@@ -443,6 +445,28 @@ final class PlaceDetailViewController: UIViewController {
         let saveVC = SaveToCollectionViewController(place: place)
         saveVC.delegate = self
         present(saveVC, animated: true)
+    }
+    
+    private func savePlaceToCollection(_ collection: PlaceCollection) {
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        let db = Firestore.firestore()
+        
+        // Get references to both collections
+        let userCollectionRef = db.collection("users")
+            .document(currentUserId)
+            .collection("collections")
+            .document(collection.id)
+            
+        let ownerCollectionRef = db.collection("users")
+            .document(collection.userId)  // This is the owner's ID
+            .collection("collections")
+            .document(collection.id)
+        
+        print("📄 Firestore path: users/\(currentUserId)/collections/\(collection.id)")
+        print("📄 Owner path: users/\(collection.userId)/collections/\(collection.id)")
+        
+        // First get the current collection data
+        // ... existing code ...
     }
 }
 

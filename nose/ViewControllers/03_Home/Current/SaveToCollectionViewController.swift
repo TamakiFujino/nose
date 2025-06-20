@@ -164,80 +164,108 @@ class SaveToCollectionViewController: UIViewController {
     
     // MARK: - Helper Methods
     private func loadCollections() {
+        loadUserCollections()
+    }
+    
+    private func loadUserCollections() {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         let db = Firestore.firestore()
         
-        print("📥 Fetching collections for user \(currentUserId)...")
-        
         // Load owned collections
-        db.collection("users")
+        let ownedCollectionsRef = db.collection("users")
             .document(currentUserId)
             .collection("collections")
-            .document("owned")
-            .collection("owned")
-            .getDocuments { [weak self] (snapshot: QuerySnapshot?, error: Error?) in
-                if let error = error {
-                    print("❌ Error loading owned collections: \(error.localizedDescription)")
-                    return
+            .whereField("isOwner", isEqualTo: true)
+        
+        ownedCollectionsRef.getDocuments { [weak self] snapshot, error in
+            if let error = error {
+                print("❌ Error loading owned collections: \(error.localizedDescription)")
+                return
+            }
+            
+            self?.ownedCollections = snapshot?.documents.compactMap { document in
+                var data = document.data()
+                data["id"] = document.documentID
+                data["isOwner"] = true
+                
+                if let collection = PlaceCollection(dictionary: data) {
+                    print("✅ Loaded owned collection: '\(collection.name)' (ID: \(collection.id))")
+                    return collection
                 }
+                print("❌ Failed to parse owned collection: \(document.documentID)")
+                return nil
+            } ?? []
+            
+            // Filter to only show active collections
+            self?.ownedCollections = self?.ownedCollections.filter { $0.status == .active } ?? []
+            
+            DispatchQueue.main.async {
+                self?.collectionsTableView.reloadData()
+            }
+        }
+        
+        // Load shared collections
+        let sharedCollectionsRef = db.collection("users")
+            .document(currentUserId)
+            .collection("collections")
+            .whereField("isOwner", isEqualTo: false)
+        
+        sharedCollectionsRef.getDocuments { [weak self] snapshot, error in
+            if let error = error {
+                print("❌ Error loading shared collections: \(error.localizedDescription)")
+                return
+            }
+            
+            let group = DispatchGroup()
+            var loadedCollections: [PlaceCollection] = []
+            
+            snapshot?.documents.forEach { document in
+                group.enter()
+                let data = document.data()
                 
-                let fetchedCollections = snapshot?.documents.compactMap { document -> PlaceCollection? in
-                    var data = document.data()
-                    data["id"] = document.documentID
-                    data["isOwner"] = true
+                // Get the original collection data from the owner's collections
+                if let ownerId = data["userId"] as? String,
+                   let collectionId = data["id"] as? String {
+                    print("🔍 Loading original collection from owner: \(ownerId), collection: \(collectionId)")
                     
-                    if data["status"] == nil {
-                        data["status"] = PlaceCollection.Status.active.rawValue
-                    }
-                    
-                    if let collection = PlaceCollection(dictionary: data) {
-                        print("✅ Loaded owned collection: '\(collection.name)' with \(collection.places.count) places")
-                        return collection
-                    }
-                    return nil
-                } ?? []
-                
-                DispatchQueue.main.async {
-                    // Only show active collections in the save modal
-                    self?.ownedCollections = fetchedCollections.filter { $0.status == .active }
-                    self?.collectionsTableView.reloadData()
+                    db.collection("users")
+                        .document(ownerId)
+                        .collection("collections")
+                        .document(collectionId)
+                        .getDocument { snapshot, error in
+                            defer { group.leave() }
+                            
+                            if let error = error {
+                                print("❌ Error loading original collection: \(error.localizedDescription)")
+                                return
+                            }
+                            
+                            if let originalData = snapshot?.data() {
+                                var collectionData = originalData
+                                collectionData["id"] = collectionId
+                                collectionData["isOwner"] = false
+                                
+                                if let collection = PlaceCollection(dictionary: collectionData) {
+                                    print("✅ Loaded shared collection: '\(collection.name)' (ID: \(collection.id))")
+                                    loadedCollections.append(collection)
+                                } else {
+                                    print("❌ Failed to parse shared collection: \(collectionId)")
+                                }
+                            } else {
+                                print("❌ No data found for shared collection: \(collectionId)")
+                            }
+                        }
+                } else {
+                    print("❌ Invalid shared collection data: \(data)")
+                    group.leave()
                 }
             }
             
-        // Load shared collections
-        db.collection("users")
-            .document(currentUserId)
-            .collection("collections")
-            .document("shared")
-            .collection("shared")
-            .getDocuments { [weak self] (snapshot: QuerySnapshot?, error: Error?) in
-                if let error = error {
-                    print("❌ Error loading shared collections: \(error.localizedDescription)")
-                    return
-                }
-                
-                let fetchedCollections = snapshot?.documents.compactMap { document -> PlaceCollection? in
-                    var data = document.data()
-                    data["id"] = document.documentID
-                    data["isOwner"] = false
-                    
-                    if data["status"] == nil {
-                        data["status"] = PlaceCollection.Status.active.rawValue
-                    }
-                    
-                    if let collection = PlaceCollection(dictionary: data) {
-                        print("✅ Loaded shared collection: '\(collection.name)' with \(collection.places.count) places")
-                        return collection
-                    }
-                    return nil
-                } ?? []
-                
-                DispatchQueue.main.async {
-                    // Only show active collections in the save modal
-                    self?.sharedCollections = fetchedCollections.filter { $0.status == .active }
-                    self?.collectionsTableView.reloadData()
-                }
+            group.notify(queue: .main) {
+                self?.sharedCollections = loadedCollections.filter { $0.status == .active }
+                self?.collectionsTableView.reloadData()
             }
+        }
     }
     
     private func updateSaveButtonState() {
@@ -262,32 +290,39 @@ class SaveToCollectionViewController: UIViewController {
             }
             
             // Create new collection in Firestore
-            CollectionContainerManager.shared.createCollection(name: collectionName) { [weak self] result in
-                DispatchQueue.main.async {
-                    switch result {
-                    case .success(let newCollection):
-                        self?.ownedCollections.append(newCollection)
-                        self?.selectedCollection = newCollection
-                        self?.collectionsTableView.reloadData()
-                        self?.updateSaveButtonState()
-                    case .failure(let error):
-                        print("Error creating collection: \(error.localizedDescription)")
-                        // Show error alert
-                        let errorAlert = UIAlertController(
-                            title: "Error",
-                            message: "Failed to create collection. Please try again.",
-                            preferredStyle: .alert
-                        )
-                        errorAlert.addAction(UIAlertAction(title: "OK", style: .default))
-                        self?.present(errorAlert, animated: true)
-                    }
+            guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+            let db = Firestore.firestore()
+            let collectionId = UUID().uuidString
+            
+            let collectionData: [String: Any] = [
+                "id": collectionId,
+                "name": collectionName,
+                "places": [],
+                "userId": currentUserId,
+                "createdAt": Timestamp(date: Date()),
+                "isOwner": true,
+                "status": PlaceCollection.Status.active.rawValue,
+                "members": [currentUserId]  // Add owner to members list by default
+            ]
+            
+            let collectionRef = db.collection("users")
+                .document(currentUserId)
+                .collection("collections")
+                .document(collectionId)
+            
+            collectionRef.setData(collectionData) { error in
+                if let error = error {
+                    print("❌ Error creating collection: \(error.localizedDescription)")
+                    return
                 }
+                
+                print("✅ Successfully created collection: \(collectionName)")
+                self.loadUserCollections()
             }
         }
         
         alert.addAction(cancelAction)
         alert.addAction(createAction)
-        
         present(alert, animated: true)
     }
     
@@ -329,33 +364,22 @@ class SaveToCollectionViewController: UIViewController {
             "addedAt": Timestamp(date: Date())
         ]
         
-        // Determine the correct collection type and path
-        let collectionType = collection.isOwner ? "owned" : "shared"
-        print("📄 Collection type: \(collectionType)")
-        print("📄 Collection ID: \(collection.id)")
-        print("📄 Is owner: \(collection.isOwner)")
-        print("📄 Owner ID: \(collection.userId)")
-        
-        // Get references for both shared and owner copies
+        // Get references for both user and owner collections
         let db = Firestore.firestore()
         let currentUserId = Auth.auth().currentUser?.uid ?? ""
         
-        // Reference to the current user's copy (shared or owned)
+        // Reference to the current user's collection
         let userCollectionRef = db.collection("users")
             .document(currentUserId)
             .collection("collections")
-            .document(collectionType)
-            .collection(collectionType)
             .document(collection.id)
         
         print("📄 User's collection path: \(userCollectionRef.path)")
         
-        // If this is a shared collection, also get reference to owner's copy
+        // If this is a shared collection, also get reference to owner's collection
         let ownerCollectionRef = collection.isOwner ? nil : db.collection("users")
             .document(collection.userId)
             .collection("collections")
-            .document("owned")
-            .collection("owned")
             .document(collection.id)
         
         if let ownerRef = ownerCollectionRef {
@@ -369,26 +393,28 @@ class SaveToCollectionViewController: UIViewController {
         
         group.enter()
         userCollectionRef.getDocument { snapshot, error in
+            defer { group.leave() }
             if let error = error {
                 print("❌ Error checking user collection: \(error.localizedDescription)")
-            } else {
-                userCollectionExists = snapshot?.exists ?? false
-                print("📄 User collection exists: \(userCollectionExists)")
+                return
             }
-            group.leave()
+            userCollectionExists = snapshot?.exists ?? false
+            print("📄 User collection exists: \(userCollectionExists)")
         }
         
         if let ownerRef = ownerCollectionRef {
             group.enter()
             ownerRef.getDocument { snapshot, error in
+                defer { group.leave() }
                 if let error = error {
                     print("❌ Error checking owner collection: \(error.localizedDescription)")
-                } else {
-                    ownerCollectionExists = snapshot?.exists ?? false
-                    print("📄 Owner collection exists: \(ownerCollectionExists)")
+                    return
                 }
-                group.leave()
+                ownerCollectionExists = snapshot?.exists ?? false
+                print("📄 Owner collection exists: \(ownerCollectionExists)")
             }
+        } else {
+            ownerCollectionExists = true // No owner collection to check
         }
         
         group.notify(queue: .main) { [weak self] in
