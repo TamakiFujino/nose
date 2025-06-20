@@ -97,7 +97,7 @@ class DeleteAccountUserATest(BaseTest):
         element.click()
         time.sleep(2)
         # tap "OK"
-        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'OK')
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Delete')
         element.click()
         time.sleep(2)
         # make sure the screen goes back to the launch screen
