@@ -8,8 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		4984E6CB2D731BC600A6288A /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 4984E6CA2D731BC600A6288A /* Localizable.xcstrings */; };
-		49BE80712DF4559C006D6E16 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 49BE80702DF4559C006D6E16 /* LaunchScreen.storyboard */; };
-		49BE80732DF45931006D6E16 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 49BE80722DF45931006D6E16 /* Main.storyboard */; };
 		57F5337D85E99C4A21D785F6 /* Pods_noseTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 312A9D10F92AD4AC6B98F711 /* Pods_noseTests.framework */; };
 		90E1384E390AC4D7DCDC4D2F /* Pods-nose-metadata.plist in Resources */ = {isa = PBXBuildFile; fileRef = 6BAD938A99764361A6E14FC3 /* Pods-nose-metadata.plist */; };
 		91CD46407E2EDDD0C40362EF /* Pods_nose.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B915CAA5A41A6C145FBB9A8E /* Pods_nose.framework */; };
@@ -55,8 +53,6 @@
 		350B317CA55C81FEF179C2D9 /* Pods-nose.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-nose.release.xcconfig"; path = "Target Support Files/Pods-nose/Pods-nose.release.xcconfig"; sourceTree = "<group>"; };
 		488D4BC551BCE45C96E9422C /* Pods-noseUITests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseUITests.release.xcconfig"; path = "Target Support Files/Pods-noseUITests/Pods-noseUITests.release.xcconfig"; sourceTree = "<group>"; };
 		4984E6CA2D731BC600A6288A /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
-		49BE80702DF4559C006D6E16 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
-		49BE80722DF45931006D6E16 /* Main.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = Main.storyboard; sourceTree = "<group>"; };
 		49E99BF62D3BE432000F3CE5 /* nose.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = nose.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		49E99C0C2D3BE433000F3CE5 /* noseTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = noseTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		49E99C162D3BE433000F3CE5 /* noseUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = noseUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -77,11 +73,6 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		4984014E2D886D9F00A6288A /* .github */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = .github;
-			sourceTree = "<group>";
-		};
 		49BE7E332DF41122006D6E16 /* FirebaseConfig */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = FirebaseConfig;
@@ -89,9 +80,6 @@
 		};
 		49E99BF82D3BE432000F3CE5 /* nose */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				49EE64AD2DFBE890004DA63B /* Exceptions for "nose" folder in "nose" target */,
-			);
 			path = nose;
 			sourceTree = "<group>";
 		};
@@ -148,11 +136,7 @@
 		49E99BED2D3BE432000F3CE5 = {
 			isa = PBXGroup;
 			children = (
-				49BE80722DF45931006D6E16 /* Main.storyboard */,
-				49BE80702DF4559C006D6E16 /* LaunchScreen.storyboard */,
-				49BE7FB62DF444A8006D6E16 /* InfoPlist */,
 				49BE7E332DF41122006D6E16 /* FirebaseConfig */,
-				4984014E2D886D9F00A6288A /* .github */,
 				4984E6CA2D731BC600A6288A /* Localizable.xcstrings */,
 				49E99BF82D3BE432000F3CE5 /* nose */,
 				49E99C0F2D3BE433000F3CE5 /* noseTests */,
@@ -230,7 +214,6 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				4984014E2D886D9F00A6288A /* .github */,
 				49BE7E332DF41122006D6E16 /* FirebaseConfig */,
 				49E99BF82D3BE432000F3CE5 /* nose */,
 				49EE64242DFBC64F004DA63B /* FirebaseConfig */,
@@ -335,10 +318,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				49BE80712DF4559C006D6E16 /* LaunchScreen.storyboard in Resources */,
 				4984E6CB2D731BC600A6288A /* Localizable.xcstrings in Resources */,
 				90E1384E390AC4D7DCDC4D2F /* Pods-nose-metadata.plist in Resources */,
-				49BE80732DF45931006D6E16 /* Main.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
