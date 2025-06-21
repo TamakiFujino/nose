@@ -50,6 +50,10 @@ class BlockingUserTest(BaseTest):
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Unblock')
         element.click()
         time.sleep(2)
+        # tap OK
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'OK')
+        element.click()
+        time.sleep(2)
         # make sure "User B" is not in the list
         elements = self.driver.find_elements(AppiumBy.ACCESSIBILITY_ID, 'User B')
         assert len(elements) == 0, "Element 'User B' was found when it should not exist"
@@ -127,9 +131,9 @@ class BlockingUserTest(BaseTest):
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Update Sharing')
         element.click()
         time.sleep(2)
-        # make sure the number of shared collections is 1
+        # make sure the number of shared collections is 2
         friends_value = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'shared_friends_count_label').get_attribute("value")
-        assert friends_value == '1', "Shared friends count is not 1"
+        assert friends_value == '2', "Shared friends count is not 2"
         # swipe down to close the modal
         self.driver.swipe(300, 350, 300, 650)
         time.sleep(2)

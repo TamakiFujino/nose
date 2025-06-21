@@ -25,6 +25,27 @@ class DeleteAccountUserBTest(BaseTest):
             print("Map location permission not shown")
         time.sleep(1)
 
+        """check the collection shared with user A is deleted"""
+        # tap right dot
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'right_dot')
+        element.click()
+        time.sleep(2)
+        # tap "sparkle"
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'sparkle')
+        element.click()
+        time.sleep(2)
+        # tap "From Friends"
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'From Friends')
+        element.click()
+        time.sleep(2)
+        # make sure you do not see "National Parks" 
+        elements = self.driver.find_elements(AppiumBy.ACCESSIBILITY_ID, 'National Parks')
+        assert len(elements) == 0, "Element 'National Parks' was found when it should not exist"
+        time.sleep(2)
+        # tap somewhere on the screen to close the modal
+        self.driver.tap([(200, 200)])
+        time.sleep(2)
+
         """try to add a deleted user as a friend"""
         # tap "Personal Library"
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Personal Library')
@@ -45,7 +66,7 @@ class DeleteAccountUserBTest(BaseTest):
         # tap "Add Friend"
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'add_friend_button')
         element.click()
-        time.sleep(1)
+        time.sleep(2)
         # Check the error message //XCUIElementTypeStaticText[@name="User Not Found"]
         element = self.driver.find_element(By.XPATH, '//XCUIElementTypeStaticText[@name="User Not Found"]')
         assert element.is_displayed()
