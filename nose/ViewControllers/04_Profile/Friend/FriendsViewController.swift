@@ -268,109 +268,23 @@ class FriendsViewController: UIViewController {
         // Add block action
         alert.addAction(UIAlertAction(title: "Block", style: .destructive) { [weak self] _ in
             guard let currentUserId = Auth.auth().currentUser?.uid else { return }
-            let db = Firestore.firestore()
             
-            // Create a batch to handle all operations atomically
-            let batch = db.batch()
+            print("🔒 FriendsViewController: Starting block operation for user: \(user.name)")
             
-            // 1. Remove User B from User A's friends list
-            let userAFriendsRef = db.collection("users")
-                .document(currentUserId)
-                .collection("friends")
-                .document(user.id)
-            batch.deleteDocument(userAFriendsRef)
-            
-            // 2. Add User B to User A's blocked list
-            let userABlockedRef = db.collection("users")
-                .document(currentUserId)
-                .collection("blocked")
-                .document(user.id)
-            batch.setData([
-                "blockedAt": FieldValue.serverTimestamp()
-            ], forDocument: userABlockedRef)
-            
-            // 3. Remove User A from User B's friends list
-            let userBFriendsRef = db.collection("users")
-                .document(user.id)
-                .collection("friends")
-                .document(currentUserId)
-            batch.deleteDocument(userBFriendsRef)
-            
-            // 4. Remove shared collections
-            let userBSharedCollectionsRef = db.collection("users")
-                .document(user.id)
-                .collection("collections")
-                .whereField("isOwner", isEqualTo: false)
-            
-            // Get all collections shared by User A
-            userBSharedCollectionsRef.whereField("sharedBy", isEqualTo: currentUserId)
-                .getDocuments { snapshot, error in
-                    if let error = error {
-                        print("DEBUG: Error getting shared collections: \(error.localizedDescription)")
-                        return
+            // Use UserManager to handle the blocking operation
+            UserManager.shared.blockUser(currentUserId: currentUserId, blockedUserId: user.id) { result in
+                DispatchQueue.main.async {
+                    switch result {
+                    case .success:
+                        print("🔒 FriendsViewController: Successfully blocked user")
+                        self?.loadFriends()
+                        self?.showAlert(title: "Success", message: "User blocked successfully")
+                    case .failure(let error):
+                        print("❌ FriendsViewController: Error blocking user: \(error.localizedDescription)")
+                        self?.showAlert(title: "Error", message: "Failed to block user: \(error.localizedDescription)")
                     }
-                    
-                    // Add delete operations for each shared collection to the batch
-                    snapshot?.documents.forEach { document in
-                        batch.deleteDocument(document.reference)
-                    }
-                    
-                    // 5. Remove User B from sharedWith in User A's collections
-                    let userACollectionsRef = db.collection("users")
-                        .document(currentUserId)
-                        .collection("collections")
-                        .whereField("isOwner", isEqualTo: true)
-                    
-                    userACollectionsRef.whereField("members", arrayContains: user.id)
-                        .getDocuments { snapshot, error in
-                            if let error = error {
-                                print("DEBUG: Error getting collections with members: \(error.localizedDescription)")
-                                return
-                            }
-                            
-                            // Update each collection to remove the blocked user from members
-                            snapshot?.documents.forEach { document in
-                                let collectionRef = document.reference
-                                batch.updateData([
-                                    "members": FieldValue.arrayRemove([user.id])
-                                ], forDocument: collectionRef)
-                            }
-                            
-                            // 6. Remove collections shared by User B from User A's shared collections
-                            let userASharedCollectionsRef = db.collection("users")
-                                .document(currentUserId)
-                                .collection("collections")
-                                .whereField("isOwner", isEqualTo: false)
-                            
-                            userASharedCollectionsRef.whereField("sharedBy", isEqualTo: user.id)
-                                .getDocuments { snapshot, error in
-                                    if let error = error {
-                                        print("DEBUG: Error getting collections shared by User B: \(error.localizedDescription)")
-                                        return
-                                    }
-                                    
-                                    // Add delete operations for each shared collection to the batch
-                                    snapshot?.documents.forEach { document in
-                                        batch.deleteDocument(document.reference)
-                                    }
-                                    
-                                    // Commit all operations
-                                    batch.commit { error in
-                                        if let error = error {
-                                            print("DEBUG: Error committing batch: \(error.localizedDescription)")
-                                            DispatchQueue.main.async {
-                                                self?.showAlert(title: "Error", message: "Failed to block user")
-                                            }
-                                        } else {
-                                            print("DEBUG: Successfully blocked user")
-                                            DispatchQueue.main.async {
-                                                self?.loadFriends()
-                                            }
-                                        }
-                                    }
-                                }
-                        }
                 }
+            }
         })
         
         present(alert, animated: true)
@@ -390,24 +304,23 @@ class FriendsViewController: UIViewController {
         // Add unblock action
         alert.addAction(UIAlertAction(title: "Unblock", style: .default) { [weak self] _ in
             guard let currentUserId = Auth.auth().currentUser?.uid else { return }
-            let db = Firestore.firestore()
             
-            // Remove from blocked
-            db.collection("users").document(currentUserId)
-                .collection("blocked").document(user.id).delete { error in
-                    if let error = error {
-                        print("DEBUG: Error unblocking user: \(error.localizedDescription)")
-                        DispatchQueue.main.async {
-                            self?.showAlert(title: "Error", message: "Failed to unblock user")
-                        }
-                        return
-                    }
-                    
-                    print("DEBUG: Successfully unblocked user")
-                    DispatchQueue.main.async {
+            print("🔓 FriendsViewController: Starting unblock operation for user: \(user.name)")
+            
+            // Use UserManager to handle the unblocking operation
+            UserManager.shared.unblockUser(currentUserId: currentUserId, blockedUserId: user.id) { result in
+                DispatchQueue.main.async {
+                    switch result {
+                    case .success:
+                        print("🔓 FriendsViewController: Successfully unblocked user")
                         self?.loadFriends()
+                        self?.showAlert(title: "Success", message: "User unblocked successfully")
+                    case .failure(let error):
+                        print("❌ FriendsViewController: Error unblocking user: \(error.localizedDescription)")
+                        self?.showAlert(title: "Error", message: "Failed to unblock user: \(error.localizedDescription)")
                     }
                 }
+            }
         })
         
         present(alert, animated: true)

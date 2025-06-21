@@ -72,6 +72,16 @@
 		F1BCB3623F34C0020E1D1F3E /* Pods-nose.development.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-nose.development.xcconfig"; path = "Target Support Files/Pods-nose/Pods-nose.development.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		49EE68BD2E058BDD004DA63B /* Exceptions for "nose" folder in "nose" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Assets/body.usdz,
+			);
+			target = 49E99BF52D3BE432000F3CE5 /* nose */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		49BE7E332DF41122006D6E16 /* FirebaseConfig */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
@@ -80,6 +90,9 @@
 		};
 		49E99BF82D3BE432000F3CE5 /* nose */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				49EE68BD2E058BDD004DA63B /* Exceptions for "nose" folder in "nose" target */,
+			);
 			path = nose;
 			sourceTree = "<group>";
 		};

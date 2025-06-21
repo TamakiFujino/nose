@@ -37,6 +37,10 @@ class DeleteCollectionTest(BaseTest):
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'National Parks')
         element.click()
         time.sleep(2)
+        # make sure you do not see "Pinnacles National Park"
+        elements = self.driver.find_elements(AppiumBy.ACCESSIBILITY_ID, 'Pinnacles National Park')
+        assert len(elements) == 0, "Element 'Pinnacles National Park' was found when it should not exist"
+        time.sleep(2)
         # tap three dot button
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'More')
         element.click()

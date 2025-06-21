@@ -65,8 +65,6 @@ class CollectionCreationTest(BaseTest):
         # check the title of the modal
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Save to Collection')
 
-        print(f"Done searching a spot: {__file__}")
-
         """create a collection"""
         # click add button
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'add')
@@ -81,9 +79,11 @@ class CollectionCreationTest(BaseTest):
         create_button.click()
         time.sleep(2)
 
-        print(f"Done creating a collection: {__file__}")
-
         """add a spot to the collection"""
+        # tap "National Parks"
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'National Parks')
+        element.click()
+        time.sleep(2)
         # click save button
         save_button = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Save')
         save_button.click()

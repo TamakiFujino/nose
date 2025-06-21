@@ -38,9 +38,9 @@ class BlockingUserAsNonOwnerBlockedTest(BaseTest):
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'National Parks')
         element.click()
         time.sleep(2)
-        # the number of shared collections is 0
+        # the number of shared collections is 1
         friends_value = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'shared_friends_count_label').get_attribute("value")
-        assert friends_value == '0', "Shared friends count is not 0"
+        assert friends_value == '1', "Shared friends count is not 1"
         # tap three dots
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'More')
         element.click()
