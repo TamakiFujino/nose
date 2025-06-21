@@ -11,13 +11,15 @@ enum AvatarCategory {
     static let body = "body"
     static let hair = "hair"
     static let clothes = "clothes"
+    static let accessories = "accessories"
     static let colors = "colors"
     
     // MARK: - JSON File Names
     static let jsonFiles: [String: String] = [
         body: "\(body).json",
         hair: "\(hair).json",
-        clothes: "\(clothes).json"
+        clothes: "\(clothes).json",
+        accessories: "\(accessories).json"
     ]
     
     // MARK: - Body Categories
@@ -33,8 +35,15 @@ enum AvatarCategory {
     
     // Clothing categories
     static let tops = "tops"
+    static let jacket = "jacket"
     static let bottoms = "bottoms"
     static let socks = "socks"
+    
+    // Accessories categories
+    static let head = "head"
+    // static let glasses = "neck"
+    // static let jewelry = "ear"
+    // static let bags = "eye"
     
     // All categories array
     static let all: [String] = [
@@ -42,24 +51,28 @@ enum AvatarCategory {
         eyes,
         eyebrows,
         tops,
+        jacket,
         bottoms,
         socks,
         base,
         front,
         side,
-        back
+        back,
+        head
     ]
     
     // Category groups
     static let bodyCategories: [String] = [skin, eyes, eyebrows]
-    static let clothingCategories: [String] = [tops, bottoms, socks]
+    static let clothingCategories: [String] = [tops, jacket, bottoms, socks]
+    static let accessoriesCategories: [String] = [head]
     static let hairCategories: [String] = [base, front, side, back]
     
     // All categories that can have models
     static let modelCategories: [String] = [
         eyes, eyebrows,
         base, front, side, back,
-        tops, bottoms, socks
+        tops, jacket, bottoms, socks,
+        head
     ]
     
     // Categories that can have colors
@@ -71,8 +84,9 @@ enum AvatarCategory {
     // Tab items for UI
     static let bodyTabItems = [skin, eyes, eyebrows]
     static let hairTabItems = [base, front, side, back]
-    static let clothesTabItems = [tops, bottoms, socks]
-    static let parentTabItems = [body, hair, clothes]
+    static let clothesTabItems = [tops, jacket, bottoms, socks]
+    static let accessoriesTabItems = [head]
+    static let parentTabItems = [body, hair, clothes, accessories]
     
     // Subcategory mapping
     private static let subcategoryMap: [String: String] = [
@@ -84,8 +98,10 @@ enum AvatarCategory {
         side: side,
         back: back,
         tops: tops,
+        jacket: jacket,
         bottoms: bottoms,
-        socks: socks
+        socks: socks,
+        head: head
     ]
     
     // Helper function to check if a category is valid
@@ -101,6 +117,8 @@ enum AvatarCategory {
             return hair
         } else if clothingCategories.contains(category) {
             return clothes
+        } else if accessoriesCategories.contains(category) {
+            return accessories
         }
         return ""
     }

@@ -160,44 +160,84 @@ struct CollectionAvatar: Codable {
             
             switch version {
             case .v1:
-                // Original format
-                for (category, value) in dict {
-                    if let valueDict = value as? [String: String] {
-                        // Validate the structure of the value dictionary
-                        if valueDict["model"] != nil || valueDict["color"] != nil {
+                // Check if this is the new structure with selections field
+                if let selectionsDict = dict["selections"] as? [String: [String: String]] {
+                    selections = selectionsDict
+                } else if let selectionsDict = dict["selections"] as? [String: [String: Any]] {
+                    // Convert [String: Any] to [String: String]
+                    for (category, valueDict) in selectionsDict {
+                        if let valueDict = valueDict as? [String: String] {
                             selections[category] = valueDict
-                        } else {
-                            print("⚠️ Skipping invalid value structure for category: \(category)")
-                            invalidEntries.append(category)
-                        }
-                    } else if let valueDict = value as? [String: Any] {
-                        // Try to convert [String: Any] to [String: String]
-                        var convertedDict: [String: String] = [:]
-                        var hasValidEntries = false
-                        
-                        for (key, val) in valueDict {
-                            if let stringVal = val as? String {
-                                convertedDict[key] = stringVal
-                                hasValidEntries = true
-                            } else if let intVal = val as? Int {
-                                convertedDict[key] = String(intVal)
-                                hasValidEntries = true
-                            } else if let boolVal = val as? Bool {
-                                convertedDict[key] = String(boolVal)
-                                hasValidEntries = true
+                        } else if let valueDict = valueDict as? [String: Any] {
+                            var convertedDict: [String: String] = [:]
+                            var hasValidEntries = false
+                            
+                            for (key, val) in valueDict {
+                                if let stringVal = val as? String {
+                                    convertedDict[key] = stringVal
+                                    hasValidEntries = true
+                                } else if let intVal = val as? Int {
+                                    convertedDict[key] = String(intVal)
+                                    hasValidEntries = true
+                                } else if let boolVal = val as? Bool {
+                                    convertedDict[key] = String(boolVal)
+                                    hasValidEntries = true
+                                }
+                            }
+                            
+                            if hasValidEntries {
+                                selections[category] = convertedDict
+                            } else {
+                                print("⚠️ Skipping category with no valid string values: \(category)")
+                                invalidEntries.append(category)
                             }
                         }
-                        
-                        if hasValidEntries {
-                            selections[category] = convertedDict
+                    }
+                } else {
+                    // Legacy format - direct category entries
+                    for (category, value) in dict {
+                        if let valueDict = value as? [String: String] {
+                            // Validate the structure of the value dictionary
+                            if valueDict["model"] != nil || valueDict["color"] != nil {
+                                selections[category] = valueDict
+                            } else {
+                                print("⚠️ Skipping invalid value structure for category: \(category)")
+                                invalidEntries.append(category)
+                            }
+                        } else if let valueDict = value as? [String: Any] {
+                            // Try to convert [String: Any] to [String: String]
+                            var convertedDict: [String: String] = [:]
+                            var hasValidEntries = false
+                            
+                            for (key, val) in valueDict {
+                                if let stringVal = val as? String {
+                                    convertedDict[key] = stringVal
+                                    hasValidEntries = true
+                                } else if let intVal = val as? Int {
+                                    convertedDict[key] = String(intVal)
+                                    hasValidEntries = true
+                                } else if let boolVal = val as? Bool {
+                                    convertedDict[key] = String(boolVal)
+                                    hasValidEntries = true
+                                }
+                            }
+                            
+                            if hasValidEntries {
+                                selections[category] = convertedDict
+                            } else {
+                                print("⚠️ Skipping category with no valid string values: \(category)")
+                                invalidEntries.append(category)
+                            }
                         } else {
-                            print("⚠️ Skipping category with no valid string values: \(category)")
+                            print("⚠️ Skipping invalid value type for category: \(category)")
                             invalidEntries.append(category)
                         }
-                    } else {
-                        print("⚠️ Skipping invalid value type for category: \(category)")
-                        invalidEntries.append(category)
                     }
+                }
+                
+                // Handle customizationVersion from the new structure
+                if let version = dict["customizationVersion"] as? Int {
+                    customizationVersion = version
                 }
                 
             case .v2:

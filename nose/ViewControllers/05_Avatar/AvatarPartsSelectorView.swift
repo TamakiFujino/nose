@@ -257,6 +257,7 @@ class AvatarPartSelectorView: UIView {
         case 0: items = AvatarCategory.bodyTabItems
         case 1: items = AvatarCategory.hairTabItems
         case 2: items = AvatarCategory.clothesTabItems
+        case 3: items = AvatarCategory.accessoriesTabItems
         default: return
         }
 
@@ -455,6 +456,23 @@ class AvatarPartSelectorView: UIView {
     }
 
     // MARK: - Public Interface
+    func syncWithAvatarData(_ avatarData: CollectionAvatar.AvatarData) {
+        // Clear current selections
+        selectedModels.removeAll()
+        
+        // Update selections from avatar data
+        for (category, entry) in avatarData.selections {
+            if let modelName = entry["model"] {
+                selectedModels[category] = modelName
+            }
+        }
+        
+        // Refresh the current view to show selections
+        Task {
+            await loadContentForSelectedTab()
+        }
+    }
+    
     func changeSelectedCategoryColor(to color: UIColor) {
         let category = getCurrentCategory()
         // Call the efficient color change method on the 3D view controller
@@ -481,6 +499,11 @@ class AvatarPartSelectorView: UIView {
             let index = childTabBar.selectedSegmentIndex
             guard index >= 0 && index < AvatarCategory.clothingCategories.count else { return "" }
             return AvatarCategory.clothingCategories[index]
+            
+        case 3: // Accessories tab
+            let index = childTabBar.selectedSegmentIndex
+            guard index >= 0 && index < AvatarCategory.accessoriesCategories.count else { return "" }
+            return AvatarCategory.accessoriesCategories[index]
             
         default:
             return ""

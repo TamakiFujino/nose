@@ -112,17 +112,20 @@ final class AvatarResourceManager {
         async let bodyTask = loadModelFile(AvatarCategory.jsonFiles[AvatarCategory.body] ?? "")
         async let clothesTask = loadModelFile(AvatarCategory.jsonFiles[AvatarCategory.clothes] ?? "")
         async let hairTask = loadModelFile(AvatarCategory.jsonFiles[AvatarCategory.hair] ?? "")
+        async let accessoriesTask = loadModelFile(AvatarCategory.jsonFiles[AvatarCategory.accessories] ?? "")
         
         // Wait for all tasks to complete
         let body = try await bodyTask
         let clothes = try await clothesTask
         let hair = try await hairTask
+        let accessories = try await accessoriesTask
         
         // Combine all models using AvatarCategory constants
         var allModels: [String: [String: [String]]] = [:]
         allModels[AvatarCategory.body] = body
         allModels[AvatarCategory.clothes] = clothes
         allModels[AvatarCategory.hair] = hair
+        allModels[AvatarCategory.accessories] = accessories
         
         print("✅ Successfully loaded models from all categories")
         return allModels
@@ -476,6 +479,13 @@ final class AvatarResourceManager {
         for category in AvatarCategory.hairCategories {
             if modelName.hasPrefix("hair_\(category)") {
                 return (AvatarCategory.hair, category)
+            }
+        }
+        
+        // Check accessories categories
+        for category in AvatarCategory.accessoriesCategories {
+            if modelName.hasPrefix("\(category)_") {
+                return (AvatarCategory.accessories, category)
             }
         }
         
