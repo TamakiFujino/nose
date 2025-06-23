@@ -67,5 +67,7 @@
 	</array>
 	<key>com.apple.developer.applesignin</key>
 	<string>Default</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
 </dict>
 </plist>

@@ -61,5 +61,7 @@
 		<key>UIImageName</key>
 		<string></string>
 	</dict>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
 </dict>
 </plist>
