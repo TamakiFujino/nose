@@ -175,7 +175,7 @@ class AvatarCustomViewController: UIViewController {
             version: .current
         )
         
-        // Save to Firestore using the new simplified path structure
+        // Save to Firestore using the simplified path structure
         let db = Firestore.firestore()
         db.collection("users")
             .document(currentUserId)
@@ -258,11 +258,6 @@ class AvatarCustomViewController: UIViewController {
     // MARK: - Public Interface
     func setInitialAvatarData(_ avatarData: CollectionAvatar.AvatarData) {
         currentAvatarData = avatarData
-        
-        // Sync the parts selector view if it's already set up
-        if let coordinator = customizationCoordinator {
-            coordinator.partSelectorView.syncWithAvatarData(avatarData)
-        }
     }
 
     private func preloadResources() {
@@ -278,7 +273,6 @@ class AvatarCustomViewController: UIViewController {
                 await MainActor.run {
                     self.setupNavigationBar()
                     self.setupAvatar3DView()
-                    self.setupCustomizationCoordinator()
                     self.setupGestures()
                     
                     // Ensure 3D view is ready before loading avatar data
@@ -337,3 +331,4 @@ class AvatarCustomViewController: UIViewController {
         }
     }
 }
+
