@@ -83,6 +83,11 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		49B95D8D2E0CE4B8004F2DCD /* .github */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = .github;
+			sourceTree = "<group>";
+		};
 		49BE7E332DF41122006D6E16 /* FirebaseConfig */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = FirebaseConfig;
@@ -149,6 +154,7 @@
 		49E99BED2D3BE432000F3CE5 = {
 			isa = PBXGroup;
 			children = (
+				49B95D8D2E0CE4B8004F2DCD /* .github */,
 				49BE7E332DF41122006D6E16 /* FirebaseConfig */,
 				4984E6CA2D731BC600A6288A /* Localizable.xcstrings */,
 				49E99BF82D3BE432000F3CE5 /* nose */,
@@ -227,6 +233,7 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
+				49B95D8D2E0CE4B8004F2DCD /* .github */,
 				49BE7E332DF41122006D6E16 /* FirebaseConfig */,
 				49E99BF82D3BE432000F3CE5 /* nose */,
 				49EE64242DFBC64F004DA63B /* FirebaseConfig */,
