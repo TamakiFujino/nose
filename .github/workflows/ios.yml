@@ -13,7 +13,7 @@ jobs:
         run: ls /Applications | grep Xcode
 
       - name: Select Xcode version
-        run: sudo xcode-select -s /Applications/Xcode_15.4.app  # 存在するバージョンに変更
+        run: sudo xcode-select -s /Applications/Xcode_16.2.0.app  # 存在するバージョンに変更
 
       - uses: actions/checkout@v3
 
