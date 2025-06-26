@@ -1,0 +1,44 @@
+{
+  "base": [
+    "hair_base_med",
+    "hair_base_full"
+  ],
+  "front": [
+    "hair_front_bluntlong",
+    "hair_front_bluntmed",
+    "hair_front_centerdown_pointed",
+    "hair_front_centerdown_straight",
+    "hair_front_centerup_pointed",
+    "hair_front_centerup_straight",
+    "hair_front_threeseven_long",
+    "hair_front_threeseven_med"
+  ],
+  "side": [
+    "hair_side_pointedshort",
+    "hair_side_pointedregular",
+    "hair_side_pointedmed",
+    "hair_side_pointedlong",
+    "hair_side_straightshort",
+    "hair_side_straightregular",
+    "hair_side_straightmed",
+    "hair_side_straightlong"
+  ],
+  "back": [
+    "hair_back_pointed_veryshort",
+    "hair_back_pointed_short",
+    "hair_back_pointed_med",
+    "hair_back_pointed_long",
+    "hair_back_straight_veryshort",
+    "hair_back_straight_short",
+    "hair_back_straight_med",
+    "hair_back_straight_long",
+    "hair_back_ponypointed_low",
+    "hair_back_ponypointed_high",
+    "hair_back_twintalepointed_low",
+    "hair_back_twintalepointed_high",
+    "hair_back_bun_low",
+    "hair_back_bun_high",
+    "hair_back_twinbun_low",
+    "hair_back_twinbun_high"
+  ]
+} 
