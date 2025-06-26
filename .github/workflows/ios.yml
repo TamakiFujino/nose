@@ -6,14 +6,14 @@ on:
 
 jobs:
   build:
-    runs-on: macos-14  # 最新のXcodeを含む環境
+    runs-on: macos-14  # Xcode 16.2 を含む環境
 
     steps:
       - name: Show available Xcode versions
         run: ls /Applications | grep Xcode
 
       - name: Select Xcode version
-        run: sudo xcode-select -s /Applications/Xcode_16.2.0.app  # 存在するバージョンに変更
+        run: sudo xcode-select -s /Applications/Xcode_16.2.app
 
       - uses: actions/checkout@v3
 
@@ -21,11 +21,10 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: 3.2
+          bundler-cache: true  # Gemfile.lock に基づきキャッシュ
 
-      - name: Install dependencies
-        run: |
-          gem install bundler
-          bundle install
+      - name: Install CocoaPods dependencies
+        run: bundle exec pod install
 
       - name: Run Fastlane
         run: bundle exec fastlane beta
