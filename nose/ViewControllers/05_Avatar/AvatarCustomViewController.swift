@@ -175,7 +175,6 @@ class AvatarCustomViewController: UIViewController {
             version: .current
         )
         
-        // Save to Firestore using the simplified path structure
         let db = Firestore.firestore()
         db.collection("users")
             .document(currentUserId)
@@ -331,4 +330,3 @@ class AvatarCustomViewController: UIViewController {
         }
     }
 }
-

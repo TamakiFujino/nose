@@ -320,6 +320,7 @@ final class UserManager {
             .document(currentUserId)
             .collection("friends")
             .document(blockedUserId)
+
         print("🔒 Removing friend from path: \(userAFriendsRef.path)")
         
         userAFriendsRef.delete { [weak self] error in
