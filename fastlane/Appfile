@@ -1,0 +1,8 @@
+app_identifier("com.tamakifujino.nose") # The bundle identifier of your app
+apple_id("nose.developer@gmail.com") # Your Apple Developer Portal username
+
+itc_team_id("127862534") # App Store Connect Team ID
+team_id("Y365Z93L4K") # Developer Portal Team ID
+
+# For more information about the Appfile, see:
+#     https://docs.fastlane.tools/advanced/#appfile
