@@ -26,6 +26,13 @@ jobs:
       - name: Install CocoaPods dependencies
         run: bundle exec pod install
 
+      - name: Clean workspace
+        run: |
+          # Clean any generated files
+          rm -rf builds/
+          rm -rf ~/Library/Developer/Xcode/DerivedData/
+          xcodebuild clean -workspace nose.xcworkspace -scheme nose-staging
+
       - name: Show environment info
         run: |
           echo "Ruby version: $(ruby --version)"
