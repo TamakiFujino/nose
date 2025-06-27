@@ -85,11 +85,15 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		49B95D8D2E0CE4B8004F2DCD /* .github */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = .github;
 			sourceTree = "<group>";
 		};
 		49BE7E332DF41122006D6E16 /* FirebaseConfig */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = FirebaseConfig;
 			sourceTree = "<group>";
 		};
@@ -103,21 +107,29 @@
 		};
 		49E99C0F2D3BE433000F3CE5 /* noseTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = noseTests;
 			sourceTree = "<group>";
 		};
 		49E99C192D3BE433000F3CE5 /* noseUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = noseUITests;
 			sourceTree = "<group>";
 		};
 		49EE64242DFBC64F004DA63B /* FirebaseConfig */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = FirebaseConfig;
 			sourceTree = "<group>";
 		};
 		49EE642B2DFBC651004DA63B /* InfoPlist */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = InfoPlist;
 			sourceTree = "<group>";
 		};
@@ -433,13 +445,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-nose/Pods-nose-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-nose/Pods-nose-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -454,13 +462,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-nose/Pods-nose-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-nose/Pods-nose-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
