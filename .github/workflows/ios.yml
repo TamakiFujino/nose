@@ -26,7 +26,21 @@ jobs:
       - name: Install CocoaPods dependencies
         run: bundle exec pod install
 
+      - name: Show environment info
+        run: |
+          echo "Ruby version: $(ruby --version)"
+          echo "Bundler version: $(bundle --version)"
+          echo "Fastlane version: $(bundle exec fastlane --version)"
+          echo "Xcode version: $(xcodebuild -version)"
+          echo "Current directory: $(pwd)"
+          echo "Directory contents:"
+          ls -la
+
       - name: Run Fastlane
         run: bundle exec fastlane beta
         env:
           APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+          FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD: ${{ secrets.FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD }}
+          FASTLANE_PASSWORD: ${{ secrets.FASTLANE_PASSWORD }}
+          FASTLANE_USER: ${{ secrets.FASTLANE_USER }}
+        continue-on-error: false

@@ -3,16 +3,50 @@ default_platform(:ios)
 platform :ios do
   desc "Build and upload to TestFlight"
   lane :beta do
-    increment_build_number
-
-    build_app(
-      scheme: "nose-staging",
-      export_method: "app-store", # or "development" or "ad-hoc"
-      export_options: {
-        signingStyle: "automatic"
-      }
+    # Ensure we're in the right directory
+    ensure_git_status_clean
+    
+    # Increment build number
+    increment_build_number(
+      build_number: latest_testflight_build_number + 1,
+      xcodeproj: "nose.xcodeproj"
     )
 
-    upload_to_testflight
+    # Build the app
+    build_app(
+      workspace: "nose.xcworkspace",
+      scheme: "nose-staging",
+      export_method: "app-store",
+      export_options: {
+        signingStyle: "automatic",
+        provisioningProfiles: {
+          "com.tamakifujino.nose" => "match AppStore com.tamakifujino.nose"
+        }
+      },
+      clean: true,
+      output_directory: "builds",
+      output_name: "nose.ipa"
+    )
+
+    # Upload to TestFlight
+    upload_to_testflight(
+      skip_waiting_for_build_processing: true,
+      skip_submission: true
+    )
+  end
+
+  desc "Build app only"
+  lane :build do
+    build_app(
+      workspace: "nose.xcworkspace",
+      scheme: "nose-staging",
+      export_method: "app-store",
+      export_options: {
+        signingStyle: "automatic"
+      },
+      clean: true,
+      output_directory: "builds",
+      output_name: "nose.ipa"
+    )
   end
 end
