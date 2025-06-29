@@ -50,21 +50,15 @@
 		1EA110E7250EA988152DF452 /* Pods_noseUITests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_noseUITests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		2B7F922E0F5C4EA04FBCABDB /* Pods-noseUITests.development.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseUITests.development.xcconfig"; path = "Target Support Files/Pods-noseUITests/Pods-noseUITests.development.xcconfig"; sourceTree = "<group>"; };
 		312A9D10F92AD4AC6B98F711 /* Pods_noseTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_noseTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		350B317CA55C81FEF179C2D9 /* Pods-nose.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-nose.release.xcconfig"; path = "Target Support Files/Pods-nose/Pods-nose.release.xcconfig"; sourceTree = "<group>"; };
-		488D4BC551BCE45C96E9422C /* Pods-noseUITests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseUITests.release.xcconfig"; path = "Target Support Files/Pods-noseUITests/Pods-noseUITests.release.xcconfig"; sourceTree = "<group>"; };
 		4984E6CA2D731BC600A6288A /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		49E99BF62D3BE432000F3CE5 /* nose.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = nose.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		49E99C0C2D3BE433000F3CE5 /* noseTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = noseTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		49E99C162D3BE433000F3CE5 /* noseUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = noseUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		61B56A5F18E714D56FE0DCC0 /* Pods-noseUITests.production.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseUITests.production.xcconfig"; path = "Target Support Files/Pods-noseUITests/Pods-noseUITests.production.xcconfig"; sourceTree = "<group>"; };
-		62E67CA96EB1D1DD36F0F7A1 /* Pods-noseTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseTests.debug.xcconfig"; path = "Target Support Files/Pods-noseTests/Pods-noseTests.debug.xcconfig"; sourceTree = "<group>"; };
 		6311D356F595772C8A2D0B95 /* Pods-noseTests.development.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseTests.development.xcconfig"; path = "Target Support Files/Pods-noseTests/Pods-noseTests.development.xcconfig"; sourceTree = "<group>"; };
 		6BAD938A99764361A6E14FC3 /* Pods-nose-metadata.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "Pods-nose-metadata.plist"; sourceTree = "<group>"; };
-		75DA98C5BACAD72BA88915E8 /* Pods-noseUITests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseUITests.debug.xcconfig"; path = "Target Support Files/Pods-noseUITests/Pods-noseUITests.debug.xcconfig"; sourceTree = "<group>"; };
 		76DC80AC657D4235EC30D629 /* Pods-nose-noseUITests-metadata.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "Pods-nose-noseUITests-metadata.plist"; sourceTree = "<group>"; };
-		81F8F52F5F57F5B8B9F9C0E1 /* Pods-nose.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-nose.debug.xcconfig"; path = "Target Support Files/Pods-nose/Pods-nose.debug.xcconfig"; sourceTree = "<group>"; };
 		965570F488B3E805CCC59F04 /* Pods-noseUITests.staging.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseUITests.staging.xcconfig"; path = "Target Support Files/Pods-noseUITests/Pods-noseUITests.staging.xcconfig"; sourceTree = "<group>"; };
-		B4446BD5333C2343244A270D /* Pods-noseTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseTests.release.xcconfig"; path = "Target Support Files/Pods-noseTests/Pods-noseTests.release.xcconfig"; sourceTree = "<group>"; };
 		B915CAA5A41A6C145FBB9A8E /* Pods_nose.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_nose.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D4DA86044569CF6E1673F2DE /* Pods-nose.production.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-nose.production.xcconfig"; path = "Target Support Files/Pods-nose/Pods-nose.production.xcconfig"; sourceTree = "<group>"; };
 		DFCECA97C560C40982DCFDA4 /* Pods-noseTests.staging.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseTests.staging.xcconfig"; path = "Target Support Files/Pods-noseTests/Pods-noseTests.staging.xcconfig"; sourceTree = "<group>"; };
@@ -73,6 +67,22 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		49B963512E0FFE74004F2DCD /* Exceptions for "FirebaseConfig" folder in "nose" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				"GoogleService-Info-Development.plist",
+				"GoogleService-Info-Production.plist",
+				"GoogleService-Info-Staging.plist",
+			);
+			target = 49E99BF52D3BE432000F3CE5 /* nose */;
+		};
+		49B964BC2E1009AB004F2DCD /* Exceptions for "InfoPlist" folder in "nose" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 49E99BF52D3BE432000F3CE5 /* nose */;
+		};
 		49EE68BD2E058BDD004DA63B /* Exceptions for "nose" folder in "nose" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -90,6 +100,9 @@
 		};
 		49BE7E332DF41122006D6E16 /* FirebaseConfig */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				49B963512E0FFE74004F2DCD /* Exceptions for "FirebaseConfig" folder in "nose" target */,
+			);
 			path = FirebaseConfig;
 			sourceTree = "<group>";
 		};
@@ -118,6 +131,9 @@
 		};
 		49EE642B2DFBC651004DA63B /* InfoPlist */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				49B964BC2E1009AB004F2DCD /* Exceptions for "InfoPlist" folder in "nose" target */,
+			);
 			path = InfoPlist;
 			sourceTree = "<group>";
 		};
@@ -184,20 +200,14 @@
 				6BAD938A99764361A6E14FC3 /* Pods-nose-metadata.plist */,
 				76DC80AC657D4235EC30D629 /* Pods-nose-noseUITests-metadata.plist */,
 				F1BCB3623F34C0020E1D1F3E /* Pods-nose.development.xcconfig */,
-				81F8F52F5F57F5B8B9F9C0E1 /* Pods-nose.debug.xcconfig */,
 				E8780BB7672D195B5EAA5BD5 /* Pods-nose.staging.xcconfig */,
 				D4DA86044569CF6E1673F2DE /* Pods-nose.production.xcconfig */,
-				350B317CA55C81FEF179C2D9 /* Pods-nose.release.xcconfig */,
 				6311D356F595772C8A2D0B95 /* Pods-noseTests.development.xcconfig */,
-				62E67CA96EB1D1DD36F0F7A1 /* Pods-noseTests.debug.xcconfig */,
 				DFCECA97C560C40982DCFDA4 /* Pods-noseTests.staging.xcconfig */,
 				00E3D4FEC9749AF0761692A9 /* Pods-noseTests.production.xcconfig */,
-				B4446BD5333C2343244A270D /* Pods-noseTests.release.xcconfig */,
 				2B7F922E0F5C4EA04FBCABDB /* Pods-noseUITests.development.xcconfig */,
-				75DA98C5BACAD72BA88915E8 /* Pods-noseUITests.debug.xcconfig */,
 				965570F488B3E805CCC59F04 /* Pods-noseUITests.staging.xcconfig */,
 				61B56A5F18E714D56FE0DCC0 /* Pods-noseUITests.production.xcconfig */,
-				488D4BC551BCE45C96E9422C /* Pods-noseUITests.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -596,7 +606,8 @@
 		};
 		49BE6D882DF30415006D6E16 /* Staging */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = E8780BB7672D195B5EAA5BD5 /* Pods-nose.staging.xcconfig */;
+			baseConfigurationReferenceAnchor = 49E99BF82D3BE432000F3CE5 /* nose */;
+			baseConfigurationReferenceRelativePath = Configs/Staging.xcconfig;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -611,14 +622,7 @@
 					"$(PROJECT_DIR)",
 				);
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = "$(PROJECT_DIR)/InfoPlist/Info-$(CONFIGURATION).plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "";
-				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "Always allow";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Allow when using the app";
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
-				INFOPLIST_KEY_UIMainStoryboardFile = Main;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_FILE = "$(PROJECT_DIR)/InfoPlist/Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -641,7 +645,8 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "$(PROJECT_DIR)/InfoPlist/Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.tamakifujino.noseTests;
@@ -659,7 +664,8 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "$(PROJECT_DIR)/InfoPlist/Info.plist";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.tamakifujino.noseUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -672,7 +678,8 @@
 		};
 		49E99C202D3BE433000F3CE5 /* Development */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = F1BCB3623F34C0020E1D1F3E /* Pods-nose.development.xcconfig */;
+			baseConfigurationReferenceAnchor = 49E99BF82D3BE432000F3CE5 /* nose */;
+			baseConfigurationReferenceRelativePath = Configs/Development.xcconfig;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -687,14 +694,7 @@
 					"$(PROJECT_DIR)",
 				);
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = "$(PROJECT_DIR)/InfoPlist/Info-$(CONFIGURATION).plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "";
-				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "Always allow";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Allow when using the app";
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
-				INFOPLIST_KEY_UIMainStoryboardFile = Main;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_FILE = "$(PROJECT_DIR)/InfoPlist/Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -712,7 +712,8 @@
 		};
 		49E99C212D3BE433000F3CE5 /* Production */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = D4DA86044569CF6E1673F2DE /* Pods-nose.production.xcconfig */;
+			baseConfigurationReferenceAnchor = 49E99BF82D3BE432000F3CE5 /* nose */;
+			baseConfigurationReferenceRelativePath = Configs/Production.xcconfig;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -727,14 +728,7 @@
 					"$(PROJECT_DIR)",
 				);
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = "$(PROJECT_DIR)/InfoPlist/Info-$(CONFIGURATION).plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "";
-				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "Always allow";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Allow when using the app";
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
-				INFOPLIST_KEY_UIMainStoryboardFile = Main;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_FILE = "$(PROJECT_DIR)/InfoPlist/Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -880,7 +874,8 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "$(PROJECT_DIR)/InfoPlist/Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.tamakifujino.noseTests;
@@ -899,7 +894,8 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "$(PROJECT_DIR)/InfoPlist/Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.tamakifujino.noseTests;
@@ -917,7 +913,8 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "$(PROJECT_DIR)/InfoPlist/Info.plist";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.tamakifujino.noseUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -934,7 +931,8 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "$(PROJECT_DIR)/InfoPlist/Info.plist";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.tamakifujino.noseUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";

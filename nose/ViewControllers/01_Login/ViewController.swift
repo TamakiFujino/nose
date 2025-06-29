@@ -15,7 +15,8 @@ final class ViewController: UIViewController {
         label.text = "Map your journey\nStyle your future"
         label.textAlignment = .center
         // set font to gotham
-        label.font = UIFont(name: "Gotham-Bold", size: 32) ?? UIFont.systemFont(ofSize: 32, weight: .bold)
+        let font = UIFont(name: "Gotham-Bold", size: 32) ?? UIFont.systemFont(ofSize: 32, weight: .bold)
+        label.font = font
         label.textColor = .white
         label.numberOfLines = 0
         return label
@@ -66,6 +67,14 @@ final class ViewController: UIViewController {
         setupUI()
     }
     
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+    }
+    
     // MARK: - Setup
     private func setupUI() {
         setupBackground()
@@ -75,6 +84,12 @@ final class ViewController: UIViewController {
     private func setupBackground() {
         let backgroundImage = UIImageView(frame: UIScreen.main.bounds)
         backgroundImage.image = UIImage(named: "splash")
+        
+        if backgroundImage.image == nil {
+            // Set a fallback background color
+            view.backgroundColor = .systemBlue
+        }
+        
         backgroundImage.contentMode = .scaleAspectFill
         backgroundImage.clipsToBounds = true
         view.addSubview(backgroundImage)
@@ -107,6 +122,10 @@ final class ViewController: UIViewController {
             loadingView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             loadingView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
+        
+        // Force layout update
+        view.setNeedsLayout()
+        view.layoutIfNeeded()
     }
     
     private func setupSocialButton(button: CustomGlassButton, iconName: String, title: String) {
