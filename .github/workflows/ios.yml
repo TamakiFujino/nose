@@ -2,26 +2,52 @@ name: iOS CI/CD
 
 on:
   push:
-    branches: staging
+    branches: [staging]
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: macos-14  # Xcode 16.2 を含む環境
 
     steps:
+      - name: Show available Xcode versions
+        run: ls /Applications | grep Xcode
+
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_16.2.app
+
       - uses: actions/checkout@v3
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: 3.2
+          bundler-cache: true  # Gemfile.lock に基づきキャッシュ
 
-      - name: Install dependencies
+      - name: Install CocoaPods dependencies
+        run: bundle exec pod install
+
+      - name: Clean workspace
         run: |
-          gem install bundler
-          bundle install
+          # Clean any generated files
+          rm -rf builds/
+          rm -rf ~/Library/Developer/Xcode/DerivedData/
+          xcodebuild clean -workspace nose.xcworkspace -scheme nose-staging
+
+      - name: Show environment info
+        run: |
+          echo "Ruby version: $(ruby --version)"
+          echo "Bundler version: $(bundle --version)"
+          echo "Fastlane version: $(bundle exec fastlane --version)"
+          echo "Xcode version: $(xcodebuild -version)"
+          echo "Current directory: $(pwd)"
+          echo "Directory contents:"
+          ls -la
 
       - name: Run Fastlane
         run: bundle exec fastlane beta
         env:
           APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+          FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD: ${{ secrets.FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD }}
+          FASTLANE_PASSWORD: ${{ secrets.FASTLANE_PASSWORD }}
+          FASTLANE_USER: ${{ secrets.FASTLANE_USER }}
+        continue-on-error: false

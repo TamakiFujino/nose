@@ -1,26 +1,46 @@
-# This file contains the fastlane.tools configuration
-# You can find the documentation at https://docs.fastlane.tools
-#
-# For a list of all available actions, check out
-#
-#     https://docs.fastlane.tools/actions
-#
-# For a list of all available plugins, check out
-#
-#     https://docs.fastlane.tools/plugins/available-plugins
-#
-
-# Uncomment the line if you want fastlane to automatically update itself
-# update_fastlane
-
 default_platform(:ios)
 
 platform :ios do
   desc "Build and upload to TestFlight"
   lane :beta do
-    increment_build_number
-    build_app(scheme: "nose-staging")
-    upload_to_testflight
+    # Increment build number
+    increment_build_number(
+      build_number: latest_testflight_build_number + 1,
+      xcodeproj: "nose.xcodeproj"
+    )
+
+    # Build the app
+    build_app(
+      workspace: "nose.xcworkspace",
+      scheme: "nose-staging",
+      export_method: "app-store",
+      export_options: {
+        signingStyle: "automatic"
+      },
+      clean: true,
+      output_directory: "builds",
+      output_name: "nose.ipa"
+    )
+
+    # Upload to TestFlight
+    upload_to_testflight(
+      skip_waiting_for_build_processing: true,
+      skip_submission: true
+    )
+  end
+
+  desc "Build app only"
+  lane :build do
+    build_app(
+      workspace: "nose.xcworkspace",
+      scheme: "nose-staging",
+      export_method: "app-store",
+      export_options: {
+        signingStyle: "automatic"
+      },
+      clean: true,
+      output_directory: "builds",
+      output_name: "nose.ipa"
+    )
   end
 end
-
