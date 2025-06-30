@@ -41,9 +41,7 @@ enum AvatarCategory {
     
     // Accessories categories
     static let head = "head"
-    // static let glasses = "neck"
-    // static let jewelry = "ear"
-    // static let bags = "eye"
+    static let neck = "neck"
     
     // All categories array
     static let all: [String] = [
@@ -58,13 +56,14 @@ enum AvatarCategory {
         front,
         side,
         back,
-        head
+        head,
+        neck
     ]
     
     // Category groups
     static let bodyCategories: [String] = [skin, eyes, eyebrows]
     static let clothingCategories: [String] = [tops, jacket, bottoms, socks]
-    static let accessoriesCategories: [String] = [head]
+    static let accessoriesCategories: [String] = [head, neck]
     static let hairCategories: [String] = [base, front, side, back]
     
     // All categories that can have models
@@ -72,7 +71,7 @@ enum AvatarCategory {
         eyes, eyebrows,
         base, front, side, back,
         tops, jacket, bottoms, socks,
-        head
+        head, neck
     ]
     
     // Categories that can have colors
@@ -85,7 +84,7 @@ enum AvatarCategory {
     static let bodyTabItems = [skin, eyes, eyebrows]
     static let hairTabItems = [base, front, side, back]
     static let clothesTabItems = [tops, jacket, bottoms, socks]
-    static let accessoriesTabItems = [head]
+    static let accessoriesTabItems = [head, neck]
     static let parentTabItems = [body, hair, clothes, accessories]
     
     // Subcategory mapping
@@ -101,7 +100,8 @@ enum AvatarCategory {
         jacket: jacket,
         bottoms: bottoms,
         socks: socks,
-        head: head
+        head: head,
+        neck: neck
     ]
     
     // Helper function to check if a category is valid

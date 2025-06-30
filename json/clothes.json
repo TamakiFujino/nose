@@ -51,7 +51,8 @@
     "bottoms_skirt_widemed",
     "bottoms_skirt_wideknee",
     "bottoms_skirt_wideshort",
-    "bottoms_pants_slacks"
+    "bottoms_pants_slacks",
+    "bottoms_skirt_pleats_mini"
   ],
   "socks": [
     "socks_ankle",
@@ -59,6 +60,7 @@
     "socks_med",
     "socks_knee",
     "socks_thigh",
-    "socks_tights"
+    "socks_tights",
+    "socks_loose"
   ]
 } 
