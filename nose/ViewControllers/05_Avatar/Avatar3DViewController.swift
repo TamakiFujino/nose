@@ -57,17 +57,24 @@ class Avatar3DViewController: UIViewController {
     // MARK: - Lifecycle
     override func viewDidLoad() {
             super.viewDidLoad()
+            print("🎯 Avatar3DViewController - viewDidLoad started")
             setupARView()
-            if !isPreviewMode {
-                loadAvatarModel()
-            }
             setupCameraPosition()
-            setupBaseEntity()
             addDirectionalLight()
+            setupEnvironmentBackground()
+            
+            if !isPreviewMode {
+                print("🎯 Loading avatar model in normal mode")
+                loadAvatarModel()
+            } else {
+                print("🎯 Preview mode - base entity will be loaded when needed")
+            }
+            
             if !isPreviewMode {
                 loadSelectionState()
             }
-            setupEnvironmentBackground()
+            
+            print("🎯 Avatar3DViewController - viewDidLoad completed")
         }
 
     // MARK: - Setup
@@ -104,7 +111,15 @@ class Avatar3DViewController: UIViewController {
     }
 
     private func setupBaseEntity() {
-        guard let baseEntity else { return }
+        print("🎯 setupBaseEntity called")
+        print("   - baseEntity is nil: \(baseEntity == nil)")
+        
+        guard let baseEntity else { 
+            print("❌ Base entity is nil, cannot setup")
+            return 
+        }
+        
+        print("✅ Base entity found, setting up...")
         clearBaseEntityAnchors()
         baseEntity.transform.rotation = simd_quatf(angle: .pi / 6, axis: [0, -0.8, 0])
         
@@ -114,16 +129,20 @@ class Avatar3DViewController: UIViewController {
             material.roughness = 0.5
             material.metallic = 0.0
             categoryMaterials["skin"] = material
+            print("✅ Created skin material")
         }
         
         // Apply the material to the base entity
         if let material = categoryMaterials["skin"] {
             baseEntity.model?.materials = [material]
+            print("✅ Applied skin material to base entity")
         }
         
         let anchor = AnchorEntity(world: .zero)
         anchor.addChild(baseEntity)
         arView.scene.anchors.append(anchor)
+        print("✅ Base entity added to scene with anchor")
+        print("   - Scene anchors count: \(arView.scene.anchors.count)")
     }
     
     private func clearBaseEntityAnchors() {
@@ -150,14 +169,21 @@ class Avatar3DViewController: UIViewController {
     // MARK: - Avatar Management
 
     func loadAvatarData(_ avatarData: CollectionAvatar.AvatarData) {
+        print("🎯 loadAvatarData called with preview mode")
         isPreviewMode = true
         clearAvatarState()
         
         if baseEntity == nil {
+            print("🎯 Base entity is nil, loading base model first")
             loadBaseModel()
+            // Apply avatar data after base model is loaded
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                self?.applyAvatarData(avatarData)
+            }
+        } else {
+            print("🎯 Base entity already exists, applying avatar data directly")
+            applyAvatarData(avatarData)
         }
-
-        applyAvatarData(avatarData)
     }
 
     private func clearAvatarState() {
@@ -168,17 +194,98 @@ class Avatar3DViewController: UIViewController {
     }
 
     private func loadBaseModel() {
+        print("🎯 loadBaseModel called")
+        
+        // Try to load from bundle first
+        if let bundleURL = Bundle.main.url(forResource: "body", withExtension: "usdz") {
+            print("✅ Found body.usdz in bundle at: \(bundleURL.path)")
+            
+            Task { @MainActor in
+                do {
+                    let entity = try await ModelEntity(contentsOf: bundleURL)
+                    print("✅ Entity loaded from bundle: \(entity)")
+                    self.baseEntity = entity
+                    print("   - Cast to ModelEntity successful: \(self.baseEntity != nil)")
+                    
+                    if let baseEntity = self.baseEntity {
+                        baseEntity.name = "Avatar"
+                        print("✅ Base entity name set to 'Avatar'")
+                        self.setupBaseEntity()
+                    } else {
+                        print("❌ Failed to cast entity to ModelEntity")
+                    }
+                } catch {
+                    print("❌ Error loading base avatar model from bundle: \(error)")
+                    // Fallback to async method
+                    self.loadBaseModelAsync()
+                }
+            }
+        } else {
+            print("❌ body.usdz not found in bundle, trying async method")
+            loadBaseModelAsync()
+        }
+    }
+    
+    private func loadBaseModelAsync() {
+        print("🎯 loadBaseModelAsync called")
+        
+        // Try to load from bundle using the modern API
+        if let bundleURL = Bundle.main.url(forResource: "body", withExtension: "usdz") {
+            print("✅ Found body.usdz in bundle at: \(bundleURL.path)")
+            
+            Task { @MainActor in
+                do {
+                    let entity = try await ModelEntity.loadModel(contentsOf: bundleURL)
+                    print("✅ Entity loaded from bundle using loadModel: \(entity)")
+                    self.baseEntity = entity
+                    print("   - Cast to ModelEntity successful: \(self.baseEntity != nil)")
+                    
+                    if let baseEntity = self.baseEntity {
+                        baseEntity.name = "Avatar"
+                        print("✅ Base entity name set to 'Avatar'")
+                        self.setupBaseEntity()
+                    } else {
+                        print("❌ Failed to cast entity to ModelEntity")
+                    }
+                } catch {
+                    print("❌ Error loading base avatar model from bundle: \(error)")
+                    // Final fallback to the old API
+                    self.loadBaseModelLegacy()
+                }
+            }
+        } else {
+            print("❌ body.usdz not found in bundle")
+            loadBaseModelLegacy()
+        }
+    }
+    
+    private func loadBaseModelLegacy() {
+        print("🎯 loadBaseModelLegacy called - using Entity.loadModelAsync")
         Entity.loadModelAsync(named: "body")
             .receive(on: DispatchQueue.main)
             .sink(receiveCompletion: { completion in
                 if case .failure(let error) = completion {
-                    print("Error loading base avatar model: \(error)")
+                    print("❌ Error loading base avatar model: \(error)")
+                } else {
+                    print("✅ Base model loading completed successfully")
                 }
             }, receiveValue: { [weak self] entity in
-                guard let self = self else { return }
+                guard let self = self else { 
+                    print("❌ Self is nil in loadBaseModel completion")
+                    return 
+                }
+                
+                print("✅ Entity loaded: \(entity)")
                 self.baseEntity = entity as? ModelEntity
-                self.baseEntity?.name = "Avatar"
-                self.setupBaseEntity()
+                print("   - Cast to ModelEntity successful: \(self.baseEntity != nil)")
+                
+                if let baseEntity = self.baseEntity {
+                    baseEntity.name = "Avatar"
+                    print("✅ Base entity name set to 'Avatar'")
+                    self.setupBaseEntity()
+                } else {
+                    print("❌ Failed to cast entity to ModelEntity")
+                }
             })
             .store(in: &cancellables)
     }
@@ -228,6 +335,7 @@ class Avatar3DViewController: UIViewController {
 
     // MARK: - Avatar Management
     private func loadAvatarModel() {
+        print("🎯 loadAvatarModel called")
         let categories = AvatarCategory.all
         
         // Load chosen models from UserDefaults
@@ -235,6 +343,7 @@ class Avatar3DViewController: UIViewController {
             let key = "chosen\(category.capitalized)Model"
             if let modelName = UserDefaults.standard.string(forKey: key), !modelName.isEmpty {
                 chosenModels[category] = modelName
+                print("   - Loaded model for \(category): \(modelName)")
             }
         }
 
@@ -242,29 +351,48 @@ class Avatar3DViewController: UIViewController {
         if let savedColorsData = UserDefaults.standard.data(forKey: "chosenColors"),
            let savedColors = try? NSKeyedUnarchiver.unarchiveTopLevelObjectWithData(savedColorsData) as? [String: UIColor] {
             chosenColors = savedColors
+            print("   - Loaded \(savedColors.count) colors from UserDefaults")
         }
 
-        // Load base entity model asynchronously
-        Entity.loadModelAsync(named: "body")
-            .receive(on: DispatchQueue.main)
-            .sink(receiveCompletion: { completion in
-                if case .failure(let error) = completion {
-                    print("Error loading base avatar model: \(error)")
-                }
-            }, receiveValue: { [weak self] entity in
-                guard let self = self else { return }
-                self.baseEntity = entity as? ModelEntity
-                self.baseEntity?.name = "Avatar"
-                self.setupBaseEntity()
-                
-                for (category, modelName) in self.chosenModels where !modelName.isEmpty {
-                    self.loadAvatarPart(named: modelName, category: category)
-                    if let color = self.chosenColors[category] {
-                        self.changeAvatarPartColor(for: category, to: color)
+        print("🎯 Loading base entity model 'body'...")
+        
+        // Try to load from bundle first
+        if let bundleURL = Bundle.main.url(forResource: "body", withExtension: "usdz") {
+            print("✅ Found body.usdz in bundle at: \(bundleURL.path)")
+            
+            Task { @MainActor in
+                do {
+                    let entity = try await ModelEntity(contentsOf: bundleURL)
+                    print("✅ Base entity loaded from bundle: \(entity)")
+                    self.baseEntity = entity
+                    print("   - Cast to ModelEntity successful: \(self.baseEntity != nil)")
+                    
+                    if let baseEntity = self.baseEntity {
+                        baseEntity.name = "Avatar"
+                        print("✅ Base entity name set to 'Avatar'")
+                        self.setupBaseEntity()
+                        
+                        // Load additional avatar parts
+                        for (category, modelName) in self.chosenModels where !modelName.isEmpty {
+                            print("   - Loading avatar part: \(modelName) for \(category)")
+                            self.loadAvatarPart(named: modelName, category: category)
+                            if let color = self.chosenColors[category] {
+                                self.changeAvatarPartColor(for: category, to: color)
+                            }
+                        }
+                    } else {
+                        print("❌ Failed to cast entity to ModelEntity")
                     }
+                } catch {
+                    print("❌ Error loading base avatar model from bundle: \(error)")
+                    // Fallback to async method
+                    self.loadBaseModelAsync()
                 }
-            })
-            .store(in: &cancellables)
+            }
+        } else {
+            print("❌ body.usdz not found in bundle, trying async method")
+            loadBaseModelAsync()
+        }
     }
 
     // MARK: - Entity Management
@@ -541,6 +669,9 @@ class Avatar3DViewController: UIViewController {
                     return
                 }
                 
+                // Ensure we're on the main queue for material operations
+                DispatchQueue.main.async {
+                
                 if category == "skin" {
                     // Update base entity material
                     if let baseEntity = self.baseEntity {
@@ -580,8 +711,19 @@ class Avatar3DViewController: UIViewController {
                     
                     // First material is color-changing, second is fixed white
                     do {
-                        entity.model?.materials = [newMaterial, whiteMaterial]
+                        // Safely assign materials with bounds checking
+                        let materialsArray = [newMaterial, whiteMaterial]
+                        entity.model?.materials = materialsArray
                         print("✅ Applied new materials to entity")
+                        
+                        // Verify material assignment with additional safety
+                        guard let updatedModel = entity.model else {
+                            print("❌ Model component is nil after assignment")
+                            return
+                        }
+                        
+                        print("🔍 Materials array count: \(materialsArray.count)")
+                        print("🔍 Updated model materials count: \(updatedModel.materials.count)")
                         
                         // Verify material assignment
                         if let updatedModel = entity.model {
@@ -590,15 +732,22 @@ class Avatar3DViewController: UIViewController {
                             if let firstMaterial = updatedModel.materials.first as? SimpleMaterial {
                                 print("   - First material color: \(firstMaterial.color)")
                             }
-                            if updatedModel.materials.count > 1,
-                               let secondMaterial = updatedModel.materials[1] as? SimpleMaterial {
-                                print("   - Second material color: \(secondMaterial.color)")
+                            if updatedModel.materials.count > 1 {
+                                let secondMaterial = updatedModel.materials[1] as? SimpleMaterial
+                                if let color = secondMaterial?.color {
+                                    print("   - Second material color: \(color)")
+                                } else {
+                                    print("   - Second material has no color")
+                                }
+                            } else {
+                                print("   - No second material available")
                             }
                         }
                     } catch {
                         print("❌ Failed to apply materials: \(error)")
                     }
                 }
+                } // Close DispatchQueue.main.async
             }
         }
     }

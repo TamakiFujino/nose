@@ -67,21 +67,16 @@ final class GoogleMapManager: NSObject {
         mapView.animate(to: camera)
     }
     
-    func searchPlaces(query: String, completion: @escaping ([GMSPlace]) -> Void) {
+    func searchPlaces(query: String, completion: @escaping ([GMSAutocompletePrediction]) -> Void) {
         let placesClient = GMSPlacesClient.shared()
         let filter = GMSAutocompleteFilter()
         filter.types = ["establishment"]
-        
-        // Clear previous results
-        searchResults = []
         
         placesClient.findAutocompletePredictions(
             fromQuery: query,
             filter: filter,
             sessionToken: sessionToken
-        ) { [weak self] results, error in
-            guard let self = self else { return }
-            
+        ) { results, error in
             if let error = error {
                 print("Error searching places: \(error.localizedDescription)")
                 return
@@ -89,38 +84,15 @@ final class GoogleMapManager: NSObject {
             
             guard let results = results else { return }
             
-            // Get place details for each prediction
-            for prediction in results {
-                let placeID = prediction.placeID
-                let fields: GMSPlaceField = [
-                    .name,
-                    .coordinate,
-                    .formattedAddress,
-                    .phoneNumber,
-                    .rating,
-                    .openingHours,
-                    .photos,
-                    .placeID,
-                    .website,
-                    .priceLevel,
-                    .userRatingsTotal,
-                    .types
-                ]
-                
-                placesClient.fetchPlace(fromPlaceID: placeID, placeFields: fields, sessionToken: self.sessionToken) { place, error in
-                    if let error = error {
-                        print("Error fetching place details: \(error.localizedDescription)")
-                        return
-                    }
-                    
-                    if let place = place {
-                        DispatchQueue.main.async {
-                            self.searchResults.append(place)
-                            completion(self.searchResults)
-                        }
-                    }
-                }
+            DispatchQueue.main.async {
+                completion(results)
             }
+        }
+    }
+    
+    func fetchPlaceDetails(for prediction: GMSAutocompletePrediction, completion: @escaping (GMSPlace?) -> Void) {
+        PlacesAPIManager.shared.fetchMapPlaceDetails(placeID: prediction.placeID) { place in
+            completion(place)
         }
     }
     

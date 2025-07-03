@@ -83,20 +83,11 @@
 			);
 			target = 49E99BF52D3BE432000F3CE5 /* nose */;
 		};
-		49EE68BD2E058BDD004DA63B /* Exceptions for "nose" folder in "nose" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Assets/body.usdz,
-			);
-			target = 49E99BF52D3BE432000F3CE5 /* nose */;
-		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		49B95D8D2E0CE4B8004F2DCD /* .github */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = .github;
 			sourceTree = "<group>";
 		};
@@ -110,30 +101,21 @@
 		};
 		49E99BF82D3BE432000F3CE5 /* nose */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				49EE68BD2E058BDD004DA63B /* Exceptions for "nose" folder in "nose" target */,
-			);
 			path = nose;
 			sourceTree = "<group>";
 		};
 		49E99C0F2D3BE433000F3CE5 /* noseTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = noseTests;
 			sourceTree = "<group>";
 		};
 		49E99C192D3BE433000F3CE5 /* noseUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = noseUITests;
 			sourceTree = "<group>";
 		};
 		49EE64242DFBC64F004DA63B /* FirebaseConfig */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = FirebaseConfig;
 			sourceTree = "<group>";
 		};
@@ -451,9 +433,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-nose/Pods-nose-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-nose/Pods-nose-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -468,9 +454,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-nose/Pods-nose-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-nose/Pods-nose-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;

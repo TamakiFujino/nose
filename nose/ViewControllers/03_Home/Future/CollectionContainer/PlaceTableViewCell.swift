@@ -65,15 +65,27 @@ class PlaceTableViewCell: UITableViewCell {
     func configure(with place: PlaceCollection.Place) {
         nameLabel.text = place.name
         ratingLabel.text = "Rating: \(String(format: "%.1f", place.rating))"
-
-        let placesClient = GMSPlacesClient.shared()
-        let fields: GMSPlaceField = [.photos]
-
-        placesClient.fetchPlace(fromPlaceID: place.placeId, placeFields: fields, sessionToken: nil) { [weak self] place, error in
-            if let photoMetadata = place?.photos?.first {
-                placesClient.loadPlacePhoto(photoMetadata) { [weak self] photo, _ in
-                    DispatchQueue.main.async {
-                        self?.placeImageView.image = photo
+        
+        // Set a default placeholder image
+        placeImageView.image = UIImage(systemName: "building.2")
+        placeImageView.tintColor = .systemGray3
+        
+        // Check cache first for this place's photo
+        let photoID = "\(place.placeId)_photo"
+        if let cachedImage = PlacesCacheManager.shared.getCachedPhoto(for: photoID) {
+            placeImageView.image = cachedImage
+            return
+        }
+        
+        // Fetch photo from Places API (only first photo to save API calls)
+        PlacesAPIManager.shared.fetchPhotosOnly(placeID: place.placeId) { [weak self] fetchedPlace in
+            // Only load the first photo to minimize API usage
+            if let photoMetadata = fetchedPlace?.photos?.first {
+                PlacesAPIManager.shared.loadPlacePhoto(photo: photoMetadata, placeID: place.placeId, photoIndex: 0) { [weak self] photo in
+                    if let photo = photo {
+                        DispatchQueue.main.async {
+                            self?.placeImageView.image = photo
+                        }
                     }
                 }
             }

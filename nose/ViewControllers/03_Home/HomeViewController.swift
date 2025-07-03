@@ -18,6 +18,7 @@ final class HomeViewController: UIViewController {
     
     // MARK: - Properties
     private var searchResults: [GMSPlace] = []
+    private var searchPredictions: [GMSAutocompletePrediction] = []
     private var sessionToken: GMSAutocompleteSessionToken?
     private var currentDotIndex: Int = 1  // Track current dot index (0: left, 1: middle, 2: right)
     private var collections: [PlaceCollection] = []
@@ -388,9 +389,12 @@ final class HomeViewController: UIViewController {
     
     // MARK: - Helper Methods
     private func searchPlaces(query: String) {
-        mapManager?.searchPlaces(query: query) { [weak self] (results: [GMSPlace]) in
-            self?.searchResults = results
-            self?.searchResultsTableView.reloadData()
+        // Use debounced search to prevent rapid-fire API calls
+        PlacesAPIManager.shared.debouncedSearch(query: query) { [weak self] (predictions: [GMSAutocompletePrediction]) in
+            DispatchQueue.main.async {
+                self?.searchPredictions = predictions
+                self?.searchResultsTableView.reloadData()
+            }
         }
     }
     
@@ -434,7 +438,7 @@ final class HomeViewController: UIViewController {
 extension HomeViewController: UISearchBarDelegate {
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
         if searchText.isEmpty {
-            searchResults = []
+            searchPredictions = []
             searchResultsTableView.isHidden = true
             return
         }
@@ -451,24 +455,31 @@ extension HomeViewController: UISearchBarDelegate {
 // MARK: - UITableViewDelegate & UITableViewDataSource
 extension HomeViewController: UITableViewDelegate, UITableViewDataSource {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return searchResults.count
+        return searchPredictions.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "SearchResultCell", for: indexPath)
-        let place = searchResults[indexPath.row]
+        let prediction = searchPredictions[indexPath.row]
         
         var content = cell.defaultContentConfiguration()
-        content.text = place.name
-        content.secondaryText = place.formattedAddress
+        content.text = prediction.attributedPrimaryText.string
+        content.secondaryText = prediction.attributedSecondaryText?.string
         cell.contentConfiguration = content
         
         return cell
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        let place = searchResults[indexPath.row]
-        showPlaceOnMap(place)
+        let prediction = searchPredictions[indexPath.row]
+        // Fetch place details when user selects a prediction
+        mapManager?.fetchPlaceDetails(for: prediction) { [weak self] place in
+            if let place = place {
+                DispatchQueue.main.async {
+                    self?.showPlaceOnMap(place)
+                }
+            }
+        }
     }
 }
 
@@ -543,8 +554,8 @@ extension HomeViewController: TimelineSliderViewDelegate {
 
 // MARK: - SearchManagerDelegate
 extension HomeViewController: SearchManagerDelegate {
-    func searchManager(_ manager: SearchManager, didUpdateResults results: [GMSPlace]) {
-        searchResults = results
+    func searchManager(_ manager: SearchManager, didUpdateResults results: [GMSAutocompletePrediction]) {
+        searchPredictions = results
         searchResultsTableView.reloadData()
     }
     

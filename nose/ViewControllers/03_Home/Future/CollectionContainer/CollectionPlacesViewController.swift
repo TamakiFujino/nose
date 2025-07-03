@@ -521,6 +521,8 @@ class CollectionPlacesViewController: UIViewController {
         navController.modalPresentationStyle = .fullScreen
         present(navController, animated: true)
     }
+    
+
 }
 
 // MARK: - UITableViewDelegate & UITableViewDataSource
@@ -539,14 +541,32 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         let place = places[indexPath.row]
-        let placesClient = GMSPlacesClient.shared()
-        let fields: GMSPlaceField = [.name, .coordinate, .formattedAddress, .phoneNumber, .rating, .openingHours, .photos, .placeID]
-
-        placesClient.fetchPlace(fromPlaceID: place.placeId, placeFields: fields, sessionToken: sessionToken) { [weak self] place, error in
-            if let place = place {
+        
+        // Since PlaceCollection.Place doesn't have coordinates, we need to fetch the place details
+        // But we'll use the cache first to avoid unnecessary API calls
+        if let cachedPlace = PlacesCacheManager.shared.getCachedPlace(for: place.placeId) {
+            let detailVC = PlaceDetailViewController(place: cachedPlace, isFromCollection: true)
+            present(detailVC, animated: true)
+            return
+        }
+        
+        // If not cached, fetch the place details
+        PlacesAPIManager.shared.fetchCollectionPlaceDetails(placeID: place.placeId) { [weak self] fetchedPlace in
+            if let fetchedPlace = fetchedPlace {
                 DispatchQueue.main.async {
-                    let detailVC = PlaceDetailViewController(place: place, isFromCollection: true)
+                    let detailVC = PlaceDetailViewController(place: fetchedPlace, isFromCollection: true)
                     self?.present(detailVC, animated: true)
+                }
+            } else {
+                // If we can't fetch the place details, just show a simple alert
+                DispatchQueue.main.async {
+                    let alert = UIAlertController(
+                        title: "Unable to Load Details",
+                        message: "Could not load complete details for \(place.name). Please try again later.",
+                        preferredStyle: .alert
+                    )
+                    alert.addAction(UIAlertAction(title: "OK", style: .default))
+                    self?.present(alert, animated: true)
                 }
             }
         }
