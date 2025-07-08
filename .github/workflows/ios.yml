@@ -1,11 +1,48 @@
 name: iOS CI/CD
 
 on:
+  # Trigger on push to staging branch (for direct commits)
   push:
     branches: [staging]
+  # Trigger on pull request merge to main/production branches
+  pull_request:
+    types: [closed]
+    branches: [main, production]
+  # Manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
 
 jobs:
-  build:
+  # Only run if PR is merged (not just closed)
+  check-merge:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      is-merged: ${{ steps.check-merge.outputs.is-merged }}
+    steps:
+      - name: Check if PR is merged
+        id: check-merge
+        run: |
+          if [[ "${{ github.event.pull_request.merged }}" == "true" ]]; then
+            echo "is-merged=true" >> $GITHUB_OUTPUT
+          else
+            echo "is-merged=false" >> $GITHUB_OUTPUT
+          fi
+
+  build-and-deploy:
+    # Run if it's a push to staging OR a merged PR to main/production
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' && needs.check-merge.outputs.is-merged == 'true') ||
+      github.event_name == 'workflow_dispatch'
     runs-on: macos-14  # Xcode 16.2 を含む環境
 
     steps:
@@ -26,15 +63,36 @@ jobs:
       - name: Install CocoaPods dependencies
         run: bundle exec pod install
 
+      - name: Determine environment and scheme
+        id: env
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/staging" ]]; then
+            echo "environment=staging" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]] || [[ "${{ github.ref }}" == "refs/heads/production" ]]; then
+            echo "environment=production" >> $GITHUB_OUTPUT
+          else
+            echo "environment=staging" >> $GITHUB_OUTPUT
+          fi
+          
+          if [[ "${{ steps.env.outputs.environment }}" == "production" ]]; then
+            echo "scheme=nose-production" >> $GITHUB_OUTPUT
+          else
+            echo "scheme=nose-staging" >> $GITHUB_OUTPUT
+          fi
+
       - name: Clean workspace
         run: |
           # Clean any generated files
           rm -rf builds/
           rm -rf ~/Library/Developer/Xcode/DerivedData/
-          xcodebuild clean -workspace nose.xcworkspace -scheme nose-staging
+          xcodebuild clean -workspace nose.xcworkspace -scheme ${{ steps.env.outputs.scheme }}
 
       - name: Show environment info
         run: |
+          echo "Environment: ${{ steps.env.outputs.environment }}"
+          echo "Scheme: ${{ steps.env.outputs.scheme }}"
           echo "Ruby version: $(ruby --version)"
           echo "Bundler version: $(bundle --version)"
           echo "Fastlane version: $(bundle exec fastlane --version)"
@@ -44,10 +102,30 @@ jobs:
           ls -la
 
       - name: Run Fastlane
-        run: bundle exec fastlane beta
+        run: |
+          if [[ "${{ steps.env.outputs.environment }}" == "production" ]]; then
+            bundle exec fastlane production
+          else
+            bundle exec fastlane beta
+          fi
         env:
           APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
           FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD: ${{ secrets.FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD }}
           FASTLANE_PASSWORD: ${{ secrets.FASTLANE_PASSWORD }}
           FASTLANE_USER: ${{ secrets.FASTLANE_USER }}
         continue-on-error: false
+
+      - name: Notify on success
+        if: success()
+        run: |
+          echo "✅ TestFlight upload completed successfully!"
+          echo "Environment: ${{ steps.env.outputs.environment }}"
+          echo "Scheme: ${{ steps.env.outputs.scheme }}"
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "❌ TestFlight upload failed!"
+          echo "Environment: ${{ steps.env.outputs.environment }}"
+          echo "Scheme: ${{ steps.env.outputs.scheme }}"
+          echo "Please check the logs above for more details."

@@ -1,7 +1,7 @@
 default_platform(:ios)
 
 platform :ios do
-  desc "Build and upload to TestFlight"
+  desc "Build and upload to TestFlight (Staging)"
   lane :beta do
     # Increment build number
     increment_build_number(
@@ -20,6 +20,34 @@ platform :ios do
       clean: true,
       output_directory: "builds",
       output_name: "nose.ipa"
+    )
+
+    # Upload to TestFlight
+    upload_to_testflight(
+      skip_waiting_for_build_processing: true,
+      skip_submission: true
+    )
+  end
+
+  desc "Build and upload to TestFlight (Production)"
+  lane :production do
+    # Increment build number
+    increment_build_number(
+      build_number: latest_testflight_build_number + 1,
+      xcodeproj: "nose.xcodeproj"
+    )
+
+    # Build the app
+    build_app(
+      workspace: "nose.xcworkspace",
+      scheme: "nose-production",
+      export_method: "app-store",
+      export_options: {
+        signingStyle: "automatic"
+      },
+      clean: true,
+      output_directory: "builds",
+      output_name: "nose-production.ipa"
     )
 
     # Upload to TestFlight
