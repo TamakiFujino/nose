@@ -190,7 +190,13 @@ class Avatar3DViewController: UIViewController {
         chosenModels.removeAll()
         chosenColors.removeAll()
         
-        AvatarCategory.all.forEach { removeAvatarPart(for: $0) }
+        guard DynamicCategoryManager.shared.isCategoriesLoaded() else {
+            print("❌ Error: Categories not loaded, cannot clear avatar state")
+            return
+        }
+        
+        let categories = DynamicCategoryManager.shared.getAllSubcategories()
+        categories.forEach { removeAvatarPart(for: $0) }
     }
 
     private func loadBaseModel() {
@@ -336,7 +342,14 @@ class Avatar3DViewController: UIViewController {
     // MARK: - Avatar Management
     private func loadAvatarModel() {
         print("🎯 loadAvatarModel called")
-        let categories = AvatarCategory.all
+        
+        // Ensure categories are loaded
+        guard DynamicCategoryManager.shared.isCategoriesLoaded() else {
+            print("❌ Error: Categories not loaded, cannot load avatar model")
+            return
+        }
+        
+        let categories = DynamicCategoryManager.shared.getAllSubcategories()
         
         // Load chosen models from UserDefaults
         for category in categories {
@@ -577,10 +590,16 @@ class Avatar3DViewController: UIViewController {
     }
     
     func removeAvatarPart(for category: String) {
-        guard AvatarCategory.isValid(category) else {
+        guard DynamicCategoryManager.shared.isCategoriesLoaded() else {
+            print("❌ Error: Categories not loaded, cannot validate category: \(category)")
+            return
+        }
+        
+        guard DynamicCategoryManager.shared.isValidCategory(category) else {
             print("❌ Invalid category: \(category)")
             return
         }
+        
         if let modelName = chosenModels[category] {
             hideEntity(for: modelName)
             chosenModels.removeValue(forKey: category)
@@ -639,7 +658,8 @@ class Avatar3DViewController: UIViewController {
             return
         }
         
-        materialUpdateQueue.async { [weak self] in
+        // Ensure all material operations happen on the main thread
+        DispatchQueue.main.async { [weak self] in
             guard let self = self else {
                 print("❌ Self is nil")
                 return
@@ -662,92 +682,80 @@ class Avatar3DViewController: UIViewController {
             // Update category material
             self.categoryMaterials[category] = newMaterial
             
-            // Queue scene update to apply the change
-            self.queueSceneUpdate { [weak self] in
-                guard let self = self else {
-                    print("❌ Self is nil in scene update")
+            if category == "skin" {
+                // Update base entity material
+                if let baseEntity = self.baseEntity {
+                    do {
+                        baseEntity.model?.materials = [newMaterial]
+                        print("✅ Applied skin material to base entity")
+                    } catch {
+                        print("❌ Failed to apply skin material: \(error)")
+                    }
+                } else {
+                    print("❌ Base entity is nil")
+                }
+            } else {
+                // For all other categories, use two materials
+                guard let modelName = self.chosenModels[category] else {
+                    print("❌ No model name found for category: \(category)")
+                    print("   - Available categories: \(self.chosenModels.keys.joined(separator: ", "))")
                     return
                 }
                 
-                // Ensure we're on the main queue for material operations
-                DispatchQueue.main.async {
+                print("📦 Looking for entity with model name: \(modelName)")
                 
-                if category == "skin" {
-                    // Update base entity material
-                    if let baseEntity = self.baseEntity {
-                        do {
-                            baseEntity.model?.materials = [newMaterial]
-                            print("✅ Applied skin material to base entity")
-                        } catch {
-                            print("❌ Failed to apply skin material: \(error)")
-                        }
-                    } else {
-                        print("❌ Base entity is nil")
-                    }
-                } else {
-                    // For all other categories, use two materials
-                    guard let modelName = self.chosenModels[category] else {
-                        print("❌ No model name found for category: \(category)")
-                        print("   - Available categories: \(self.chosenModels.keys.joined(separator: ", "))")
-                        return
-                    }
-                    
-                    print("📦 Looking for entity with model name: \(modelName)")
-                    
-                    guard let entity = self.entityPool[modelName] else {
-                        print("❌ Entity not found in pool for model: \(modelName)")
-                        print("   - Available models in pool: \(self.entityPool.keys.joined(separator: ", "))")
-                        return
-                    }
-                    
-                    print("✅ Found entity in pool")
-                    
-                    guard let model = entity.model else {
-                        print("❌ Entity has no model component")
-                        return
-                    }
-                    
-                    print("🔍 Current materials count: \(model.materials.count)")
-                    
-                    // First material is color-changing, second is fixed white
-                    do {
-                        // Safely assign materials with bounds checking
-                        let materialsArray = [newMaterial, whiteMaterial]
-                        entity.model?.materials = materialsArray
-                        print("✅ Applied new materials to entity")
-                        
-                        // Verify material assignment with additional safety
-                        guard let updatedModel = entity.model else {
-                            print("❌ Model component is nil after assignment")
-                            return
-                        }
-                        
-                        print("🔍 Materials array count: \(materialsArray.count)")
-                        print("🔍 Updated model materials count: \(updatedModel.materials.count)")
-                        
-                        // Verify material assignment
-                        if let updatedModel = entity.model {
-                            print("🔍 Final materials state:")
-                            print("   - Materials count: \(updatedModel.materials.count)")
-                            if let firstMaterial = updatedModel.materials.first as? SimpleMaterial {
-                                print("   - First material color: \(firstMaterial.color)")
-                            }
-                            if updatedModel.materials.count > 1 {
-                                let secondMaterial = updatedModel.materials[1] as? SimpleMaterial
-                                if let color = secondMaterial?.color {
-                                    print("   - Second material color: \(color)")
-                                } else {
-                                    print("   - Second material has no color")
-                                }
-                            } else {
-                                print("   - No second material available")
-                            }
-                        }
-                    } catch {
-                        print("❌ Failed to apply materials: \(error)")
-                    }
+                guard let entity = self.entityPool[modelName] else {
+                    print("❌ Entity not found in pool for model: \(modelName)")
+                    print("   - Available models in pool: \(self.entityPool.keys.joined(separator: ", "))")
+                    return
                 }
-                } // Close DispatchQueue.main.async
+                
+                print("✅ Found entity in pool")
+                
+                guard let model = entity.model else {
+                    print("❌ Entity has no model component")
+                    return
+                }
+                
+                print("🔍 Current materials count: \(model.materials.count)")
+                
+                // First material is color-changing, second is fixed white
+                do {
+                    // Safely assign materials with bounds checking
+                    let materialsArray = [newMaterial, whiteMaterial]
+                    entity.model?.materials = materialsArray
+                    print("✅ Applied new materials to entity")
+                    
+                    // Verify material assignment with additional safety
+                    guard let updatedModel = entity.model else {
+                        print("❌ Model component is nil after assignment")
+                        return
+                    }
+                    
+                    print("🔍 Materials array count: \(materialsArray.count)")
+                    print("🔍 Updated model materials count: \(updatedModel.materials.count)")
+                    
+                    // Verify material assignment
+                    if let updatedModel = entity.model {
+                        print("🔍 Final materials state:")
+                        print("   - Materials count: \(updatedModel.materials.count)")
+                        if let firstMaterial = updatedModel.materials.first as? SimpleMaterial {
+                            print("   - First material color: \(firstMaterial.color)")
+                        }
+                        if updatedModel.materials.count > 1 {
+                            let secondMaterial = updatedModel.materials[1] as? SimpleMaterial
+                            if let color = secondMaterial?.color {
+                                print("   - Second material color: \(color)")
+                            } else {
+                                print("   - Second material has no color")
+                            }
+                        } else {
+                            print("   - No second material available")
+                        }
+                    }
+                } catch {
+                    print("❌ Failed to apply materials: \(error)")
+                }
             }
         }
     }

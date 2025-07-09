@@ -108,24 +108,24 @@ final class AvatarResourceManager {
     private func loadModels() async throws -> [String: [String: [String]]] {
         print("🔄 Loading models...")
         
-        // Load each JSON file concurrently using AvatarCategory constants
-        async let bodyTask = loadModelFile(AvatarCategory.jsonFiles[AvatarCategory.body] ?? "")
-        async let clothesTask = loadModelFile(AvatarCategory.jsonFiles[AvatarCategory.clothes] ?? "")
-        async let hairTask = loadModelFile(AvatarCategory.jsonFiles[AvatarCategory.hair] ?? "")
-        async let accessoriesTask = loadModelFile(AvatarCategory.jsonFiles[AvatarCategory.accessories] ?? "")
+        // Load categories dynamically from Firebase Storage
+        try await DynamicCategoryManager.shared.loadCategories()
         
-        // Wait for all tasks to complete
-        let body = try await bodyTask
-        let clothes = try await clothesTask
-        let hair = try await hairTask
-        let accessories = try await accessoriesTask
-        
-        // Combine all models using AvatarCategory constants
+        // Get the loaded categories
+        let categoryGroups = DynamicCategoryManager.shared.getCategoryGroups()
         var allModels: [String: [String: [String]]] = [:]
-        allModels[AvatarCategory.body] = body
-        allModels[AvatarCategory.clothes] = clothes
-        allModels[AvatarCategory.hair] = hair
-        allModels[AvatarCategory.accessories] = accessories
+        
+        // Load models for each main category
+        for (mainCategory, subcategories) in categoryGroups {
+            var categoryModels: [String: [String]] = [:]
+            
+            for subcategory in subcategories {
+                let models = DynamicCategoryManager.shared.getModels(for: mainCategory, subcategory: subcategory)
+                categoryModels[subcategory] = models
+            }
+            
+            allModels[mainCategory] = categoryModels
+        }
         
         print("✅ Successfully loaded models from all categories")
         return allModels
@@ -456,42 +456,34 @@ final class AvatarResourceManager {
 
     // MARK: - Utility: Category/Subcategory Mapping
     static func getCategoryAndSubcategory(from modelName: String) -> (category: String, subcategory: String) {
-        // Special case for eyebrows since it contains "eye"
-        if modelName.hasPrefix("eyebrow") {
-            return (AvatarCategory.body, AvatarCategory.eyebrows)
-        }
-        
-        // Check body categories
-        for category in AvatarCategory.bodyCategories {
-            if modelName.hasPrefix(category) {
-                return (AvatarCategory.body, category)
+        // Use DynamicCategoryManager if available
+        if DynamicCategoryManager.shared.isCategoriesLoaded() {
+            let categoryGroups = DynamicCategoryManager.shared.getCategoryGroups()
+            
+            // Search through all categories and subcategories to find the model
+            for (mainCategory, subcategories) in categoryGroups {
+                for subcategory in subcategories {
+                    // Get the models for this subcategory
+                    let models = DynamicCategoryManager.shared.getModels(for: mainCategory, subcategory: subcategory)
+                    
+                    // Check if the model name exists in this subcategory's models
+                    if models.contains(modelName) {
+                        return (mainCategory, subcategory)
+                    }
+                }
+            }
+            
+            // If we can't determine the category, log an error and return a safe default
+            print("⚠️ Warning: Could not determine category for model: \(modelName)")
+            if let firstCategory = categoryGroups.first {
+                return (firstCategory.key, firstCategory.value.first ?? "unknown")
             }
         }
         
-        // Check clothing categories
-        for category in AvatarCategory.clothingCategories {
-            if modelName.hasPrefix(category) {
-                return (AvatarCategory.clothes, category)
-            }
-        }
-        
-        // Check hair categories
-        for category in AvatarCategory.hairCategories {
-            if modelName.hasPrefix("hair_\(category)") {
-                return (AvatarCategory.hair, category)
-            }
-        }
-        
-        // Check accessories categories
-        for category in AvatarCategory.accessoriesCategories {
-            if modelName.hasPrefix("\(category)_") {
-                return (AvatarCategory.accessories, category)
-            }
-        }
-        
-        // If we can't determine the category, log an error and return a safe default
-        print("⚠️ Warning: Could not determine category for model: \(modelName)")
-        return (AvatarCategory.body, AvatarCategory.eyes)
+        // If DynamicCategoryManager is not loaded, we can't determine the category
+        // This should not happen in normal operation since categories are loaded before models
+        print("❌ Error: DynamicCategoryManager not loaded, cannot determine category for model: \(modelName)")
+        return ("unknown", "unknown")
     }
 
     // MARK: - Cache Management

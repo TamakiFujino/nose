@@ -110,17 +110,19 @@ struct CollectionAvatar: Codable {
         
         // MARK: - Computed Properties
         // Get color values
-        var skinColor: String { AvatarCategory.getColor(from: selections, category: AvatarCategory.skin) }
+        var skinColor: String { String.getColor(from: selections, category: "skin") }
         
         // Get model values for each category
         var models: [String: String] {
             var result: [String: String] = [:]
-            for category in AvatarCategory.modelCategories {
-                let model = AvatarCategory.getModel(from: selections, category: category)
-                if !model.isEmpty {
+            
+            // Extract all categories from selections that have model values
+            for (category, properties) in selections {
+                if let model = properties["model"], !model.isEmpty {
                     result[category] = model
                 }
             }
+            
             return result
         }
         

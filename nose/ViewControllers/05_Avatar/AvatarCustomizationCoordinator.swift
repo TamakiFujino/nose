@@ -45,7 +45,7 @@ class AvatarCustomizationCoordinator: NSObject {
     }
 
     func updateColor(_ color: UIColor, for category: String) {
-        if category == AvatarCategory.skin {
+        if category == "skin" {
             avatar3DViewController?.changeSkinColor(to: color)
         } else {
             avatar3DViewController?.changeAvatarPartColor(for: category, to: color)

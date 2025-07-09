@@ -50,8 +50,27 @@ class AvatarPartSelectorView: UIView {
         setupScrollView()
         setupContentView()
         
-        // Use Task to handle async call with initial category
+        // Wait for categories to be loaded before proceeding
         Task {
+            // Wait for categories to be loaded
+            if !DynamicCategoryManager.shared.isCategoriesLoaded() {
+                do {
+                    try await DynamicCategoryManager.shared.loadCategories()
+                } catch {
+                    print("Failed to load categories: \(error)")
+                    // Continue with fallback categories
+                }
+            }
+            
+            // Update UI with loaded categories
+            await MainActor.run {
+                updateParentTabBar()
+                // Only update child tab bar if parent tab bar was successfully updated
+                if parentTabBar.numberOfSegments > 0 {
+                    updateChildTabBar()
+                }
+            }
+            
             let initialCategory = getCurrentCategory()
             await loadModels(for: initialCategory)
             loadContentForSelectedTab()
@@ -59,7 +78,8 @@ class AvatarPartSelectorView: UIView {
     }
 
     private func setupParentTabBar() {
-        parentTabBar = UISegmentedControl(items: AvatarCategory.parentTabItems)
+        // Initialize with empty items - will be updated when categories are loaded
+        parentTabBar = UISegmentedControl(items: [])
         parentTabBar.selectedSegmentIndex = 0
         parentTabBar.addTarget(self, action: #selector(parentTabChanged), for: .valueChanged)
         parentTabBar.translatesAutoresizingMaskIntoConstraints = false
@@ -73,7 +93,8 @@ class AvatarPartSelectorView: UIView {
     }
 
     private func setupChildTabBar() {
-        childTabBar = UISegmentedControl(items: AvatarCategory.bodyTabItems)
+        // Initialize with empty items - will be updated when categories are loaded
+        childTabBar = UISegmentedControl(items: [])
         childTabBar.selectedSegmentIndex = 0
         childTabBar.addTarget(self, action: #selector(childTabChanged), for: .valueChanged)
         childTabBar.translatesAutoresizingMaskIntoConstraints = false
@@ -135,8 +156,8 @@ class AvatarPartSelectorView: UIView {
         }
 
         do {
-            // Get the main category file name
-            let mainCategory = AvatarCategory.getParentCategory(for: category)
+            // Use DynamicCategoryManager to get models
+            let mainCategory = DynamicCategoryManager.shared.getParentCategory(for: category)
             guard !mainCategory.isEmpty else {
                 print("Unknown category: \(category)")
                 await setModels([])
@@ -144,43 +165,19 @@ class AvatarPartSelectorView: UIView {
                 return
             }
 
-            // Check cache first
-            if let cachedData = jsonCache[mainCategory] {
-                let subcategory = AvatarCategory.getSubcategory(for: category)
-                if let modelsArray = cachedData[subcategory] {
-                    let newModels = modelsArray.map { Model(name: $0) }
-                    await setModels(newModels)
-                    await preloadModelEntities(modelNames: modelsArray)
-                    return
-                }
-            }
-
-            // Download and cache if not in cache
-            let jsonRef = storage.reference().child("avatar_assets/json/\(mainCategory).json")
-            let maxSize: Int64 = 1 * 1024 * 1024 // 1MB max size
-            let data = try await jsonRef.data(maxSize: maxSize)
+            // Get models for the current category
+            let modelsArray = DynamicCategoryManager.shared.getModels(for: mainCategory, subcategory: category)
+            let newModels = modelsArray.map { Model(name: $0) }
+            await setModels(newModels)
             
-            // Decode and cache the dictionary
-            let dict = try JSONDecoder().decode([String: [String]].self, from: data)
-            jsonCache[mainCategory] = dict
+            // Preload all models in this category
+            await preloadModelEntities(modelNames: modelsArray)
             
-            // Get models for current subcategory
-            let subcategory = AvatarCategory.getSubcategory(for: category)
-            if let modelsArray = dict[subcategory] {
-                let newModels = modelsArray.map { Model(name: $0) }
-                await setModels(newModels)
-                
-                // Preload all models in this category
-                await preloadModelEntities(modelNames: modelsArray)
-                
-                // Prefetch thumbnails
-                await prefetchThumbnails(for: modelsArray.prefix(8))
-            } else {
-                print("No models found for subcategory: \(subcategory) in \(mainCategory).json")
-                await setModels([])
-            }
+            // Prefetch thumbnails
+            await prefetchThumbnails(for: modelsArray.prefix(8))
+            
         } catch {
-            print("Failed to load or decode \(category) from main category JSON: \(error)")
+            print("Failed to load models for category \(category): \(error)")
             await setModels([])
             await MainActor.run {
                 hideLoading()
@@ -239,7 +236,10 @@ class AvatarPartSelectorView: UIView {
 
     // MARK: - Actions
     @objc private func parentTabChanged() {
-        updateChildTabBar()
+        // Only update child tab bar if parent tab bar has segments
+        if parentTabBar.numberOfSegments > 0 {
+            updateChildTabBar()
+        }
         Task {
             await loadContentForSelectedTab()
         }
@@ -251,15 +251,43 @@ class AvatarPartSelectorView: UIView {
         }
     }
 
-    private func updateChildTabBar() {
-        let items: [String]
-        switch parentTabBar.selectedSegmentIndex {
-        case 0: items = AvatarCategory.bodyTabItems
-        case 1: items = AvatarCategory.hairTabItems
-        case 2: items = AvatarCategory.clothesTabItems
-        case 3: items = AvatarCategory.accessoriesTabItems
-        default: return
+    private func updateParentTabBar() {
+        guard DynamicCategoryManager.shared.isCategoriesLoaded() else {
+            print("❌ Error: Categories not loaded, cannot update parent tab bar")
+            return
         }
+        
+        let parentItems = DynamicCategoryManager.shared.getMainCategories()
+        
+        parentTabBar.removeAllSegments()
+        for (index, item) in parentItems.enumerated() {
+            let displayName = DynamicCategoryManager.shared.getDisplayName(for: item)
+            parentTabBar.insertSegment(withTitle: displayName, at: index, animated: false)
+        }
+        parentTabBar.selectedSegmentIndex = 0
+    }
+    
+    private func updateChildTabBar() {
+        guard DynamicCategoryManager.shared.isCategoriesLoaded() else {
+            print("❌ Error: Categories not loaded, cannot update child tab bar")
+            return
+        }
+        
+        let mainCategories = DynamicCategoryManager.shared.getMainCategories()
+        
+        // Ensure parent tab bar has segments and valid selection
+        guard parentTabBar.numberOfSegments > 0 else {
+            print("❌ Error: Parent tab bar has no segments")
+            return
+        }
+        
+        guard parentTabBar.selectedSegmentIndex >= 0 && parentTabBar.selectedSegmentIndex < mainCategories.count else {
+            print("❌ Error: Invalid parent tab index: \(parentTabBar.selectedSegmentIndex), max: \(mainCategories.count)")
+            return
+        }
+        
+        let selectedMainCategory = mainCategories[parentTabBar.selectedSegmentIndex]
+        let items = DynamicCategoryManager.shared.getSubcategories(for: selectedMainCategory)
 
         childTabBar.removeAllSegments()
         for (index, item) in items.enumerated() {
@@ -484,30 +512,32 @@ class AvatarPartSelectorView: UIView {
     }
 
     func getCurrentCategory() -> String {
-        switch parentTabBar.selectedSegmentIndex {
-        case 0: // Body tab
-            let index = childTabBar.selectedSegmentIndex
-            guard index >= 0 && index < AvatarCategory.bodyCategories.count else { return "" }
-            return AvatarCategory.bodyCategories[index]
-            
-        case 1: // Hair tab
-            let index = childTabBar.selectedSegmentIndex
-            guard index >= 0 && index < AvatarCategory.hairCategories.count else { return "" }
-            return AvatarCategory.hairCategories[index]
-            
-        case 2: // Clothes tab
-            let index = childTabBar.selectedSegmentIndex
-            guard index >= 0 && index < AvatarCategory.clothingCategories.count else { return "" }
-            return AvatarCategory.clothingCategories[index]
-            
-        case 3: // Accessories tab
-            let index = childTabBar.selectedSegmentIndex
-            guard index >= 0 && index < AvatarCategory.accessoriesCategories.count else { return "" }
-            return AvatarCategory.accessoriesCategories[index]
-            
-        default:
+        guard DynamicCategoryManager.shared.isCategoriesLoaded() else {
+            print("❌ Error: Categories not loaded, cannot get current category")
             return ""
         }
+        
+        // Ensure tab bars have segments
+        guard parentTabBar.numberOfSegments > 0 && childTabBar.numberOfSegments > 0 else {
+            print("❌ Error: Tab bars have no segments")
+            return ""
+        }
+        
+        let mainCategories = DynamicCategoryManager.shared.getMainCategories()
+        guard parentTabBar.selectedSegmentIndex >= 0 && parentTabBar.selectedSegmentIndex < mainCategories.count else {
+            print("❌ Error: Invalid parent tab index: \(parentTabBar.selectedSegmentIndex), max: \(mainCategories.count)")
+            return ""
+        }
+        
+        let selectedMainCategory = mainCategories[parentTabBar.selectedSegmentIndex]
+        let subcategories = DynamicCategoryManager.shared.getSubcategories(for: selectedMainCategory)
+        
+        guard childTabBar.selectedSegmentIndex >= 0 && childTabBar.selectedSegmentIndex < subcategories.count else {
+            print("❌ Error: Invalid child tab index: \(childTabBar.selectedSegmentIndex), max: \(subcategories.count)")
+            return ""
+        }
+        
+        return subcategories[childTabBar.selectedSegmentIndex]
     }
 
     // MARK: - Timeout Helper
@@ -535,7 +565,7 @@ class AvatarPartSelectorView: UIView {
     
     private func applyColor(_ color: UIColor, to category: String) {
         guard let avatar3DViewController = avatar3DViewController else { return }
-        if category == AvatarCategory.skin {
+        if category == "skin" {
             avatar3DViewController.changeSkinColor(to: color)
         } else {
             avatar3DViewController.changeAvatarPartColor(for: category, to: color)

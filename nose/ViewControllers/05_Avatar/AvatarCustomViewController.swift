@@ -291,14 +291,8 @@ class AvatarCustomViewController: UIViewController {
                 await MainActor.run {
                     self.hideLoading()
                     self.view.isUserInteractionEnabled = true
-                    // Show error alert
-                    let alert = UIAlertController(
-                        title: "Error",
-                        message: "Failed to load avatar resources. Please try again.",
-                        preferredStyle: .alert
-                    )
-                    alert.addAction(UIAlertAction(title: "OK", style: .default))
-                    self.present(alert, animated: true)
+                    // Show error toast
+                    ToastManager.showToast(message: ToastMessages.categoriesLoadFailed, type: .error)
                 }
             }
         }
