@@ -5,9 +5,10 @@ itc_team_id("127862534") # App Store Connect Team ID
 team_id("Y365Z93L4K") # Developer Portal Team ID
 
 # App Store Connect API Key configuration
-# This will be set via environment variable in CI/CD
-# api_key_path("path/to/api_key.json") # Uncomment if using API key file
-# api_key_id("YOUR_API_KEY_ID") # Uncomment if using API key ID
+# For CI/CD, the API key will be provided via environment variables
+# For local development, you can uncomment and configure one of these:
+# api_key_path("path/to/api_key.json") # Path to API key file
+# api_key_id("YOUR_API_KEY_ID") # API key ID if using keychain
 
 # For more information about the Appfile, see:
 #     https://docs.fastlane.tools/advanced/#appfile

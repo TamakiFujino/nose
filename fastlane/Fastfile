@@ -1,8 +1,18 @@
 default_platform(:ios)
 
 platform :ios do
-  desc "Build and upload to TestFlight"
+  desc "Build and upload to TestFlight (Staging)"
   lane :beta do
+    # Configure App Store Connect API key if available
+    if ENV["APP_STORE_CONNECT_KEY_CONTENT"]
+      app_store_connect_api_key(
+        key_id: ENV["APP_STORE_CONNECT_KEY_ID"],
+        issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
+        key_content: ENV["APP_STORE_CONNECT_KEY_CONTENT"],
+        is_key_content_base64: false
+      )
+    end
+
     # Increment build number
     increment_build_number(
       build_number: latest_testflight_build_number + 1,
@@ -20,6 +30,44 @@ platform :ios do
       clean: true,
       output_directory: "builds",
       output_name: "nose.ipa"
+    )
+
+    # Upload to TestFlight
+    upload_to_testflight(
+      skip_waiting_for_build_processing: true,
+      skip_submission: true
+    )
+  end
+
+  desc "Build and upload to TestFlight (Production)"
+  lane :production do
+    # Configure App Store Connect API key if available
+    if ENV["APP_STORE_CONNECT_API_KEY"]
+      app_store_connect_api_key(
+        key_id: ENV["APP_STORE_CONNECT_API_KEY_ID"],
+        issuer_id: ENV["APP_STORE_CONNECT_API_KEY_ISSUER_ID"],
+        key_content: ENV["APP_STORE_CONNECT_API_KEY"],
+        is_key_content_base64: false
+      )
+    end
+
+    # Increment build number
+    increment_build_number(
+      build_number: latest_testflight_build_number + 1,
+      xcodeproj: "nose.xcodeproj"
+    )
+
+    # Build the app
+    build_app(
+      workspace: "nose.xcworkspace",
+      scheme: "nose-production",
+      export_method: "app-store",
+      export_options: {
+        signingStyle: "automatic"
+      },
+      clean: true,
+      output_directory: "builds",
+      output_name: "nose-production.ipa"
     )
 
     # Upload to TestFlight
