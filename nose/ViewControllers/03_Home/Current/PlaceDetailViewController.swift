@@ -7,7 +7,7 @@ final class PlaceDetailViewController: UIViewController {
     
     // MARK: - Properties
     private let place: GMSPlace
-    private var photos: [UIImage] = []
+    private var photos: [UIImage?] = []
     private var currentPhotoIndex = 0
     private var detailedPlace: GMSPlace?
     private var isFromCollection: Bool
@@ -444,15 +444,15 @@ final class PlaceDetailViewController: UIViewController {
         
         print("Found \(placePhotos.count) photos, loading first \(limitedPhotos.count)")
         
-        // Show photo collection view immediately with placeholder images
+        // Show photo collection view immediately with loading placeholders
         photoCollectionView.isHidden = false
         pageControl.isHidden = false
         pageControl.numberOfPages = limitedPhotos.count
         
-        // Initialize photos array with placeholder images
+        // Initialize photos array with nil to indicate loading state
         self.photos.removeAll()
         for _ in 0..<limitedPhotos.count {
-            self.photos.append(UIImage(systemName: "photo") ?? UIImage())
+            self.photos.append(nil)
         }
         photoCollectionView.reloadData()
         
@@ -618,8 +618,8 @@ extension PlaceDetailViewController: UICollectionViewDelegate, UICollectionViewD
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "PhotoCell", for: indexPath) as! PhotoCell
         let image = photos[indexPath.item]
-        print("🖼️ Setting image for cell \(indexPath.item): \(image)")
-        cell.imageView.image = image
+        print("🖼️ Configuring cell \(indexPath.item) with image: \(image != nil ? "loaded" : "loading")")
+        cell.configure(with: image)
         return cell
     }
     
@@ -639,19 +639,64 @@ class PhotoCell: UICollectionViewCell {
         return imageView
     }()
     
+    private let loadingView: UIView = {
+        let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.backgroundColor = .systemGray6
+        return view
+    }()
+    
+    private let activityIndicator: UIActivityIndicatorView = {
+        let indicator = UIActivityIndicatorView(style: .large)
+        indicator.translatesAutoresizingMaskIntoConstraints = false
+        indicator.color = .fourthColor
+        return indicator
+    }()
+    
     override init(frame: CGRect) {
         super.init(frame: frame)
-        contentView.addSubview(imageView)
-        NSLayoutConstraint.activate([
-            imageView.topAnchor.constraint(equalTo: contentView.topAnchor),
-            imageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
-            imageView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            imageView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor)
-        ])
+        setupUI()
     }
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+    
+    private func setupUI() {
+        contentView.addSubview(imageView)
+        contentView.addSubview(loadingView)
+        loadingView.addSubview(activityIndicator)
+        
+        NSLayoutConstraint.activate([
+            imageView.topAnchor.constraint(equalTo: contentView.topAnchor),
+            imageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+            imageView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+            imageView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+            
+            loadingView.topAnchor.constraint(equalTo: contentView.topAnchor),
+            loadingView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+            loadingView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+            loadingView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+            
+            activityIndicator.centerXAnchor.constraint(equalTo: loadingView.centerXAnchor),
+            activityIndicator.centerYAnchor.constraint(equalTo: loadingView.centerYAnchor)
+        ])
+    }
+    
+    func configure(with image: UIImage?) {
+        if let image = image {
+            // Show the actual image
+            imageView.image = image
+            imageView.isHidden = false
+            loadingView.isHidden = true
+            activityIndicator.stopAnimating()
+        } else {
+            // Show loading state
+            imageView.image = nil
+            imageView.isHidden = true
+            loadingView.isHidden = false
+            activityIndicator.startAnimating()
+        }
     }
 }
 

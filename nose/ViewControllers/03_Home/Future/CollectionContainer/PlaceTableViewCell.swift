@@ -66,10 +66,6 @@ class PlaceTableViewCell: UITableViewCell {
         nameLabel.text = place.name
         ratingLabel.text = "Rating: \(String(format: "%.1f", place.rating))"
         
-        // Set a default placeholder image
-        placeImageView.image = UIImage(systemName: "building.2")
-        placeImageView.tintColor = .systemGray3
-        
         // Check cache first for this place's photo
         let photoID = "\(place.placeId)_photo"
         if let cachedImage = PlacesCacheManager.shared.getCachedPhoto(for: photoID) {
