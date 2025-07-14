@@ -27,6 +27,7 @@ public struct PlaceCollection: Codable {
         public let rating: Float
         public let phoneNumber: String
         public let addedAt: Date
+        public var visited: Bool
         
         public var dictionary: [String: Any] {
             [
@@ -35,7 +36,8 @@ public struct PlaceCollection: Codable {
                 "formattedAddress": formattedAddress,
                 "rating": rating,
                 "phoneNumber": phoneNumber,
-                "addedAt": Timestamp(date: addedAt)
+                "addedAt": Timestamp(date: addedAt),
+                "visited": visited
             ]
         }
     }
@@ -137,12 +139,16 @@ public struct PlaceCollection: Codable {
                     return nil
                 }
                 
+                // Handle visited status, default to false if not found
+                let visited = placeDict["visited"] as? Bool ?? false
+                
                 return Place(placeId: placeId,
                            name: name,
                            formattedAddress: formattedAddress,
                            rating: rating,
                            phoneNumber: phoneNumber,
-                           addedAt: addedAt)
+                           addedAt: addedAt,
+                           visited: visited)
             }
             print("✅ Successfully parsed \(self.places.count) places")
         } else {

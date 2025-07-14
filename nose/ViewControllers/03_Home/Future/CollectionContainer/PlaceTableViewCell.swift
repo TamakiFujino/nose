@@ -28,6 +28,29 @@ class PlaceTableViewCell: UITableViewCell {
         label.textColor = .secondaryLabel
         return label
     }()
+    
+    private let visitedIndicator: UIView = {
+        let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.backgroundColor = .thirdColor
+        view.layer.cornerRadius = 12
+        view.isHidden = true
+        
+        let checkmarkImageView = UIImageView(image: UIImage(systemName: "checkmark"))
+        checkmarkImageView.translatesAutoresizingMaskIntoConstraints = false
+        checkmarkImageView.tintColor = .firstColor
+        checkmarkImageView.contentMode = .scaleAspectFit
+        
+        view.addSubview(checkmarkImageView)
+        NSLayoutConstraint.activate([
+            checkmarkImageView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            checkmarkImageView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            checkmarkImageView.widthAnchor.constraint(equalToConstant: 16),
+            checkmarkImageView.heightAnchor.constraint(equalToConstant: 16)
+        ])
+        
+        return view
+    }()
 
     // MARK: - Initialization
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
@@ -44,6 +67,7 @@ class PlaceTableViewCell: UITableViewCell {
         contentView.addSubview(placeImageView)
         contentView.addSubview(nameLabel)
         contentView.addSubview(ratingLabel)
+        contentView.addSubview(visitedIndicator)
 
         NSLayoutConstraint.activate([
             placeImageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
@@ -57,7 +81,12 @@ class PlaceTableViewCell: UITableViewCell {
 
             ratingLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 8),
             ratingLabel.leadingAnchor.constraint(equalTo: placeImageView.trailingAnchor, constant: 16),
-            ratingLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16)
+            ratingLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            
+            visitedIndicator.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 16),
+            visitedIndicator.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            visitedIndicator.widthAnchor.constraint(equalToConstant: 24),
+            visitedIndicator.heightAnchor.constraint(equalToConstant: 24)
         ])
     }
 
@@ -65,6 +94,9 @@ class PlaceTableViewCell: UITableViewCell {
     func configure(with place: PlaceCollection.Place) {
         nameLabel.text = place.name
         ratingLabel.text = "Rating: \(String(format: "%.1f", place.rating))"
+        
+        // Show/hide visited indicator
+        visitedIndicator.isHidden = !place.visited
         
         // Check cache first for this place's photo
         let photoID = "\(place.placeId)_photo"

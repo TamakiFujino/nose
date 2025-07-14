@@ -572,8 +572,19 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         }
     }
     
-    // Add swipe-to-delete functionality
+    // Add swipe actions functionality
     func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
+        let place = places[indexPath.row]
+        
+        // Visited action
+        let visitedAction = UIContextualAction(style: .normal, title: place.visited ? "Unvisited" : "Visited") { [weak self] (action, view, completion) in
+            self?.toggleVisitedStatus(at: indexPath)
+            completion(true) // Dismiss the swipe action immediately
+        }
+        visitedAction.backgroundColor = place.visited ? .systemOrange : .systemGreen
+        visitedAction.image = UIImage(systemName: place.visited ? "xmark.circle" : "checkmark.circle")
+        
+        // Delete action
         let deleteAction = UIContextualAction(style: .destructive, title: "Delete") { [weak self] (action, view, completion) in
             self?.confirmDeletePlace(at: indexPath)
             completion(false) // Don't dismiss the swipe action until user confirms
@@ -581,7 +592,7 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         deleteAction.backgroundColor = .systemRed
         deleteAction.image = UIImage(systemName: "trash")
         
-        return UISwipeActionsConfiguration(actions: [deleteAction])
+        return UISwipeActionsConfiguration(actions: [deleteAction, visitedAction])
     }
     
     private func confirmDeletePlace(at indexPath: IndexPath) {
@@ -601,6 +612,98 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         alertController.addAction(deleteAction)
         
         present(alertController, animated: true)
+    }
+    
+    private func toggleVisitedStatus(at indexPath: IndexPath) {
+        let place = places[indexPath.row]
+        let newVisitedStatus = !place.visited
+        let actionTitle = newVisitedStatus ? "Marking as visited" : "Marking as unvisited"
+        showLoadingAlert(title: actionTitle)
+        
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        let db = Firestore.firestore()
+        
+        // Get references to both collections
+        let userCollectionRef = db.collection("users")
+            .document(currentUserId)
+            .collection("collections")
+            .document(collection.id)
+            
+        let ownerCollectionRef = db.collection("users")
+            .document(collection.userId)  // This is the owner's ID
+            .collection("collections")
+            .document(collection.id)
+        
+        print("📄 Firestore path: users/\(currentUserId)/collections/\(collection.id)")
+        print("📄 Owner path: users/\(collection.userId)/collections/\(collection.id)")
+        
+        // First get the current collection data
+        userCollectionRef.getDocument { [weak self] snapshot, error in
+            if let error = error {
+                print("Error getting collection: \(error.localizedDescription)")
+                self?.dismiss(animated: true) {
+                    ToastManager.showToast(message: "Failed to update place status", type: .error)
+                }
+                return
+            }
+            
+            guard let data = snapshot?.data() else {
+                print("No data found in collection document")
+                self?.dismiss(animated: true) {
+                    ToastManager.showToast(message: "Failed to update place status", type: .error)
+                }
+                return
+            }
+            
+            print("📄 Collection data before update: \(data)")
+            
+            // Get current places array
+            if var places = data["places"] as? [[String: Any]] {
+                // Find and update the place with matching placeId
+                if let placeIndex = places.firstIndex(where: { placeDict in
+                    guard let placeId = placeDict["placeId"] as? String else { return false }
+                    return placeId == place.placeId
+                }) {
+                    // Update the visited status
+                    places[placeIndex]["visited"] = newVisitedStatus
+                    
+                    // Create a batch to update both collections
+                    let batch = db.batch()
+                    
+                    // Update user's collection
+                    batch.updateData(["places": places], forDocument: userCollectionRef)
+                    
+                    // Update owner's collection
+                    batch.updateData(["places": places], forDocument: ownerCollectionRef)
+                    
+                    // Commit the batch
+                    batch.commit { error in
+                        self?.dismiss(animated: true) {
+                            if let error = error {
+                                print("Error updating place status: \(error.localizedDescription)")
+                                ToastManager.showToast(message: "Failed to update place status", type: .error)
+                            } else {
+                                // Update local data
+                                self?.places[indexPath.row].visited = newVisitedStatus
+                                self?.tableView.reloadRows(at: [indexPath], with: .automatic)
+                                ToastManager.showToast(message: newVisitedStatus ? "Marked as visited" : "Marked as unvisited", type: .success)
+                                NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
+                            }
+                        }
+                    }
+                } else {
+                    print("Place not found in collection data")
+                    self?.dismiss(animated: true) {
+                        ToastManager.showToast(message: "Failed to update place status", type: .error)
+                    }
+                }
+            } else {
+                print("No places array found in collection data")
+                self?.dismiss(animated: true) {
+                    ToastManager.showToast(message: "Failed to update place status", type: .error)
+                }
+            }
+        }
     }
     
     private func deletePlace(at indexPath: IndexPath) {
