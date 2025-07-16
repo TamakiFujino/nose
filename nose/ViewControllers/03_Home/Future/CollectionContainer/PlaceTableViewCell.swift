@@ -95,8 +95,15 @@ class PlaceTableViewCell: UITableViewCell {
         nameLabel.text = place.name
         ratingLabel.text = "Rating: \(String(format: "%.1f", place.rating))"
         
-        // Show/hide visited indicator
-        visitedIndicator.isHidden = !place.visited
+        // Change background color based on visited status
+        if place.visited {
+            backgroundColor = .secondColor
+        } else {
+            backgroundColor = .systemBackground
+        }
+        
+        // Hide visited indicator since we're using background color instead
+        visitedIndicator.isHidden = true
         
         // Check cache first for this place's photo
         let photoID = "\(place.placeId)_photo"

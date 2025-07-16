@@ -574,6 +574,11 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
     
     // Add swipe actions functionality
     func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
+        // Safety check to prevent crash
+        guard indexPath.row < places.count else {
+            return UISwipeActionsConfiguration(actions: [])
+        }
+        
         let place = places[indexPath.row]
         
         // Visited action
@@ -581,7 +586,7 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
             self?.toggleVisitedStatus(at: indexPath)
             completion(true) // Dismiss the swipe action immediately
         }
-        visitedAction.backgroundColor = place.visited ? .systemOrange : .systemGreen
+        visitedAction.backgroundColor = .blueColor
         visitedAction.image = UIImage(systemName: place.visited ? "xmark.circle" : "checkmark.circle")
         
         // Delete action
@@ -589,13 +594,15 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
             self?.confirmDeletePlace(at: indexPath)
             completion(false) // Don't dismiss the swipe action until user confirms
         }
-        deleteAction.backgroundColor = .systemRed
+        deleteAction.backgroundColor = .fourthColor
         deleteAction.image = UIImage(systemName: "trash")
         
         return UISwipeActionsConfiguration(actions: [deleteAction, visitedAction])
     }
     
     private func confirmDeletePlace(at indexPath: IndexPath) {
+        // Safety check to prevent crash
+        guard indexPath.row < places.count else { return }
         let place = places[indexPath.row]
         let alertController = UIAlertController(
             title: "Delete Place",
@@ -615,6 +622,8 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
     }
     
     private func toggleVisitedStatus(at indexPath: IndexPath) {
+        // Safety check to prevent crash
+        guard indexPath.row < places.count else { return }
         let place = places[indexPath.row]
         let newVisitedStatus = !place.visited
         let actionTitle = newVisitedStatus ? "Marking as visited" : "Marking as unvisited"
@@ -707,6 +716,8 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
     }
     
     private func deletePlace(at indexPath: IndexPath) {
+        // Safety check to prevent crash
+        guard indexPath.row < places.count else { return }
         let place = places[indexPath.row]
         showLoadingAlert(title: "Removing Place")
         
