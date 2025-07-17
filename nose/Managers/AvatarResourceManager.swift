@@ -24,13 +24,15 @@ final class AvatarResourceManager {
     private var cachedModels: [String: [String: [String]]] = [:]
     private let cache = URLCache.shared
     private let maxCacheSize: Int = 100 * 1024 * 1024 // 100MB
-    private var modelCache: [String: ModelEntity] = [:]
     private var loadingTasks: [String: Task<ModelEntity?, Error>] = [:]
     private var loadedCategories: Set<String> = []  // Track loaded categories
     private var thumbnailLoadingTasks: [String: Task<UIImage?, Error>] = [:]
     private let thumbnailSize: CGSize = CGSize(width: 200, height: 200) // Low-res thumbnail size
     private var loadedThumbnails: Set<String> = [] // Track loaded thumbnails
     private let thumbnailLoadingQueue = DispatchQueue(label: "com.avatar.thumbnailLoading", qos: .userInitiated)
+    // LRU cache management for modelEntities
+    private let maxCachedModels = 50
+    private var modelAccessTimes: [String: Date] = [:]
 
     // MARK: - Directory for caching
     private var cacheDirectory: URL {
@@ -177,6 +179,8 @@ final class AvatarResourceManager {
     func loadModelEntity(named modelName: String) async throws -> ModelEntity {
         // Check memory cache first
         if let entity = modelEntities[modelName] {
+            // Update access time for LRU
+            modelAccessTimes[modelName] = Date()
             print("📦 Using cached model entity for: \(modelName)")
             return entity.clone(recursive: true)
         }
@@ -211,6 +215,18 @@ final class AvatarResourceManager {
                     self.applyOptimizedMaterials(to: modelEntity)
                     self.modelEntities[modelName] = modelEntity
                     self.modelFileURLs[modelName] = modelFileURL
+                    // Update access time for LRU
+                    self.modelAccessTimes[modelName] = Date()
+                    // LRU eviction if needed
+                    if self.modelEntities.count > self.maxCachedModels {
+                        let sorted = self.modelAccessTimes.sorted { $0.value < $1.value }
+                        let toRemove = sorted.prefix(self.modelEntities.count - self.maxCachedModels)
+                        for (oldModel, _) in toRemove {
+                            self.modelEntities.removeValue(forKey: oldModel)
+                            self.modelAccessTimes.removeValue(forKey: oldModel)
+                            self.modelFileURLs.removeValue(forKey: oldModel)
+                        }
+                    }
                     return modelEntity
                 } catch {
                     print("❌ Error loading cached model: \(error)")
@@ -225,6 +241,18 @@ final class AvatarResourceManager {
             self.applyOptimizedMaterials(to: modelEntity)
             self.modelEntities[modelName] = modelEntity
             self.modelFileURLs[modelName] = modelFileURL
+            // Update access time for LRU
+            self.modelAccessTimes[modelName] = Date()
+            // LRU eviction if needed
+            if self.modelEntities.count > self.maxCachedModels {
+                let sorted = self.modelAccessTimes.sorted { $0.value < $1.value }
+                let toRemove = sorted.prefix(self.modelEntities.count - self.maxCachedModels)
+                for (oldModel, _) in toRemove {
+                    self.modelEntities.removeValue(forKey: oldModel)
+                    self.modelAccessTimes.removeValue(forKey: oldModel)
+                    self.modelFileURLs.removeValue(forKey: oldModel)
+                }
+            }
             return modelEntity
         }
         
@@ -452,6 +480,7 @@ final class AvatarResourceManager {
         loadedCategories.removeAll()
         loadedThumbnails.removeAll()  // Clear loaded thumbnails tracking
         thumbnailLoadingTasks.removeAll()  // Clear thumbnail loading tasks
+        modelAccessTimes.removeAll() // Clear model access times
     }
 
     // MARK: - Utility: Category/Subcategory Mapping
