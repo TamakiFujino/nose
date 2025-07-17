@@ -49,7 +49,7 @@ final class GoogleMapManager: NSObject {
     private func setupLocationManager() {
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
-        locationManager.requestWhenInUseAuthorization()
+        // Don't request authorization here - let the delegate handle it based on current status
     }
     
     // MARK: - Public Methods
@@ -176,6 +176,7 @@ extension GoogleMapManager: CLLocationManagerDelegate {
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         switch manager.authorizationStatus {
         case .authorizedWhenInUse, .authorizedAlways:
+            // Permission granted, request location
             locationManager.requestLocation()
         case .denied, .restricted:
             delegate?.googleMapManager(self, didFailWithError: NSError(
@@ -184,6 +185,7 @@ extension GoogleMapManager: CLLocationManagerDelegate {
                 userInfo: [NSLocalizedDescriptionKey: "Location access denied"]
             ))
         case .notDetermined:
+            // Only request permission if we haven't asked before
             locationManager.requestWhenInUseAuthorization()
         @unknown default:
             break

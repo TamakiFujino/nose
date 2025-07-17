@@ -301,33 +301,26 @@ final class HomeViewController: UIViewController {
     }
     
     private func setupNotificationObservers() {
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(appWillEnterForeground),
-            name: UIApplication.willEnterForegroundNotification,
-            object: nil
-        )
+        // Removed appWillEnterForeground observer to prevent repeated permission checks
+        // Location permissions are now only checked when actually needed
     }
     
     private func checkLocationPermission() {
         switch locationManager.authorizationStatus {
         case .notDetermined:
+            // Only request permission if we haven't asked before
             locationManager.requestWhenInUseAuthorization()
         case .restricted, .denied:
             // Don't show alert, just continue without location
-            break
+            print("Location access denied or restricted")
         case .authorizedWhenInUse, .authorizedAlways:
+            // Permission already granted, start location updates
             locationManager.startUpdatingLocation()
         @unknown default:
             break
         }
     }
     
-    @objc private func appWillEnterForeground() {
-        checkLocationPermission()
-    }
-    
-    // MARK: - Actions
     @objc private func currentLocationButtonTapped() {
         switch locationManager.authorizationStatus {
         case .authorizedWhenInUse, .authorizedAlways:
