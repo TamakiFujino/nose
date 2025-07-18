@@ -148,7 +148,7 @@ final class UserManager {
                 // 4. Delete user's collections
                 let collectionsRef = userRef.collection("collections")
                 collectionsRef.getDocuments { [weak self] snapshot, error in
-                    guard let self = self else { return }
+                    guard self != nil else { return }
                     
                     if let error = error {
                         completion(.failure(error))
@@ -535,7 +535,7 @@ final class UserManager {
             blockedUserOwnedCollectionsRef.whereField("isOwner", isEqualTo: true)
                 .whereField("members", arrayContains: currentUserId)
                 .getDocuments { [weak self] snapshot, error in
-                    guard let self = self else { return }
+                    guard self != nil else { return }
                     
                     if let error = error {
                         print("❌ Error finding collections owned by blocked user: \(error.localizedDescription)")

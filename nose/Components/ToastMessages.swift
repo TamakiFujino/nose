@@ -54,4 +54,5 @@ struct ToastMessages {
     // avatar - error
     static let avatarUpdateFailed = "Avatar update failed. Please try again."
     static let categoriesLoadFailed = "Failed to load categories. Please try again."
+    static let noCategoriesAvailable = "No categories available. Please check your connection."
 }

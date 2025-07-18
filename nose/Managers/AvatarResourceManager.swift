@@ -30,6 +30,7 @@ final class AvatarResourceManager {
     private let thumbnailSize: CGSize = CGSize(width: 200, height: 200) // Low-res thumbnail size
     private var loadedThumbnails: Set<String> = [] // Track loaded thumbnails
     private let thumbnailLoadingQueue = DispatchQueue(label: "com.avatar.thumbnailLoading", qos: .userInitiated)
+    private let thumbnailTaskQueue = DispatchQueue(label: "com.avatar.thumbnailTaskSync", qos: .userInitiated)
     // LRU cache management for modelEntities
     private let maxCachedModels = 50
     private var modelAccessTimes: [String: Date] = [:]
@@ -58,7 +59,7 @@ final class AvatarResourceManager {
         
         // Store the loaded data
         cachedColors = colors.map { color in
-            color.toHexString() ?? ""
+            color.toHexString()
         }
         cachedModels = models
         
@@ -95,7 +96,7 @@ final class AvatarResourceManager {
                 }
                 // Store hex in cachedColors
                 cachedColors.append(hex)
-                print("🎨 Converted hex \(hex) to color: \(color.toHexString() ?? "n/a")")
+                print("🎨 Converted hex \(hex) to color: \(color.toHexString())")
                 return color
             }
 
@@ -189,9 +190,11 @@ final class AvatarResourceManager {
         if let existingTask = loadingTasks[modelName] {
             print("⏳ Using existing loading task for: \(modelName)")
             do {
-                if let entity = try await existingTask.value {
-                    return entity.clone(recursive: true)
+                let entity = try await existingTask.value
+                guard let entity = entity else {
+                    throw NSError(domain: "AvatarResourceManager", code: 404, userInfo: [NSLocalizedDescriptionKey: "Failed to load model: \(modelName)"])
                 }
+                return entity.clone(recursive: true)
             } catch {
                 print("❌ Error in existing task for \(modelName): \(error)")
                 // Remove failed task and continue with new task
@@ -212,7 +215,7 @@ final class AvatarResourceManager {
                 print("📦 Found cached file for: \(modelName)")
                 do {
                     let modelEntity = try await self.loadModelFromFile(modelFileURL)
-                    self.applyOptimizedMaterials(to: modelEntity)
+                    await self.applyOptimizedMaterials(to: modelEntity)
                     self.modelEntities[modelName] = modelEntity
                     self.modelFileURLs[modelName] = modelFileURL
                     // Update access time for LRU
@@ -230,6 +233,7 @@ final class AvatarResourceManager {
                     return modelEntity
                 } catch {
                     print("❌ Error loading cached model: \(error)")
+                    // Continue to download if cached file is corrupted
                 }
             }
             
@@ -238,7 +242,7 @@ final class AvatarResourceManager {
             try await self.downloadModel(named: modelName, to: modelFileURL)
             
             let modelEntity = try await self.loadModelFromFile(modelFileURL)
-            self.applyOptimizedMaterials(to: modelEntity)
+            await self.applyOptimizedMaterials(to: modelEntity)
             self.modelEntities[modelName] = modelEntity
             self.modelFileURLs[modelName] = modelFileURL
             // Update access time for LRU
@@ -260,15 +264,15 @@ final class AvatarResourceManager {
         loadingTasks[modelName] = task
         
         do {
-            if let entity = try await task.value {
-                // Clean up task after successful completion
-                loadingTasks.removeValue(forKey: modelName)
-                return entity.clone(recursive: true)
-            } else {
+            let entity = try await task.value
+            guard let entity = entity else {
                 // Clean up task after failure
                 loadingTasks.removeValue(forKey: modelName)
                 throw NSError(domain: "AvatarResourceManager", code: 404, userInfo: [NSLocalizedDescriptionKey: "Failed to load model: \(modelName)"])
             }
+            // Clean up task after successful completion
+            loadingTasks.removeValue(forKey: modelName)
+            return entity.clone(recursive: true)
         } catch {
             // Clean up task after error
             loadingTasks.removeValue(forKey: modelName)
@@ -277,8 +281,15 @@ final class AvatarResourceManager {
         }
     }
     
-    private func applyOptimizedMaterials(to entity: ModelEntity) {
+    private func applyOptimizedMaterials(to entity: ModelEntity) async {
         guard let model = entity.model else { return }
+        
+        // Guard against missing materials after clone
+        guard !model.materials.isEmpty else {
+            print("❌ Model has no materials, skipping optimization: \(entity.name)")
+            return
+        }
+        
         let optimizedMaterials = model.materials.map { material -> Material in
             if var simpleMaterial = material as? SimpleMaterial {
                 simpleMaterial.roughness = 0.5
@@ -287,7 +298,11 @@ final class AvatarResourceManager {
             }
             return material
         }
-        entity.model = ModelComponent(mesh: model.mesh, materials: optimizedMaterials)
+        
+        // Ensure material assignment happens on main queue
+        await MainActor.run {
+            entity.model = ModelComponent(mesh: model.mesh, materials: optimizedMaterials)
+        }
     }
     
     private func loadModelFromFile(_ fileURL: URL) async throws -> ModelEntity {
@@ -359,8 +374,15 @@ final class AvatarResourceManager {
             return cached
         }
         
-        // Check if there's an ongoing loading task
-        if let existingTask = thumbnailLoadingTasks[modelName] {
+        // Check if there's an ongoing loading task with synchronization
+        let existingTask = await withCheckedContinuation { continuation in
+            thumbnailTaskQueue.async {
+                let task = self.thumbnailLoadingTasks[modelName]
+                continuation.resume(returning: task)
+            }
+        }
+        
+        if let existingTask = existingTask {
             print("⏳ Using existing thumbnail loading task for: \(modelName)")
             do {
                 if let image = try await existingTask.value {
@@ -369,7 +391,12 @@ final class AvatarResourceManager {
             } catch {
                 print("❌ Error in existing task for \(modelName): \(error)")
                 // Remove failed task and continue with new task
-                thumbnailLoadingTasks.removeValue(forKey: modelName)
+                await withCheckedContinuation { continuation in
+                    thumbnailTaskQueue.async {
+                        self.thumbnailLoadingTasks.removeValue(forKey: modelName)
+                        continuation.resume(returning: ())
+                    }
+                }
             }
         }
         
@@ -394,7 +421,14 @@ final class AvatarResourceManager {
                 
                 // Cache the resized image
                 self.thumbnailCache.setObject(resizedImage, forKey: modelName as NSString)
-                self.loadedThumbnails.insert(modelName)
+                
+                // Synchronize access to loadedThumbnails
+                await withCheckedContinuation { continuation in
+                    self.thumbnailTaskQueue.async {
+                        self.loadedThumbnails.insert(modelName)
+                        continuation.resume(returning: ())
+                    }
+                }
                 
                 return resizedImage
             } catch {
@@ -403,22 +437,42 @@ final class AvatarResourceManager {
             }
         }
         
-        // Store task and clean up when done
-        thumbnailLoadingTasks[modelName] = task
+        // Store task with synchronization
+        await withCheckedContinuation { continuation in
+            thumbnailTaskQueue.async {
+                self.thumbnailLoadingTasks[modelName] = task
+                continuation.resume(returning: ())
+            }
+        }
         
         do {
             if let image = try await task.value {
                 // Clean up task after successful completion
-                thumbnailLoadingTasks.removeValue(forKey: modelName)
+                await withCheckedContinuation { continuation in
+                    thumbnailTaskQueue.async {
+                        self.thumbnailLoadingTasks.removeValue(forKey: modelName)
+                        continuation.resume(returning: ())
+                    }
+                }
                 return image
             } else {
                 // Clean up task after failure
-                thumbnailLoadingTasks.removeValue(forKey: modelName)
+                await withCheckedContinuation { continuation in
+                    thumbnailTaskQueue.async {
+                        self.thumbnailLoadingTasks.removeValue(forKey: modelName)
+                        continuation.resume(returning: ())
+                    }
+                }
                 throw NSError(domain: "AvatarResourceManager", code: 404, userInfo: [NSLocalizedDescriptionKey: "Failed to load thumbnail for: \(modelName)"])
             }
         } catch {
             // Clean up task after error
-            thumbnailLoadingTasks.removeValue(forKey: modelName)
+            await withCheckedContinuation { continuation in
+                thumbnailTaskQueue.async {
+                    self.thumbnailLoadingTasks.removeValue(forKey: modelName)
+                    continuation.resume(returning: ())
+                }
+            }
             print("❌ Error loading thumbnail for \(modelName): \(error)")
             throw error
         }
@@ -429,8 +483,13 @@ final class AvatarResourceManager {
         print("🔄 Loading \(models.count) thumbnails...")
         var results: [String: UIImage] = [:]
         
-        // Filter out already loaded thumbnails
-        let modelsToLoad = models.filter { !loadedThumbnails.contains($0) }
+        // Filter out already loaded thumbnails with synchronization
+        let modelsToLoad = await withCheckedContinuation { continuation in
+            thumbnailTaskQueue.async {
+                let modelsToLoad = models.filter { !self.loadedThumbnails.contains($0) }
+                continuation.resume(returning: modelsToLoad)
+            }
+        }
         
         // Load thumbnails concurrently with a limit
         try await withThrowingTaskGroup(of: (String, UIImage).self) { group in
@@ -478,8 +537,13 @@ final class AvatarResourceManager {
         cachedColors.removeAll()
         cachedModels.removeAll()
         loadedCategories.removeAll()
-        loadedThumbnails.removeAll()  // Clear loaded thumbnails tracking
-        thumbnailLoadingTasks.removeAll()  // Clear thumbnail loading tasks
+        
+        // Synchronize clearing of thumbnail-related data
+        thumbnailTaskQueue.sync {
+            loadedThumbnails.removeAll()  // Clear loaded thumbnails tracking
+            thumbnailLoadingTasks.removeAll()  // Clear thumbnail loading tasks
+        }
+        
         modelAccessTimes.removeAll() // Clear model access times
     }
 

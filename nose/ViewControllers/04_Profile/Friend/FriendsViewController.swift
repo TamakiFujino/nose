@@ -203,7 +203,7 @@ class FriendsViewController: UIViewController {
                     let friendId = userDoc.documentID
                     
                     // Check if the user is blocked
-                    if let blockedDoc = snapshot?.documents.first(where: { $0.documentID == friendId }) {
+                    if (snapshot?.documents.first(where: { $0.documentID == friendId })) != nil {
                         DispatchQueue.main.async {
                             self?.showAlert(
                                 title: "Cannot Add Friend",

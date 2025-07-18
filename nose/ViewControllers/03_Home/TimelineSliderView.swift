@@ -217,7 +217,7 @@ final class TimelineSliderView: UIView {
             default: return
             }
             
-            if let dot = dot {
+            if dot != nil {
                 dotTapped(UITapGestureRecognizer(target: self, action: #selector(dotTapped(_:))))
             }
         }

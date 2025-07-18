@@ -315,7 +315,7 @@ struct CollectionAvatar: Codable {
     
     // MARK: - Firestore Serialization
     func toFirestoreData() -> [String: Any] {
-        var data: [String: Any] = [
+        let data: [String: Any] = [
             "avatarData": avatarData.toFirestoreDict(),
             "createdAt": Timestamp(date: createdAt),
             "isOwner": isOwner,

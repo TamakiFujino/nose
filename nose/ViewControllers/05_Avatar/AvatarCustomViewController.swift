@@ -116,7 +116,13 @@ class AvatarCustomViewController: UIViewController {
     @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
         let translation = gesture.translation(in: view)
         let rotationAngle = Float(translation.x / view.bounds.width) * .pi
-        avatar3DViewController.baseEntity?.transform.rotation *= simd_quatf(angle: rotationAngle, axis: [0, 1, 0])
+        
+        guard let baseEntity = avatar3DViewController.baseEntity else {
+            print("❌ Base entity is nil, cannot rotate avatar")
+            return
+        }
+        
+        baseEntity.transform.rotation *= simd_quatf(angle: rotationAngle, axis: [0, 1, 0])
         gesture.setTranslation(.zero, in: view)
     }
 

@@ -166,7 +166,7 @@ final class ViewController: UIViewController {
             // User is logged in, check if they have a profile
             UserManager.shared.getUser(id: currentUser.uid) { [weak self] user, error in
                 DispatchQueue.main.async {
-                    if let existingUser = user {
+                    if user != nil {
                         // User exists, navigate to home screen
                         let homeViewController = HomeViewController()
                         let navigationController = UINavigationController(rootViewController: homeViewController)
@@ -276,7 +276,7 @@ final class ViewController: UIViewController {
                 return
             }
             
-            if let existingUser = user {
+            if user != nil {
                 print("User already exists, navigating to home screen")
                 let homeViewController = HomeViewController()
                 let navigationController = UINavigationController(rootViewController: homeViewController)

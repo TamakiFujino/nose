@@ -395,7 +395,7 @@ final class HomeViewController: UIViewController {
         mapManager?.showPlaceOnMap(place)
         
         // Create a Place object from GMSPlace
-        let placeData: [String: Any] = [
+        let _: [String: Any] = [
             "id": UUID().uuidString,
             "name": place.name ?? "",
             "latitude": place.coordinate.latitude,
@@ -564,7 +564,7 @@ extension HomeViewController: CLLocationManagerDelegate {
     }
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let location = locations.last else { return }
+        guard locations.last != nil else { return }
         mapManager?.moveToCurrentLocation()
         locationManager.stopUpdatingLocation() // Stop updating after getting the first location
     }

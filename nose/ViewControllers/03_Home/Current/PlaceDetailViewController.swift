@@ -536,12 +536,12 @@ final class PlaceDetailViewController: UIViewController {
         let db = Firestore.firestore()
         
         // Get references to both collections
-        let userCollectionRef = db.collection("users")
+        _ = db.collection("users")
             .document(currentUserId)
             .collection("collections")
             .document(collection.id)
             
-        let ownerCollectionRef = db.collection("users")
+        _ = db.collection("users")
             .document(collection.userId)  // This is the owner's ID
             .collection("collections")
             .document(collection.id)

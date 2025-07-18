@@ -83,7 +83,12 @@ class Avatar3DViewController: UIViewController {
         view.backgroundColor = .secondColor
         setupARView()
         setupCameraPosition()
-        setupBaseEntity()
+        
+        // Only setup base entity if it exists
+        if baseEntity != nil {
+            setupBaseEntity()
+        }
+        
         addDirectionalLight()
         setupEnvironmentBackground()
     }
@@ -134,7 +139,11 @@ class Avatar3DViewController: UIViewController {
         
         // Apply the material to the base entity
         if let material = categoryMaterials["skin"] {
-            baseEntity.model?.materials = [material]
+            guard let model = baseEntity.model else {
+                print("❌ Base entity has no model component")
+                return
+            }
+            baseEntity.model = ModelComponent(mesh: model.mesh, materials: [material])
             print("✅ Applied skin material to base entity")
         }
         
@@ -176,12 +185,29 @@ class Avatar3DViewController: UIViewController {
         if baseEntity == nil {
             print("🎯 Base entity is nil, loading base model first")
             loadBaseModel()
-            // Apply avatar data after base model is loaded
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-                self?.applyAvatarData(avatarData)
-            }
+            // Apply avatar data after base model is loaded with retry mechanism
+            applyAvatarDataWithRetry(avatarData, retryCount: 0)
         } else {
             print("🎯 Base entity already exists, applying avatar data directly")
+            applyAvatarData(avatarData)
+        }
+    }
+    
+    private func applyAvatarDataWithRetry(_ avatarData: CollectionAvatar.AvatarData, retryCount: Int) {
+        let maxRetries = 10
+        let retryDelay: TimeInterval = 0.2
+        
+        if baseEntity == nil {
+            if retryCount < maxRetries {
+                print("⏳ Base entity not ready yet, retrying in \(retryDelay)s (attempt \(retryCount + 1)/\(maxRetries))")
+                DispatchQueue.main.asyncAfter(deadline: .now() + retryDelay) { [weak self] in
+                    self?.applyAvatarDataWithRetry(avatarData, retryCount: retryCount + 1)
+                }
+            } else {
+                print("❌ Failed to load base entity after \(maxRetries) attempts")
+            }
+        } else {
+            print("✅ Base entity ready, applying avatar data")
             applyAvatarData(avatarData)
         }
     }
@@ -297,19 +323,131 @@ class Avatar3DViewController: UIViewController {
     }
 
     private func applyAvatarData(_ avatarData: CollectionAvatar.AvatarData) {
+        print("🎯 Applying avatar data: \(avatarData.selections.count) selections")
+        print("📋 Avatar data selections: \(avatarData.selections)")
+        
+        // First, apply skin color immediately if it exists (base entity is always available)
         for (category, entry) in avatarData.selections {
-            if let modelName = entry["model"] {
-                chosenModels[category] = modelName
-                loadAvatarPart(named: modelName, category: category)
+            if category == "skin", let colorString = entry["color"], let color = UIColor(hex: colorString) {
+                print("🎨 Applying skin color immediately: \(color)")
+                chosenColors[category] = color
+                changeSkinColor(to: color)
+            }
+        }
+        
+        // Then, load models and apply colors asynchronously
+        for (category, entry) in avatarData.selections {
+            if category == "skin" {
+                // Skip skin for model loading (it's handled separately)
+                continue
             }
             
-            if let colorString = entry["color"], let color = UIColor(hex: colorString) {
-                chosenColors[category] = color
-                if category == "skin" {
-                    changeSkinColor(to: color)
-                } else {
-                    changeAvatarPartColor(for: category, to: color)
+            if let modelName = entry["model"] {
+                print("🔄 Loading model for \(category): \(modelName)")
+                chosenModels[category] = modelName
+                
+                // Load the avatar part and apply color when it's ready
+                loadAvatarPartWithColor(named: modelName, category: category, color: entry["color"])
+            }
+        }
+    }
+    
+    private func loadAvatarPartWithColor(named modelName: String, category: String, color: String?) {
+        Task {
+            do {
+                // Validate inputs
+                guard !modelName.isEmpty else {
+                    print("❌ Invalid model name")
+                    return
                 }
+                
+                // Hide existing item in the same category
+                if let existingModel = chosenModels[category] {
+                    print("👋 Hiding existing model: \(existingModel)")
+                    hideEntity(for: existingModel)
+                }
+                
+                // Get or create new entity with optimized loading
+                let entity = try await getOrCreateEntity(for: modelName)
+                print("✅ Created/retrieved entity for: \(modelName)")
+                
+                // Safely check model component
+                guard let model = entity.model else {
+                    print("❌ Entity has no model component")
+                    return
+                }
+                
+                // Safely access materials
+                guard let materials = safeAccessMaterials(for: entity, modelName: modelName) else {
+                    return
+                }
+                
+                print("🔍 Initial materials count: \(materials.count)")
+                
+                // Apply the color from avatar data if available
+                var targetColor: UIColor = .white
+                if let colorString = color, let parsedColor = UIColor(hex: colorString) {
+                    targetColor = parsedColor
+                    chosenColors[category] = parsedColor
+                    print("🎨 Using color from avatar data: \(parsedColor)")
+                } else {
+                    // Use last selected color or default to white
+                    targetColor = chosenColors[category] ?? .white
+                    print("🎨 Using existing/default color: \(targetColor)")
+                }
+                
+                // Create both materials
+                var colorMaterial = SimpleMaterial(color: targetColor, isMetallic: false)
+                colorMaterial.roughness = 0.5
+                colorMaterial.metallic = 0.0
+                
+                var whiteMaterial = SimpleMaterial(color: .white, isMetallic: false)
+                whiteMaterial.roughness = 0.5
+                whiteMaterial.metallic = 0.0
+                
+                // Safely apply materials
+                await MainActor.run {
+                    do {
+                        guard let entityModel = entity.model else {
+                            print("❌ Entity model is nil after initial check")
+                            return
+                        }
+                        entity.model = ModelComponent(mesh: entityModel.mesh, materials: [colorMaterial, whiteMaterial])
+                        print("✅ Applied materials with color:")
+                        print("   - First material: \(targetColor)")
+                        print("   - Second material: white")
+                    } catch {
+                        print("❌ Failed to apply materials: \(error)")
+                        return
+                    }
+                }
+                
+                // Store the color material in category materials
+                categoryMaterials[category] = colorMaterial
+                
+                // Queue scene update
+                queueSceneUpdate { [weak self] in
+                    guard let self = self else { return }
+                    
+                    // Add to scene if not already present
+                    if entity.parent == nil {
+                        guard let baseEntity = self.baseEntity else {
+                            print("❌ Base entity is nil, cannot add child entity")
+                            return
+                        }
+                        baseEntity.addChild(entity)
+                        print("✅ Added entity to scene")
+                    }
+                }
+                
+                // Update chosen models
+                chosenModels[category] = modelName
+                print("✅ Updated chosen models")
+                
+                // Clean up inactive entities periodically
+                cleanupInactiveEntities()
+            } catch {
+                print("❌ Failed to load avatar part: \(error)")
             }
         }
     }
@@ -426,19 +564,27 @@ class Avatar3DViewController: UIViewController {
         entity.components[PhysicsBodyComponent.self] = nil
         
         // Optimize model settings
-        if let model = entity.model {
-            let optimizedMaterials = model.materials.map { material -> Material in
-                if var simpleMaterial = material as? SimpleMaterial {
-                    simpleMaterial.roughness = 0.5
-                    simpleMaterial.metallic = 0.2
-                    return simpleMaterial
-                }
-                return material
-            }
-            // Create a new model with optimized materials
-            let optimizedModel = ModelComponent(mesh: model.mesh, materials: optimizedMaterials)
-            entity.model = optimizedModel
+        guard let model = entity.model else {
+            print("❌ Entity has no model component: \(modelName)")
+            throw NSError(domain: "Avatar3DViewController", code: 422, userInfo: [NSLocalizedDescriptionKey: "Entity has no model component: \(modelName)"])
         }
+        
+        // Safely access materials
+        guard let materials = safeAccessMaterials(for: entity, modelName: modelName) else {
+            throw NSError(domain: "Avatar3DViewController", code: 423, userInfo: [NSLocalizedDescriptionKey: "Model has no materials: \(modelName)"])
+        }
+        
+        let optimizedMaterials = materials.map { material -> Material in
+            if var simpleMaterial = material as? SimpleMaterial {
+                simpleMaterial.roughness = 0.5
+                simpleMaterial.metallic = 0.2
+                return simpleMaterial
+            }
+            return material
+        }
+        // Create a new model with optimized materials
+        let optimizedModel = ModelComponent(mesh: model.mesh, materials: optimizedMaterials)
+        entity.model = optimizedModel
         
         entityPool[modelName] = entity
         activeEntities.insert(modelName)
@@ -464,6 +610,22 @@ class Avatar3DViewController: UIViewController {
     }
 
     // MARK: - Material Management
+    
+    /// Safely access model materials with proper guards
+    private func safeAccessMaterials(for entity: ModelEntity, modelName: String) -> [Material]? {
+        guard let model = entity.model else {
+            print("❌ Entity has no model component: \(modelName)")
+            return nil
+        }
+        
+        guard !model.materials.isEmpty else {
+            print("❌ Model has no materials after clone: \(modelName)")
+            return nil
+        }
+        
+        return model.materials
+    }
+    
     private func getOrCreateMaterial(for category: String) -> SimpleMaterial {
         if let existingMaterial = categoryMaterials[category] {
             return existingMaterial
@@ -511,10 +673,47 @@ class Avatar3DViewController: UIViewController {
         }
     }
 
+    // MARK: - Race Condition Prevention
+    private var loadingCategories: Set<String> = []
+    private let loadingQueue = DispatchQueue(label: "com.avatar.loadingSync", qos: .userInteractive)
+    
+    /// Safely check if a category is currently loading
+    private func isCategoryLoading(_ category: String) -> Bool {
+        return loadingQueue.sync {
+            return loadingCategories.contains(category)
+        }
+    }
+    
+    /// Safely set loading state for a category
+    private func setCategoryLoading(_ category: String, isLoading: Bool) {
+        loadingQueue.sync {
+            if isLoading {
+                loadingCategories.insert(category)
+            } else {
+                loadingCategories.remove(category)
+            }
+        }
+    }
+    
     // MARK: - Optimized Avatar Part Management
     func loadAvatarPart(named modelName: String, category: String) {
         print("🔄 Loading avatar part: \(modelName) for category: \(category)")
+        
+        // Prevent race conditions - check if already loading this category
+        if isCategoryLoading(category) {
+            print("⏳ Category \(category) is already loading, skipping duplicate request")
+            return
+        }
+        
         Task {
+            // Set loading state
+            setCategoryLoading(category, isLoading: true)
+            
+            defer {
+                // Always clear loading state when done
+                setCategoryLoading(category, isLoading: false)
+            }
+            
             do {
                 // Validate inputs
                 guard !modelName.isEmpty else {
@@ -538,7 +737,12 @@ class Avatar3DViewController: UIViewController {
                     return
                 }
                 
-                print("🔍 Initial materials count: \(model.materials.count)")
+                // Safely access materials
+                guard let materials = safeAccessMaterials(for: entity, modelName: modelName) else {
+                    return
+                }
+                
+                print("🔍 Initial materials count: \(materials.count)")
                 
                 // Get the last selected color for this category or use white as default
                 let lastColor = chosenColors[category] ?? .white
@@ -553,14 +757,21 @@ class Avatar3DViewController: UIViewController {
                 whiteMaterial.metallic = 0.0
                 
                 // Safely apply materials
-                do {
-                    entity.model?.materials = [colorMaterial, whiteMaterial]
-                    print("✅ Applied initial materials:")
-                    print("   - First material: \(lastColor)")
-                    print("   - Second material: white")
-                } catch {
-                    print("❌ Failed to apply materials: \(error)")
-                    return
+                // Apply materials on main queue to ensure thread safety
+                await MainActor.run {
+                    do {
+                        guard let entityModel = entity.model else {
+                            print("❌ Entity model is nil after initial check")
+                            return
+                        }
+                        entity.model = ModelComponent(mesh: entityModel.mesh, materials: [colorMaterial, whiteMaterial])
+                        print("✅ Applied initial materials:")
+                        print("   - First material: \(lastColor)")
+                        print("   - Second material: white")
+                    } catch {
+                        print("❌ Failed to apply materials: \(error)")
+                        return
+                    }
                 }
                 
                 // Store the color material in category materials
@@ -572,7 +783,11 @@ class Avatar3DViewController: UIViewController {
                     
                     // Add to scene if not already present
                     if entity.parent == nil {
-                        self.baseEntity?.addChild(entity)
+                        guard let baseEntity = self.baseEntity else {
+                            print("❌ Base entity is nil, cannot add child entity")
+                            return
+                        }
+                        baseEntity.addChild(entity)
                         print("✅ Added entity to scene")
                     }
                 }
@@ -684,15 +899,20 @@ class Avatar3DViewController: UIViewController {
             
             if category == "skin" {
                 // Update base entity material
-                if let baseEntity = self.baseEntity {
-                    do {
-                        baseEntity.model?.materials = [newMaterial]
-                        print("✅ Applied skin material to base entity")
-                    } catch {
-                        print("❌ Failed to apply skin material: \(error)")
+                guard let baseEntity = self.baseEntity else {
+                    print("❌ Base entity is nil, cannot update skin color")
+                    return
+                }
+                
+                do {
+                    guard let model = baseEntity.model else {
+                        print("❌ Base entity has no model component")
+                        return
                     }
-                } else {
-                    print("❌ Base entity is nil")
+                    baseEntity.model = ModelComponent(mesh: model.mesh, materials: [newMaterial])
+                    print("✅ Applied skin material to base entity")
+                } catch {
+                    print("❌ Failed to apply skin material: \(error)")
                 }
             } else {
                 // For all other categories, use two materials
@@ -717,13 +937,22 @@ class Avatar3DViewController: UIViewController {
                     return
                 }
                 
-                print("🔍 Current materials count: \(model.materials.count)")
+                // Safely access materials
+                guard let materials = safeAccessMaterials(for: entity, modelName: modelName) else {
+                    return
+                }
+                
+                print("🔍 Current materials count: \(materials.count)")
                 
                 // First material is color-changing, second is fixed white
                 do {
                     // Safely assign materials with bounds checking
                     let materialsArray = [newMaterial, whiteMaterial]
-                    entity.model?.materials = materialsArray
+                    guard let entityModel = entity.model else {
+                        print("❌ Entity model is nil before assignment")
+                        return
+                    }
+                    entity.model = ModelComponent(mesh: entityModel.mesh, materials: materialsArray)
                     print("✅ Applied new materials to entity")
                     
                     // Verify material assignment with additional safety
@@ -733,10 +962,22 @@ class Avatar3DViewController: UIViewController {
                     }
                     
                     print("🔍 Materials array count: \(materialsArray.count)")
+                    // Guard against missing materials after assignment
+                    guard !updatedModel.materials.isEmpty else {
+                        print("❌ Updated model has no materials after assignment")
+                        return
+                    }
+                    
                     print("🔍 Updated model materials count: \(updatedModel.materials.count)")
                     
                     // Verify material assignment
                     if let updatedModel = entity.model {
+                        // Guard against missing materials in verification
+                        guard !updatedModel.materials.isEmpty else {
+                            print("❌ Model has no materials during verification")
+                            return
+                        }
+                        
                         print("🔍 Final materials state:")
                         print("   - Materials count: \(updatedModel.materials.count)")
                         if let firstMaterial = updatedModel.materials.first as? SimpleMaterial {

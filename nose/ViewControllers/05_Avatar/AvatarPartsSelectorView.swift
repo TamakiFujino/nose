@@ -27,6 +27,12 @@ class AvatarPartSelectorView: UIView {
     private var uiUpdateQueue = DispatchQueue(label: "com.nose.uiUpdate", qos: .userInteractive)
     private var pendingUIUpdates: [() -> Void] = []
     private var isProcessingUIUpdates = false
+    private let thumbnailLoadQueue = DispatchQueue(label: "com.nose.thumbnailLoadSync", qos: .userInitiated)
+    
+    // Race condition prevention
+    private var isLoadingCategory: [String: Bool] = [:]
+    private var loadingTasks: [String: Task<Void, Never>] = [:]
+    private let loadingQueue = DispatchQueue(label: "com.nose.loadingSync", qos: .userInteractive)
 
     // MARK: - Initialization
     override init(frame: CGRect) {
@@ -38,12 +44,38 @@ class AvatarPartSelectorView: UIView {
         super.init(coder: coder)
         setupView()
     }
+    
+    deinit {
+        // Cancel all ongoing loading tasks when view is deallocated
+        cancelAllLoadingTasks()
+    }
+    
+    override func willMove(toWindow newWindow: UIWindow?) {
+        super.willMove(toWindow: newWindow)
+        
+        // Cancel loading tasks when view is being removed
+        if newWindow == nil {
+            cancelAllLoadingTasks()
+        }
+    }
+    
+    override func willMove(toSuperview newSuperview: UIView?) {
+        super.willMove(toSuperview: newSuperview)
+        
+        // Cancel loading tasks when view is being removed
+        if newSuperview == nil {
+            cancelAllLoadingTasks()
+        }
+    }
 
     // MARK: - Setup
     private func setupView() {
         backgroundColor = .white
         layer.cornerRadius = 16
         clipsToBounds = true
+
+        // Disable UI interaction until categories are loaded
+        isUserInteractionEnabled = false
 
         setupParentTabBar()
         setupChildTabBar()
@@ -52,13 +84,21 @@ class AvatarPartSelectorView: UIView {
         
         // Wait for categories to be loaded before proceeding
         Task {
+            // Show loading indicator while categories are being loaded
+            await MainActor.run {
+                LoadingView.shared.showOverlayLoading(on: self, message: "Loading Categories...")
+            }
+            
             // Wait for categories to be loaded
             if !DynamicCategoryManager.shared.isCategoriesLoaded() {
                 do {
                     try await DynamicCategoryManager.shared.loadCategories()
                 } catch {
                     print("Failed to load categories: \(error)")
-                    // Continue with fallback categories
+                    // Show error message but continue with empty categories
+                    await MainActor.run {
+                        ToastManager.showToast(message: ToastMessages.categoriesLoadFailed, type: .error)
+                    }
                 }
             }
             
@@ -69,9 +109,23 @@ class AvatarPartSelectorView: UIView {
                 if parentTabBar.numberOfSegments > 0 {
                     updateChildTabBar()
                 }
+                
+                // Only enable UI interaction if we have valid categories
+                if DynamicCategoryManager.shared.isReady() {
+                    self.isUserInteractionEnabled = true
+                } else {
+                    print("❌ Warning: No valid categories available, keeping UI disabled")
+                    ToastManager.showToast(message: ToastMessages.noCategoriesAvailable, type: .info)
+                }
+                
+                // Hide loading indicator
+                LoadingView.shared.hideOverlayLoading()
             }
             
-            let initialCategory = getCurrentCategory()
+            guard let initialCategory = getCurrentCategory() else {
+                print("❌ Error: Could not get initial category, skipping model loading")
+                return
+            }
             await loadModels(for: initialCategory)
             loadContentForSelectedTab()
         }
@@ -146,6 +200,56 @@ class AvatarPartSelectorView: UIView {
         }
     }
 
+    // MARK: - Race Condition Prevention
+    
+    /// Safely check if a category is currently loading
+    private func isCategoryLoading(_ category: String) -> Bool {
+        return loadingQueue.sync {
+            return isLoadingCategory[category] == true
+        }
+    }
+    
+    /// Safely set loading state for a category
+    private func setCategoryLoading(_ category: String, isLoading: Bool) {
+        loadingQueue.sync {
+            isLoadingCategory[category] = isLoading
+            if !isLoading {
+                loadingTasks.removeValue(forKey: category)
+            }
+        }
+    }
+    
+    /// Safely store a loading task for a category
+    private func storeLoadingTask(_ task: Task<Void, Never>, for category: String) {
+        loadingQueue.sync {
+            loadingTasks[category] = task
+        }
+    }
+    
+    /// Cancel ongoing loading task for a category
+    private func cancelLoadingTask(for category: String) {
+        loadingQueue.sync {
+            if let task = loadingTasks[category] {
+                task.cancel()
+                loadingTasks.removeValue(forKey: category)
+                isLoadingCategory[category] = false
+                print("✅ Cancelled loading task for category: \(category)")
+            }
+        }
+    }
+    
+    /// Cancel all ongoing loading tasks
+    private func cancelAllLoadingTasks() {
+        loadingQueue.sync {
+            for (category, task) in loadingTasks {
+                task.cancel()
+                print("✅ Cancelled loading task for category: \(category)")
+            }
+            loadingTasks.removeAll()
+            isLoadingCategory.removeAll()
+        }
+    }
+    
     // MARK: - Data Loading
     private func loadModels(for category: String) async {
         // Skip loading models for color-only categories
@@ -155,34 +259,25 @@ class AvatarPartSelectorView: UIView {
             return
         }
 
-        do {
-            // Use DynamicCategoryManager to get models
-            let mainCategory = DynamicCategoryManager.shared.getParentCategory(for: category)
-            guard !mainCategory.isEmpty else {
-                print("Unknown category: \(category)")
-                await setModels([])
-                hideLoading()
-                return
-            }
-
-            // Get models for the current category
-            let modelsArray = DynamicCategoryManager.shared.getModels(for: mainCategory, subcategory: category)
-            let newModels = modelsArray.map { Model(name: $0) }
-            await setModels(newModels)
-            
-            // Preload all models in this category
-            await preloadModelEntities(modelNames: modelsArray)
-            
-            // Prefetch thumbnails
-            await prefetchThumbnails(for: modelsArray.prefix(8))
-            
-        } catch {
-            print("Failed to load models for category \(category): \(error)")
+        // Use DynamicCategoryManager to get models
+        let mainCategory = DynamicCategoryManager.shared.getParentCategory(for: category)
+        guard !mainCategory.isEmpty else {
+            print("Unknown category: \(category)")
             await setModels([])
-            await MainActor.run {
-                hideLoading()
-            }
+            hideLoading()
+            return
         }
+
+        // Get models for the current category
+        let modelsArray = DynamicCategoryManager.shared.getModels(for: mainCategory, subcategory: category)
+        let newModels = modelsArray.map { Model(name: $0) }
+        await setModels(newModels)
+        
+        // Preload all models in this category
+        await preloadModelEntities(modelNames: modelsArray)
+        
+        // Prefetch thumbnails
+        await prefetchThumbnails(for: modelsArray.prefix(8))
     }
 
     private func preloadModelEntities(modelNames: [String]) async {
@@ -204,18 +299,42 @@ class AvatarPartSelectorView: UIView {
         // Create a task group to handle concurrent loading
         await withTaskGroup(of: Void.self) { group in
             for modelName in models {
-                guard !pendingThumbnailLoads.contains(modelName) else { continue }
-                pendingThumbnailLoads.insert(modelName)
+                // Synchronize access to pendingThumbnailLoads
+                let shouldLoad = await withCheckedContinuation { continuation in
+                    thumbnailLoadQueue.async {
+                        let shouldLoad = !self.pendingThumbnailLoads.contains(modelName)
+                        if shouldLoad {
+                            self.pendingThumbnailLoads.insert(modelName)
+                        }
+                        continuation.resume(returning: shouldLoad)
+                    }
+                }
+                
+                guard shouldLoad else { continue }
                 
                 group.addTask { [weak self] in
                     guard let self = self else { return }
                     
                     do {
                         _ = try await AvatarResourceManager.shared.loadThumbnail(for: modelName)
-                        self.pendingThumbnailLoads.remove(modelName)
+                        
+                        // Synchronize removal from pendingThumbnailLoads
+                        await withCheckedContinuation { continuation in
+                            self.thumbnailLoadQueue.async {
+                                self.pendingThumbnailLoads.remove(modelName)
+                                continuation.resume(returning: ())
+                            }
+                        }
                     } catch {
                         print("Failed to prefetch thumbnail for \(modelName): \(error)")
-                        self.pendingThumbnailLoads.remove(modelName)
+                        
+                        // Synchronize removal from pendingThumbnailLoads even on error
+                        await withCheckedContinuation { continuation in
+                            self.thumbnailLoadQueue.async {
+                                self.pendingThumbnailLoads.remove(modelName)
+                                continuation.resume(returning: ())
+                            }
+                        }
                     }
                 }
             }
@@ -236,19 +355,21 @@ class AvatarPartSelectorView: UIView {
 
     // MARK: - Actions
     @objc private func parentTabChanged() {
+        // Cancel any ongoing loading tasks when switching tabs
+        cancelAllLoadingTasks()
+        
         // Only update child tab bar if parent tab bar has segments
         if parentTabBar.numberOfSegments > 0 {
             updateChildTabBar()
         }
-        Task {
-            await loadContentForSelectedTab()
-        }
+        loadContentForSelectedTab()
     }
 
     @objc private func childTabChanged() {
-        Task {
-            await loadContentForSelectedTab()
-        }
+        // Cancel any ongoing loading tasks when switching tabs
+        cancelAllLoadingTasks()
+        
+        loadContentForSelectedTab()
     }
 
     private func updateParentTabBar() {
@@ -298,16 +419,34 @@ class AvatarPartSelectorView: UIView {
 
     private func loadContentForSelectedTab() {
         contentView.subviews.forEach { $0.removeFromSuperview() }
-        let category = getCurrentCategory()
+        
+        guard let category = getCurrentCategory() else {
+            print("❌ Error: Could not get current category, skipping content loading")
+            return
+        }
+        
+        // Prevent race conditions - check if already loading this category
+        if isCategoryLoading(category) {
+            print("⏳ Category \(category) is already loading, skipping duplicate request")
+            return
+        }
         
         // Show loading indicator
         showLoading()
         
-        // Use Task to handle async call with timeout
-        Task { [weak self] in
+        // Create loading task
+        let loadingTask = Task { [weak self] in
             guard let self = self else { 
-                hideLoading()
+                self?.hideLoading()
                 return 
+            }
+            
+            // Set loading state
+            self.setCategoryLoading(category, isLoading: true)
+            
+            defer {
+                // Always clear loading state when done
+                self.setCategoryLoading(category, isLoading: false)
             }
             
             do {
@@ -323,6 +462,9 @@ class AvatarPartSelectorView: UIView {
                 }
             }
         }
+        
+        // Store the loading task
+        storeLoadingTask(loadingTask, for: category)
     }
 
     private func setupThumbnails(for category: String) async {
@@ -356,7 +498,8 @@ class AvatarPartSelectorView: UIView {
         }
 
         // Batch UI updates
-        await queueUIUpdate {
+        await queueUIUpdate { [weak self] in
+            guard let self = self else { return }
             // Remove existing views
             self.contentView.subviews.forEach { $0.removeFromSuperview() }
             
@@ -444,7 +587,16 @@ class AvatarPartSelectorView: UIView {
     }
 
     @objc private func thumbnailTapped(_ sender: UIButton) {
-        let category = getCurrentCategory()
+        guard let category = getCurrentCategory() else {
+            print("❌ Error: Could not get current category, ignoring thumbnail tap")
+            return
+        }
+        
+        // Prevent rapid taps from causing race conditions
+        if isCategoryLoading(category) {
+            print("⏳ Category \(category) is currently loading, ignoring thumbnail tap")
+            return
+        }
         
         Task {
             // Add bounds checking
@@ -471,7 +623,9 @@ class AvatarPartSelectorView: UIView {
                 selectedModels[category] = nil
                 avatar3DViewController?.removeAvatarPart(for: category)
             } else {
-                // Select new item
+                // Select new item - cancel any ongoing loading for this category first
+                cancelLoadingTask(for: category)
+                
                 selectedModels[category] = model.name
                 avatar3DViewController?.loadAvatarPart(named: model.name, category: category)
                 // Highlight the selected button
@@ -484,6 +638,12 @@ class AvatarPartSelectorView: UIView {
     }
 
     // MARK: - Public Interface
+    
+    /// Cancel all loading tasks - useful when view controller is dismissed
+    func cancelAllTasks() {
+        cancelAllLoadingTasks()
+    }
+    
     func syncWithAvatarData(_ avatarData: CollectionAvatar.AvatarData) {
         // Clear current selections
         selectedModels.removeAll()
@@ -496,13 +656,14 @@ class AvatarPartSelectorView: UIView {
         }
         
         // Refresh the current view to show selections
-        Task {
-            await loadContentForSelectedTab()
-        }
+        loadContentForSelectedTab()
     }
     
     func changeSelectedCategoryColor(to color: UIColor) {
-        let category = getCurrentCategory()
+        guard let category = getCurrentCategory() else {
+            print("❌ Error: Could not get current category, ignoring color change")
+            return
+        }
         // Call the efficient color change method on the 3D view controller
         if category == "skin" {
             avatar3DViewController?.changeSkinColor(to: color)
@@ -511,22 +672,22 @@ class AvatarPartSelectorView: UIView {
         }
     }
 
-    func getCurrentCategory() -> String {
-        guard DynamicCategoryManager.shared.isCategoriesLoaded() else {
-            print("❌ Error: Categories not loaded, cannot get current category")
-            return ""
+    func getCurrentCategory() -> String? {
+        guard DynamicCategoryManager.shared.isReady() else {
+            print("❌ Error: Categories not ready, cannot get current category")
+            return nil
         }
         
         // Ensure tab bars have segments
         guard parentTabBar.numberOfSegments > 0 && childTabBar.numberOfSegments > 0 else {
             print("❌ Error: Tab bars have no segments")
-            return ""
+            return nil
         }
         
         let mainCategories = DynamicCategoryManager.shared.getMainCategories()
         guard parentTabBar.selectedSegmentIndex >= 0 && parentTabBar.selectedSegmentIndex < mainCategories.count else {
             print("❌ Error: Invalid parent tab index: \(parentTabBar.selectedSegmentIndex), max: \(mainCategories.count)")
-            return ""
+            return nil
         }
         
         let selectedMainCategory = mainCategories[parentTabBar.selectedSegmentIndex]
@@ -534,10 +695,13 @@ class AvatarPartSelectorView: UIView {
         
         guard childTabBar.selectedSegmentIndex >= 0 && childTabBar.selectedSegmentIndex < subcategories.count else {
             print("❌ Error: Invalid child tab index: \(childTabBar.selectedSegmentIndex), max: \(subcategories.count)")
-            return ""
+            return nil
         }
         
-        return subcategories[childTabBar.selectedSegmentIndex]
+        let category = subcategories[childTabBar.selectedSegmentIndex]
+        
+        // Validate the category using the manager's validation method
+        return DynamicCategoryManager.shared.getValidCategory(category)
     }
 
     // MARK: - Timeout Helper

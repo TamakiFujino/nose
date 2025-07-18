@@ -70,6 +70,11 @@ final class DynamicCategoryManager {
         return isLoaded
     }
     
+    /// Check if the manager is ready for use (loaded and has categories)
+    func isReady() -> Bool {
+        return isLoaded && !getMainCategories().isEmpty
+    }
+    
     /// Get parent category for a subcategory
     func getParentCategory(for subcategory: String) -> String {
         for (mainCategory, subcategories) in categoryGroups {
@@ -109,6 +114,12 @@ final class DynamicCategoryManager {
     /// Get models that can have 3D models
     func getModelCategories() -> [String] {
         return getAllSubcategories().filter { $0 != "skin" }
+    }
+    
+    /// Safely get a category with validation
+    func getValidCategory(_ category: String) -> String? {
+        guard isLoaded else { return nil }
+        return isValidCategory(category) ? category : nil
     }
     
     // MARK: - Private Methods

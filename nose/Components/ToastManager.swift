@@ -35,7 +35,7 @@ class ToastManager {
         window.addSubview(containerView)
 
         // Layout constraints
-        let maxWidth = window.frame.width - 40
+        _ = window.frame.width - 40
         let topPadding = window.safeAreaInsets.top + 10
 
         NSLayoutConstraint.activate([

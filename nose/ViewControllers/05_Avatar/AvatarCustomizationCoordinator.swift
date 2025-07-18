@@ -36,7 +36,10 @@ class AvatarCustomizationCoordinator: NSObject {
 
     // MARK: - Actions
     private func handleColorSelection(_ color: UIColor) {
-        let category = partSelectorView.getCurrentCategory()
+        guard let category = partSelectorView.getCurrentCategory() else {
+            print("❌ Error: Could not get current category, ignoring color selection")
+            return
+        }
         updateColor(color, for: category)
         
         // Save the color to the chosenColors dictionary

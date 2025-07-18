@@ -334,7 +334,7 @@ class CollectionPlacesViewController: UIViewController {
         
         CollectionContainerManager.shared.completeCollection(collection) { [weak self] error in
             self?.dismiss(animated: true) {
-                if let error = error {
+                if error != nil {
                     ToastManager.showToast(message: "Failed to complete collection", type: .error)
                 } else {
                     ToastManager.showToast(message: "Collection completed", type: .success)
@@ -376,7 +376,7 @@ class CollectionPlacesViewController: UIViewController {
         
         CollectionContainerManager.shared.deleteCollection(collection) { [weak self] error in
             self?.dismiss(animated: true) {
-                if let error = error {
+                if error != nil {
                     ToastManager.showToast(message: "Failed to delete collection", type: .error)
                 } else {
                     ToastManager.showToast(message: "Collection deleted", type: .success)
@@ -393,7 +393,7 @@ class CollectionPlacesViewController: UIViewController {
         
         CollectionContainerManager.shared.putBackCollection(collection) { [weak self] error in
             self?.dismiss(animated: true) {
-                if let error = error {
+                if error != nil {
                     ToastManager.showToast(message: "Failed to put back collection", type: .error)
                 } else {
                     ToastManager.showToast(message: "Collection put back", type: .success)
