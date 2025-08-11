@@ -1,0 +1,45 @@
+{
+  "category": "Clothes",
+  "subcategory": "Socks",
+  "assets": [
+    {
+      "id": "clothes_socks_001",
+      "name": "socks1",
+      "modelPath": "Models/Clothes/Socks/socks_loose",
+      "thumbnailPath": "Thumbnails/Clothes/Socks/socks_loose",
+      "category": "Clothes",
+      "subcategory": "Socks",
+      "isActive": true,
+      "metadata": {
+        "type": "casual",
+        "color": "white"
+      }
+    },
+    {
+      "id": "clothes_socks_002",
+      "name": "socks2",
+      "modelPath": "Models/Clothes/Socks/socks_knee",
+      "thumbnailPath": "Thumbnails/Clothes/Socks/socks_knee",
+      "category": "Clothes",
+      "subcategory": "Socks",
+      "isActive": true,
+      "metadata": {
+        "type": "formal",
+        "color": "blue"
+      }
+    },
+    {
+      "id": "clothes_socks_003",
+      "name": "socks3",
+      "modelPath": "Models/Clothes/Socks/socks_anckle",
+      "thumbnailPath": "Thumbnails/Clothes/Socks/socks_anckle",
+      "category": "Clothes",
+      "subcategory": "Socks",
+      "isActive": true,
+      "metadata": {
+        "type": "formal",
+        "color": "blue"
+      }
+    }
+  ]
+}

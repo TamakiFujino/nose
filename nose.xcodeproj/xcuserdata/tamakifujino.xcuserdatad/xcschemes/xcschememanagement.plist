@@ -12,7 +12,7 @@
 		<key>nose-production.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
-			<integer>58</integer>
+			<integer>57</integer>
 		</dict>
 		<key>nose-staging.xcscheme</key>
 		<dict>
@@ -22,7 +22,7 @@
 		<key>nose-staging.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
-			<integer>59</integer>
+			<integer>58</integer>
 		</dict>
 		<key>nose.xcscheme_^#shared#^_</key>
 		<dict>

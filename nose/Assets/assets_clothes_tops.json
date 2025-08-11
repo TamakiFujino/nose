@@ -1,0 +1,45 @@
+{
+  "category": "Clothes",
+  "subcategory": "Tops",
+  "assets": [
+    {
+      "id": "clothes_tops_001",
+      "name": "tops1",
+      "modelPath": "Models/Clothes/Tops/tops1",
+      "thumbnailPath": "Thumbnails/Clothes/Tops/tshirt",
+      "category": "Clothes",
+      "subcategory": "Tops",
+      "isActive": true,
+      "metadata": {
+        "type": "casual",
+        "color": "white"
+      }
+    },
+    {
+      "id": "clothes_tops_002",
+      "name": "tops2",
+      "modelPath": "Models/Clothes/Tops/tops2",
+      "thumbnailPath": "Thumbnails/Clothes/Tops/dress_shirt",
+      "category": "Clothes",
+      "subcategory": "Tops",
+      "isActive": true,
+      "metadata": {
+        "type": "formal",
+        "color": "blue"
+      }
+    },
+    {
+      "id": "clothes_tops_003",
+      "name": "tops3",
+      "modelPath": "Models/Clothes/Tops/tops3",
+      "thumbnailPath": "Thumbnails/Clothes/Tops/dress_shirt",
+      "category": "Clothes",
+      "subcategory": "Tops",
+      "isActive": true,
+      "metadata": {
+        "type": "formal",
+        "color": "blue"
+      }
+    }
+  ]
+}

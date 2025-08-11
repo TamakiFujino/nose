@@ -1,0 +1,32 @@
+{
+  "category": "Base",
+  "subcategory": "Eye",
+  "assets": [
+    {
+      "id": "eye_001",
+      "name": "Blue Eyes",
+      "modelPath": "Models/Base/Eyes/blue_eyes.prefab",
+      "thumbnailPath": "Thumbnails/Base/Eyes/blue_eyes.png",
+      "category": "Base",
+      "subcategory": "Eye",
+      "isActive": true,
+      "metadata": {
+        "color": "blue",
+        "style": "natural"
+      }
+    },
+    {
+      "id": "eye_002",
+      "name": "Green Eyes",
+      "modelPath": "Models/Base/Eyes/green_eyes.prefab",
+      "thumbnailPath": "Thumbnails/Base/Eyes/green_eyes.png",
+      "category": "Base",
+      "subcategory": "Eye",
+      "isActive": true,
+      "metadata": {
+        "color": "green",
+        "style": "natural"
+      }
+    }
+  ]
+}

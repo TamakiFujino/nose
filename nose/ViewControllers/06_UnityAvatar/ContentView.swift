@@ -77,12 +77,68 @@ class FloatingUIController: UIViewController {
     private var currentTopIndex = 0
     private var topOptionsCount = 4
     
+    // Category data
+    private let parentCategories = ["Base", "Hair", "Clothes", "Accessories"]
+    private let childCategories = [
+        ["Eye", "Eyebrow", "Body"],           // Base
+        ["Base", "Front", "Side", "Back"],    // Hair
+        ["Tops", "Bottoms", "Jacket", "Socks"], // Clothes
+        ["Headwear", "Eyewear", "Neckwear"]   // Accessories
+    ]
+    
+    private var selectedParentIndex = 0
+    private var selectedChildIndex = 0
+    
+    // Asset management
+    private var assetData: [String: [String: [AssetItem]]] = [:]
+    private var currentAssets: [AssetItem] = []
+    
+    // MARK: - Asset Models
+    struct AssetItem: Codable {
+        let id: String
+        let name: String
+        let modelPath: String
+        let thumbnailPath: String?
+        let category: String
+        let subcategory: String
+        let isActive: Bool
+        let metadata: [String: String]?
+        
+        enum CodingKeys: String, CodingKey {
+            case id, name, modelPath, thumbnailPath, category, subcategory, isActive, metadata
+        }
+    }
+    
+    struct CategoryAssets: Codable {
+        let category: String
+        let subcategory: String
+        let assets: [AssetItem]
+    }
+    
     private lazy var bottomPanel: UIView = {
         let view = UIView()
         view.backgroundColor = UIColor.white.withAlphaComponent(0.5)
         view.layer.cornerRadius = 16
         view.translatesAutoresizingMaskIntoConstraints = false
         return view
+    }()
+    
+    private lazy var parentCategoryStackView: UIStackView = {
+        let stackView = UIStackView()
+        stackView.axis = .horizontal
+        stackView.spacing = 8
+        stackView.distribution = .fillEqually
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        return stackView
+    }()
+    
+    private lazy var childCategoryStackView: UIStackView = {
+        let stackView = UIStackView()
+        stackView.axis = .horizontal
+        stackView.spacing = 8
+        stackView.distribution = .fillEqually
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        return stackView
     }()
     
     private lazy var thumbnailStackView: UIStackView = {
@@ -97,6 +153,7 @@ class FloatingUIController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
+        loadAssetData()
     }
     
     override func viewDidLayoutSubviews() {
@@ -114,10 +171,15 @@ class FloatingUIController: UIViewController {
         
         // Add UI elements
         view.addSubview(bottomPanel)
+        bottomPanel.addSubview(parentCategoryStackView)
+        bottomPanel.addSubview(childCategoryStackView)
         bottomPanel.addSubview(thumbnailStackView)
         
         // Create thumbnail rows
         createThumbnailRows()
+        
+        // Create category buttons
+        createCategoryButtons()
         
         print("FloatingUIController: Added UI elements to view")
         
@@ -127,6 +189,16 @@ class FloatingUIController: UIViewController {
             bottomPanel.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             bottomPanel.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             bottomPanel.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.45),
+            
+            parentCategoryStackView.leadingAnchor.constraint(equalTo: bottomPanel.leadingAnchor, constant: 20),
+            parentCategoryStackView.trailingAnchor.constraint(equalTo: bottomPanel.trailingAnchor, constant: -20),
+            parentCategoryStackView.topAnchor.constraint(equalTo: bottomPanel.topAnchor, constant: 10),
+            parentCategoryStackView.heightAnchor.constraint(equalToConstant: 30),
+            
+            childCategoryStackView.leadingAnchor.constraint(equalTo: bottomPanel.leadingAnchor, constant: 20),
+            childCategoryStackView.trailingAnchor.constraint(equalTo: bottomPanel.trailingAnchor, constant: -20),
+            childCategoryStackView.topAnchor.constraint(equalTo: parentCategoryStackView.bottomAnchor, constant: 10),
+            childCategoryStackView.heightAnchor.constraint(equalToConstant: 30),
             
             thumbnailStackView.leadingAnchor.constraint(equalTo: bottomPanel.leadingAnchor, constant: 20),
             thumbnailStackView.trailingAnchor.constraint(equalTo: bottomPanel.trailingAnchor, constant: -20),
@@ -147,13 +219,13 @@ class FloatingUIController: UIViewController {
     }
     
     private func createThumbnailRows() {
-        // Create one row with 4 thumbnails that fill the width
+        // Create one row with thumbnails that fill the width
         let rowStackView = UIStackView()
         rowStackView.axis = .horizontal
         rowStackView.spacing = 16
         rowStackView.distribution = .fillEqually
         
-        for i in 0..<topOptionsCount {
+        for i in 0..<currentAssets.count {
             let thumbnailButton = createThumbnailButton(for: i)
             rowStackView.addArrangedSubview(thumbnailButton)
         }
@@ -165,17 +237,26 @@ class FloatingUIController: UIViewController {
         let button = UIButton(type: .system)
         button.tag = index
         
-        // Use system icons for each model
-        let iconNames = ["tshirt", "person.crop.circle", "person.fill", "person.2.fill"]
-        let iconName = iconNames[index]
+        let asset = currentAssets[index]
         
-        if let systemImage = UIImage(systemName: iconName) {
-            button.setImage(systemImage, for: .normal)
-            button.tintColor = .black // Changed to black for better contrast on white background
+        // Try to load thumbnail image if available
+        if let thumbnailPath = asset.thumbnailPath,
+           let thumbnailImage = UIImage(contentsOfFile: thumbnailPath) {
+            button.setImage(thumbnailImage, for: .normal)
+        } else {
+            // Fallback to system icon based on category
+            let iconNames = ["tshirt", "person.crop.circle", "person.fill", "person.2.fill"]
+            let iconIndex = index % iconNames.count
+            let iconName = iconNames[iconIndex]
+            
+            if let systemImage = UIImage(systemName: iconName) {
+                button.setImage(systemImage, for: .normal)
+                button.tintColor = .black
+            }
         }
         
         button.imageView?.contentMode = .scaleAspectFit
-        button.backgroundColor = UIColor.black.withAlphaComponent(0.1) // Light gray background
+        button.backgroundColor = UIColor.black.withAlphaComponent(0.1)
         button.layer.cornerRadius = 12
         button.layer.borderWidth = 2
         button.layer.borderColor = index == currentTopIndex ? UIColor.systemBlue.cgColor : UIColor.clear.cgColor
@@ -200,12 +281,13 @@ class FloatingUIController: UIViewController {
     
     @objc private func thumbnailTapped(_ sender: UIButton) {
         let newIndex = sender.tag
-        print("🎯 Thumbnail \(newIndex + 1) tapped!")
+        let asset = currentAssets[newIndex]
+        print("🎯 Thumbnail tapped: \(asset.name) (ID: \(asset.id))")
         
         // Update selection
         currentTopIndex = newIndex
         updateThumbnailBorders()
-        changeTopInUnity()
+        changeAssetInUnity(asset: asset)
     }
     
     private func updateThumbnailBorders() {
@@ -221,9 +303,188 @@ class FloatingUIController: UIViewController {
         }
     }
     
-    private func changeTopInUnity() {
-        print("Changing top to index: \(currentTopIndex)")
-        UnityLauncher.shared().sendMessage(toUnity: "UnityBridge", method: "ChangeTop", message: "\(currentTopIndex)")
+    private func changeAssetInUnity(asset: AssetItem) {
+        print("Changing asset in Unity: \(asset.name) (ID: \(asset.id))")
+        
+        // Send asset information to Unity
+        let assetInfo = [
+            "id": asset.id,
+            "name": asset.name,
+            "modelPath": asset.modelPath,
+            "category": asset.category,
+            "subcategory": asset.subcategory
+        ]
+        
+        // Convert to JSON string
+        if let jsonData = try? JSONSerialization.data(withJSONObject: assetInfo),
+           let jsonString = String(data: jsonData, encoding: .utf8) {
+            UnityLauncher.shared().sendMessage(toUnity: "UnityBridge", method: "ChangeAsset", message: jsonString)
+        }
+    }
+    
+    private func createCategoryButtons() {
+        // Create parent category buttons
+        for (index, title) in parentCategories.enumerated() {
+            let button = createCategoryButton(title: title, tag: index, isParent: true)
+            parentCategoryStackView.addArrangedSubview(button)
+        }
+        
+        // Create child category buttons for the first parent
+        updateChildCategories()
+    }
+    
+    private func createCategoryButton(title: String, tag: Int, isParent: Bool) -> UIButton {
+        let button = UIButton(type: .system)
+        button.tag = tag
+        button.setTitle(title, for: .normal)
+        button.titleLabel?.font = .systemFont(ofSize: 14, weight: .medium)
+        button.setTitleColor(.black, for: .normal)
+        button.backgroundColor = UIColor.black.withAlphaComponent(0.1)
+        button.layer.cornerRadius = 8
+        button.layer.borderWidth = 2
+        button.layer.borderColor = UIColor.clear.cgColor
+        button.translatesAutoresizingMaskIntoConstraints = false
+        
+        if isParent {
+            button.addTarget(self, action: #selector(parentCategoryTapped(_:)), for: .touchUpInside)
+        } else {
+            button.addTarget(self, action: #selector(childCategoryTapped(_:)), for: .touchUpInside)
+        }
+        
+        return button
+    }
+    
+    private func updateChildCategories() {
+        // Remove existing child category buttons
+        childCategoryStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        
+        // Create new child category buttons
+        let currentChildCategories = childCategories[selectedParentIndex]
+        for (index, title) in currentChildCategories.enumerated() {
+            let button = createCategoryButton(title: title, tag: index, isParent: false)
+            childCategoryStackView.addArrangedSubview(button)
+        }
+        
+        // Reset child selection
+        selectedChildIndex = 0
+        updateCategoryButtonStates()
+        updateThumbnailsForCategory()
+    }
+    
+    private func updateCategoryButtonStates() {
+        // Update parent category button states
+        for (index, subview) in parentCategoryStackView.arrangedSubviews.enumerated() {
+            if let button = subview as? UIButton {
+                button.layer.borderColor = index == selectedParentIndex ? UIColor.systemBlue.cgColor : UIColor.clear.cgColor
+                button.backgroundColor = index == selectedParentIndex ? UIColor.systemBlue.withAlphaComponent(0.2) : UIColor.black.withAlphaComponent(0.1)
+            }
+        }
+        
+        // Update child category button states
+        for (index, subview) in childCategoryStackView.arrangedSubviews.enumerated() {
+            if let button = subview as? UIButton {
+                button.layer.borderColor = index == selectedChildIndex ? UIColor.systemBlue.cgColor : UIColor.clear.cgColor
+                button.backgroundColor = index == selectedChildIndex ? UIColor.systemBlue.withAlphaComponent(0.2) : UIColor.black.withAlphaComponent(0.1)
+            }
+        }
+    }
+    
+    @objc private func parentCategoryTapped(_ sender: UIButton) {
+        let newIndex = sender.tag
+        print("🎯 Parent category tapped: \(parentCategories[newIndex])")
+        
+        selectedParentIndex = newIndex
+        updateChildCategories()
+    }
+    
+    @objc private func childCategoryTapped(_ sender: UIButton) {
+        let newIndex = sender.tag
+        print("🎯 Child category tapped: \(childCategories[selectedParentIndex][newIndex])")
+        
+        selectedChildIndex = newIndex
+        updateCategoryButtonStates()
+        updateThumbnailsForCategory()
+    }
+    
+    private func loadAssetData() {
+        // Load asset data from JSON files
+        loadAssetsForCategory("Base")
+        loadAssetsForCategory("Hair")
+        loadAssetsForCategory("Clothes_Tops")      // Clothes - Tops subcategory
+        loadAssetsForCategory("Clothes_Socks")     // Clothes - Socks subcategory
+        loadAssetsForCategory("Accessories")
+        
+        print("Asset data loaded: \(assetData)")
+    }
+    
+    private func loadAssetsForCategory(_ category: String) {
+        guard let url = Bundle.main.url(forResource: "assets_\(category.lowercased())", withExtension: "json") else {
+            print("Could not find assets JSON for category: \(category)")
+            return
+        }
+        
+        do {
+            let data = try Data(contentsOf: url)
+            let categoryAssets = try JSONDecoder().decode(CategoryAssets.self, from: data)
+            
+            // Extract the main category name (e.g., "Clothes" from "Clothes_Tops")
+            let mainCategory = categoryAssets.category
+            
+            // Organize assets by subcategory under the main category
+            if assetData[mainCategory] == nil {
+                assetData[mainCategory] = [:]
+            }
+            
+            for asset in categoryAssets.assets {
+                if assetData[mainCategory]![asset.subcategory] == nil {
+                    assetData[mainCategory]![asset.subcategory] = []
+                }
+                assetData[mainCategory]![asset.subcategory]?.append(asset)
+            }
+            
+            print("Loaded \(categoryAssets.assets.count) assets for \(mainCategory) - \(categoryAssets.subcategory)")
+            
+        } catch {
+            print("Error loading assets for \(category): \(error)")
+        }
+    }
+    
+    private func updateThumbnailsForCategory() {
+        let parentCategory = parentCategories[selectedParentIndex]
+        let childCategory = childCategories[selectedParentIndex][selectedChildIndex]
+        
+        print("Updating thumbnails for: \(parentCategory) - \(childCategory)")
+        
+        // Get assets for the selected category combination
+        currentAssets = assetData[parentCategory]?[childCategory] ?? []
+        topOptionsCount = currentAssets.count
+        
+        // Update thumbnail display
+        updateThumbnailDisplay()
+    }
+    
+    private func updateThumbnailDisplay() {
+        // Remove existing thumbnails
+        thumbnailStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        
+        // Create new thumbnails based on current assets
+        if !currentAssets.isEmpty {
+            createThumbnailRows()
+        } else {
+            // Show "No assets available" message
+            let noAssetsLabel = UILabel()
+            noAssetsLabel.text = "No assets available"
+            noAssetsLabel.textAlignment = .center
+            noAssetsLabel.textColor = .black
+            noAssetsLabel.font = .systemFont(ofSize: 16, weight: .medium)
+            noAssetsLabel.translatesAutoresizingMaskIntoConstraints = false
+            
+            thumbnailStackView.addArrangedSubview(noAssetsLabel)
+        }
+        
+        // Reset selection
+        currentTopIndex = 0
+        updateThumbnailBorders()
     }
 }
 

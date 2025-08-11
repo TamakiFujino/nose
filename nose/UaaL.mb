@@ -7,6 +7,7 @@ Step to use Unity instead of Reality Kit for 3D avatar customization
 [] #5 control the categories and items in firebase so that to change the categories or items, I do not have to update an app everytime
 [] #6 have color buttons at native side and change the color of 3d item
 [] #7 have buttons to change the pose and it changes the pose of the body and item deforms along with it
+[] #8 save the data to firestore and reload the data when reenter the screen
 
 ---------
 
