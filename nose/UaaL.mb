@@ -1,0 +1,26 @@
+Step to use Unity instead of Reality Kit for 3D avatar customization
+
+[●] #1 have a simple 3D scene with a body model and display it on mobile app
+[●] #2 for a tops category, have a multiple 3D models. Have a button in native and every time presses it, it swaps top item
+[] #3 have a thumbnail for each top item. When a user select one of display that in the scene
+[] #4 have a multiple categories
+[] #5 control the categories and items in firebase so that to change the categories or items, I do not have to update an app everytime
+[] #6 have color buttons at native side and change the color of 3d item
+[] #7 have buttons to change the pose and it changes the pose of the body and item deforms along with it
+
+---------
+
+How to integrate Unity build to Xcode
+reference: https://medium.com/@mominaman/unity-as-a-library-swiftui-ios-786c4f58f1d7
+
+#1 Build Unity project with iOS setting
+#2 Copy the unity build file inside the native app folder
+#3 in Xcode, right click the app name in project view, and add Unity-iPhone.xcodeproj
+#4 in native app target, go General > Frameworks, Libraries, and Embedded Content and add UnityFramework.framework and change it to Embed&Sign
+#5 go to Build Phases, add UnityFramework to Target Dependencies
+#6 go to Copy Bundle Resources, select "+" > "Others" and add "Data" folder from the folder of unity build. Check copy item if needed and select Create folder reference
+#7 add the object-C launcher, "UnityLauncher.m" (see the reference for the content)
+#8 add the header file, "UnityLauncher.h" (see the reference for the content)
+#9 appname-Briging-Header.h is created and replace the content (see the reference for the content)
+
+

@@ -17,7 +17,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window = UIWindow(windowScene: windowScene)
         
         // Simply show the ViewController - it will handle authentication checking internally
-        let viewController = ViewController()
+        let viewController = ContentViewController()
         window?.rootViewController = viewController
         window?.makeKeyAndVisible()
     }

@@ -8,6 +8,10 @@
 
 /* Begin PBXBuildFile section */
 		4984E6CB2D731BC600A6288A /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 4984E6CA2D731BC600A6288A /* Localizable.xcstrings */; };
+		49F7C2122E49E233003A3D50 /* UnityFramework.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 49F7C20D2E49E20C003A3D50 /* UnityFramework.framework */; };
+		49F7C2132E49E233003A3D50 /* UnityFramework.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 49F7C20D2E49E20C003A3D50 /* UnityFramework.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		49F7C2162E49E258003A3D50 /* UnityLauncher.mm in Sources */ = {isa = PBXBuildFile; fileRef = 49F7C2152E49E258003A3D50 /* UnityLauncher.mm */; };
+		49F7C2192E49E278003A3D50 /* Data in Resources */ = {isa = PBXBuildFile; fileRef = 49F7C2182E49E277003A3D50 /* Data */; };
 		57F5337D85E99C4A21D785F6 /* Pods_noseTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 312A9D10F92AD4AC6B98F711 /* Pods_noseTests.framework */; };
 		90E1384E390AC4D7DCDC4D2F /* Pods-nose-metadata.plist in Resources */ = {isa = PBXBuildFile; fileRef = 6BAD938A99764361A6E14FC3 /* Pods-nose-metadata.plist */; };
 		91CD46407E2EDDD0C40362EF /* Pods_nose.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B915CAA5A41A6C145FBB9A8E /* Pods_nose.framework */; };
@@ -30,6 +34,20 @@
 			remoteGlobalIDString = 49E99BF52D3BE432000F3CE5;
 			remoteInfo = nose;
 		};
+		49F7C20C2E49E20C003A3D50 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 49F7C2012E49E20C003A3D50 /* Unity-iPhone.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 9D25AB9D213FB47800354C27;
+			remoteInfo = UnityFramework;
+		};
+		49F7C2102E49E216003A3D50 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 49F7C2012E49E20C003A3D50 /* Unity-iPhone.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 9D25AB9C213FB47800354C27;
+			remoteInfo = UnityFramework;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -39,6 +57,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
+				49F7C2132E49E233003A3D50 /* UnityFramework.framework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -54,6 +73,11 @@
 		49E99BF62D3BE432000F3CE5 /* nose.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = nose.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		49E99C0C2D3BE433000F3CE5 /* noseTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = noseTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		49E99C162D3BE433000F3CE5 /* noseUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = noseUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		49F7C2012E49E20C003A3D50 /* Unity-iPhone.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = "Unity-iPhone.xcodeproj"; path = "unity-build/Unity-iPhone.xcodeproj"; sourceTree = "<group>"; };
+		49F7C2142E49E254003A3D50 /* UnityLauncher.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = UnityLauncher.h; sourceTree = "<group>"; };
+		49F7C2152E49E258003A3D50 /* UnityLauncher.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = UnityLauncher.mm; sourceTree = "<group>"; };
+		49F7C2172E49E25A003A3D50 /* nose-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "nose-Bridging-Header.h"; sourceTree = "<group>"; };
+		49F7C2182E49E277003A3D50 /* Data */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Data; path = "unity-build/Data"; sourceTree = "<group>"; };
 		61B56A5F18E714D56FE0DCC0 /* Pods-noseUITests.production.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseUITests.production.xcconfig"; path = "Target Support Files/Pods-noseUITests/Pods-noseUITests.production.xcconfig"; sourceTree = "<group>"; };
 		6311D356F595772C8A2D0B95 /* Pods-noseTests.development.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseTests.development.xcconfig"; path = "Target Support Files/Pods-noseTests/Pods-noseTests.development.xcconfig"; sourceTree = "<group>"; };
 		6BAD938A99764361A6E14FC3 /* Pods-nose-metadata.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "Pods-nose-metadata.plist"; sourceTree = "<group>"; };
@@ -135,6 +159,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				91CD46407E2EDDD0C40362EF /* Pods_nose.framework in Frameworks */,
+				49F7C2122E49E233003A3D50 /* UnityFramework.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -160,6 +185,10 @@
 		49E99BED2D3BE432000F3CE5 = {
 			isa = PBXGroup;
 			children = (
+				49F7C2182E49E277003A3D50 /* Data */,
+				49F7C2142E49E254003A3D50 /* UnityLauncher.h */,
+				49F7C2152E49E258003A3D50 /* UnityLauncher.mm */,
+				49F7C2012E49E20C003A3D50 /* Unity-iPhone.xcodeproj */,
 				49B95D8D2E0CE4B8004F2DCD /* .github */,
 				49BE7E332DF41122006D6E16 /* FirebaseConfig */,
 				4984E6CA2D731BC600A6288A /* Localizable.xcstrings */,
@@ -171,6 +200,7 @@
 				8FBDA29887B8DBD5028A9EBC /* Frameworks */,
 				49EE64242DFBC64F004DA63B /* FirebaseConfig */,
 				49EE642B2DFBC651004DA63B /* InfoPlist */,
+				49F7C2172E49E25A003A3D50 /* nose-Bridging-Header.h */,
 			);
 			sourceTree = "<group>";
 		};
@@ -180,6 +210,14 @@
 				49E99BF62D3BE432000F3CE5 /* nose.app */,
 				49E99C0C2D3BE433000F3CE5 /* noseTests.xctest */,
 				49E99C162D3BE433000F3CE5 /* noseUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		49F7C2022E49E20C003A3D50 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				49F7C20D2E49E20C003A3D50 /* UnityFramework.framework */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -231,6 +269,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				49F7C2112E49E216003A3D50 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				49B95D8D2E0CE4B8004F2DCD /* .github */,
@@ -300,6 +339,7 @@
 				TargetAttributes = {
 					49E99BF52D3BE432000F3CE5 = {
 						CreatedOnToolsVersion = 16.2;
+						LastSwiftMigration = 1640;
 					};
 					49E99C0B2D3BE433000F3CE5 = {
 						CreatedOnToolsVersion = 16.2;
@@ -324,6 +364,12 @@
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 49E99BF72D3BE432000F3CE5 /* Products */;
 			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = 49F7C2022E49E20C003A3D50 /* Products */;
+					ProjectRef = 49F7C2012E49E20C003A3D50 /* Unity-iPhone.xcodeproj */;
+				},
+			);
 			projectRoot = "";
 			targets = (
 				49E99BF52D3BE432000F3CE5 /* nose */,
@@ -333,11 +379,22 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXReferenceProxy section */
+		49F7C20D2E49E20C003A3D50 /* UnityFramework.framework */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.framework;
+			path = UnityFramework.framework;
+			remoteRef = 49F7C20C2E49E20C003A3D50 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+/* End PBXReferenceProxy section */
+
 /* Begin PBXResourcesBuildPhase section */
 		49E99BF42D3BE432000F3CE5 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				49F7C2192E49E278003A3D50 /* Data in Resources */,
 				4984E6CB2D731BC600A6288A /* Localizable.xcstrings in Resources */,
 				90E1384E390AC4D7DCDC4D2F /* Pods-nose-metadata.plist in Resources */,
 			);
@@ -496,6 +553,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				49F7C2162E49E258003A3D50 /* UnityLauncher.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -525,6 +583,11 @@
 			isa = PBXTargetDependency;
 			target = 49E99BF52D3BE432000F3CE5 /* nose */;
 			targetProxy = 49E99C172D3BE433000F3CE5 /* PBXContainerItemProxy */;
+		};
+		49F7C2112E49E216003A3D50 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = UnityFramework;
+			targetProxy = 49F7C2102E49E216003A3D50 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -601,6 +664,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = nose/nose.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 6;
@@ -622,7 +686,8 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.tamakifujino.nose;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "";
+				SWIFT_OBJC_BRIDGING_HEADER = "nose-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -673,6 +738,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = nose/nose.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 6;
@@ -694,7 +760,8 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.tamakifujino.nose;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "";
+				SWIFT_OBJC_BRIDGING_HEADER = "nose-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -707,6 +774,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = nose/nose.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 6;
@@ -728,7 +796,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.tamakifujino.nose;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "";
+				SWIFT_OBJC_BRIDGING_HEADER = "nose-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
