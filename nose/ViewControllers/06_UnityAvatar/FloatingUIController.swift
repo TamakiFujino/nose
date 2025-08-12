@@ -1,120 +1,35 @@
-//
-//  ContentViewController.swift
-//  UaaLHostFinal
-//
-//  Created by Momin Aman on 8/9/25.
-//
-
 import UIKit
 
-class ContentViewController: UIViewController, ContentViewControllerDelegate {
-    
-    private var currentTopIndex = 0
-    private var topOptionsCount = 3
-    private var floatingWindow: UIWindow? // Add this property
-    
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        
-        // Launch Unity immediately
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            self.launchUnity()
-        }
-    }
-    
-    private func launchUnity() {
-        print("Launching Unity...")
-        UnityLauncher.shared().launchUnityIfNeeded()
-        
-        // Wait for Unity to be ready, then create floating UI on top
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            self.createFloatingUI()
-        }
-    }
-    
-    private func createFloatingUI() {
-        print("Creating floating UI on top of Unity...")
-        
-        // Create a new window for the floating UI that will be on top of Unity
-        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene else {
-            print("Failed to get window scene")
-            return
-        }
-        
-        // Store the floating window in the property so it doesn't get deallocated
-        floatingWindow = UIWindow(windowScene: windowScene)
-        
-        guard let floatingWindow = floatingWindow else {
-            print("Failed to create floating window")
-            return
-        }
-        
-        // Create the floating UI view controller
-        let floatingVC = FloatingUIController()
-        floatingVC.delegate = self
-        floatingWindow.rootViewController = floatingVC
-        
-        // Position the floating window to cover the entire screen
-        floatingWindow.frame = UIScreen.main.bounds
-        floatingWindow.windowLevel = .alert + 1 // Ensure it's above Unity
-        
-        // Make it visible
-        floatingWindow.isHidden = false
-        floatingWindow.makeKeyAndVisible()
-        
-        print("Floating UI created and should be visible on top of Unity")
-        print("Window frame: \(floatingWindow.frame)")
-        print("Window level: \(floatingWindow.windowLevel)")
-        print("Window is hidden: \(floatingWindow.isHidden)")
-        print("Window is key window: \(floatingWindow.isKeyWindow)")
-    }
-}
-
-// MARK: - Floating UI Controller
 class FloatingUIController: UIViewController {
-    
     weak var delegate: ContentViewController?
     private var currentTopIndex = 0
     private var topOptionsCount = 4
-    
+
     // Category data
     private let parentCategories = ["Base", "Hair", "Clothes", "Accessories"]
     private let childCategories = [
-        ["Eye", "Eyebrow", "Body"],           // Base
-        ["Base", "Front", "Side", "Back"],    // Hair
-        ["Tops", "Bottoms", "Jacket", "Socks"], // Clothes
-        ["Headwear", "Eyewear", "Neckwear"]   // Accessories
+        ["Eye", "Eyebrow", "Body"],
+        ["Base", "Front", "Side", "Back"],
+        ["Tops", "Bottoms", "Jacket", "Socks"],
+        ["Headwear", "Eyewear", "Neckwear"]
     ]
-    
+
     private var selectedParentIndex = 0
     private var selectedChildIndex = 0
-    
+
     // Asset management
     private var assetData: [String: [String: [AssetItem]]] = [:]
     private var currentAssets: [AssetItem] = []
-    
-    // MARK: - Asset Models
-    struct AssetItem: Codable {
-        let id: String
-        let name: String
-        let modelPath: String
-        let thumbnailPath: String?
-        let category: String
-        let subcategory: String
-        let isActive: Bool
-        let metadata: [String: String]?
-        
-        enum CodingKeys: String, CodingKey {
-            case id, name, modelPath, thumbnailPath, category, subcategory, isActive, metadata
-        }
-    }
-    
-    struct CategoryAssets: Codable {
-        let category: String
-        let subcategory: String
-        let assets: [AssetItem]
-    }
-    
+
+    // Color picker
+    private let colorSwatches: [String] = [
+        "#FFFFFF", "#000000", "#FF5252", "#FF9800", "#FFEB3B",
+        "#4CAF50", "#2196F3", "#9C27B0", "#795548", "#9E9E9E"
+    ]
+    private var colorButton: UIButton = UIButton(type: .system)
+    private var colorOverlayView: UIView?
+    private var colorSheetView: UIView?
+
     private lazy var bottomPanel: UIView = {
         let view = UIView()
         view.backgroundColor = UIColor.white.withAlphaComponent(0.5)
@@ -122,7 +37,7 @@ class FloatingUIController: UIViewController {
         view.translatesAutoresizingMaskIntoConstraints = false
         return view
     }()
-    
+
     private lazy var parentCategoryStackView: UIStackView = {
         let stackView = UIStackView()
         stackView.axis = .horizontal
@@ -131,7 +46,7 @@ class FloatingUIController: UIViewController {
         stackView.translatesAutoresizingMaskIntoConstraints = false
         return stackView
     }()
-    
+
     private lazy var childCategoryStackView: UIStackView = {
         let stackView = UIStackView()
         stackView.axis = .horizontal
@@ -140,7 +55,7 @@ class FloatingUIController: UIViewController {
         stackView.translatesAutoresizingMaskIntoConstraints = false
         return stackView
     }()
-    
+
     private lazy var thumbnailStackView: UIStackView = {
         let stackView = UIStackView()
         stackView.axis = .vertical
@@ -149,112 +64,265 @@ class FloatingUIController: UIViewController {
         stackView.translatesAutoresizingMaskIntoConstraints = false
         return stackView
     }()
-    
+
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
         loadAssetData()
     }
-    
+
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        print("FloatingUIController: viewDidLayoutSubviews called")
-        print("FloatingUIController: View bounds: \(view.bounds)")
-        
-        // Force layout update
         view.layoutIfNeeded()
+        colorButton.layer.cornerRadius = colorButton.bounds.height / 2
+        colorButton.clipsToBounds = true
     }
-    
+
     private func setupUI() {
-        print("FloatingUIController: setupUI called")
-        view.backgroundColor = .clear // Transparent background
-        
-        // Add UI elements
+        view.backgroundColor = .clear
         view.addSubview(bottomPanel)
         bottomPanel.addSubview(parentCategoryStackView)
         bottomPanel.addSubview(childCategoryStackView)
         bottomPanel.addSubview(thumbnailStackView)
-        
-        // Create thumbnail rows
+        setupColorButton()
         createThumbnailRows()
-        
-        // Create category buttons
         createCategoryButtons()
-        
-        print("FloatingUIController: Added UI elements to view")
-        
-        // Position bottom panel to occupy 45% of bottom screen
+
         NSLayoutConstraint.activate([
             bottomPanel.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             bottomPanel.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             bottomPanel.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             bottomPanel.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.45),
-            
+
             parentCategoryStackView.leadingAnchor.constraint(equalTo: bottomPanel.leadingAnchor, constant: 20),
             parentCategoryStackView.trailingAnchor.constraint(equalTo: bottomPanel.trailingAnchor, constant: -20),
             parentCategoryStackView.topAnchor.constraint(equalTo: bottomPanel.topAnchor, constant: 10),
             parentCategoryStackView.heightAnchor.constraint(equalToConstant: 30),
-            
+
             childCategoryStackView.leadingAnchor.constraint(equalTo: bottomPanel.leadingAnchor, constant: 20),
             childCategoryStackView.trailingAnchor.constraint(equalTo: bottomPanel.trailingAnchor, constant: -20),
             childCategoryStackView.topAnchor.constraint(equalTo: parentCategoryStackView.bottomAnchor, constant: 10),
             childCategoryStackView.heightAnchor.constraint(equalToConstant: 30),
-            
+
             thumbnailStackView.leadingAnchor.constraint(equalTo: bottomPanel.leadingAnchor, constant: 20),
             thumbnailStackView.trailingAnchor.constraint(equalTo: bottomPanel.trailingAnchor, constant: -20),
             thumbnailStackView.centerYAnchor.constraint(equalTo: bottomPanel.centerYAnchor)
         ])
-        
-        print("FloatingUIController: Constraints activated")
-        
-        // Force immediate layout to ensure frames are set correctly
-        view.setNeedsLayout()
-        view.layoutIfNeeded()
-        
-        print("FloatingUIController: View frame after layout: \(view.frame)")
-        print("FloatingUIController: Bottom panel frame after layout: \(bottomPanel.frame)")
-        print("FloatingUIController: Thumbnail stack frame after layout: \(thumbnailStackView.frame)")
-        
-        print("Floating UI setup complete")
     }
-    
+
+    private func setupColorButton() {
+        colorButton.translatesAutoresizingMaskIntoConstraints = false
+        if let paintIcon = UIImage(systemName: "paintpalette.fill") {
+            colorButton.setImage(paintIcon, for: .normal)
+            colorButton.tintColor = .white
+        } else {
+            colorButton.setTitle("Color", for: .normal)
+        }
+        colorButton.backgroundColor = UIColor.systemBlue
+        colorButton.layer.cornerRadius = 28
+        colorButton.layer.shadowColor = UIColor.black.cgColor
+        colorButton.layer.shadowOpacity = 0.25
+        colorButton.layer.shadowRadius = 6
+        colorButton.layer.shadowOffset = CGSize(width: 0, height: 3)
+        colorButton.addTarget(self, action: #selector(didTapColorButton), for: .touchUpInside)
+
+        view.addSubview(colorButton)
+        view.bringSubviewToFront(colorButton)
+
+        NSLayoutConstraint.activate([
+            colorButton.widthAnchor.constraint(equalToConstant: 56),
+            colorButton.heightAnchor.constraint(equalToConstant: 56),
+            colorButton.widthAnchor.constraint(equalTo: colorButton.heightAnchor),
+            colorButton.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -20),
+            colorButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20)
+        ])
+
+        colorButton.setContentHuggingPriority(.required, for: .horizontal)
+        colorButton.setContentHuggingPriority(.required, for: .vertical)
+        colorButton.setContentCompressionResistancePriority(.required, for: .horizontal)
+        colorButton.setContentCompressionResistancePriority(.required, for: .vertical)
+        colorButton.contentEdgeInsets = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
+    }
+
+    @objc private func didTapColorButton() { showColorPicker() }
+
+    private func showColorPicker() {
+        if colorOverlayView != nil { return }
+        let overlay = UIView(frame: view.bounds)
+        overlay.backgroundColor = UIColor.black.withAlphaComponent(0.2)
+        overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        overlay.alpha = 0
+        view.addSubview(overlay)
+        colorOverlayView = overlay
+
+        let sheetHeight = view.bounds.height * 0.4
+        let sheet = UIView(frame: CGRect(x: 0, y: view.bounds.height, width: view.bounds.width, height: sheetHeight))
+        sheet.backgroundColor = .white
+        sheet.layer.cornerRadius = 16
+        sheet.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
+        view.addSubview(sheet)
+        colorSheetView = sheet
+
+        let title = UILabel()
+        title.text = "Colors"
+        title.font = .systemFont(ofSize: 16, weight: .semibold)
+        title.translatesAutoresizingMaskIntoConstraints = false
+        sheet.addSubview(title)
+
+        let closeBtn = UIButton(type: .system)
+        closeBtn.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
+        closeBtn.tintColor = .lightGray
+        closeBtn.translatesAutoresizingMaskIntoConstraints = false
+        closeBtn.addTarget(self, action: #selector(hideColorPicker), for: .touchUpInside)
+        sheet.addSubview(closeBtn)
+
+        let scroll = UIScrollView()
+        scroll.showsVerticalScrollIndicator = true
+        scroll.translatesAutoresizingMaskIntoConstraints = false
+        sheet.addSubview(scroll)
+
+        let content = UIView()
+        content.translatesAutoresizingMaskIntoConstraints = false
+        scroll.addSubview(content)
+
+        NSLayoutConstraint.activate([
+            title.topAnchor.constraint(equalTo: sheet.topAnchor, constant: 12),
+            title.leadingAnchor.constraint(equalTo: sheet.leadingAnchor, constant: 16),
+            closeBtn.centerYAnchor.constraint(equalTo: title.centerYAnchor),
+            closeBtn.trailingAnchor.constraint(equalTo: sheet.trailingAnchor, constant: -12),
+            closeBtn.widthAnchor.constraint(equalToConstant: 24),
+            closeBtn.heightAnchor.constraint(equalToConstant: 24),
+            scroll.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 12),
+            scroll.leadingAnchor.constraint(equalTo: sheet.leadingAnchor),
+            scroll.trailingAnchor.constraint(equalTo: sheet.trailingAnchor),
+            scroll.bottomAnchor.constraint(equalTo: sheet.safeAreaLayoutGuide.bottomAnchor, constant: -12),
+            content.topAnchor.constraint(equalTo: scroll.topAnchor),
+            content.leadingAnchor.constraint(equalTo: scroll.leadingAnchor),
+            content.trailingAnchor.constraint(equalTo: scroll.trailingAnchor),
+            content.bottomAnchor.constraint(equalTo: scroll.bottomAnchor),
+            content.widthAnchor.constraint(equalTo: scroll.widthAnchor)
+        ])
+
+        let grid = UIStackView()
+        grid.axis = .vertical
+        grid.spacing = 12
+        grid.translatesAutoresizingMaskIntoConstraints = false
+        content.addSubview(grid)
+
+        NSLayoutConstraint.activate([
+            grid.topAnchor.constraint(equalTo: content.topAnchor, constant: 8),
+            grid.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 16),
+            grid.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -16),
+            grid.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -8)
+        ])
+
+        let columns = 7
+        let buttonSize: CGFloat = 40
+        var currentRow: UIStackView?
+
+        for (i, hex) in colorSwatches.enumerated() {
+            if i % columns == 0 {
+                currentRow = UIStackView()
+                currentRow?.axis = .horizontal
+                currentRow?.spacing = 12
+                currentRow?.distribution = .fillEqually
+                currentRow?.translatesAutoresizingMaskIntoConstraints = false
+                if let row = currentRow { grid.addArrangedSubview(row) }
+            }
+            let btn = UIButton(type: .system)
+            btn.translatesAutoresizingMaskIntoConstraints = false
+            btn.backgroundColor = UIColor(hex: hex) ?? .lightGray
+            btn.layer.cornerRadius = buttonSize / 2
+            btn.layer.borderWidth = 1
+            btn.layer.borderColor = UIColor.black.withAlphaComponent(0.15).cgColor
+            btn.tag = i
+            btn.accessibilityLabel = hex
+            btn.addTarget(self, action: #selector(didSelectColor(_:)), for: .touchUpInside)
+            btn.heightAnchor.constraint(equalToConstant: buttonSize).isActive = true
+            btn.widthAnchor.constraint(greaterThanOrEqualToConstant: buttonSize).isActive = true
+            currentRow?.addArrangedSubview(btn)
+        }
+
+        if let row = currentRow {
+            let remainder = colorSwatches.count % columns
+            if remainder != 0 {
+                for _ in 0..<(columns - remainder) {
+                    let spacer = UIView()
+                    spacer.translatesAutoresizingMaskIntoConstraints = false
+                    row.addArrangedSubview(spacer)
+                }
+            }
+        }
+
+        UIView.animate(withDuration: 0.24) {
+            overlay.alpha = 1
+            sheet.frame.origin.y = self.view.bounds.height - sheetHeight
+        }
+    }
+
+    @objc private func hideColorPicker() {
+        guard let overlay = colorOverlayView, let sheet = colorSheetView else { return }
+        let endY = view.bounds.height
+        UIView.animate(withDuration: 0.22, animations: {
+            overlay.alpha = 0
+            sheet.frame.origin.y = endY
+        }, completion: { _ in
+            overlay.removeFromSuperview()
+            sheet.removeFromSuperview()
+            self.colorOverlayView = nil
+            self.colorSheetView = nil
+        })
+    }
+
+    @objc private func didSelectColor(_ sender: UIButton) {
+        let index = sender.tag
+        guard index >= 0 && index < colorSwatches.count else { return }
+        let hex = colorSwatches[index]
+        sendSelectedColorToUnity(hex: hex)
+        hideColorPicker()
+    }
+
+    private func sendSelectedColorToUnity(hex: String) {
+        let parent = parentCategories[selectedParentIndex]
+        let child = childCategories[selectedParentIndex][selectedChildIndex]
+        let payload: [String: Any] = [
+            "category": parent,
+            "subcategory": child,
+            "colorHex": hex
+        ]
+        if let data = try? JSONSerialization.data(withJSONObject: payload),
+           let json = String(data: data, encoding: .utf8) {
+            UnityLauncher.shared().sendMessage(toUnity: "UnityBridge", method: "ChangeColor", message: json)
+        }
+    }
+
     private func createThumbnailRows() {
-        // Create one row with thumbnails that fill the width
         let rowStackView = UIStackView()
         rowStackView.axis = .horizontal
         rowStackView.spacing = 16
         rowStackView.distribution = .fillEqually
-        
         for i in 0..<currentAssets.count {
             let thumbnailButton = createThumbnailButton(for: i)
             rowStackView.addArrangedSubview(thumbnailButton)
         }
-        
         thumbnailStackView.addArrangedSubview(rowStackView)
     }
-    
+
     private func createThumbnailButton(for index: Int) -> UIButton {
         let button = UIButton(type: .system)
         button.tag = index
-        
         let asset = currentAssets[index]
-        
-        // Try to load thumbnail image if available
         if let thumbnailPath = asset.thumbnailPath,
            let thumbnailImage = UIImage(contentsOfFile: thumbnailPath) {
             button.setImage(thumbnailImage, for: .normal)
         } else {
-            // Fallback to system icon based on category
             let iconNames = ["tshirt", "person.crop.circle", "person.fill", "person.2.fill"]
             let iconIndex = index % iconNames.count
-            let iconName = iconNames[iconIndex]
-            
-            if let systemImage = UIImage(systemName: iconName) {
+            if let systemImage = UIImage(systemName: iconNames[iconIndex]) {
                 button.setImage(systemImage, for: .normal)
                 button.tintColor = .black
             }
         }
-        
         button.imageView?.contentMode = .scaleAspectFit
         button.backgroundColor = UIColor.black.withAlphaComponent(0.1)
         button.layer.cornerRadius = 12
@@ -262,36 +330,20 @@ class FloatingUIController: UIViewController {
         button.layer.borderColor = index == currentTopIndex ? UIColor.systemBlue.cgColor : UIColor.clear.cgColor
         button.translatesAutoresizingMaskIntoConstraints = false
         button.addTarget(self, action: #selector(thumbnailTapped(_:)), for: .touchUpInside)
-        
-        // Set both width and height to make perfect squares
         button.widthAnchor.constraint(equalToConstant: 80).isActive = true
         button.heightAnchor.constraint(equalToConstant: 80).isActive = true
-        
         return button
     }
-    
-    private func createPlaceholderImage(color: UIColor, size: CGSize) -> UIImage {
-        // This method is no longer needed but keeping for compatibility
-        let renderer = UIGraphicsImageRenderer(size: size)
-        return renderer.image { context in
-            UIColor.systemGray.setFill()
-            context.fill(CGRect(origin: .zero, size: size))
-        }
-    }
-    
+
     @objc private func thumbnailTapped(_ sender: UIButton) {
         let newIndex = sender.tag
         let asset = currentAssets[newIndex]
-        print("🎯 Thumbnail tapped: \(asset.name) (ID: \(asset.id))")
-        
-        // Update selection
         currentTopIndex = newIndex
         updateThumbnailBorders()
         changeAssetInUnity(asset: asset)
     }
-    
+
     private func updateThumbnailBorders() {
-        // Update all thumbnail borders
         for subview in thumbnailStackView.arrangedSubviews {
             if let rowStackView = subview as? UIStackView {
                 for arrangedSubview in rowStackView.arrangedSubviews {
@@ -302,37 +354,29 @@ class FloatingUIController: UIViewController {
             }
         }
     }
-    
+
     private func changeAssetInUnity(asset: AssetItem) {
-        print("Changing asset in Unity: \(asset.name) (ID: \(asset.id))")
-        
-        // Send asset information to Unity
-        let assetInfo = [
+        let assetInfo: [String: Any] = [
             "id": asset.id,
             "name": asset.name,
             "modelPath": asset.modelPath,
             "category": asset.category,
             "subcategory": asset.subcategory
         ]
-        
-        // Convert to JSON string
         if let jsonData = try? JSONSerialization.data(withJSONObject: assetInfo),
            let jsonString = String(data: jsonData, encoding: .utf8) {
             UnityLauncher.shared().sendMessage(toUnity: "UnityBridge", method: "ChangeAsset", message: jsonString)
         }
     }
-    
+
     private func createCategoryButtons() {
-        // Create parent category buttons
         for (index, title) in parentCategories.enumerated() {
             let button = createCategoryButton(title: title, tag: index, isParent: true)
             parentCategoryStackView.addArrangedSubview(button)
         }
-        
-        // Create child category buttons for the first parent
         updateChildCategories()
     }
-    
+
     private func createCategoryButton(title: String, tag: Int, isParent: Bool) -> UIButton {
         let button = UIButton(type: .system)
         button.tag = tag
@@ -344,43 +388,44 @@ class FloatingUIController: UIViewController {
         button.layer.borderWidth = 2
         button.layer.borderColor = UIColor.clear.cgColor
         button.translatesAutoresizingMaskIntoConstraints = false
-        
         if isParent {
             button.addTarget(self, action: #selector(parentCategoryTapped(_:)), for: .touchUpInside)
         } else {
             button.addTarget(self, action: #selector(childCategoryTapped(_:)), for: .touchUpInside)
         }
-        
         return button
     }
-    
+
+    @objc private func parentCategoryTapped(_ sender: UIButton) {
+        selectedParentIndex = sender.tag
+        updateChildCategories()
+    }
+
+    @objc private func childCategoryTapped(_ sender: UIButton) {
+        selectedChildIndex = sender.tag
+        updateCategoryButtonStates()
+        updateThumbnailsForCategory()
+    }
+
     private func updateChildCategories() {
-        // Remove existing child category buttons
         childCategoryStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
-        
-        // Create new child category buttons
         let currentChildCategories = childCategories[selectedParentIndex]
         for (index, title) in currentChildCategories.enumerated() {
             let button = createCategoryButton(title: title, tag: index, isParent: false)
             childCategoryStackView.addArrangedSubview(button)
         }
-        
-        // Reset child selection
         selectedChildIndex = 0
         updateCategoryButtonStates()
         updateThumbnailsForCategory()
     }
-    
+
     private func updateCategoryButtonStates() {
-        // Update parent category button states
         for (index, subview) in parentCategoryStackView.arrangedSubviews.enumerated() {
             if let button = subview as? UIButton {
                 button.layer.borderColor = index == selectedParentIndex ? UIColor.systemBlue.cgColor : UIColor.clear.cgColor
                 button.backgroundColor = index == selectedParentIndex ? UIColor.systemBlue.withAlphaComponent(0.2) : UIColor.black.withAlphaComponent(0.1)
             }
         }
-        
-        // Update child category button states
         for (index, subview) in childCategoryStackView.arrangedSubviews.enumerated() {
             if let button = subview as? UIButton {
                 button.layer.borderColor = index == selectedChildIndex ? UIColor.systemBlue.cgColor : UIColor.clear.cgColor
@@ -388,107 +433,55 @@ class FloatingUIController: UIViewController {
             }
         }
     }
-    
-    @objc private func parentCategoryTapped(_ sender: UIButton) {
-        let newIndex = sender.tag
-        print("🎯 Parent category tapped: \(parentCategories[newIndex])")
-        
-        selectedParentIndex = newIndex
-        updateChildCategories()
-    }
-    
-    @objc private func childCategoryTapped(_ sender: UIButton) {
-        let newIndex = sender.tag
-        print("🎯 Child category tapped: \(childCategories[selectedParentIndex][newIndex])")
-        
-        selectedChildIndex = newIndex
-        updateCategoryButtonStates()
-        updateThumbnailsForCategory()
-    }
-    
+
     private func loadAssetData() {
-        // Load asset data from JSON files
         loadAssetsForCategory("Base")
         loadAssetsForCategory("Hair")
-        loadAssetsForCategory("Clothes_Tops")      // Clothes - Tops subcategory
-        loadAssetsForCategory("Clothes_Socks")     // Clothes - Socks subcategory
+        loadAssetsForCategory("Clothes_Tops")
+        loadAssetsForCategory("Clothes_Socks")
         loadAssetsForCategory("Accessories")
-        
-        print("Asset data loaded: \(assetData)")
     }
-    
+
     private func loadAssetsForCategory(_ category: String) {
         guard let url = Bundle.main.url(forResource: "assets_\(category.lowercased())", withExtension: "json") else {
             print("Could not find assets JSON for category: \(category)")
             return
         }
-        
         do {
             let data = try Data(contentsOf: url)
             let categoryAssets = try JSONDecoder().decode(CategoryAssets.self, from: data)
-            
-            // Extract the main category name (e.g., "Clothes" from "Clothes_Tops")
             let mainCategory = categoryAssets.category
-            
-            // Organize assets by subcategory under the main category
-            if assetData[mainCategory] == nil {
-                assetData[mainCategory] = [:]
-            }
-            
+            if assetData[mainCategory] == nil { assetData[mainCategory] = [:] }
             for asset in categoryAssets.assets {
-                if assetData[mainCategory]![asset.subcategory] == nil {
-                    assetData[mainCategory]![asset.subcategory] = []
-                }
+                if assetData[mainCategory]![asset.subcategory] == nil { assetData[mainCategory]![asset.subcategory] = [] }
                 assetData[mainCategory]![asset.subcategory]?.append(asset)
             }
-            
-            print("Loaded \(categoryAssets.assets.count) assets for \(mainCategory) - \(categoryAssets.subcategory)")
-            
         } catch {
             print("Error loading assets for \(category): \(error)")
         }
     }
-    
+
     private func updateThumbnailsForCategory() {
         let parentCategory = parentCategories[selectedParentIndex]
         let childCategory = childCategories[selectedParentIndex][selectedChildIndex]
-        
-        print("Updating thumbnails for: \(parentCategory) - \(childCategory)")
-        
-        // Get assets for the selected category combination
         currentAssets = assetData[parentCategory]?[childCategory] ?? []
         topOptionsCount = currentAssets.count
-        
-        // Update thumbnail display
         updateThumbnailDisplay()
     }
-    
+
     private func updateThumbnailDisplay() {
-        // Remove existing thumbnails
         thumbnailStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
-        
-        // Create new thumbnails based on current assets
-        if !currentAssets.isEmpty {
-            createThumbnailRows()
-        } else {
-            // Show "No assets available" message
+        if !currentAssets.isEmpty { createThumbnailRows() }
+        else {
             let noAssetsLabel = UILabel()
             noAssetsLabel.text = "No assets available"
             noAssetsLabel.textAlignment = .center
             noAssetsLabel.textColor = .black
             noAssetsLabel.font = .systemFont(ofSize: 16, weight: .medium)
             noAssetsLabel.translatesAutoresizingMaskIntoConstraints = false
-            
             thumbnailStackView.addArrangedSubview(noAssetsLabel)
         }
-        
-        // Reset selection
         currentTopIndex = 0
         updateThumbnailBorders()
     }
-}
-
-// MARK: - Protocol for communication
-protocol ContentViewControllerDelegate: AnyObject {
-    // Add any methods needed for communication
 }
