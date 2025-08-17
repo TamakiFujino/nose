@@ -1,4 +1,5 @@
 import UIKit
+import FirebaseCore
 
 class FloatingUIController: UIViewController {
     weak var delegate: ContentViewController?
@@ -312,10 +313,24 @@ class FloatingUIController: UIViewController {
         let button = UIButton(type: .system)
         button.tag = index
         let asset = currentAssets[index]
-        if let thumbnailPath = asset.thumbnailPath,
-           let thumbnailImage = UIImage(contentsOfFile: thumbnailPath) {
-            button.setImage(thumbnailImage, for: .normal)
-        } else {
+        // Try explicit thumbnailPath first
+        if let thumbnailPath = asset.thumbnailPath, !thumbnailPath.isEmpty {
+            if let remoteURL = resolvedRemoteURL(from: thumbnailPath) {
+                // Try provided URL, and attempt common extension fallback
+                let candidates = thumbnailURLCandidates(from: remoteURL)
+                setRemoteImage(on: button, urls: candidates, index: index)
+            } else if FileManager.default.fileExists(atPath: thumbnailPath),
+                      let thumbnailImage = UIImage(contentsOfFile: thumbnailPath) {
+                let normalized = normalizeImageForDisplay(thumbnailImage)
+                button.setImage(normalized, for: .normal)
+                button.tintColor = .clear
+            }
+        } else if let url = resolvedThumbnailURL(for: asset) {
+            // Constructed remote URL: {base}/Thumbs/{Category}/{Subcategory}/{Name}.jpg
+            let candidates = thumbnailURLCandidates(from: url)
+            setRemoteImage(on: button, urls: candidates, index: index)
+        }
+        if button.image(for: .normal) == nil {
             let iconNames = ["tshirt", "person.crop.circle", "person.fill", "person.2.fill"]
             let iconIndex = index % iconNames.count
             if let systemImage = UIImage(systemName: iconNames[iconIndex]) {
@@ -399,12 +414,16 @@ class FloatingUIController: UIViewController {
     @objc private func parentCategoryTapped(_ sender: UIButton) {
         selectedParentIndex = sender.tag
         updateChildCategories()
+        // Refetch assets for the newly selected parent/child combination
+        refetchAssetsForSelectedCategory()
     }
 
     @objc private func childCategoryTapped(_ sender: UIButton) {
         selectedChildIndex = sender.tag
         updateCategoryButtonStates()
         updateThumbnailsForCategory()
+        // Also refetch assets/thumbs for this category on demand
+        refetchAssetsForSelectedCategory()
     }
 
     private func updateChildCategories() {
@@ -435,16 +454,65 @@ class FloatingUIController: UIViewController {
     }
 
     private func loadAssetData() {
-        loadAssetsForCategory("Base")
-        loadAssetsForCategory("Hair")
-        loadAssetsForCategory("Clothes_Tops")
-        loadAssetsForCategory("Clothes_Socks")
-        loadAssetsForCategory("Accessories")
+        // Prefer loading from Addressables catalog on Hosting
+        loadAssetsFromAddressablesCatalog { [weak self] in
+            self?.updateThumbnailsForCategory()
+        }
     }
 
-    private func loadAssetsForCategory(_ category: String) {
+    private func loadAssetsForCategory(_ category: String, completion: (() -> Void)? = nil) {
+        // Try Firebase Hosting first
+        if let baseURLString = hostingBaseURL(),
+           let url = URL(string: baseURLString + "/assets_\(category.lowercased()).json") {
+            let task = URLSession.shared.dataTask(with: url) { data, response, error in
+                if let error = error {
+                    print("❌ Network error loading assets for \(category): \(error)")
+                    self.loadAssetsFromBundle(category: category)
+                    DispatchQueue.main.async { completion?() }
+                    return
+                }
+                guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
+                    print("❌ Invalid HTTP response for \(category): \((response as? HTTPURLResponse)?.statusCode ?? -1)")
+                    self.loadAssetsFromBundle(category: category)
+                    DispatchQueue.main.async { completion?() }
+                    return
+                }
+                guard let data = data else {
+                    print("❌ Empty data for \(category)")
+                    self.loadAssetsFromBundle(category: category)
+                    DispatchQueue.main.async { completion?() }
+                    return
+                }
+
+                do {
+                    let categoryAssets = try JSONDecoder().decode(CategoryAssets.self, from: data)
+                    let mainCategory = categoryAssets.category
+                    if self.assetData[mainCategory] == nil { self.assetData[mainCategory] = [:] }
+                    for asset in categoryAssets.assets {
+                        var existing = self.assetData[mainCategory]![asset.subcategory] ?? []
+                        if !existing.contains(where: { $0.id == asset.id }) {
+                            existing.append(asset)
+                        }
+                        self.assetData[mainCategory]![asset.subcategory] = existing
+                    }
+                } catch {
+                    print("❌ JSON decode error for \(category): \(error)")
+                    self.loadAssetsFromBundle(category: category)
+                }
+                DispatchQueue.main.async { completion?() }
+            }
+            task.resume()
+            return
+        }
+
+        // Fallback to bundled JSON if hosting URL is not available
+        loadAssetsFromBundle(category: category)
+        completion?()
+    }
+
+    private func loadAssetsFromBundle(category: String) {
         guard let url = Bundle.main.url(forResource: "assets_\(category.lowercased())", withExtension: "json") else {
-            print("Could not find assets JSON for category: \(category)")
+            print("Could not find bundled assets JSON for category: \(category)")
             return
         }
         do {
@@ -453,12 +521,229 @@ class FloatingUIController: UIViewController {
             let mainCategory = categoryAssets.category
             if assetData[mainCategory] == nil { assetData[mainCategory] = [:] }
             for asset in categoryAssets.assets {
-                if assetData[mainCategory]![asset.subcategory] == nil { assetData[mainCategory]![asset.subcategory] = [] }
-                assetData[mainCategory]![asset.subcategory]?.append(asset)
+                var existing = assetData[mainCategory]![asset.subcategory] ?? []
+                if !existing.contains(where: { $0.id == asset.id }) {
+                    existing.append(asset)
+                }
+                assetData[mainCategory]![asset.subcategory] = existing
             }
         } catch {
-            print("Error loading assets for \(category): \(error)")
+            print("Error loading bundled assets for \(category): \(error)")
         }
+    }
+
+    private func refetchAssetsForSelectedCategory() {
+        // Reload from Addressables catalog, then refresh UI for selected category
+        loadAssetsFromAddressablesCatalog { [weak self] in
+            self?.updateThumbnailsForCategory()
+        }
+    }
+
+    private func addressablesCatalogURL() -> URL? {
+        // Prefer explicit URL in Config.plist
+        if let filePath = Bundle.main.path(forResource: "Config", ofType: "plist"),
+           let plistDict = NSDictionary(contentsOfFile: filePath) as? [String: Any],
+           let explicitURL = plistDict["AddressablesCatalogURL"] as? String,
+           !explicitURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           let url = URL(string: explicitURL.trimmingCharacters(in: .whitespacesAndNewlines)) {
+            return url
+        }
+        // Default to Firebase Hosting base + standard iOS catalog path
+        if let base = hostingBaseURL(), let url = URL(string: base + "/addressables/iOS/catalog_0.1.json") {
+            return url
+        }
+        return nil
+    }
+
+    private func loadAssetsFromAddressablesCatalog(completion: @escaping () -> Void) {
+        guard let url = addressablesCatalogURL() else {
+            print("❌ Addressables catalog URL not available.")
+            completion()
+            return
+        }
+        URLSession.shared.dataTask(with: url) { data, response, error in
+            defer { DispatchQueue.main.async { completion() } }
+            if let error = error {
+                print("❌ Failed to load addressables catalog: \(error)")
+                return
+            }
+            guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+                print("❌ Invalid HTTP response for catalog: \((response as? HTTPURLResponse)?.statusCode ?? -1)")
+                return
+            }
+            guard let data = data else {
+                print("❌ Empty catalog data")
+                return
+            }
+            do {
+                // Parse m_InternalIds as [String]
+                guard let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
+                      let internalIds = json["m_InternalIds"] as? [String] else {
+                    print("❌ Catalog format unexpected (m_InternalIds not found)")
+                    return
+                }
+                self.rebuildAssetDataFromCatalog(internalIds: internalIds)
+            } catch {
+                print("❌ Catalog JSON parse error: \(error)")
+            }
+        }.resume()
+    }
+
+    private func rebuildAssetDataFromCatalog(internalIds: [String]) {
+        var newAssetData: [String: [String: [AssetItem]]] = [:]
+        let thumbsPrefix = "Assets/Thumbs/"
+        let modelsPrefix = "Assets/Resources_moved/Models/"
+
+        // Build a set for quick model existence checks
+        let modelIdSet = Set(internalIds.filter { $0.hasPrefix(modelsPrefix) })
+
+        for id in internalIds where id.hasPrefix(thumbsPrefix) {
+            // e.g., Assets/Thumbs/Clothes/Tops/01_tops_tight_short.jpg
+            let relative = String(id.dropFirst(thumbsPrefix.count))
+            let parts = relative.split(separator: "/").map(String.init)
+            guard parts.count >= 3 else { continue }
+            let category = parts[0]
+            let subcategory = parts[1]
+            let filename = parts[2]
+            let nameWithExt = (filename as NSString).lastPathComponent
+            let name = (nameWithExt as NSString).deletingPathExtension
+
+            // Derive model internal id candidate
+            let modelCandidate = modelsPrefix + "\(category)/\(subcategory)/\(name).prefab"
+            let modelPath = modelIdSet.contains(modelCandidate) ? modelCandidate : ""
+
+            // Compose remote thumbnail URL on Hosting under /Thumbs/
+            guard let base = hostingBaseURL() else { continue }
+            var thumbURL = URL(string: base)
+            thumbURL?.appendPathComponent("Thumbs")
+            thumbURL?.appendPathComponent(category)
+            thumbURL?.appendPathComponent(subcategory)
+            thumbURL?.appendPathComponent(nameWithExt)
+
+            let item = AssetItem(
+                id: "\(category)_\(subcategory)_\(name)",
+                name: name,
+                modelPath: modelPath,
+                thumbnailPath: thumbURL?.absoluteString,
+                category: category,
+                subcategory: subcategory,
+                isActive: true,
+                metadata: nil
+            )
+            if newAssetData[category] == nil { newAssetData[category] = [:] }
+            var list = newAssetData[category]![subcategory] ?? []
+            // Avoid duplicates by id
+            if !list.contains(where: { $0.id == item.id }) { list.append(item) }
+            newAssetData[category]![subcategory] = list
+        }
+
+        DispatchQueue.main.async {
+            self.assetData = newAssetData
+        }
+    }
+
+    private func hostingBaseURL() -> String? {
+        // 1) Prefer explicit base URL in Config.plist (key: FirebaseHostingBaseURL)
+        if let filePath = Bundle.main.path(forResource: "Config", ofType: "plist"),
+           let plistDict = NSDictionary(contentsOfFile: filePath) as? [String: Any],
+           let explicitURL = plistDict["FirebaseHostingBaseURL"] as? String,
+           !explicitURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return explicitURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        // 2) Derive from Firebase project ID (https://{projectID}.web.app)
+        if let projectID = FirebaseApp.app()?.options.projectID, !projectID.isEmpty {
+            return "https://\(projectID).web.app"
+        }
+
+        // 3) No hosting base URL available
+        return nil
+    }
+
+    private func resolvedThumbnailURL(for asset: AssetItem) -> URL? {
+        guard let base = hostingBaseURL() else { return nil }
+        // Compose: {base}/Thumbs/{Category}/{Subcategory}/{Name}.jpg
+        // Use URLComponents to safely append path components
+        var url = URL(string: base)
+        url?.appendPathComponent("Thumbs")
+        url?.appendPathComponent(asset.category)
+        url?.appendPathComponent(asset.subcategory)
+        url?.appendPathComponent("\(asset.name).jpg")
+        return url
+    }
+
+    private func resolvedRemoteURL(from path: String) -> URL? {
+        let lower = path.lowercased()
+        if lower.hasPrefix("http://") || lower.hasPrefix("https://") {
+            return URL(string: path)
+        }
+        // Treat as relative to hosting base (handle with or without leading slash)
+        guard let base = hostingBaseURL() else { return nil }
+        var url = URL(string: base)
+        // Ensure no duplicate slashes
+        let trimmed = path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        for comp in trimmed.split(separator: "/") {
+            url?.appendPathComponent(String(comp))
+        }
+        return url
+    }
+
+    private func thumbnailURLCandidates(from url: URL) -> [URL] {
+        var candidates: [URL] = [url]
+        let last = url.lastPathComponent.lowercased()
+        if last.hasSuffix(".jpg") {
+            let alt = url.deletingLastPathComponent().appendingPathComponent((url.lastPathComponent as NSString).deletingPathExtension + ".png")
+            candidates.append(alt)
+        } else if last.hasSuffix(".png") {
+            let alt = url.deletingLastPathComponent().appendingPathComponent((url.lastPathComponent as NSString).deletingPathExtension + ".jpg")
+            candidates.append(alt)
+        } else {
+            candidates.append(url.appendingPathExtension("jpg"))
+            candidates.append(url.appendingPathExtension("png"))
+        }
+        return candidates
+    }
+
+    private func setRemoteImage(on button: UIButton, urls: [URL], index: Int) {
+        let placeholder = UIImage(systemName: "photo")
+        if button.image(for: .normal) == nil {
+            button.setImage(placeholder, for: .normal)
+            button.tintColor = .lightGray
+        }
+        attemptFetch(urls: urls, at: 0, button: button, index: index)
+    }
+
+    private func attemptFetch(urls: [URL], at position: Int, button: UIButton, index: Int) {
+        guard position < urls.count else { return }
+        let url = urls[position]
+        URLSession.shared.dataTask(with: url) { data, response, error in
+            let httpCode = (response as? HTTPURLResponse)?.statusCode ?? -1
+            if error != nil || !(200...299).contains(httpCode) || data == nil {
+                self.attemptFetch(urls: urls, at: position + 1, button: button, index: index)
+                return
+            }
+            if let data = data, let image = UIImage(data: data) {
+                let normalized = self.normalizeImageForDisplay(image)
+                DispatchQueue.main.async {
+                    if button.tag == index {
+                        button.setImage(normalized, for: .normal)
+                        button.tintColor = .clear
+                    }
+                }
+            }
+        }.resume()
+    }
+
+    private func normalizeImageForDisplay(_ image: UIImage) -> UIImage {
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = image.scale
+        format.opaque = false
+        format.preferredRange = .standard
+        let renderer = UIGraphicsImageRenderer(size: image.size, format: format)
+        let rendered = renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: image.size))
+        }
+        return rendered.withRenderingMode(.alwaysOriginal)
     }
 
     private func updateThumbnailsForCategory() {
