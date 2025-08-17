@@ -61,7 +61,7 @@ class FloatingUIController: UIViewController {
         let stackView = UIStackView()
         stackView.axis = .vertical
         stackView.spacing = 16
-        stackView.distribution = .fillEqually
+        stackView.distribution = .fillProportionally
         stackView.translatesAutoresizingMaskIntoConstraints = false
         return stackView
     }()
@@ -107,7 +107,8 @@ class FloatingUIController: UIViewController {
 
             thumbnailStackView.leadingAnchor.constraint(equalTo: bottomPanel.leadingAnchor, constant: 20),
             thumbnailStackView.trailingAnchor.constraint(equalTo: bottomPanel.trailingAnchor, constant: -20),
-            thumbnailStackView.centerYAnchor.constraint(equalTo: bottomPanel.centerYAnchor)
+            thumbnailStackView.topAnchor.constraint(equalTo: childCategoryStackView.bottomAnchor, constant: 10),
+            thumbnailStackView.bottomAnchor.constraint(lessThanOrEqualTo: bottomPanel.bottomAnchor, constant: -10)
         ])
     }
 
@@ -298,15 +299,35 @@ class FloatingUIController: UIViewController {
     }
 
     private func createThumbnailRows() {
-        let rowStackView = UIStackView()
-        rowStackView.axis = .horizontal
-        rowStackView.spacing = 16
-        rowStackView.distribution = .fillEqually
+        let itemsPerRow = 4
+        var rowStackView: UIStackView?
         for i in 0..<currentAssets.count {
+            if i % itemsPerRow == 0 {
+                rowStackView = UIStackView()
+                rowStackView?.axis = .horizontal
+                rowStackView?.spacing = 12
+                rowStackView?.distribution = .fillEqually
+                rowStackView?.translatesAutoresizingMaskIntoConstraints = false
+                if let row = rowStackView { thumbnailStackView.addArrangedSubview(row) }
+            }
             let thumbnailButton = createThumbnailButton(for: i)
-            rowStackView.addArrangedSubview(thumbnailButton)
+            rowStackView?.addArrangedSubview(thumbnailButton)
         }
-        thumbnailStackView.addArrangedSubview(rowStackView)
+        // Pad last row with invisible placeholders to keep 4 fixed columns
+        if let lastRow = rowStackView {
+            let remainder = currentAssets.count % itemsPerRow
+            if remainder != 0 {
+                for _ in 0..<(itemsPerRow - remainder) {
+                    let placeholder = UIView()
+                    placeholder.translatesAutoresizingMaskIntoConstraints = false
+                    placeholder.backgroundColor = .clear
+                    placeholder.isUserInteractionEnabled = false
+                    // Keep square aspect like the buttons
+                    placeholder.heightAnchor.constraint(equalTo: placeholder.widthAnchor).isActive = true
+                    lastRow.addArrangedSubview(placeholder)
+                }
+            }
+        }
     }
 
     private func createThumbnailButton(for index: Int) -> UIButton {
@@ -338,15 +359,16 @@ class FloatingUIController: UIViewController {
                 button.tintColor = .black
             }
         }
-        button.imageView?.contentMode = .scaleAspectFit
-        button.backgroundColor = UIColor.black.withAlphaComponent(0.1)
+        button.imageView?.contentMode = .scaleAspectFill
+        button.clipsToBounds = true
+        button.backgroundColor = UIColor.black.withAlphaComponent(0.05)
         button.layer.cornerRadius = 12
         button.layer.borderWidth = 2
         button.layer.borderColor = index == currentTopIndex ? UIColor.systemBlue.cgColor : UIColor.clear.cgColor
         button.translatesAutoresizingMaskIntoConstraints = false
         button.addTarget(self, action: #selector(thumbnailTapped(_:)), for: .touchUpInside)
-        button.widthAnchor.constraint(equalToConstant: 80).isActive = true
-        button.heightAnchor.constraint(equalToConstant: 80).isActive = true
+        // Make the button square; width will be determined by row distribution
+        button.heightAnchor.constraint(equalTo: button.widthAnchor).isActive = true
         return button
     }
 
