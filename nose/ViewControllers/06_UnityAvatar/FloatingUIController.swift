@@ -614,10 +614,9 @@ class FloatingUIController: UIViewController {
     private func rebuildAssetDataFromCatalog(internalIds: [String]) {
         var newAssetData: [String: [String: [AssetItem]]] = [:]
         let thumbsPrefix = "Assets/Thumbs/"
-        let modelsPrefix = "Assets/Resources_moved/Models/"
-
-        // Build a set for quick model existence checks
-        let modelIdSet = Set(internalIds.filter { $0.hasPrefix(modelsPrefix) })
+        let modelPrefix = "Assets/Models/"
+        // Build a set for quick existence checks
+        let allIdsSet = Set(internalIds)
 
         for id in internalIds where id.hasPrefix(thumbsPrefix) {
             // e.g., Assets/Thumbs/Clothes/Tops/01_tops_tight_short.jpg
@@ -630,9 +629,10 @@ class FloatingUIController: UIViewController {
             let nameWithExt = (filename as NSString).lastPathComponent
             let name = (nameWithExt as NSString).deletingPathExtension
 
-            // Derive model internal id candidate
-            let modelCandidate = modelsPrefix + "\(category)/\(subcategory)/\(name).prefab"
-            let modelPath = modelIdSet.contains(modelCandidate) ? modelCandidate : ""
+            // Derive model internal id strictly under Assets/Models
+            let suffix = "\(category)/\(subcategory)/\(name).prefab"
+            let candidate = modelPrefix + suffix
+            let modelPath: String = allIdsSet.contains(candidate) ? candidate : candidate
 
             // Compose remote thumbnail URL on Hosting under /Thumbs/
             guard let base = hostingBaseURL() else { continue }
