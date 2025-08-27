@@ -22,6 +22,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3f47ac4b8170e4366bfc92c46e13e611
+    m_Address: Assets/Thumbs/Base/Body/stand_female.jpg
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 4a54c6d7c681b48cba078daa7aad8bf7
     m_Address: Assets/Models/Clothes/Tops/01_tops_tight_short.prefab
     m_ReadOnly: 0
@@ -29,6 +34,11 @@ MonoBehaviour:
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 5dbc503c055b34302a55e79753a02a12
     m_Address: Assets/Models/Clothes/Tops/02_tops_tight_half.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6824b4e17e9f4469b998df2b4fbb4d98
+    m_Address: Assets/Thumbs/Base/Body/run.jpg
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
@@ -57,6 +67,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a7832b3db5d3546b58059f56eaca0cc1
+    m_Address: Assets/Thumbs/Base/Body/stand_male.jpg
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: b49118975369a44e48571f258046496d
     m_Address: Assets/Models/Clothes/Socks/socks_loose.prefab
     m_ReadOnly: 0
@@ -64,6 +79,11 @@ MonoBehaviour:
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: dfcd83cd910f640c3a4861c8fb7b4672
     m_Address: Thumbs/Clothes/Tops/01_tops_tight_short.jpg
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e8d8b46df79234ec18bbadeac560df37
+    m_Address: Assets/Thumbs/Base/Body/crouch.jpg
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0

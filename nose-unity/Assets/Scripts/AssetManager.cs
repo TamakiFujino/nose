@@ -6,6 +6,8 @@ using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.ResourceManagement.ResourceLocations;
 using System.Linq;
+using UnityEngine.Playables;
+using UnityEngine.Animations;
 
 [System.Serializable]
 public class AssetItem
@@ -55,6 +57,14 @@ public class AssetManager : MonoBehaviour
     public static event Action<AssetItem> OnAssetChanged;
     public static event Action<string, string> OnCategoryChanged;
     public static event Action OnAssetsCatalogLoaded; // New event for when catalog is loaded
+
+    [Header("Body Poses")]
+    [Tooltip("List of available body poses (name must match the 'name' sent from iOS for Base/Body)")]
+    public List<PoseDefinition> poses = new List<PoseDefinition>();
+
+    private PlayableGraph poseGraph;
+    private AnimationPlayableOutput poseOutput;
+    private AnimationClipPlayable posePlayable;
 
     private void Start()
     {
@@ -425,6 +435,16 @@ public class AssetManager : MonoBehaviour
         currentSubcategory = asset.subcategory;
         currentAssetId = asset.id;
 
+        // For Base/Body, apply pose instead of loading an addressable prefab
+        if (string.Equals(asset.category, "Base", StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(asset.subcategory, "Body", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyBodyPose(asset.name);
+            OnAssetChanged?.Invoke(asset);
+            OnCategoryChanged?.Invoke(asset.category, asset.subcategory);
+            return;
+        }
+
         // Load and instantiate the asset via Addressables
         StartCoroutine(LoadAddressableCoroutine(asset));
 
@@ -505,6 +525,52 @@ public class AssetManager : MonoBehaviour
         {
             loadedAssets[assetId].SetActive(active);
         }
+    }
+
+    [Serializable]
+    public class PoseDefinition
+    {
+        public string name;
+        public AnimationClip clip;
+    }
+
+    private void ApplyBodyPose(string poseName)
+    {
+        if (string.IsNullOrEmpty(poseName)) return;
+        var animator = GetBodyAnimator();
+        if (animator == null)
+        {
+            Debug.LogWarning("ApplyBodyPose: No Animator found on avatarRoot");
+            return;
+        }
+
+        var def = poses.FirstOrDefault(p => string.Equals(p.name, poseName, StringComparison.OrdinalIgnoreCase));
+        if (def == null || def.clip == null)
+        {
+            Debug.LogWarning($"ApplyBodyPose: Pose not found or clip missing for '{poseName}'");
+            return;
+        }
+
+        // Tear down previous graph
+        if (poseGraph.IsValid())
+        {
+            poseGraph.Destroy();
+        }
+
+        poseGraph = PlayableGraph.Create("BodyPoseGraph");
+        poseGraph.SetTimeUpdateMode(DirectorUpdateMode.GameTime);
+
+        posePlayable = AnimationClipPlayable.Create(poseGraph, def.clip);
+        posePlayable.SetApplyFootIK(true);
+        posePlayable.SetTime(0.0);
+        posePlayable.SetSpeed(0.0); // hold pose at first frame; adjust if you want a specific time
+
+        poseOutput = AnimationPlayableOutput.Create(poseGraph, "BodyPoseOutput", animator);
+        poseOutput.SetSourcePlayable(posePlayable);
+
+        poseGraph.Play();
+
+        Debug.Log($"ApplyBodyPose: Applied pose '{poseName}'");
     }
 
     public AssetItem GetAssetById(string assetId)
