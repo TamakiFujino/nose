@@ -4,7 +4,6 @@ import FirebaseCore
 class FloatingUIController: UIViewController {
     weak var delegate: ContentViewController?
     private var currentTopIndex = 0
-    private var topOptionsCount = 4
 
     // Category data
     private let parentCategories = ["Base", "Hair", "Clothes", "Accessories"]
@@ -21,6 +20,7 @@ class FloatingUIController: UIViewController {
     // Asset management
     private var assetData: [String: [String: [AssetItem]]] = [:]
     private var currentAssets: [AssetItem] = []
+    private var imageCache: NSCache<NSString, UIImage> = NSCache()
 
     // Color picker
     private let colorSwatches: [String] = [
@@ -77,6 +77,19 @@ class FloatingUIController: UIViewController {
         view.layoutIfNeeded()
         colorButton.layer.cornerRadius = colorButton.bounds.height / 2
         colorButton.clipsToBounds = true
+        // Ensure tabs have fully rounded (pill) corners
+        parentCategoryStackView.arrangedSubviews.forEach { subview in
+            if let button = subview as? UIButton {
+                button.layer.cornerRadius = button.bounds.height / 2
+                button.clipsToBounds = true
+            }
+        }
+        childCategoryStackView.arrangedSubviews.forEach { subview in
+            if let button = subview as? UIButton {
+                button.layer.cornerRadius = button.bounds.height / 2
+                button.clipsToBounds = true
+            }
+        }
     }
 
     private func setupUI() {
@@ -111,6 +124,10 @@ class FloatingUIController: UIViewController {
             thumbnailStackView.bottomAnchor.constraint(lessThanOrEqualTo: bottomPanel.bottomAnchor, constant: -10)
         ])
     }
+
+    // MARK: - Convenience
+    private func isSelectedParent(_ index: Int) -> Bool { index == selectedParentIndex }
+    private func isSelectedChild(_ index: Int) -> Bool { index == selectedChildIndex }
 
     private func setupColorButton() {
         colorButton.translatesAutoresizingMaskIntoConstraints = false
@@ -364,7 +381,7 @@ class FloatingUIController: UIViewController {
         button.backgroundColor = UIColor.black.withAlphaComponent(0.05)
         button.layer.cornerRadius = 12
         button.layer.borderWidth = 2
-        button.layer.borderColor = index == currentTopIndex ? UIColor.systemBlue.cgColor : UIColor.clear.cgColor
+        button.layer.borderColor = index == currentTopIndex ? UIColor.thirdColor.cgColor : UIColor.clear.cgColor
         button.translatesAutoresizingMaskIntoConstraints = false
         button.addTarget(self, action: #selector(thumbnailTapped(_:)), for: .touchUpInside)
         // Make the button square; width will be determined by row distribution
@@ -385,7 +402,7 @@ class FloatingUIController: UIViewController {
             if let rowStackView = subview as? UIStackView {
                 for arrangedSubview in rowStackView.arrangedSubviews {
                     if let button = arrangedSubview as? UIButton {
-                        button.layer.borderColor = button.tag == currentTopIndex ? UIColor.systemBlue.cgColor : UIColor.clear.cgColor
+                        button.layer.borderColor = button.tag == currentTopIndex ? UIColor.fourthColor.cgColor : UIColor.clear.cgColor
                     }
                 }
             }
@@ -418,13 +435,18 @@ class FloatingUIController: UIViewController {
         let button = UIButton(type: .system)
         button.tag = tag
         button.setTitle(title, for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 14, weight: .medium)
+        button.titleLabel?.font = isParent ? .systemFont(ofSize: 14, weight: .medium) : .systemFont(ofSize: 12, weight: .medium)
         button.setTitleColor(.black, for: .normal)
-        button.backgroundColor = UIColor.black.withAlphaComponent(0.1)
-        button.layer.cornerRadius = 8
-        button.layer.borderWidth = 2
+        button.backgroundColor = .clear
+        button.layer.cornerRadius = isParent ? 16 : 12
+        button.layer.borderWidth = 0
         button.layer.borderColor = UIColor.clear.cgColor
         button.translatesAutoresizingMaskIntoConstraints = false
+        if !isParent {
+            button.heightAnchor.constraint(equalToConstant: 26).isActive = true
+        } else {
+            button.heightAnchor.constraint(equalToConstant: 30).isActive = true
+        }
         if isParent {
             button.addTarget(self, action: #selector(parentCategoryTapped(_:)), for: .touchUpInside)
         } else {
@@ -433,19 +455,26 @@ class FloatingUIController: UIViewController {
         return button
     }
 
+    private var refetchWorkItem: DispatchWorkItem?
     @objc private func parentCategoryTapped(_ sender: UIButton) {
         selectedParentIndex = sender.tag
         updateChildCategories()
-        // Refetch assets for the newly selected parent/child combination
-        refetchAssetsForSelectedCategory()
+        // Debounce refetch to avoid double work when child resets to 0
+        refetchWorkItem?.cancel()
+        let work = DispatchWorkItem { [weak self] in self?.refetchAssetsForSelectedCategory() }
+        refetchWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1, execute: work)
     }
 
     @objc private func childCategoryTapped(_ sender: UIButton) {
         selectedChildIndex = sender.tag
         updateCategoryButtonStates()
         updateThumbnailsForCategory()
-        // Also refetch assets/thumbs for this category on demand
-        refetchAssetsForSelectedCategory()
+        // Debounce refetch
+        refetchWorkItem?.cancel()
+        let work = DispatchWorkItem { [weak self] in self?.refetchAssetsForSelectedCategory() }
+        refetchWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1, execute: work)
     }
 
     private func updateChildCategories() {
@@ -463,14 +492,18 @@ class FloatingUIController: UIViewController {
     private func updateCategoryButtonStates() {
         for (index, subview) in parentCategoryStackView.arrangedSubviews.enumerated() {
             if let button = subview as? UIButton {
-                button.layer.borderColor = index == selectedParentIndex ? UIColor.systemBlue.cgColor : UIColor.clear.cgColor
-                button.backgroundColor = index == selectedParentIndex ? UIColor.systemBlue.withAlphaComponent(0.2) : UIColor.black.withAlphaComponent(0.1)
+                button.layer.borderWidth = 0
+                button.layer.borderColor = UIColor.clear.cgColor
+                button.backgroundColor = index == selectedParentIndex ? .thirdColor : .clear
+                button.layer.cornerRadius = 16
             }
         }
         for (index, subview) in childCategoryStackView.arrangedSubviews.enumerated() {
             if let button = subview as? UIButton {
-                button.layer.borderColor = index == selectedChildIndex ? UIColor.systemBlue.cgColor : UIColor.clear.cgColor
-                button.backgroundColor = index == selectedChildIndex ? UIColor.systemBlue.withAlphaComponent(0.2) : UIColor.black.withAlphaComponent(0.1)
+                button.layer.borderWidth = 0
+                button.layer.borderColor = UIColor.clear.cgColor
+                button.backgroundColor = index == selectedChildIndex ? .thirdColor : .clear
+                button.layer.cornerRadius = 12
             }
         }
     }
@@ -732,20 +765,30 @@ class FloatingUIController: UIViewController {
             button.setImage(placeholder, for: .normal)
             button.tintColor = .lightGray
         }
+        // Cache check by first candidate URL key
+        if let key = urls.first?.absoluteString as NSString?, let cached = imageCache.object(forKey: key) {
+            button.setImage(cached, for: .normal)
+            button.tintColor = .clear
+            return
+        }
         attemptFetch(urls: urls, at: 0, button: button, index: index)
     }
 
     private func attemptFetch(urls: [URL], at position: Int, button: UIButton, index: Int) {
         guard position < urls.count else { return }
         let url = urls[position]
-        URLSession.shared.dataTask(with: url) { data, response, error in
+        URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
             let httpCode = (response as? HTTPURLResponse)?.statusCode ?? -1
             if error != nil || !(200...299).contains(httpCode) || data == nil {
-                self.attemptFetch(urls: urls, at: position + 1, button: button, index: index)
+                self?.attemptFetch(urls: urls, at: position + 1, button: button, index: index)
                 return
             }
             if let data = data, let image = UIImage(data: data) {
+                guard let self = self else { return }
                 let normalized = self.normalizeImageForDisplay(image)
+                if let key = urls.first?.absoluteString as NSString? {
+                    self.imageCache.setObject(normalized, forKey: key)
+                }
                 DispatchQueue.main.async {
                     if button.tag == index {
                         button.setImage(normalized, for: .normal)
@@ -772,7 +815,6 @@ class FloatingUIController: UIViewController {
         let parentCategory = parentCategories[selectedParentIndex]
         let childCategory = childCategories[selectedParentIndex][selectedChildIndex]
         currentAssets = assetData[parentCategory]?[childCategory] ?? []
-        topOptionsCount = currentAssets.count
         updateThumbnailDisplay()
     }
 
