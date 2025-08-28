@@ -2,7 +2,7 @@ import UIKit
 import FirebaseCore
 
 class FloatingUIController: UIViewController {
-    weak var delegate: ContentViewController?
+    weak var delegate: ContentViewControllerDelegate?
     private var currentTopIndex = 0
 
     // Category data
@@ -39,6 +39,24 @@ class FloatingUIController: UIViewController {
         return view
     }()
 
+    private lazy var backButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        if let chevron = UIImage(systemName: "chevron.backward") {
+            button.setImage(chevron, for: .normal)
+            button.tintColor = .black
+            button.setTitle("  Back", for: .normal)
+        } else {
+            button.setTitle("Back", for: .normal)
+        }
+        button.contentEdgeInsets = UIEdgeInsets(top: 6, left: 10, bottom: 6, right: 12)
+        button.backgroundColor = UIColor.white.withAlphaComponent(0.9)
+        button.layer.cornerRadius = 16
+        button.layer.masksToBounds = true
+        button.addTarget(self, action: #selector(didTapBack), for: .touchUpInside)
+        return button
+    }()
+
     private lazy var parentCategoryStackView: UIStackView = {
         let stackView = UIStackView()
         stackView.axis = .horizontal
@@ -68,6 +86,7 @@ class FloatingUIController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        LoadingView.shared.showOverlayLoading(on: view, message: "Loading avatar...")
         setupUI()
         loadAssetData()
     }
@@ -94,6 +113,7 @@ class FloatingUIController: UIViewController {
 
     private func setupUI() {
         view.backgroundColor = .clear
+        view.addSubview(backButton)
         view.addSubview(bottomPanel)
         bottomPanel.addSubview(parentCategoryStackView)
         bottomPanel.addSubview(childCategoryStackView)
@@ -103,6 +123,9 @@ class FloatingUIController: UIViewController {
         createCategoryButtons()
 
         NSLayoutConstraint.activate([
+            backButton.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 12),
+            backButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 12),
+
             bottomPanel.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             bottomPanel.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             bottomPanel.bottomAnchor.constraint(equalTo: view.bottomAnchor),
@@ -123,6 +146,11 @@ class FloatingUIController: UIViewController {
             thumbnailStackView.topAnchor.constraint(equalTo: childCategoryStackView.bottomAnchor, constant: 10),
             thumbnailStackView.bottomAnchor.constraint(lessThanOrEqualTo: bottomPanel.bottomAnchor, constant: -10)
         ])
+    }
+
+    @objc private func didTapBack() {
+        print("[FloatingUIController] Back button tapped. Delegate is \(delegate == nil ? "nil" : "set").")
+        delegate?.didRequestClose()
     }
 
     // MARK: - Convenience
@@ -358,7 +386,7 @@ class FloatingUIController: UIViewController {
                 let candidates = thumbnailURLCandidates(from: remoteURL)
                 setRemoteImage(on: button, urls: candidates, index: index)
             } else if FileManager.default.fileExists(atPath: thumbnailPath),
-                      let thumbnailImage = UIImage(contentsOfFile: thumbnailPath) {
+           let thumbnailImage = UIImage(contentsOfFile: thumbnailPath) {
                 let normalized = normalizeImageForDisplay(thumbnailImage)
                 button.setImage(normalized, for: .normal)
                 button.tintColor = .clear
@@ -832,5 +860,6 @@ class FloatingUIController: UIViewController {
         }
         currentTopIndex = 0
         updateThumbnailBorders()
+        LoadingView.shared.hideOverlayLoading()
     }
 }

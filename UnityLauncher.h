@@ -14,6 +14,7 @@ NS_ASSUME_NONNULL_BEGIN
 + (instancetype)shared;
 - (void)launchUnityIfNeeded;
 - (void)showUnity;
+ - (void)hideUnity;
 - (UIViewController *)unityRootViewController;
 - (void)sendMessageToUnity:(NSString *)gameObject method:(NSString *)method message:(NSString *)message;
 @end

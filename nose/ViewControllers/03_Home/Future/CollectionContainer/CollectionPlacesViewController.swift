@@ -34,13 +34,7 @@ class CollectionPlacesViewController: UIViewController {
 //        return view
 //    }()
 
-    private lazy var loadingIndicator: UIActivityIndicatorView = {
-        let indicator = UIActivityIndicatorView(style: .large)
-        indicator.translatesAutoresizingMaskIntoConstraints = false
-        indicator.hidesWhenStopped = true
-        indicator.color = .fourthColor
-        return indicator
-    }()
+    // Removed old avatar preview loading indicator
 
     private lazy var menuButton: UIButton = {
         let button = UIButton(type: .system)
@@ -117,6 +111,19 @@ class CollectionPlacesViewController: UIViewController {
         return label
     }()
 
+    private lazy var customizeButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.setTitle("Customize your avatar", for: .normal)
+        button.setTitleColor(.black, for: .normal)
+        button.backgroundColor = .thirdColor
+        button.titleLabel?.font = .systemFont(ofSize: 16, weight: .semibold)
+        button.layer.cornerRadius = 12
+        button.layer.masksToBounds = true
+        button.addTarget(self, action: #selector(customizeButtonTapped), for: .touchUpInside)
+        return button
+    }()
+
     // MARK: - Initialization
 
     init(collection: PlaceCollection) {
@@ -147,7 +154,7 @@ class CollectionPlacesViewController: UIViewController {
         headerView.addSubview(menuButton)
         headerView.addSubview(sharedFriendsLabel)
         headerView.addSubview(placesCountLabel)
-        // headerView.addSubview(avatarContainer)
+        headerView.addSubview(customizeButton)
         view.addSubview(tableView)
 
         // Hide menu button if user is not the owner
@@ -157,7 +164,7 @@ class CollectionPlacesViewController: UIViewController {
             headerView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             headerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             headerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            headerView.heightAnchor.constraint(equalToConstant: 300), // Increased height for larger avatar
+            headerView.heightAnchor.constraint(equalToConstant: 180),
 
             titleLabel.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 16),
             titleLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
@@ -174,10 +181,10 @@ class CollectionPlacesViewController: UIViewController {
             placesCountLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
             placesCountLabel.leadingAnchor.constraint(equalTo: sharedFriendsLabel.trailingAnchor, constant: 16),
 
-//            avatarContainer.topAnchor.constraint(equalTo: sharedFriendsLabel.bottomAnchor, constant: 16),
-//            avatarContainer.leadingAnchor.constraint(equalTo: headerView.leadingAnchor),
-//            avatarContainer.trailingAnchor.constraint(equalTo: headerView.trailingAnchor),
-//            avatarContainer.heightAnchor.constraint(equalToConstant: 180), // Increased height for larger avatar
+            customizeButton.topAnchor.constraint(equalTo: sharedFriendsLabel.bottomAnchor, constant: 16),
+            customizeButton.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+            customizeButton.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
+            customizeButton.heightAnchor.constraint(equalToConstant: 44),
 
             tableView.topAnchor.constraint(equalTo: headerView.bottomAnchor),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -302,6 +309,15 @@ class CollectionPlacesViewController: UIViewController {
         }
         
         present(alertController, animated: true)
+    }
+
+    @objc private func customizeButtonTapped() {
+        let vc = ContentViewController()
+        if let nav = navigationController {
+            nav.pushViewController(vc, animated: true)
+        } else {
+            present(vc, animated: true)
+        }
     }
     
     private func shareCollection() {
