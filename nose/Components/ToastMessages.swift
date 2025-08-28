@@ -50,6 +50,7 @@ struct ToastMessages {
     
     // avatar - success
     static let avatarUpdated = "Avatar updated successfully!"
+    static let avatarSaved = "saved avatar successfully"
     
     // avatar - error
     static let avatarUpdateFailed = "Avatar update failed. Please try again."

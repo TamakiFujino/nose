@@ -312,7 +312,7 @@ class CollectionPlacesViewController: UIViewController {
     }
 
     @objc private func customizeButtonTapped() {
-        let vc = ContentViewController()
+        let vc = ContentViewController(collection: collection)
         if let nav = navigationController {
             nav.pushViewController(vc, animated: true)
         } else {

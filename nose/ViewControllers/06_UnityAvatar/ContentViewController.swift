@@ -1,7 +1,19 @@
 import UIKit
+import FirebaseAuth
+import FirebaseFirestore
 
 class ContentViewController: UIViewController, ContentViewControllerDelegate {
     private var floatingWindow: UIWindow?
+    private let collection: PlaceCollection
+
+    init(collection: PlaceCollection) {
+        self.collection = collection
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -39,6 +51,13 @@ class ContentViewController: UIViewController, ContentViewControllerDelegate {
 
         let floatingVC = FloatingUIController()
         floatingVC.delegate = self
+        // Load existing avatar data for this collection and apply when available
+        fetchExistingSelections { [weak floatingVC] selections in
+            guard let floatingVC = floatingVC, let selections = selections else { return }
+            DispatchQueue.main.async {
+                floatingVC.initialSelections = selections
+            }
+        }
         floatingWindow.rootViewController = floatingVC
         floatingWindow.frame = UIScreen.main.bounds
         floatingWindow.windowLevel = .alert + 1
@@ -48,10 +67,34 @@ class ContentViewController: UIViewController, ContentViewControllerDelegate {
         LoadingView.shared.showOverlayLoading(on: floatingVC.view, message: "Loading avatar...")
         print("[ContentViewController] Floating UI created and visible")
     }
+
+    private func fetchExistingSelections(completion: @escaping ([String: [String: String]]?) -> Void) {
+        guard let userId = Auth.auth().currentUser?.uid else { completion(nil); return }
+        let db = Firestore.firestore()
+        db.collection("users")
+            .document(userId)
+            .collection("collections")
+            .document(collection.id)
+            .getDocument { snapshot, error in
+                if let error = error {
+                    print("[ContentViewController] Failed to fetch existing avatar: \(error.localizedDescription)")
+                    completion(nil)
+                    return
+                }
+                guard let data = snapshot?.data(),
+                      let avatarData = data["avatarData"] as? [String: Any],
+                      let selections = avatarData["selections"] as? [String: [String: String]] else {
+                    completion(nil)
+                    return
+                }
+                completion(selections)
+            }
+    }
 }
 
 protocol ContentViewControllerDelegate: AnyObject {
     func didRequestClose()
+    func didRequestSave(selections: [String: [String: String]])
 }
 
 extension ContentViewController {
@@ -82,6 +125,31 @@ extension ContentViewController {
         } else {
             print("[ContentViewController] Dismissing view controller")
             dismiss(animated: true)
+        }
+    }
+
+    func didRequestSave(selections: [String : [String : String]]) {
+        print("[ContentViewController] didRequestSave() called with \(selections.count) entries")
+        LoadingView.shared.showAlertLoading(title: "Saving", on: self)
+        let avatarData = CollectionAvatar.AvatarData(
+            selections: selections,
+            customizations: [:],
+            lastCustomizedAt: Date(),
+            customizationVersion: 1
+        )
+        CollectionManager.shared.updateAvatarData(avatarData, for: collection) { [weak self] result in
+            guard let self = self else { return }
+            LoadingView.shared.hideAlertLoading()
+            switch result {
+            case .success:
+                let alert = UIAlertController(title: "Saved", message: "Avatar customization saved.", preferredStyle: .alert)
+                alert.addAction(UIAlertAction(title: "OK", style: .default))
+                self.present(alert, animated: true)
+            case .failure(let error):
+                let alert = UIAlertController(title: "Error", message: error.localizedDescription, preferredStyle: .alert)
+                alert.addAction(UIAlertAction(title: "OK", style: .default))
+                self.present(alert, animated: true)
+            }
         }
     }
 }

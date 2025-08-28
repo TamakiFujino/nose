@@ -21,6 +21,9 @@ class FloatingUIController: UIViewController {
     private var assetData: [String: [String: [AssetItem]]] = [:]
     private var currentAssets: [AssetItem] = []
     private var imageCache: NSCache<NSString, UIImage> = NSCache()
+    var initialSelections: [String: [String: String]] = [:]
+    private var selections: [String: [String: String]] = [:]
+    
 
     // Color picker
     private let colorSwatches: [String] = [
@@ -57,6 +60,19 @@ class FloatingUIController: UIViewController {
         return button
     }()
 
+    private lazy var saveButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.setTitle("Save", for: .normal)
+        button.setTitleColor(.black, for: .normal)
+        button.contentEdgeInsets = UIEdgeInsets(top: 8, left: 14, bottom: 8, right: 14)
+        button.backgroundColor = UIColor.white.withAlphaComponent(0.9)
+        button.layer.cornerRadius = 16
+        button.layer.masksToBounds = true
+        button.addTarget(self, action: #selector(didTapSave), for: .touchUpInside)
+        return button
+    }()
+
     private lazy var parentCategoryStackView: UIStackView = {
         let stackView = UIStackView()
         stackView.axis = .horizontal
@@ -87,6 +103,8 @@ class FloatingUIController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         LoadingView.shared.showOverlayLoading(on: view, message: "Loading avatar...")
+        // Initialize with initial selections (from Firestore if provided)
+        selections = initialSelections
         setupUI()
         loadAssetData()
     }
@@ -109,11 +127,17 @@ class FloatingUIController: UIViewController {
                 button.clipsToBounds = true
             }
         }
+        // Make top buttons perfectly pill-shaped
+        backButton.layer.cornerRadius = backButton.bounds.height / 2
+        backButton.clipsToBounds = true
+        saveButton.layer.cornerRadius = saveButton.bounds.height / 2
+        saveButton.clipsToBounds = true
     }
 
     private func setupUI() {
         view.backgroundColor = .clear
         view.addSubview(backButton)
+        view.addSubview(saveButton)
         view.addSubview(bottomPanel)
         bottomPanel.addSubview(parentCategoryStackView)
         bottomPanel.addSubview(childCategoryStackView)
@@ -125,6 +149,9 @@ class FloatingUIController: UIViewController {
         NSLayoutConstraint.activate([
             backButton.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 12),
             backButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 12),
+
+            saveButton.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -12),
+            saveButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 12),
 
             bottomPanel.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             bottomPanel.trailingAnchor.constraint(equalTo: view.trailingAnchor),
@@ -151,6 +178,13 @@ class FloatingUIController: UIViewController {
     @objc private func didTapBack() {
         print("[FloatingUIController] Back button tapped. Delegate is \(delegate == nil ? "nil" : "set").")
         delegate?.didRequestClose()
+    }
+
+    @objc private func didTapSave() {
+        print("[FloatingUIController] Save button tapped")
+        ToastManager.showToast(message: ToastMessages.avatarSaved, type: .success)
+        // Send accumulated selections
+        delegate?.didRequestSave(selections: selections)
     }
 
     // MARK: - Convenience
@@ -326,6 +360,12 @@ class FloatingUIController: UIViewController {
         guard index >= 0 && index < colorSwatches.count else { return }
         let hex = colorSwatches[index]
         sendSelectedColorToUnity(hex: hex)
+        let parent = parentCategories[selectedParentIndex]
+        let child = childCategories[selectedParentIndex][selectedChildIndex]
+        let key = "\(parent)_\(child)"
+        var entry = selections[key] ?? [:]
+        entry["color"] = hex
+        selections[key] = entry
         hideColorPicker()
     }
 
@@ -423,6 +463,16 @@ class FloatingUIController: UIViewController {
         currentTopIndex = newIndex
         updateThumbnailBorders()
         changeAssetInUnity(asset: asset)
+        let parent = parentCategories[selectedParentIndex]
+        let child = childCategories[selectedParentIndex][selectedChildIndex]
+        let key = "\(parent)_\(child)"
+        var entry = selections[key] ?? [:]
+        if parent.lowercased() == "base" && child.lowercased() == "body" {
+            entry["pose"] = asset.name
+        } else {
+            entry["model"] = asset.name
+        }
+        selections[key] = entry
     }
 
     private func updateThumbnailBorders() {
@@ -844,22 +894,70 @@ class FloatingUIController: UIViewController {
         let childCategory = childCategories[selectedParentIndex][selectedChildIndex]
         currentAssets = assetData[parentCategory]?[childCategory] ?? []
         updateThumbnailDisplay()
+        applySelectionForCurrentCategory()
     }
 
     private func updateThumbnailDisplay() {
+        // Clear previous rows
         thumbnailStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
-        if !currentAssets.isEmpty { createThumbnailRows() }
-        else {
+        // Remove any existing no-assets overlay
+        if let existingOverlay = bottomPanel.viewWithTag(9999) { existingOverlay.removeFromSuperview() }
+
+        if !currentAssets.isEmpty {
+            createThumbnailRows()
+        } else {
+            // Overlay a centered message over the thumbnail area
+            let container = UIView()
+            container.tag = 9999
+            container.translatesAutoresizingMaskIntoConstraints = false
+            bottomPanel.addSubview(container)
+
+            NSLayoutConstraint.activate([
+                container.leadingAnchor.constraint(equalTo: bottomPanel.leadingAnchor, constant: 20),
+                container.trailingAnchor.constraint(equalTo: bottomPanel.trailingAnchor, constant: -20),
+                container.topAnchor.constraint(equalTo: childCategoryStackView.bottomAnchor, constant: 10),
+                container.bottomAnchor.constraint(equalTo: bottomPanel.bottomAnchor, constant: -10)
+            ])
+
             let noAssetsLabel = UILabel()
             noAssetsLabel.text = "No assets available"
             noAssetsLabel.textAlignment = .center
-            noAssetsLabel.textColor = .black
+            noAssetsLabel.textColor = .fourthColor
             noAssetsLabel.font = .systemFont(ofSize: 16, weight: .medium)
             noAssetsLabel.translatesAutoresizingMaskIntoConstraints = false
-            thumbnailStackView.addArrangedSubview(noAssetsLabel)
+
+            container.addSubview(noAssetsLabel)
+            NSLayoutConstraint.activate([
+                noAssetsLabel.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+                noAssetsLabel.centerYAnchor.constraint(equalTo: container.centerYAnchor)
+            ])
+            bottomPanel.bringSubviewToFront(container)
         }
         currentTopIndex = 0
         updateThumbnailBorders()
         LoadingView.shared.hideOverlayLoading()
+    }
+
+    private func applySelectionForCurrentCategory() {
+        let parent = parentCategories[selectedParentIndex]
+        let child = childCategories[selectedParentIndex][selectedChildIndex]
+        let key = "\(parent)_\(child)"
+        guard let entry = selections[key] else { return }
+        // Preselect model/pose if available
+        let desiredName: String?
+        if parent.lowercased() == "base" && child.lowercased() == "body" {
+            desiredName = entry["pose"] ?? entry["model"]
+        } else {
+            desiredName = entry["model"]
+        }
+        if let name = desiredName, let idx = currentAssets.firstIndex(where: { $0.name == name }) {
+            currentTopIndex = idx
+            updateThumbnailBorders()
+            changeAssetInUnity(asset: currentAssets[idx])
+        }
+        // Apply color if available
+        if let hex = entry["color"], !hex.isEmpty {
+            sendSelectedColorToUnity(hex: hex)
+        }
     }
 }
