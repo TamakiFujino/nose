@@ -33,6 +33,7 @@ class FloatingUIController: UIViewController {
     private var colorButton: UIButton = UIButton(type: .system)
     private var colorOverlayView: UIView?
     private var colorSheetView: UIView?
+    private var colorButtons: [UIButton] = []
 
     private lazy var bottomPanel: UIView = {
         let view = UIView()
@@ -199,7 +200,7 @@ class FloatingUIController: UIViewController {
         } else {
             colorButton.setTitle("Color", for: .normal)
         }
-        colorButton.backgroundColor = UIColor.systemBlue
+        colorButton.backgroundColor = UIColor.black.withAlphaComponent(0.5)
         colorButton.layer.cornerRadius = 28
         colorButton.layer.shadowColor = UIColor.black.cgColor
         colorButton.layer.shadowOpacity = 0.25
@@ -229,6 +230,7 @@ class FloatingUIController: UIViewController {
 
     private func showColorPicker() {
         if colorOverlayView != nil { return }
+        colorButtons.removeAll()
         let overlay = UIView(frame: view.bounds)
         overlay.backgroundColor = UIColor.black.withAlphaComponent(0.2)
         overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -307,21 +309,36 @@ class FloatingUIController: UIViewController {
                 currentRow?.axis = .horizontal
                 currentRow?.spacing = 12
                 currentRow?.distribution = .fillEqually
+                currentRow?.alignment = .center
                 currentRow?.translatesAutoresizingMaskIntoConstraints = false
                 if let row = currentRow { grid.addArrangedSubview(row) }
             }
+            // Wrap button in a container that fills equally, while the button stays fixed-size and circular
+            let container = UIView()
+            container.translatesAutoresizingMaskIntoConstraints = false
+            currentRow?.addArrangedSubview(container)
+            container.heightAnchor.constraint(greaterThanOrEqualToConstant: buttonSize).isActive = true
+
             let btn = UIButton(type: .system)
             btn.translatesAutoresizingMaskIntoConstraints = false
             btn.backgroundColor = UIColor(hex: hex) ?? .lightGray
             btn.layer.cornerRadius = buttonSize / 2
+            btn.layer.masksToBounds = true
+            // Default thin border so light colors (e.g., white) are visible
             btn.layer.borderWidth = 1
             btn.layer.borderColor = UIColor.black.withAlphaComponent(0.15).cgColor
             btn.tag = i
             btn.accessibilityLabel = hex
             btn.addTarget(self, action: #selector(didSelectColor(_:)), for: .touchUpInside)
-            btn.heightAnchor.constraint(equalToConstant: buttonSize).isActive = true
-            btn.widthAnchor.constraint(greaterThanOrEqualToConstant: buttonSize).isActive = true
-            currentRow?.addArrangedSubview(btn)
+
+            container.addSubview(btn)
+            NSLayoutConstraint.activate([
+                btn.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+                btn.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+                btn.widthAnchor.constraint(equalToConstant: buttonSize),
+                btn.heightAnchor.constraint(equalToConstant: buttonSize)
+            ])
+            colorButtons.append(btn)
         }
 
         if let row = currentRow {
@@ -334,6 +351,13 @@ class FloatingUIController: UIViewController {
                 }
             }
         }
+
+        // Preselect current color if available
+        let parent = parentCategories[selectedParentIndex]
+        let child = childCategories[selectedParentIndex][selectedChildIndex]
+        let key = "\(parent)_\(child)"
+        let currentHex = selections[key]? ["color"]
+        updateColorSelectionBorder(selectedHex: currentHex)
 
         UIView.animate(withDuration: 0.24) {
             overlay.alpha = 1
@@ -352,6 +376,7 @@ class FloatingUIController: UIViewController {
             sheet.removeFromSuperview()
             self.colorOverlayView = nil
             self.colorSheetView = nil
+            self.colorButtons.removeAll()
         })
     }
 
@@ -366,7 +391,21 @@ class FloatingUIController: UIViewController {
         var entry = selections[key] ?? [:]
         entry["color"] = hex
         selections[key] = entry
-        hideColorPicker()
+        updateColorSelectionBorder(selectedHex: hex)
+        // Keep panel open until the user taps close
+    }
+
+    private func updateColorSelectionBorder(selectedHex: String?) {
+        for button in colorButtons {
+            let isSelected = (button.accessibilityLabel == selectedHex)
+            if isSelected {
+                button.layer.borderColor = UIColor.fourthColor.cgColor
+                button.layer.borderWidth = 2
+            } else {
+                button.layer.borderColor = UIColor.black.withAlphaComponent(0.15).cgColor
+                button.layer.borderWidth = 1
+            }
+        }
     }
 
     private func sendSelectedColorToUnity(hex: String) {
