@@ -763,40 +763,37 @@ class FloatingUIController: UIViewController {
 
     private func rebuildAssetDataFromCatalog(internalIds: [String]) {
         var newAssetData: [String: [String: [AssetItem]]] = [:]
-        let thumbsPrefix = "Assets/Thumbs/"
         let modelPrefix = "Assets/Models/"
-        // Build a set for quick existence checks
-        let allIdsSet = Set(internalIds)
 
-        for id in internalIds where id.hasPrefix(thumbsPrefix) {
-            // e.g., Assets/Thumbs/Clothes/Tops/01_tops_tight_short.jpg
-            let relative = String(id.dropFirst(thumbsPrefix.count))
+        for id in internalIds where id.hasPrefix(modelPrefix) {
+            // e.g., Assets/Models/Clothes/Tops/01_tops_tight_short.prefab
+            let relative = String(id.dropFirst(modelPrefix.count))
             let parts = relative.split(separator: "/").map(String.init)
             guard parts.count >= 3 else { continue }
             let category = parts[0]
             let subcategory = parts[1]
-            let filename = parts[2]
-            let nameWithExt = (filename as NSString).lastPathComponent
-            let name = (nameWithExt as NSString).deletingPathExtension
+            let filename = parts.last ?? ""
+            let name = (filename as NSString).deletingPathExtension
 
-            // Derive model internal id strictly under Assets/Models
-            let suffix = "\(category)/\(subcategory)/\(name).prefab"
-            let candidate = modelPrefix + suffix
-            let modelPath: String = allIdsSet.contains(candidate) ? candidate : candidate
+            // Convert internal id (Assets/Models/.../Name.prefab) to Addressables address (Models/.../Name)
+            let modelPath = "Models/\(category)/\(subcategory)/\(name)"
 
-            // Compose remote thumbnail URL on Hosting under /Thumbs/
-            guard let base = hostingBaseURL() else { continue }
-            var thumbURL = URL(string: base)
-            thumbURL?.appendPathComponent("Thumbs")
-            thumbURL?.appendPathComponent(category)
-            thumbURL?.appendPathComponent(subcategory)
-            thumbURL?.appendPathComponent(nameWithExt)
+            // Compose remote thumbnail URL on Hosting under /Thumbs/{Category}/{Subcategory}/{Name}.jpg
+            var thumbURLString: String? = nil
+            if let base = hostingBaseURL() {
+                var thumbURL = URL(string: base)
+                thumbURL?.appendPathComponent("Thumbs")
+                thumbURL?.appendPathComponent(category)
+                thumbURL?.appendPathComponent(subcategory)
+                thumbURL?.appendPathComponent("\(name).jpg")
+                thumbURLString = thumbURL?.absoluteString
+            }
 
             let item = AssetItem(
                 id: "\(category)_\(subcategory)_\(name)",
                 name: name,
                 modelPath: modelPath,
-                thumbnailPath: thumbURL?.absoluteString,
+                thumbnailPath: thumbURLString,
                 category: category,
                 subcategory: subcategory,
                 isActive: true,
@@ -804,7 +801,6 @@ class FloatingUIController: UIViewController {
             )
             if newAssetData[category] == nil { newAssetData[category] = [:] }
             var list = newAssetData[category]![subcategory] ?? []
-            // Avoid duplicates by id
             if !list.contains(where: { $0.id == item.id }) { list.append(item) }
             newAssetData[category]![subcategory] = list
         }

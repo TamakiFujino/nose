@@ -487,36 +487,53 @@ public class AssetManager : MonoBehaviour
             yield break;
         }
 
+        // Try primary address first (e.g., "Models/Clothes/Tops/02_tops_tight_half")
         var handle = Addressables.LoadAssetAsync<GameObject>(address);
         yield return handle;
 
-        if (handle.Status == AsyncOperationStatus.Succeeded && handle.Result != null)
+        if (!(handle.Status == AsyncOperationStatus.Succeeded && handle.Result != null))
         {
-            GameObject prefab = handle.Result;
-            GameObject assetInstance = Instantiate(prefab, avatarRoot);
-            assetInstance.name = asset.name;
-
-            // Ensure it inherits avatarRoot transform cleanly
-            assetInstance.transform.localPosition = Vector3.zero;
-            assetInstance.transform.localRotation = Quaternion.identity;
-            assetInstance.transform.localScale = Vector3.one;
-
-            // Rebind skinned meshes to the body skeleton so pose/rotation matches
-            RebindSkinnedMeshesToBody(assetInstance);
-
-            // Track new instance and handle
-            loadedAssets[asset.id] = assetInstance;
-            slotKeyToActiveAssetId[slotKey] = asset.id;
-            slotKeyToHandle[slotKey] = handle;
-
-            Debug.Log($"Asset loaded via Addressables: {asset.name} (address: {address})");
-        }
-        else
-        {
-            string msg = $"Addressables: could not load prefab for asset {asset.name} at address: {address}";
-            Debug.LogError(msg);
+            Debug.LogWarning($"Addressables: primary address failed '{address}', trying internal id fallback...");
             if (handle.IsValid()) Addressables.Release(handle);
+
+            // Fallback to internal id path used in catalog m_InternalIds: Assets/Models/.../{name}.prefab
+            string internalId = $"Assets/Models/{asset.category}/{asset.subcategory}/{asset.name}.prefab";
+            var fallback = Addressables.LoadAssetAsync<GameObject>(internalId);
+            yield return fallback;
+
+            if (fallback.Status == AsyncOperationStatus.Succeeded && fallback.Result != null)
+            {
+                handle = fallback; // treat fallback as the active handle
+                address = internalId;
+            }
+            else
+            {
+                string err = $"Addressables: failed to load '{asset.name}' via both address ('{address}') and internal id ('{internalId}')";
+                Debug.LogError(err);
+                if (fallback.IsValid()) Addressables.Release(fallback);
+                yield break;
+            }
         }
+
+        // Success path
+        GameObject prefab = handle.Result;
+        GameObject assetInstance = Instantiate(prefab, avatarRoot);
+        assetInstance.name = asset.name;
+
+        // Ensure it inherits avatarRoot transform cleanly
+        assetInstance.transform.localPosition = Vector3.zero;
+        assetInstance.transform.localRotation = Quaternion.identity;
+        assetInstance.transform.localScale = Vector3.one;
+
+        // Rebind skinned meshes to the body skeleton so pose/rotation matches
+        RebindSkinnedMeshesToBody(assetInstance);
+
+        // Track new instance and handle
+        loadedAssets[asset.id] = assetInstance;
+        slotKeyToActiveAssetId[slotKey] = asset.id;
+        slotKeyToHandle[slotKey] = handle;
+
+        Debug.Log($"Asset loaded via Addressables: {asset.name} (address/internalId: {address})");
     }
 
     private void SetAssetActive(string assetId, bool active)
