@@ -101,6 +101,20 @@ class FloatingUIController: UIViewController {
         return stackView
     }()
 
+    private lazy var thumbnailScrollView: UIScrollView = {
+        let scrollView = UIScrollView()
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.showsVerticalScrollIndicator = true
+        scrollView.alwaysBounceVertical = true
+        return scrollView
+    }()
+
+    private lazy var thumbnailContentView: UIView = {
+        let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }()
+
     override func viewDidLoad() {
         super.viewDidLoad()
         LoadingView.shared.showOverlayLoading(on: view, message: "Loading avatar...")
@@ -142,7 +156,9 @@ class FloatingUIController: UIViewController {
         view.addSubview(bottomPanel)
         bottomPanel.addSubview(parentCategoryStackView)
         bottomPanel.addSubview(childCategoryStackView)
-        bottomPanel.addSubview(thumbnailStackView)
+        bottomPanel.addSubview(thumbnailScrollView)
+        thumbnailScrollView.addSubview(thumbnailContentView)
+        thumbnailContentView.addSubview(thumbnailStackView)
         setupColorButton()
         createThumbnailRows()
         createCategoryButtons()
@@ -169,10 +185,24 @@ class FloatingUIController: UIViewController {
             childCategoryStackView.topAnchor.constraint(equalTo: parentCategoryStackView.bottomAnchor, constant: 10),
             childCategoryStackView.heightAnchor.constraint(equalToConstant: 30),
 
-            thumbnailStackView.leadingAnchor.constraint(equalTo: bottomPanel.leadingAnchor, constant: 20),
-            thumbnailStackView.trailingAnchor.constraint(equalTo: bottomPanel.trailingAnchor, constant: -20),
-            thumbnailStackView.topAnchor.constraint(equalTo: childCategoryStackView.bottomAnchor, constant: 10),
-            thumbnailStackView.bottomAnchor.constraint(lessThanOrEqualTo: bottomPanel.bottomAnchor, constant: -10)
+            // Thumbnails scroll view fills remaining space
+            thumbnailScrollView.leadingAnchor.constraint(equalTo: bottomPanel.leadingAnchor),
+            thumbnailScrollView.trailingAnchor.constraint(equalTo: bottomPanel.trailingAnchor),
+            thumbnailScrollView.topAnchor.constraint(equalTo: childCategoryStackView.bottomAnchor, constant: 10),
+            thumbnailScrollView.bottomAnchor.constraint(equalTo: bottomPanel.bottomAnchor, constant: -10),
+
+            // Content view anchors to scroll contentLayoutGuide and matches scroll width
+            thumbnailContentView.leadingAnchor.constraint(equalTo: thumbnailScrollView.contentLayoutGuide.leadingAnchor),
+            thumbnailContentView.trailingAnchor.constraint(equalTo: thumbnailScrollView.contentLayoutGuide.trailingAnchor),
+            thumbnailContentView.topAnchor.constraint(equalTo: thumbnailScrollView.contentLayoutGuide.topAnchor),
+            thumbnailContentView.bottomAnchor.constraint(equalTo: thumbnailScrollView.contentLayoutGuide.bottomAnchor),
+            thumbnailContentView.widthAnchor.constraint(equalTo: thumbnailScrollView.frameLayoutGuide.widthAnchor),
+
+            // Stack view inside content with horizontal padding
+            thumbnailStackView.leadingAnchor.constraint(equalTo: thumbnailContentView.leadingAnchor, constant: 20),
+            thumbnailStackView.trailingAnchor.constraint(equalTo: thumbnailContentView.trailingAnchor, constant: -20),
+            thumbnailStackView.topAnchor.constraint(equalTo: thumbnailContentView.topAnchor),
+            thumbnailStackView.bottomAnchor.constraint(equalTo: thumbnailContentView.bottomAnchor)
         ])
     }
 
@@ -433,6 +463,10 @@ class FloatingUIController: UIViewController {
                 rowStackView?.distribution = .fillEqually
                 rowStackView?.translatesAutoresizingMaskIntoConstraints = false
                 if let row = rowStackView { thumbnailStackView.addArrangedSubview(row) }
+                // Give rows a consistent height based on available width
+                // Each item has equal width; make height = width to ensure square thumbnails
+                let rowHeight = thumbnailContentView.widthAnchor.constraint(equalToConstant: 0)
+                rowHeight.isActive = false // placeholder to satisfy compiler; we'll set child constraints per button
             }
             let thumbnailButton = createThumbnailButton(for: i)
             rowStackView?.addArrangedSubview(thumbnailButton)
@@ -491,7 +525,7 @@ class FloatingUIController: UIViewController {
         button.layer.borderColor = index == currentTopIndex ? UIColor.thirdColor.cgColor : UIColor.clear.cgColor
         button.translatesAutoresizingMaskIntoConstraints = false
         button.addTarget(self, action: #selector(thumbnailTapped(_:)), for: .touchUpInside)
-        // Make the button square; width will be determined by row distribution
+        // Make the button a consistent square: height equals width
         button.heightAnchor.constraint(equalTo: button.widthAnchor).isActive = true
         return button
     }
