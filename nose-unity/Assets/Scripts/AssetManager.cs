@@ -39,6 +39,9 @@ public class AssetManager : MonoBehaviour
     // Store all available assets discovered from Addressables
     private readonly Dictionary<string, List<AssetItem>> availableAssets = new Dictionary<string, List<AssetItem>>();
 
+    // Pending colors to apply once a slot's asset is loaded
+    private readonly Dictionary<string, string> slotKeyToPendingColor = new Dictionary<string, string>();
+
     private bool addressablesInitialized = false;
 
     [Header("Remote Catalog (Firebase Hosting)")]
@@ -463,10 +466,10 @@ public class AssetManager : MonoBehaviour
 
         string slotKey = $"{asset.category}:{asset.subcategory}";
 
-        // Destroy previous instance in this slot
+        // Destroy previous instance in this slot only if choosing a different asset to reduce flicker
         if (slotKeyToActiveAssetId.TryGetValue(slotKey, out string activeAssetId))
         {
-            if (!string.IsNullOrEmpty(activeAssetId) && loadedAssets.TryGetValue(activeAssetId, out GameObject existing))
+            if (!string.IsNullOrEmpty(activeAssetId) && activeAssetId != asset.id && loadedAssets.TryGetValue(activeAssetId, out GameObject existing))
             {
                 if (existing != null) Destroy(existing);
                 loadedAssets.Remove(activeAssetId);
@@ -517,6 +520,21 @@ public class AssetManager : MonoBehaviour
 
         // Success path
         GameObject prefab = handle.Result;
+        // If the same asset is already active for this slot, skip re-instantiation to avoid flicker
+        if (slotKeyToActiveAssetId.TryGetValue(slotKey, out string currentId) && currentId == asset.id && loadedAssets.ContainsKey(asset.id))
+        {
+            Debug.Log($"Asset already active for {slotKey}: {asset.name}, skipping reload");
+            // Ensure any pending color is still applied
+            if (slotKeyToPendingColor.TryGetValue(slotKey, out string storedHex) && loadedAssets.TryGetValue(asset.id, out GameObject existingGo))
+            {
+                if (TryParseHexColor(storedHex, out Color pendingColor))
+                {
+                    ApplyColorToObject(existingGo, pendingColor);
+                    slotKeyToPendingColor.Remove(slotKey);
+                }
+            }
+            yield break;
+        }
         GameObject assetInstance = Instantiate(prefab, avatarRoot);
         assetInstance.name = asset.name;
 
@@ -534,6 +552,17 @@ public class AssetManager : MonoBehaviour
         slotKeyToHandle[slotKey] = handle;
 
         Debug.Log($"Asset loaded via Addressables: {asset.name} (address/internalId: {address})");
+
+        // Apply pending color for this slot if any
+        if (slotKeyToPendingColor.TryGetValue(slotKey, out string pendingHex))
+        {
+            if (TryParseHexColor(pendingHex, out Color pendingColor))
+            {
+                ApplyColorToObject(assetInstance, pendingColor);
+                slotKeyToPendingColor.Remove(slotKey);
+                Debug.Log($"Applied pending color to {slotKey}: {pendingHex}");
+            }
+        }
     }
 
     private void SetAssetActive(string assetId, bool active)
@@ -679,6 +708,16 @@ public class AssetManager : MonoBehaviour
                         Debug.LogWarning($"Failed to parse color {payload.colorHex}");
                     }
                 }
+                else
+                {
+                    // Asset for this slot not yet instantiated; remember color and apply after load
+                    slotKeyToPendingColor[slotKey] = payload.colorHex;
+                }
+            }
+            else
+            {
+                // No active asset tracked for this slot yet; remember color
+                slotKeyToPendingColor[slotKey] = payload.colorHex;
             }
         }
         catch (Exception e)

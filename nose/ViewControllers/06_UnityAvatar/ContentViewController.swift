@@ -20,6 +20,12 @@ class ContentViewController: UIViewController, ContentViewControllerDelegate {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { self.launchUnity() }
     }
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        // Refresh selections from Firestore every time we come back to this scene
+        applyLatestSelectionsIfVisible()
+    }
+
     private func launchUnity() {
         print("[ContentViewController] Launching Unity...")
         UnityLauncher.shared().launchUnityIfNeeded()
@@ -55,7 +61,7 @@ class ContentViewController: UIViewController, ContentViewControllerDelegate {
         fetchExistingSelections { [weak floatingVC] selections in
             guard let floatingVC = floatingVC, let selections = selections else { return }
             DispatchQueue.main.async {
-                floatingVC.initialSelections = selections
+                floatingVC.applyInitialSelections(selections)
             }
         }
         floatingWindow.rootViewController = floatingVC
@@ -66,6 +72,16 @@ class ContentViewController: UIViewController, ContentViewControllerDelegate {
         // Keep overlay visible while the floating UI prepares thumbnails
         LoadingView.shared.showOverlayLoading(on: floatingVC.view, message: "Loading avatar...")
         print("[ContentViewController] Floating UI created and visible")
+    }
+
+    private func applyLatestSelectionsIfVisible() {
+        guard let floatingVC = floatingWindow?.rootViewController as? FloatingUIController else { return }
+        fetchExistingSelections { selections in
+            guard let selections = selections else { return }
+            DispatchQueue.main.async {
+                floatingVC.applyInitialSelections(selections)
+            }
+        }
     }
 
     private func fetchExistingSelections(completion: @escaping ([String: [String: String]]?) -> Void) {
@@ -145,6 +161,8 @@ extension ContentViewController {
                 let alert = UIAlertController(title: "Saved", message: "Avatar customization saved.", preferredStyle: .alert)
                 alert.addAction(UIAlertAction(title: "OK", style: .default))
                 self.present(alert, animated: true)
+                // Refresh from Firestore after save to ensure consistency
+                self.applyLatestSelectionsIfVisible()
             case .failure(let error):
                 let alert = UIAlertController(title: "Error", message: error.localizedDescription, preferredStyle: .alert)
                 alert.addAction(UIAlertAction(title: "OK", style: .default))

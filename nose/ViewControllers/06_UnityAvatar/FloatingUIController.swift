@@ -441,9 +441,13 @@ class FloatingUIController: UIViewController {
     private func sendSelectedColorToUnity(hex: String) {
         let parent = parentCategories[selectedParentIndex]
         let child = childCategories[selectedParentIndex][selectedChildIndex]
+        sendColorToUnity(category: parent, subcategory: child, hex: hex)
+    }
+
+    private func sendColorToUnity(category: String, subcategory: String, hex: String) {
         let payload: [String: Any] = [
-            "category": parent,
-            "subcategory": child,
+            "category": category,
+            "subcategory": subcategory,
             "colorHex": hex
         ]
         if let data = try? JSONSerialization.data(withJSONObject: payload),
@@ -546,6 +550,15 @@ class FloatingUIController: UIViewController {
             entry["model"] = asset.name
         }
         selections[key] = entry
+        // Reapply saved color for this slot, or use default if none set
+        if let savedHex = entry["color"], !savedHex.isEmpty {
+            sendColorToUnity(category: parent, subcategory: child, hex: savedHex)
+        } else if let defaultHex = colorSwatches.first {
+            sendColorToUnity(category: parent, subcategory: child, hex: defaultHex)
+            var updated = selections[key] ?? [:]
+            updated["color"] = defaultHex
+            selections[key] = updated
+        }
     }
 
     private func updateThumbnailBorders() {
@@ -1029,6 +1042,57 @@ class FloatingUIController: UIViewController {
         // Apply color if available
         if let hex = entry["color"], !hex.isEmpty {
             sendSelectedColorToUnity(hex: hex)
+        }
+    }
+
+    // MARK: - External API
+    func applyInitialSelections(_ newSelections: [String: [String: String]]) {
+        // Update and re-apply UI/Unity once data and UI are ready
+        initialSelections = newSelections
+        selections = newSelections
+        // If assets are already loaded for current category, this will preselect and apply
+        updateThumbnailsForCategory()
+        // Proactively apply all saved selections to Unity so items appear without tab taps
+        applyAllSelectionsToUnity()
+    }
+
+    private func applyAllSelectionsToUnity() {
+        for (key, entry) in selections {
+            let parts = key.split(separator: "_").map(String.init)
+            guard parts.count == 2 else { continue }
+            let category = parts[0]
+            let subcategory = parts[1]
+            let name: String?
+            if category.lowercased() == "base" && subcategory.lowercased() == "body" {
+                name = entry["pose"] ?? entry["model"]
+            } else {
+                name = entry["model"]
+            }
+            guard let modelName = name, !modelName.isEmpty else { continue }
+            var modelPath = ""
+            if !(category.lowercased() == "base" && subcategory.lowercased() == "body") {
+                modelPath = "Models/\(category)/\(subcategory)/\(modelName)"
+            }
+            let asset = AssetItem(
+                id: "\(category)_\(subcategory)_\(modelName)",
+                name: modelName,
+                modelPath: modelPath,
+                thumbnailPath: nil,
+                category: category,
+                subcategory: subcategory,
+                isActive: true,
+                metadata: nil
+            )
+            changeAssetInUnity(asset: asset)
+            if let hex = entry["color"], !hex.isEmpty {
+                sendColorToUnity(category: category, subcategory: subcategory, hex: hex)
+            } else if let defaultHex = colorSwatches.first {
+                // No saved color — apply default palette color
+                sendColorToUnity(category: category, subcategory: subcategory, hex: defaultHex)
+                var updated = selections[key] ?? [:]
+                updated["color"] = defaultHex
+                selections[key] = updated
+            }
         }
     }
 }
