@@ -9,7 +9,7 @@ public class UnityLauncher : MonoBehaviour
 {
     public static UnityLauncher Instance { get; private set; }
 
-#if UNITY_IOS && !UNITY_EDITOR && NOSE_IOS_BRIDGE
+#if UNITY_IOS && !UNITY_EDITOR
     [DllImport("__Internal")]
     private static extern void Nose_OnUnityResponse(string json);
 #endif
@@ -34,11 +34,20 @@ public class UnityLauncher : MonoBehaviour
     /// <param name="message">The data to send</param>
     public void SendToIOS(string method, string message)
     {
-        // Wrap into a single JSON for the iOS bridge
+#if UNITY_IOS && !UNITY_EDITOR
+        // If we're sending a UnityResponse, pass through the payload directly
+        // The message is already a JSON string with { callbackId, data }
+        if (method == "UnityResponse")
+        {
+            Nose_OnUnityResponse(message);
+            return;
+        }
+#endif
+        // Wrap into a single JSON for the iOS bridge (used for editor/testing)
         var response = new UnityBridgeResponse { callbackId = method, data = message };
         string json = JsonUtility.ToJson(response);
 
-#if UNITY_IOS && !UNITY_EDITOR && NOSE_IOS_BRIDGE
+#if UNITY_IOS && !UNITY_EDITOR
         Nose_OnUnityResponse(json);
 #else
         Debug.Log($"[UnityLauncher] iOS bridge disabled or in Editor. Payload: {json}");

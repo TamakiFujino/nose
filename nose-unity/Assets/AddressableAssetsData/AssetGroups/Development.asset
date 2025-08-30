@@ -27,6 +27,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 0f3fabe9185ff4803a71c63eb14289e4
+    m_Address: Assets/Models/Base/Body/crunch.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 1594276ca1ee3463c823c2ada64709ed
     m_Address: Assets/Models/Clothes/Bottoms/21_bottoms_skirt_tight_maxi.prefab
     m_ReadOnly: 0
@@ -347,6 +352,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: dd9bc4e49cfb84736b2f0e09f23b6656
+    m_Address: Assets/Models/Base/Body/stand_female.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: e3f9d8b31a0354fc3a333e918c2e7a42
     m_Address: Assets/Models/Clothes/Bottoms/23_bottoms_skirt_wide_knee.prefab
     m_ReadOnly: 0
@@ -364,6 +374,11 @@ MonoBehaviour:
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: e76faa7345d564b1fb601d9529d4a2a8
     m_Address: Assets/Models/Base/Eyebrow/13_eyebrow_G_thick.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e9458a914dda544bf875b568cd5c3455
+    m_Address: Assets/Models/Base/Body/stand_male.prefab
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
@@ -394,6 +409,11 @@ MonoBehaviour:
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: fc9ba58e4b5e54358819171d8fd2d078
     m_Address: Assets/Models/Base/Eyebrow/16_eyebrow_H_thin.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: fd794998f33d945e3be62b35d676e020
+    m_Address: Assets/Models/Base/Body/run.prefab
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0

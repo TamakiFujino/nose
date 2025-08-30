@@ -527,13 +527,15 @@ class FloatingUIController: UIViewController {
     }
 
     private func changeAssetInUnity(asset: AssetItem) {
-        let assetInfo: [String: Any] = [
+        var assetInfo: [String: Any] = [
             "id": asset.id,
             "name": asset.name,
-            "modelPath": asset.modelPath,
             "category": asset.category,
             "subcategory": asset.subcategory
         ]
+        if !asset.modelPath.isEmpty {
+            assetInfo["modelPath"] = asset.modelPath
+        }
         if let jsonData = try? JSONSerialization.data(withJSONObject: assetInfo),
            let jsonString = String(data: jsonData, encoding: .utf8) {
             UnityLauncher.shared().sendMessage(toUnity: "UnityBridge", method: "ChangeAsset", message: jsonString)

@@ -123,6 +123,18 @@ final class UnityManager {
             message: message
         )
     }
+
+    /// Get available body poses from Unity with callback
+    func getBodyPoses(completion: @escaping (String) -> Void) {
+        let callbackId = generateCallbackId()
+        storeCallback(callbackId, completion: completion)
+
+        UnityLauncher.shared().sendMessage(
+            toUnity: "UnityBridge",
+            method: "GetBodyPoses",
+            message: callbackId
+        )
+    }
     
     /// Check if Unity asset catalog is loaded with callback
     func isAssetCatalogLoaded(completion: @escaping (String) -> Void) {

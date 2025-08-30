@@ -31,6 +31,12 @@ public class UnityBridge : MonoBehaviour
 
     private void Start()
     {
+        // Ensure UnityLauncher exists so we can send responses back to iOS
+        if (UnityLauncher.Instance == null)
+        {
+            var go = new GameObject("UnityLauncher");
+            go.AddComponent<UnityLauncher>();
+        }
         assetManager = FindObjectOfType<AssetManager>();
         if (assetManager == null)
         {
@@ -126,6 +132,24 @@ public class UnityBridge : MonoBehaviour
         SendResponseToiOS(callbackId, jsonResponse);
     }
 
+    // iOS calls this to get available body poses (from AssetManager.poses)
+    public void GetBodyPoses(string callbackId)
+    {
+        if (assetManager == null)
+        {
+            SendResponseToiOS(callbackId, "{\"poses\":[]}");
+            return;
+        }
+
+        var poseNames = assetManager.poses
+            .Where(p => p != null && !string.IsNullOrEmpty(p.name))
+            .Select(p => p.name)
+            .ToArray();
+        var response = new PoseListResponse { poses = poseNames };
+        string jsonResponse = JsonUtility.ToJson(response);
+        SendResponseToiOS(callbackId, jsonResponse);
+    }
+
     // iOS calls this method to check if the asset catalog is loaded with callback
     public void IsAssetCatalogLoaded(string callbackId)
     {
@@ -176,12 +200,9 @@ public class UnityBridge : MonoBehaviour
         // Send response to iOS via UnityLauncher
         if (UnityLauncher.Instance != null)
         {
-            var responseData = new ResponseData 
-            { 
-                callbackId = callbackId, 
-                data = response 
-            };
+            var responseData = new ResponseData { callbackId = callbackId, data = response };
             string jsonResponse = JsonUtility.ToJson(responseData);
+            // Send through UnityResponse so iOS always receives it
             UnityLauncher.Instance.SendToIOS("UnityResponse", jsonResponse);
             Debug.Log($"Sent response to iOS: {callbackId} -> {response}");
         }
@@ -213,4 +234,10 @@ public class ResponseData
 {
     public string callbackId;
     public string data;
+}
+
+[System.Serializable]
+public class PoseListResponse
+{
+    public string[] poses;
 }
