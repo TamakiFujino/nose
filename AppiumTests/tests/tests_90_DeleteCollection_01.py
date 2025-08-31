@@ -96,9 +96,9 @@ class DeleteSpotTest(BaseTest):
         element.click()
         time.sleep(2)
 
-        # make sure the spot is deleted
-        elements = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Pinnacles National Park')
-        assert len(elements) == 0, "Element 'More' was found when it should not exist"
+        # make sure the spot "Pinnacles National Park" is deleted
+        elements = self.driver.find_elements(AppiumBy.ACCESSIBILITY_ID, 'Pinnacles National Park')
+        assert len(elements) == 0, "Element 'Pinnacles National Park' was found when it should not exist"
 
         # swipe down to close the modal
         self.driver.swipe(200, 350, 500, 650)

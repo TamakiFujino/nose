@@ -18,6 +18,7 @@ final class HomeViewController: UIViewController {
     
     // MARK: - Properties
     private var searchResults: [GMSPlace] = []
+    private var searchPredictions: [GMSAutocompletePrediction] = []
     private var sessionToken: GMSAutocompleteSessionToken?
     private var currentDotIndex: Int = 1  // Track current dot index (0: left, 1: middle, 2: right)
     private var collections: [PlaceCollection] = []
@@ -300,33 +301,26 @@ final class HomeViewController: UIViewController {
     }
     
     private func setupNotificationObservers() {
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(appWillEnterForeground),
-            name: UIApplication.willEnterForegroundNotification,
-            object: nil
-        )
+        // Removed appWillEnterForeground observer to prevent repeated permission checks
+        // Location permissions are now only checked when actually needed
     }
     
     private func checkLocationPermission() {
         switch locationManager.authorizationStatus {
         case .notDetermined:
+            // Only request permission if we haven't asked before
             locationManager.requestWhenInUseAuthorization()
         case .restricted, .denied:
             // Don't show alert, just continue without location
-            break
+            print("Location access denied or restricted")
         case .authorizedWhenInUse, .authorizedAlways:
+            // Permission already granted, start location updates
             locationManager.startUpdatingLocation()
         @unknown default:
             break
         }
     }
     
-    @objc private func appWillEnterForeground() {
-        checkLocationPermission()
-    }
-    
-    // MARK: - Actions
     @objc private func currentLocationButtonTapped() {
         switch locationManager.authorizationStatus {
         case .authorizedWhenInUse, .authorizedAlways:
@@ -388,9 +382,12 @@ final class HomeViewController: UIViewController {
     
     // MARK: - Helper Methods
     private func searchPlaces(query: String) {
-        mapManager?.searchPlaces(query: query) { [weak self] (results: [GMSPlace]) in
-            self?.searchResults = results
-            self?.searchResultsTableView.reloadData()
+        // Use debounced search to prevent rapid-fire API calls
+        PlacesAPIManager.shared.debouncedSearch(query: query) { [weak self] (predictions: [GMSAutocompletePrediction]) in
+            DispatchQueue.main.async {
+                self?.searchPredictions = predictions
+                self?.searchResultsTableView.reloadData()
+            }
         }
     }
     
@@ -398,7 +395,7 @@ final class HomeViewController: UIViewController {
         mapManager?.showPlaceOnMap(place)
         
         // Create a Place object from GMSPlace
-        let placeData: [String: Any] = [
+        let _: [String: Any] = [
             "id": UUID().uuidString,
             "name": place.name ?? "",
             "latitude": place.coordinate.latitude,
@@ -434,7 +431,7 @@ final class HomeViewController: UIViewController {
 extension HomeViewController: UISearchBarDelegate {
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
         if searchText.isEmpty {
-            searchResults = []
+            searchPredictions = []
             searchResultsTableView.isHidden = true
             return
         }
@@ -451,24 +448,31 @@ extension HomeViewController: UISearchBarDelegate {
 // MARK: - UITableViewDelegate & UITableViewDataSource
 extension HomeViewController: UITableViewDelegate, UITableViewDataSource {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return searchResults.count
+        return searchPredictions.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "SearchResultCell", for: indexPath)
-        let place = searchResults[indexPath.row]
+        let prediction = searchPredictions[indexPath.row]
         
         var content = cell.defaultContentConfiguration()
-        content.text = place.name
-        content.secondaryText = place.formattedAddress
+        content.text = prediction.attributedPrimaryText.string
+        content.secondaryText = prediction.attributedSecondaryText?.string
         cell.contentConfiguration = content
         
         return cell
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        let place = searchResults[indexPath.row]
-        showPlaceOnMap(place)
+        let prediction = searchPredictions[indexPath.row]
+        // Fetch place details when user selects a prediction
+        mapManager?.fetchPlaceDetails(for: prediction) { [weak self] place in
+            if let place = place {
+                DispatchQueue.main.async {
+                    self?.showPlaceOnMap(place)
+                }
+            }
+        }
     }
 }
 
@@ -543,8 +547,8 @@ extension HomeViewController: TimelineSliderViewDelegate {
 
 // MARK: - SearchManagerDelegate
 extension HomeViewController: SearchManagerDelegate {
-    func searchManager(_ manager: SearchManager, didUpdateResults results: [GMSPlace]) {
-        searchResults = results
+    func searchManager(_ manager: SearchManager, didUpdateResults results: [GMSAutocompletePrediction]) {
+        searchPredictions = results
         searchResultsTableView.reloadData()
     }
     
@@ -560,7 +564,7 @@ extension HomeViewController: CLLocationManagerDelegate {
     }
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let location = locations.last else { return }
+        guard locations.last != nil else { return }
         mapManager?.moveToCurrentLocation()
         locationManager.stopUpdatingLocation() // Stop updating after getting the first location
     }

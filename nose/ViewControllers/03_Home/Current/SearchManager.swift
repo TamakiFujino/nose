@@ -2,13 +2,13 @@ import UIKit
 import GooglePlaces
 
 protocol SearchManagerDelegate: AnyObject {
-    func searchManager(_ manager: SearchManager, didUpdateResults results: [GMSPlace])
+    func searchManager(_ manager: SearchManager, didUpdateResults results: [GMSAutocompletePrediction])
     func searchManager(_ manager: SearchManager, didSelectPlace place: GMSPlace)
 }
 
 final class SearchManager: NSObject {
     // MARK: - Properties
-    private var searchResults: [GMSPlace] = []
+    private var searchResults: [GMSAutocompletePrediction] = []
     private var sessionToken: GMSAutocompleteSessionToken?
     weak var delegate: SearchManagerDelegate?
     
@@ -41,45 +41,29 @@ final class SearchManager: NSObject {
             
             guard let results = results else { return }
             
-            // Get place details for each prediction
-            for prediction in results {
-                let placeID = prediction.placeID
-                let fields: GMSPlaceField = [
-                    .name,
-                    .coordinate,
-                    .formattedAddress,
-                    .phoneNumber,
-                    .rating,
-                    .openingHours,
-                    .photos,
-                    .placeID,
-                    .website,
-                    .priceLevel,
-                    .userRatingsTotal,
-                    .types
-                ]
-                
-                placesClient.fetchPlace(fromPlaceID: placeID, placeFields: fields, sessionToken: self.sessionToken) { [weak self] place, error in
-                    guard let self = self else { return }
-                    
-                    if let error = error {
-                        print("Error fetching place details: \(error.localizedDescription)")
-                        return
-                    }
-                    
-                    if let place = place {
-                        DispatchQueue.main.async {
-                            self.searchResults.append(place)
-                            self.delegate?.searchManager(self, didUpdateResults: self.searchResults)
-                        }
-                    }
-                }
+            DispatchQueue.main.async {
+                self.searchResults = results
+                self.delegate?.searchManager(self, didUpdateResults: results)
             }
         }
     }
     
-    func selectPlace(_ place: GMSPlace) {
-        delegate?.searchManager(self, didSelectPlace: place)
+    func selectPlace(_ prediction: GMSAutocompletePrediction) {
+        // Use user interaction priority for search selection
+        PlacesAPIManager.shared.fetchPlaceDetailsForUserInteraction(
+            placeID: prediction.placeID,
+            fields: PlacesAPIManager.FieldConfig.search
+        ) { [weak self] place in
+            guard let self = self else { return }
+            
+            if let place = place {
+                DispatchQueue.main.async {
+                    self.delegate?.searchManager(self, didSelectPlace: place)
+                }
+            } else {
+                print("Failed to fetch place details for: \(prediction.placeID)")
+            }
+        }
     }
     
     func clearResults() {

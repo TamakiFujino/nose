@@ -46,6 +46,10 @@ class BlockingUserAsNonOwnerTest(BaseTest):
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Block')
         element.click()
         time.sleep(2)
+        # tap "OK"
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'OK')
+        element.click()
+        time.sleep(2)
 
         """Check the user is blocked"""
         # tap "Blocked" tab

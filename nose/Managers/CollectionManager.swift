@@ -377,7 +377,7 @@ class CollectionManager {
             .document(userId)
             .collection("collections")
             .document(collection.id)
-            .setData(["avatarData": avatarData.toFirestoreDict()], merge: true) { error in
+            .updateData(["avatarData": avatarData.toFirestoreDict()]) { error in
                 if let error = error {
                     print("❌ Error updating avatar data: \(error.localizedDescription)")
                     completion(.failure(error))

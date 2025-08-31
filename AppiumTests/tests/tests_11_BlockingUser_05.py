@@ -44,6 +44,7 @@ class BlockingUserTest(BaseTest):
         element.send_keys(user_a_id)
         # enter
         element.send_keys(Keys.RETURN)
+        time.sleep(2)
         # Check the error message //XCUIElementTypeStaticText[@name="User Not Found"]
         element = self.driver.find_element(By.XPATH, '//XCUIElementTypeStaticText[@name="User Not Found"]')
         assert element.is_displayed()

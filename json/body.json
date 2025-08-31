@@ -1,0 +1,26 @@
+{
+  "skin": [
+  ],
+  "eyes": [
+    "eye_s",
+    "eye_m"
+  ],
+  "eyebrows": [
+    "eyebrow_A_thick",
+    "eyebrow_A_thin",
+    "eyebrow_B_thick",
+    "eyebrow_B_thin",
+    "eyebrow_C_thick",
+    "eyebrow_C_thin",
+    "eyebrow_D_thick",
+    "eyebrow_D_thin",
+    "eyebrow_E_thick",
+    "eyebrow_E_thin",
+    "eyebrow_F_thick",
+    "eyebrow_F_thin",
+    "eyebrow_G_thick",
+    "eyebrow_G_thin",
+    "eyebrow_H_thick",
+    "eyebrow_H_thin"
+  ]
+} 

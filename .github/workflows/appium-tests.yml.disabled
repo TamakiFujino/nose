@@ -1,0 +1,122 @@
+name: Appium Tests
+
+on:
+  push:
+    branches: [staging]
+  pull_request:
+    branches: [staging]
+
+jobs:
+  appium-tests:
+    runs-on: macos-14  # Use macOS for iOS testing
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r AppiumTests/requirements.txt
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.2
+          bundler-cache: true
+
+      - name: Install CocoaPods dependencies
+        run: bundle exec pod install
+
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_16.2.app
+
+      - name: Build iOS app for testing
+        run: |
+          # Clean previous builds
+          xcodebuild clean -workspace nose.xcworkspace -scheme nose-staging
+          
+          # Build the app for simulator
+          xcodebuild build \
+            -workspace nose.xcworkspace \
+            -scheme nose-staging \
+            -configuration Development \
+            -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=18.2' \
+            -derivedDataPath ./builds
+
+      - name: Start Appium server
+        run: |
+          # Install Appium globally
+          npm install -g appium
+          
+          # Start Appium server in background
+          appium --base-path /wd/hub --log appium.log &
+          sleep 15  # Wait for server to start
+          
+          # Check if Appium server is running
+          curl -f http://localhost:4723/status || (echo "Appium server failed to start" && cat appium.log && exit 1)
+
+      - name: Start iOS Simulator
+        run: |
+          # Boot the simulator
+          xcrun simctl boot "iPhone 16 Pro"
+          sleep 15  # Wait for simulator to boot
+          
+          # Verify simulator is running
+          xcrun simctl list devices | grep "iPhone 16 Pro" | grep "Booted" || (echo "Simulator failed to boot" && exit 1)
+
+      - name: Install app on simulator
+        run: |
+          # Install the built app on simulator
+          xcrun simctl install booted ./builds/Build/Products/Development-iphonesimulator/nose.app
+
+      - name: Update app path in driver setup
+        run: |
+          # Update the app path in the driver setup file
+          APP_PATH="./builds/Build/Products/Development-iphonesimulator/nose.app"
+          sed -i '' "s|app = '.*'|app = '$APP_PATH'|g" AppiumTests/utils/driver_setup.py
+
+      - name: Run Appium tests
+        run: |
+          cd AppiumTests
+          # Create directories for test results and logs
+          mkdir -p test-results logs
+          
+          # Run tests with output to both console and file
+          python test_runner.py 2>&1 | tee logs/test_output.log
+          
+          # Capture exit code
+          exit_code=${PIPESTATUS[0]}
+          
+          # Save test results
+          echo "Test execution completed with exit code: $exit_code" > test-results/summary.txt
+          
+          exit $exit_code
+        env:
+          # Add any environment variables needed for tests
+          PYTHONPATH: ${{ github.workspace }}/AppiumTests
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: appium-test-results
+          path: |
+            AppiumTests/test-results/
+            AppiumTests/logs/
+            appium.log
+          retention-days: 7
+
+      - name: Cleanup
+        if: always()
+        run: |
+          # Stop Appium server
+          pkill -f appium || true
+          
+          # Shutdown simulator
+          xcrun simctl shutdown "iPhone 16 Pro" || true 

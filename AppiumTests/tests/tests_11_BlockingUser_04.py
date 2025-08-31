@@ -60,6 +60,53 @@ class BlockingUserAsOwnerTest(BaseTest):
         element.click()
         time.sleep(1)
 
+        """share collection with user B"""
+        # tap "Back"
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Back')
+        element.click()
+        time.sleep(1)
+        # tap future dot
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'right_dot')
+        element.click()
+        time.sleep(1)
+        # tap "sparkle button"
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'sparkle')
+        element.click()
+        time.sleep(1)
+        # tap "National Parks"
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'National Parks')
+        element.click()
+        time.sleep(1)
+        # tap "More"
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'More')
+        element.click()
+        time.sleep(1)
+        # tap "Share with Friends"
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Share with Friends')
+        element.click()
+        time.sleep(1)
+        # tap User B
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'User B')
+        element.click()
+        time.sleep(1)
+        # tap "Update Sharing   "
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Update Sharing')
+        element.click()
+        time.sleep(1)
+        # make sure the number of shared collections is 2
+        friends_value = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'shared_friends_count_label').get_attribute("value")
+        assert friends_value == '2', "Shared friends count is not 2"
+        # swipe down to close the modal
+        self.driver.swipe(300, 350, 300, 650)
+        time.sleep(2)
+        # tap somewhere on the screen to close the modal
+        self.driver.tap([(200, 200)])
+        time.sleep(2)
+        # go Personal Library
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Personal Library')
+        element.click()
+        time.sleep(2)
+        
         """Block user B"""
         # tap "Friend List"
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Friend List')
@@ -75,6 +122,10 @@ class BlockingUserAsOwnerTest(BaseTest):
         time.sleep(2)
         # tap "Block"
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Block')
+        element.click()
+        time.sleep(2)
+        # tap OK
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'OK')
         element.click()
         time.sleep(2)
 

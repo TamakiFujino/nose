@@ -49,7 +49,7 @@ final class GoogleMapManager: NSObject {
     private func setupLocationManager() {
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
-        locationManager.requestWhenInUseAuthorization()
+        // Don't request authorization here - let the delegate handle it based on current status
     }
     
     // MARK: - Public Methods
@@ -67,21 +67,16 @@ final class GoogleMapManager: NSObject {
         mapView.animate(to: camera)
     }
     
-    func searchPlaces(query: String, completion: @escaping ([GMSPlace]) -> Void) {
+    func searchPlaces(query: String, completion: @escaping ([GMSAutocompletePrediction]) -> Void) {
         let placesClient = GMSPlacesClient.shared()
         let filter = GMSAutocompleteFilter()
         filter.types = ["establishment"]
-        
-        // Clear previous results
-        searchResults = []
         
         placesClient.findAutocompletePredictions(
             fromQuery: query,
             filter: filter,
             sessionToken: sessionToken
-        ) { [weak self] results, error in
-            guard let self = self else { return }
-            
+        ) { results, error in
             if let error = error {
                 print("Error searching places: \(error.localizedDescription)")
                 return
@@ -89,38 +84,15 @@ final class GoogleMapManager: NSObject {
             
             guard let results = results else { return }
             
-            // Get place details for each prediction
-            for prediction in results {
-                let placeID = prediction.placeID
-                let fields: GMSPlaceField = [
-                    .name,
-                    .coordinate,
-                    .formattedAddress,
-                    .phoneNumber,
-                    .rating,
-                    .openingHours,
-                    .photos,
-                    .placeID,
-                    .website,
-                    .priceLevel,
-                    .userRatingsTotal,
-                    .types
-                ]
-                
-                placesClient.fetchPlace(fromPlaceID: placeID, placeFields: fields, sessionToken: self.sessionToken) { place, error in
-                    if let error = error {
-                        print("Error fetching place details: \(error.localizedDescription)")
-                        return
-                    }
-                    
-                    if let place = place {
-                        DispatchQueue.main.async {
-                            self.searchResults.append(place)
-                            completion(self.searchResults)
-                        }
-                    }
-                }
+            DispatchQueue.main.async {
+                completion(results)
             }
+        }
+    }
+    
+    func fetchPlaceDetails(for prediction: GMSAutocompletePrediction, completion: @escaping (GMSPlace?) -> Void) {
+        PlacesAPIManager.shared.fetchMapPlaceDetails(placeID: prediction.placeID) { place in
+            completion(place)
         }
     }
     
@@ -204,6 +176,7 @@ extension GoogleMapManager: CLLocationManagerDelegate {
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         switch manager.authorizationStatus {
         case .authorizedWhenInUse, .authorizedAlways:
+            // Permission granted, request location
             locationManager.requestLocation()
         case .denied, .restricted:
             delegate?.googleMapManager(self, didFailWithError: NSError(
@@ -212,6 +185,7 @@ extension GoogleMapManager: CLLocationManagerDelegate {
                 userInfo: [NSLocalizedDescriptionKey: "Location access denied"]
             ))
         case .notDetermined:
+            // Only request permission if we haven't asked before
             locationManager.requestWhenInUseAuthorization()
         @unknown default:
             break

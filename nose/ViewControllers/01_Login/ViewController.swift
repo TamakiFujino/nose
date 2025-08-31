@@ -9,15 +9,25 @@ import FirebaseFirestore
 final class ViewController: UIViewController {
     
     // MARK: - UI Components
+    private lazy var launchLogoImageView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.image = UIImage(named: "logo")
+        imageView.contentMode = .scaleAspectFit
+        return imageView
+    }()
+    
     private lazy var sloganLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
         label.text = "Map your journey\nStyle your future"
         label.textAlignment = .center
         // set font to gotham
-        label.font = UIFont(name: "Gotham-Bold", size: 32) ?? UIFont.systemFont(ofSize: 32, weight: .bold)
+        let font = UIFont(name: "Gotham-Bold", size: 32) ?? UIFont.systemFont(ofSize: 32, weight: .bold)
+        label.font = font
         label.textColor = .white
         label.numberOfLines = 0
+        label.alpha = 0 // Initially invisible
         return label
     }()
     
@@ -26,6 +36,7 @@ final class ViewController: UIViewController {
         button.translatesAutoresizingMaskIntoConstraints = false
         setupSocialButton(button: button, iconName: "applelogo", title: "Continue with Apple")
         button.addTarget(self, action: #selector(appleButtonTapped), for: .touchUpInside)
+        button.alpha = 0 // Initially invisible
         return button
     }()
     
@@ -34,6 +45,7 @@ final class ViewController: UIViewController {
         button.translatesAutoresizingMaskIntoConstraints = false
         setupSocialButton(button: button, iconName: "google_logo", title: "Continue with Google")
         button.addTarget(self, action: #selector(googleButtonTapped), for: .touchUpInside)
+        button.alpha = 0 // Initially invisible
         return button
     }()
     
@@ -59,33 +71,65 @@ final class ViewController: UIViewController {
     
     // MARK: - Properties
     private var currentNonce: String?
+    private var isLoginMode = false
     
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
-        setupUI()
+        setupLaunchStyle()
+        checkLoginState()
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
     }
     
     // MARK: - Setup
-    private func setupUI() {
-        setupBackground()
-        setupConstraints()
+    private func setupLaunchStyle() {
+        // Start with launch screen style (white background + logo)
+        view.backgroundColor = .white
+        view.addSubview(launchLogoImageView)
+        
+        // Setup launch logo constraints
+        NSLayoutConstraint.activate([
+            launchLogoImageView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            launchLogoImageView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            launchLogoImageView.widthAnchor.constraint(equalToConstant: 221), // Match LaunchScreen size
+            launchLogoImageView.heightAnchor.constraint(equalToConstant: 348), // Match LaunchScreen size
+        ])
     }
     
-    private func setupBackground() {
+    private func setupLoginStyle() {
+        // Switch to login style (splash background + login UI)
+        isLoginMode = true
+        
+        // Remove launch logo
+        launchLogoImageView.removeFromSuperview()
+        
+        // Setup splash background
         let backgroundImage = UIImageView(frame: UIScreen.main.bounds)
         backgroundImage.image = UIImage(named: "splash")
+        
+        if backgroundImage.image == nil {
+            // Set a fallback background color
+            view.backgroundColor = .systemBlue
+        }
+        
         backgroundImage.contentMode = .scaleAspectFill
         backgroundImage.clipsToBounds = true
         view.addSubview(backgroundImage)
         view.sendSubviewToBack(backgroundImage)
         
+        // Add login UI elements
         [sloganLabel, appleButton, googleButton, loadingView].forEach {
             view.addSubview($0)
         }
-    }
-    
-    private func setupConstraints() {
+        
+        // Setup login UI constraints
         NSLayoutConstraint.activate([
             sloganLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             sloganLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor),
@@ -107,6 +151,39 @@ final class ViewController: UIViewController {
             loadingView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             loadingView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
+        
+        // Show login UI with animation
+        UIView.animate(withDuration: 0.5) {
+            self.sloganLabel.alpha = 1
+            self.appleButton.alpha = 1
+            self.googleButton.alpha = 1
+        }
+    }
+    
+    private func checkLoginState() {
+        // Check if user is already logged in
+        if let currentUser = Auth.auth().currentUser {
+            // User is logged in, check if they have a profile
+            UserManager.shared.getUser(id: currentUser.uid) { [weak self] user, error in
+                DispatchQueue.main.async {
+                    if user != nil {
+                        // User exists, navigate to home screen
+                        let homeViewController = HomeViewController()
+                        let navigationController = UINavigationController(rootViewController: homeViewController)
+                        navigationController.modalPresentationStyle = .fullScreen
+                        self?.present(navigationController, animated: true)
+                    } else {
+                        // User doesn't have a profile yet, show login UI
+                        self?.setupLoginStyle()
+                    }
+                }
+            }
+        } else {
+            // No user logged in, show login UI after a brief delay
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                self.setupLoginStyle()
+            }
+        }
     }
     
     private func setupSocialButton(button: CustomGlassButton, iconName: String, title: String) {
@@ -199,7 +276,7 @@ final class ViewController: UIViewController {
                 return
             }
             
-            if let existingUser = user {
+            if user != nil {
                 print("User already exists, navigating to home screen")
                 let homeViewController = HomeViewController()
                 let navigationController = UINavigationController(rootViewController: homeViewController)

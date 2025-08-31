@@ -148,7 +148,7 @@ final class UserManager {
                 // 4. Delete user's collections
                 let collectionsRef = userRef.collection("collections")
                 collectionsRef.getDocuments { [weak self] snapshot, error in
-                    guard let self = self else { return }
+                    guard self != nil else { return }
                     
                     if let error = error {
                         completion(.failure(error))
@@ -301,58 +301,289 @@ final class UserManager {
     }
     
     func blockUser(currentUserId: String, blockedUserId: String, completion: @escaping (Result<Void, Error>) -> Void) {
-        let batch = db.batch()
+        print("🔒 Starting block operation:")
+        print("  - Current user ID: \(currentUserId)")
+        print("  - Blocked user ID: \(blockedUserId)")
         
-        // 1. Remove from friends list
+        // Verify authentication
+        guard let authUser = Auth.auth().currentUser else {
+            print("❌ User not authenticated")
+            completion(.failure(NSError(domain: "UserManager", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])))
+            return
+        }
+        
+        print("🔒 Authenticated user ID: \(authUser.uid)")
+        print("🔒 Auth user matches current user: \(authUser.uid == currentUserId)")
+        
+        // 1. Remove from current user's friends list
         let userAFriendsRef = db.collection("users")
             .document(currentUserId)
             .collection("friends")
             .document(blockedUserId)
-        batch.deleteDocument(userAFriendsRef)
+        print("🔒 Removing friend from path: \(userAFriendsRef.path)")
         
-        // 2. Add to blocked list
-        let userABlockedRef = db.collection("users")
-            .document(currentUserId)
-            .collection("blocked")
-            .document(blockedUserId)
-        batch.setData([
-            "blockedAt": FieldValue.serverTimestamp()
-        ], forDocument: userABlockedRef)
-        
-        // 3. Remove from other user's friends list
-        let userBFriendsRef = db.collection("users")
-            .document(blockedUserId)
-            .collection("friends")
-            .document(currentUserId)
-        batch.deleteDocument(userBFriendsRef)
-        
-        // 4. Remove shared collections
-        let userBSharedCollectionsRef = db.collection("users")
-            .document(blockedUserId)
-            .collection("collections")
-            .whereField("isOwner", isEqualTo: false)
-        
-        userBSharedCollectionsRef.whereField("sharedBy", isEqualTo: currentUserId)
-            .getDocuments { [weak self] snapshot, error in
+        userAFriendsRef.delete { [weak self] error in
+            guard let self = self else { return }
+            
+            if let error = error {
+                print("❌ Error removing friend: \(error.localizedDescription)")
+                completion(.failure(error))
+                return
+            }
+            
+            print("✅ Successfully removed friend")
+            
+            // 2. Add to current user's blocked list
+            let userABlockedRef = self.db.collection("users")
+                .document(currentUserId)
+                .collection("blocked")
+                .document(blockedUserId)
+            print("🔒 Adding to blocked list at path: \(userABlockedRef.path)")
+            
+            userABlockedRef.setData([
+                "blockedAt": FieldValue.serverTimestamp()
+            ]) { [weak self] error in
                 guard let self = self else { return }
                 
                 if let error = error {
+                    print("❌ Error adding to blocked list: \(error.localizedDescription)")
                     completion(.failure(error))
                     return
                 }
                 
-                snapshot?.documents.forEach { document in
-                    batch.deleteDocument(document.reference)
-                }
+                print("✅ Successfully added to blocked list")
                 
-                batch.commit { error in
+                // 3. Remove shared collections from blocked user's collections
+                let userBCollectionsRef = self.db.collection("users")
+                    .document(blockedUserId)
+                    .collection("collections")
+                
+                print("🔒 Searching for shared collections in: \(userBCollectionsRef.path)")
+                
+                userBCollectionsRef.whereField("isOwner", isEqualTo: false)
+                    .whereField("sharedBy", isEqualTo: currentUserId)
+                    .getDocuments { [weak self] snapshot, error in
+                        guard let self = self else { return }
+                        
+                        if let error = error {
+                            print("❌ Error finding shared collections: \(error.localizedDescription)")
+                            completion(.failure(error))
+                            return
+                        }
+                        
+                        print("🔒 Found \(snapshot?.documents.count ?? 0) shared collections to delete")
+                        
+                        // Delete each shared collection individually
+                        let group = DispatchGroup()
+                        var deleteErrors: [Error] = []
+                        
+                        snapshot?.documents.forEach { document in
+                            group.enter()
+                            print("🔒 Deleting shared collection: \(document.reference.path)")
+                            document.reference.delete { error in
+                                if let error = error {
+                                    print("❌ Error deleting shared collection: \(error.localizedDescription)")
+                                    deleteErrors.append(error)
+                                } else {
+                                    print("✅ Successfully deleted shared collection")
+                                }
+                                group.leave()
+                            }
+                        }
+                        
+                        group.notify(queue: .main) {
+                            if !deleteErrors.isEmpty {
+                                print("❌ Some shared collections failed to delete")
+                                completion(.failure(deleteErrors.first!))
+                                return
+                            }
+                            
+                            // 4. Remove collections shared by blocked user from current user's collections
+                            let currentUserCollectionsRef = self.db.collection("users")
+                                .document(currentUserId)
+                                .collection("collections")
+                            
+                            print("🔒 Searching for collections shared by blocked user in: \(currentUserCollectionsRef.path)")
+                            
+                            currentUserCollectionsRef.whereField("isOwner", isEqualTo: false)
+                                .whereField("sharedBy", isEqualTo: blockedUserId)
+                                .getDocuments { [weak self] snapshot, error in
+                                    guard let self = self else { return }
+                                    
+                                    if let error = error {
+                                        print("❌ Error finding collections shared by blocked user: \(error.localizedDescription)")
+                                        completion(.failure(error))
+                                        return
+                                    }
+                                    
+                                    print("🔒 Found \(snapshot?.documents.count ?? 0) collections shared by blocked user to delete")
+                                    
+                                    // Delete each collection shared by blocked user individually
+                                    let group2 = DispatchGroup()
+                                    var deleteErrors2: [Error] = []
+                                    
+                                    snapshot?.documents.forEach { document in
+                                        group2.enter()
+                                        print("🔒 Deleting collection shared by blocked user: \(document.reference.path)")
+                                        document.reference.delete { error in
+                                            if let error = error {
+                                                print("❌ Error deleting collection shared by blocked user: \(error.localizedDescription)")
+                                                deleteErrors2.append(error)
+                                            } else {
+                                                print("✅ Successfully deleted collection shared by blocked user")
+                                            }
+                                            group2.leave()
+                                        }
+                                    }
+                                    
+                                    group2.notify(queue: .main) {
+                                        if !deleteErrors2.isEmpty {
+                                            print("❌ Some collections shared by blocked user failed to delete")
+                                            completion(.failure(deleteErrors2.first!))
+                                            return
+                                        }
+                                        
+                                        // 5. Remove blocked user from collections owned by current user
+                                        let currentUserOwnedCollectionsRef = self.db.collection("users")
+                                            .document(currentUserId)
+                                            .collection("collections")
+                                        
+                                        print("🔒 Searching for collections owned by current user to remove blocked user from")
+                                        
+                                        currentUserOwnedCollectionsRef.whereField("isOwner", isEqualTo: true)
+                                            .whereField("members", arrayContains: blockedUserId)
+                                            .getDocuments { [weak self] snapshot, error in
+                                                guard let self = self else { return }
+                                                
+                                                if let error = error {
+                                                    print("❌ Error finding collections owned by current user: \(error.localizedDescription)")
+                                                    completion(.failure(error))
+                                                    return
+                                                }
+                                                
+                                                print("🔒 Found \(snapshot?.documents.count ?? 0) collections owned by current user to remove blocked user from")
+                                                
+                                                if snapshot?.documents.isEmpty == true {
+                                                    // Continue to step 6 even if no collections found
+                                                    self.continueWithBlockedUserCleanup(blockedUserId: blockedUserId, currentUserId: currentUserId, completion: completion)
+                                                    return
+                                                }
+                                                
+                                                // Remove blocked user from members of collections owned by current user
+                                                let group3 = DispatchGroup()
+                                                var updateErrors: [Error] = []
+                                                
+                                                snapshot?.documents.forEach { document in
+                                                    group3.enter()
+                                                    print("🔒 Removing blocked user from collection: \(document.reference.path)")
+                                                    document.reference.updateData([
+                                                        "members": FieldValue.arrayRemove([blockedUserId])
+                                                    ]) { error in
+                                                        if let error = error {
+                                                            print("❌ Error removing blocked user from collection: \(error.localizedDescription)")
+                                                            updateErrors.append(error)
+                                                        } else {
+                                                            print("✅ Successfully removed blocked user from collection")
+                                                        }
+                                                        group3.leave()
+                                                    }
+                                                }
+                                                
+                                                group3.notify(queue: .main) {
+                                                    if !updateErrors.isEmpty {
+                                                        print("⚠️ Some collection member removals failed, but continuing")
+                                                    }
+                                                    
+                                                    // Continue to step 6
+                                                    self.continueWithBlockedUserCleanup(blockedUserId: blockedUserId, currentUserId: currentUserId, completion: completion)
+                                                }
+                                            }
+                                    }
+                                }
+                        }
+                    }
+            }
+        }
+    }
+    
+    private func continueWithBlockedUserCleanup(blockedUserId: String, currentUserId: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        // 6. Remove current user from blocked user's friends list
+        let blockedUserFriendsRef = self.db.collection("users")
+            .document(blockedUserId)
+            .collection("friends")
+            .document(currentUserId)
+        print("🔒 Removing current user from blocked user's friends list: \(blockedUserFriendsRef.path)")
+        
+        blockedUserFriendsRef.delete { [weak self] error in
+            guard let self = self else { return }
+            
+            if let error = error {
+                print("❌ Error removing current user from blocked user's friends: \(error.localizedDescription)")
+                // Don't fail the entire operation for this
+                print("⚠️ Continuing despite friend removal error")
+            } else {
+                print("✅ Successfully removed current user from blocked user's friends")
+            }
+            
+            // 7. Remove current user from collections owned by blocked user
+            let blockedUserOwnedCollectionsRef = self.db.collection("users")
+                .document(blockedUserId)
+                .collection("collections")
+            
+            print("🔒 Searching for collections owned by blocked user to remove current user from")
+            
+            blockedUserOwnedCollectionsRef.whereField("isOwner", isEqualTo: true)
+                .whereField("members", arrayContains: currentUserId)
+                .getDocuments { [weak self] snapshot, error in
+                    guard self != nil else { return }
+                    
                     if let error = error {
-                        completion(.failure(error))
-                    } else {
+                        print("❌ Error finding collections owned by blocked user: \(error.localizedDescription)")
+                        // Don't fail the entire operation for this
+                        print("⚠️ Continuing despite collection search error")
+                        print("✅ Successfully blocked user")
+                        completion(.success(()))
+                        return
+                    }
+                    
+                    print("🔒 Found \(snapshot?.documents.count ?? 0) collections owned by blocked user to remove current user from")
+                    
+                    if snapshot?.documents.isEmpty == true {
+                        print("✅ Successfully blocked user")
+                        completion(.success(()))
+                        return
+                    }
+                    
+                    // Remove current user from members of collections owned by blocked user
+                    let group3 = DispatchGroup()
+                    var updateErrors: [Error] = []
+                    
+                    snapshot?.documents.forEach { document in
+                        group3.enter()
+                        print("🔒 Removing current user from collection: \(document.reference.path)")
+                        document.reference.updateData([
+                            "members": FieldValue.arrayRemove([currentUserId])
+                        ]) { error in
+                            if let error = error {
+                                print("❌ Error removing current user from collection: \(error.localizedDescription)")
+                                updateErrors.append(error)
+                            } else {
+                                print("✅ Successfully removed current user from collection")
+                            }
+                            group3.leave()
+                        }
+                    }
+                    
+                    group3.notify(queue: .main) {
+                        if !updateErrors.isEmpty {
+                            print("⚠️ Some collection member removals failed, but continuing")
+                        }
+                        
+                        print("✅ Successfully blocked user")
                         completion(.success(()))
                     }
                 }
-            }
+        }
     }
     
     func unblockUser(currentUserId: String, blockedUserId: String, completion: @escaping (Result<Void, Error>) -> Void) {

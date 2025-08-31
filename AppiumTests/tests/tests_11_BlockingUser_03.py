@@ -34,6 +34,10 @@ class BlockingUserAsNonOwnerUnblockedTest(BaseTest):
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Friend List')
         element.click()
         time.sleep(2)
+        # tap Blocked tab
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Blocked')
+        element.click()
+        time.sleep(2)
         # tap "User A"
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'User A')
         element.click()
@@ -44,6 +48,10 @@ class BlockingUserAsNonOwnerUnblockedTest(BaseTest):
         time.sleep(2)
         # tap "Unblock"
         element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Unblock')
+        element.click()
+        time.sleep(2)
+        # tap OK
+        element = self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'OK')
         element.click()
         time.sleep(2)
         # make sure "User A" is not in the list

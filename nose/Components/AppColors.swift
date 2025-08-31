@@ -47,4 +47,8 @@ extension UIColor {
     static let fifthColor = UIColor(hex: "#434C5E") ?? .darkGray
     static let sixthColor = UIColor(hex: "#3B4252") ?? .black
     static let redColor = UIColor(hex: "#EE2725") ?? .red
+    static let greenColor = UIColor(hex: "#D9F4D5") ?? .green
+    static let blueColor = UIColor(hex: "#A6B6D3") ?? .blue
+    static let purpleColor = UIColor(hex: "#8E8BBA") ?? .purple
+
 }

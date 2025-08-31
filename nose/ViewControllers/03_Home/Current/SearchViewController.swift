@@ -8,7 +8,7 @@ protocol SearchViewControllerDelegate: AnyObject {
 final class SearchViewController: UIViewController {
     
     // MARK: - Properties
-    private var searchResults: [GMSPlace] = []
+    private var searchResults: [GMSAutocompletePrediction] = []
     private var sessionToken: GMSAutocompleteSessionToken?
     
     weak var delegate: SearchViewControllerDelegate?
@@ -91,66 +91,39 @@ final class SearchViewController: UIViewController {
     
     // MARK: - Helper Methods
     private func searchPlaces(query: String) {
-        let placesClient = GMSPlacesClient.shared()
-        let filter = GMSAutocompleteFilter()
-        filter.types = ["establishment"]
-        
         // Clear previous results
         searchResults = []
         tableView.reloadData()
         
-        placesClient.findAutocompletePredictions(
-            fromQuery: query,
-            filter: filter,
-            sessionToken: sessionToken
-        ) { [weak self] results, error in
-            guard let self = self else { return }
-            
-            if let error = error {
-                print("Error searching places: \(error.localizedDescription)")
-                return
+        // Use debounced search to prevent rapid-fire API calls
+        PlacesAPIManager.shared.debouncedSearch(query: query) { [weak self] (results: [GMSAutocompletePrediction]) in
+            DispatchQueue.main.async {
+                self?.searchResults = results
+                self?.tableView.reloadData()
             }
-            
-            guard let results = results else { return }
-            
-            // Get place details for each prediction
-            for prediction in results {
-                let placeID = prediction.placeID
-                let fields: GMSPlaceField = [
-                    .name,
-                    .coordinate,
-                    .formattedAddress,
-                    .phoneNumber,
-                    .rating,
-                    .openingHours,
-                    .photos,
-                    .placeID,
-                    .website,
-                    .priceLevel,
-                    .userRatingsTotal,
-                    .types
-                ]
+        }
+    }
+    
+    private func fetchPlaceDetails(for prediction: GMSAutocompletePrediction) {
+        // Use user interaction priority for search selection
+        PlacesAPIManager.shared.fetchPlaceDetailsForUserInteraction(
+            placeID: prediction.placeID,
+            fields: PlacesAPIManager.FieldConfig.search
+        ) { [weak self] place in
+            if let place = place {
+                print("Successfully fetched place: \(place.name ?? "Unknown")")
+                print("Place ID: \(place.placeID ?? "nil")")
+                print("Has photos: \(place.photos?.count ?? 0)")
+                print("Has rating: \(place.rating)")
+                print("Has phone: \(place.phoneNumber != nil)")
+                print("Has opening hours: \(place.openingHours != nil)")
                 
-                placesClient.fetchPlace(fromPlaceID: placeID, placeFields: fields, sessionToken: self.sessionToken) { place, error in
-                    if let error = error {
-                        print("Error fetching place details: \(error.localizedDescription)")
-                        return
-                    }
-                    
-                    if let place = place {
-                        print("Successfully fetched place: \(place.name ?? "Unknown")")
-                        print("Place ID: \(place.placeID ?? "nil")")
-                        print("Has photos: \(place.photos?.count ?? 0)")
-                        print("Has rating: \(place.rating)")
-                        print("Has phone: \(place.phoneNumber != nil)")
-                        print("Has opening hours: \(place.openingHours != nil)")
-                        
-                        DispatchQueue.main.async {
-                            self.searchResults.append(place)
-                            self.tableView.reloadData()
-                        }
-                    }
+                DispatchQueue.main.async {
+                    self?.delegate?.searchViewController(self!, didSelectPlace: place)
+                    self?.dismiss(animated: true)
                 }
+            } else {
+                print("Failed to fetch place details for: \(prediction.placeID)")
             }
         }
     }
@@ -181,19 +154,18 @@ extension SearchViewController: UITableViewDelegate, UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "SearchResultCell", for: indexPath)
-        let place = searchResults[indexPath.row]
+        let prediction = searchResults[indexPath.row]
         
         var content = cell.defaultContentConfiguration()
-        content.text = place.name
-        content.secondaryText = place.formattedAddress
+        content.text = prediction.attributedPrimaryText.string
+        content.secondaryText = prediction.attributedSecondaryText?.string
         cell.contentConfiguration = content
         
         return cell
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        let place = searchResults[indexPath.row]
-        delegate?.searchViewController(self, didSelectPlace: place)
-        dismiss(animated: true)
+        let prediction = searchResults[indexPath.row]
+        fetchPlaceDetails(for: prediction)
     }
 }
