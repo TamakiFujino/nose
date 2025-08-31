@@ -57,6 +57,8 @@ class ContentViewController: UIViewController, ContentViewControllerDelegate {
 
         let floatingVC = FloatingUIController()
         floatingVC.delegate = self
+        // Ensure a clean Unity state when entering a new collection
+        floatingVC.resetAllSlotsInUnity()
         // Load existing avatar data for this collection and apply when available
         fetchExistingSelections { [weak floatingVC] selections in
             guard let floatingVC = floatingVC, let selections = selections else { return }

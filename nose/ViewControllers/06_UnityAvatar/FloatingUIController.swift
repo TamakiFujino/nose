@@ -620,6 +620,24 @@ class FloatingUIController: UIViewController {
         }
     }
 
+    // MARK: - Public reset helpers
+    func resetAllSlotsInUnity() {
+        // Clear Unity state for all categories/subcategories
+        for (pi, parent) in parentCategories.enumerated() {
+            for child in childCategories[pi] {
+                if parent.lowercased() == "base" && child.lowercased() == "body" {
+                    sendResetBodyPose()
+                } else {
+                    sendRemoveAssetToUnity(category: parent, subcategory: child)
+                }
+            }
+        }
+        // Clear local selection state
+        selections.removeAll()
+        currentTopIndex = -1
+        updateThumbnailBorders()
+    }
+
     private func updateThumbnailBorders() {
         for subview in thumbnailStackView.arrangedSubviews {
             if let rowStackView = subview as? UIStackView {
