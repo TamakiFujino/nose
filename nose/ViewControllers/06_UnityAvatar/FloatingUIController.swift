@@ -25,11 +25,8 @@ class FloatingUIController: UIViewController {
     private var selections: [String: [String: String]] = [:]
     
 
-    // Color picker
-    private let colorSwatches: [String] = [
-        "#FFFFFF", "#000000", "#FF5252", "#FF9800", "#FFEB3B",
-        "#4CAF50", "#2196F3", "#9C27B0", "#795548", "#9E9E9E"
-    ]
+    // Color picker (loaded from Hosting palette; falls back to white when needed)
+    private var colorSwatches: [String] = []
     private var colorButton: UIButton = UIButton(type: .system)
     private var colorOverlayView: UIView?
     private var colorSheetView: UIView?
@@ -120,6 +117,8 @@ class FloatingUIController: UIViewController {
         LoadingView.shared.showOverlayLoading(on: view, message: "Loading avatar...")
         // Initialize with initial selections (from Firestore if provided)
         selections = initialSelections
+        // Load color palette from Hosting (optional), fallback to built-in
+        loadColorPalette()
         setupUI()
         loadAssetData()
     }
@@ -333,7 +332,8 @@ class FloatingUIController: UIViewController {
         let buttonSize: CGFloat = 40
         var currentRow: UIStackView?
 
-        for (i, hex) in colorSwatches.enumerated() {
+        let swatches = colorSwatches.isEmpty ? ["#FFFFFF"] : colorSwatches
+        for (i, hex) in swatches.enumerated() {
             if i % columns == 0 {
                 currentRow = UIStackView()
                 currentRow?.axis = .horizontal
@@ -372,7 +372,7 @@ class FloatingUIController: UIViewController {
         }
 
         if let row = currentRow {
-            let remainder = colorSwatches.count % columns
+            let remainder = swatches.count % columns
             if remainder != 0 {
                 for _ in 0..<(columns - remainder) {
                     let spacer = UIView()
@@ -412,8 +412,9 @@ class FloatingUIController: UIViewController {
 
     @objc private func didSelectColor(_ sender: UIButton) {
         let index = sender.tag
-        guard index >= 0 && index < colorSwatches.count else { return }
-        let hex = colorSwatches[index]
+        let swatches = colorSwatches.isEmpty ? ["#FFFFFF"] : colorSwatches
+        guard index >= 0 && index < swatches.count else { return }
+        let hex = swatches[index]
         sendSelectedColorToUnity(hex: hex)
         let parent = parentCategories[selectedParentIndex]
         let child = childCategories[selectedParentIndex][selectedChildIndex]
@@ -537,9 +538,26 @@ class FloatingUIController: UIViewController {
     @objc private func thumbnailTapped(_ sender: UIButton) {
         let newIndex = sender.tag
         let asset = currentAssets[newIndex]
-        currentTopIndex = newIndex
-        updateThumbnailBorders()
-        changeAssetInUnity(asset: asset)
+        let wasSelected = (newIndex == currentTopIndex)
+        if wasSelected {
+            // Toggle off (reset) this slot
+            let parent = parentCategories[selectedParentIndex]
+            let child = childCategories[selectedParentIndex][selectedChildIndex]
+            sendRemoveAssetToUnity(category: parent, subcategory: child)
+            // Clear selection state and border
+            currentTopIndex = -1
+            updateThumbnailBorders()
+            // Clear saved model for this slot but keep color in case user selects again
+            let key = "\(parent)_\(child)"
+            var entry = selections[key] ?? [:]
+            entry.removeValue(forKey: "model")
+            selections[key] = entry
+            return
+        } else {
+            currentTopIndex = newIndex
+            updateThumbnailBorders()
+            changeAssetInUnity(asset: asset)
+        }
         let parent = parentCategories[selectedParentIndex]
         let child = childCategories[selectedParentIndex][selectedChildIndex]
         let key = "\(parent)_\(child)"
@@ -558,6 +576,18 @@ class FloatingUIController: UIViewController {
             var updated = selections[key] ?? [:]
             updated["color"] = defaultHex
             selections[key] = updated
+        }
+    }
+
+    private func sendRemoveAssetToUnity(category: String, subcategory: String) {
+        let payload: [String: Any] = [
+            "category": category,
+            "subcategory": subcategory,
+            "callbackId": UUID().uuidString
+        ]
+        if let data = try? JSONSerialization.data(withJSONObject: payload),
+           let json = String(data: data, encoding: .utf8) {
+            UnityLauncher.shared().sendMessage(toUnity: "UnityBridge", method: "RemoveAsset", message: json)
         }
     }
 
@@ -877,6 +907,52 @@ class FloatingUIController: UIViewController {
         return nil
     }
 
+    private func colorPaletteURL() -> URL? {
+        // Prefer explicit URL in Config.plist (key: ColorPaletteURL)
+        if let filePath = Bundle.main.path(forResource: "Config", ofType: "plist"),
+           let plistDict = NSDictionary(contentsOfFile: filePath) as? [String: Any],
+           let explicit = plistDict["ColorPaletteURL"] as? String,
+           !explicit.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           let url = URL(string: explicit.trimmingCharacters(in: .whitespacesAndNewlines)) {
+            return url
+        }
+        // Default to Firebase Hosting base + /palettes/default.json
+        if let base = hostingBaseURL(), let url = URL(string: base + "/palettes/default.json") {
+            return url
+        }
+        return nil
+    }
+
+    private func loadColorPalette() {
+        guard let baseURL = colorPaletteURL() else { return }
+        // Add a cache-busting query param and ignore local cache
+        var finalURL = baseURL
+        if var comps = URLComponents(url: baseURL, resolvingAgainstBaseURL: false) {
+            var items = comps.queryItems ?? []
+            items.append(URLQueryItem(name: "ts", value: String(Int(Date().timeIntervalSince1970))))
+            comps.queryItems = items
+            finalURL = comps.url ?? baseURL
+        }
+        let request = URLRequest(url: finalURL, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10)
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                print("❌ Failed to load color palette: \(error)")
+                return
+            }
+            guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode), let data = data else { return }
+            do {
+                // Accept either ["#hex", ...] or {"colors":["#hex", ...]}
+                if let arr = try JSONSerialization.jsonObject(with: data) as? [String] {
+                    DispatchQueue.main.async { self.colorSwatches = arr }
+                } else if let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any], let arr = obj["colors"] as? [String] {
+                    DispatchQueue.main.async { self.colorSwatches = arr }
+                }
+            } catch {
+                print("❌ Palette JSON parse error: \(error)")
+            }
+        }.resume()
+    }
+
     private func resolvedThumbnailURL(for asset: AssetItem) -> URL? {
         guard let base = hostingBaseURL() else { return nil }
         // Compose: {base}/Thumbs/{Category}/{Subcategory}/{Name}.jpg
@@ -984,6 +1060,8 @@ class FloatingUIController: UIViewController {
     private func updateThumbnailDisplay() {
         // Clear previous rows
         thumbnailStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        // By default, no selection until a saved selection is applied or user taps
+        currentTopIndex = -1
         // Remove any existing no-assets overlay
         if let existingOverlay = bottomPanel.viewWithTag(9999) { existingOverlay.removeFromSuperview() }
 
@@ -1017,7 +1095,6 @@ class FloatingUIController: UIViewController {
             ])
             bottomPanel.bringSubviewToFront(container)
         }
-        currentTopIndex = 0
         updateThumbnailBorders()
         LoadingView.shared.hideOverlayLoading()
     }

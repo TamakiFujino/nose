@@ -529,7 +529,7 @@ public class AssetManager : MonoBehaviour
             {
                 if (TryParseHexColor(storedHex, out Color pendingColor))
                 {
-                    ApplyColorToObject(existingGo, pendingColor);
+                    ApplyColorToObject(existingGo, pendingColor, true);
                     slotKeyToPendingColor.Remove(slotKey);
                 }
             }
@@ -558,7 +558,7 @@ public class AssetManager : MonoBehaviour
         {
             if (TryParseHexColor(pendingHex, out Color pendingColor))
             {
-                ApplyColorToObject(assetInstance, pendingColor);
+                ApplyColorToObject(assetInstance, pendingColor, true);
                 slotKeyToPendingColor.Remove(slotKey);
                 Debug.Log($"Applied pending color to {slotKey}: {pendingHex}");
             }
@@ -571,6 +571,29 @@ public class AssetManager : MonoBehaviour
         {
             loadedAssets[assetId].SetActive(active);
         }
+    }
+
+    public void RemoveAssetForSlot(string category, string subcategory)
+    {
+        string slotKey = $"{category}:{subcategory}";
+        if (slotKeyToActiveAssetId.TryGetValue(slotKey, out string activeAssetId))
+        {
+            if (!string.IsNullOrEmpty(activeAssetId) && loadedAssets.TryGetValue(activeAssetId, out GameObject existing))
+            {
+                if (existing != null) Destroy(existing);
+                loadedAssets.Remove(activeAssetId);
+            }
+            slotKeyToActiveAssetId.Remove(slotKey);
+        }
+
+        // Release handle for this slot
+        if (slotKeyToHandle.TryGetValue(slotKey, out var handle))
+        {
+            if (handle.IsValid()) Addressables.Release(handle);
+            slotKeyToHandle.Remove(slotKey);
+        }
+
+        Debug.Log($"Removed asset for slot {slotKey}");
     }
 
     [Serializable]
@@ -679,12 +702,12 @@ public class AssetManager : MonoBehaviour
                     var bodySmr = GetBodySkinnedMesh();
                     if (bodySmr != null)
                     {
-                        ApplyColorToObject(bodySmr.gameObject, bodyColor);
+                        ApplyColorToObject(bodySmr.gameObject, bodyColor, false);
                         return;
                     }
                     // Fallback to avatarRoot if body SMR not assigned/found
                     if (avatarRoot != null) {
-                        ApplyColorToObject(avatarRoot.gameObject, bodyColor);
+                        ApplyColorToObject(avatarRoot.gameObject, bodyColor, false);
                         return;
                     }
                 }
@@ -701,7 +724,7 @@ public class AssetManager : MonoBehaviour
                 {
                     if (TryParseHexColor(payload.colorHex, out Color c))
                     {
-                        ApplyColorToObject(go, c);
+                        ApplyColorToObject(go, c, true);
                     }
                     else
                     {
@@ -743,18 +766,45 @@ public class AssetManager : MonoBehaviour
         return false;
     }
 
-    private void ApplyColorToObject(GameObject root, Color color)
+    private void ApplyColorToObject(GameObject root, Color color, bool onlyFirstMaterial)
     {
-        var renderers = root.GetComponentsInChildren<Renderer>(true);
-        foreach (var r in renderers)
+        if (!onlyFirstMaterial)
         {
-            var mats = r.materials;
-            for (int i = 0; i < mats.Length; i++)
+            // Apply to all materials of all renderers (used for Base/Body)
+            var allRenderers = root.GetComponentsInChildren<Renderer>(true);
+            foreach (var r in allRenderers)
             {
-                var m = mats[i];
-                if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", color);
-                if (m.HasProperty("_Color")) m.SetColor("_Color", color);
+                var mats = r.materials;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    var m = mats[i];
+                    if (m == null) continue;
+                    if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", color);
+                    else if (m.HasProperty("_Color")) m.SetColor("_Color", color);
+                }
             }
+            return;
         }
+
+        // Apply only to the first material of a single, primary renderer under this prefab
+        // Prefer SkinnedMeshRenderer if available; otherwise first Renderer found
+        Renderer targetRenderer = null;
+        var candidateSmr = root.GetComponentInChildren<SkinnedMeshRenderer>(true);
+        if (candidateSmr != null && candidateSmr.materials != null && candidateSmr.materials.Length > 0)
+        {
+            targetRenderer = candidateSmr;
+        }
+        else
+        {
+            targetRenderer = root.GetComponentInChildren<Renderer>(true);
+        }
+
+        if (targetRenderer == null) return;
+        var targetMats = targetRenderer.materials;
+        if (targetMats == null || targetMats.Length == 0) return;
+        var mat0 = targetMats[0];
+        if (mat0 == null) return;
+        if (mat0.HasProperty("_BaseColor")) mat0.SetColor("_BaseColor", color);
+        else if (mat0.HasProperty("_Color")) mat0.SetColor("_Color", color);
     }
 }

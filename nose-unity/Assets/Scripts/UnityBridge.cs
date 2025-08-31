@@ -58,6 +58,24 @@ public class UnityBridge : MonoBehaviour
         OnChangeColor?.Invoke(colorJson);
     }
 
+    // iOS calls this method to remove an asset for a category/subcategory
+    public void RemoveAsset(string message)
+    {
+        Debug.Log($"UnityBridge: Received remove asset request: {message}");
+        try
+        {
+            var data = JsonUtility.FromJson<CategoryRequest>(message);
+            if (assetManager != null && data != null)
+            {
+                assetManager.RemoveAssetForSlot(data.category, data.subcategory);
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"RemoveAsset parse error: {e.Message}");
+        }
+    }
+
     // iOS calls this method to get all available categories with callback
     public void GetAvailableCategories(string callbackId)
     {
