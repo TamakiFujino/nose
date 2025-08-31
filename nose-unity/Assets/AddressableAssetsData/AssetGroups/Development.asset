@@ -47,6 +47,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 102852bcd8fa54604a7bce973aa10730
+    m_Address: Assets/Models/Hair/Front/07_front_threeseven_long.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 103295d885dae495ba838cedadf1b6cc
     m_Address: Assets/Models/Hair/Back/07_back_pointed_long.prefab
     m_ReadOnly: 0
@@ -64,6 +69,11 @@ MonoBehaviour:
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 1a06a1e1320d74c9dbf62eb3560fafac
     m_Address: Assets/Models/Clothes/Tops/21_tops_polo_short.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1a06c9003ae424d78979dc1195dc3e99
+    m_Address: Assets/Models/Hair/Front/02_front_brunt_long.prefab
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
@@ -87,6 +97,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 292511e8473314329b389a97db4c09b9
+    m_Address: Assets/Models/Hair/Front/01_front_brunt_med.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 2b65a28f14c8248a8a32d6422d62ac90
     m_Address: Assets/Models/Clothes/Bottoms/08_bottoms_pants_slim_long.prefab
     m_ReadOnly: 0
@@ -99,6 +114,11 @@ MonoBehaviour:
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 2d1b918d01d3c412ba287623e1d0b1ce
     m_Address: Assets/Models/Clothes/Tops/11_tops_tight_seven_cropped.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 32dfc59655fb34e988e53194bf5e818c
+    m_Address: Assets/Models/Hair/Front/04_front_centerdown_straight.prefab
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
@@ -132,6 +152,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3e79501061ed04d69a7fba7e4957dd61
+    m_Address: Assets/Models/Hair/Front/05_front_centerup_pointed.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 40edc7606146a485189005e5171ccf04
     m_Address: Assets/Models/Clothes/Tops/15_tops_wide_seven_cropped.prefab
     m_ReadOnly: 0
@@ -154,6 +179,11 @@ MonoBehaviour:
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 46df6c5b45d3c4b569230293dfdff717
     m_Address: Assets/Models/Clothes/Tops/12_tops_tight_long_cropped.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 480d95c46e99340d7a72518665d4f6c0
+    m_Address: Assets/Models/Hair/Side/04_side_pointed_long.prefab
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
@@ -207,6 +237,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 66353b146e2454da3a16be6633de21cd
+    m_Address: Assets/Models/Hair/Front/08_front_threeseven_med.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 6bacaa7ee3e3947f7b9004f8ca73d5b3
     m_Address: Assets/Models/Clothes/Bottoms/11_bottoms_pants_tight_med.prefab
     m_ReadOnly: 0
@@ -229,6 +264,11 @@ MonoBehaviour:
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 7d23b77a6cc3345f5bd21ef7fd8350a7
     m_Address: Assets/Models/Hair/Back/02_back_straight_veryshort.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8052470867b424cde83c45c073319511
+    m_Address: Assets/Models/Hair/Side/02_side_pointed_regular.prefab
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
@@ -257,6 +297,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8d2df7c93508a427eadbf2fe499c2f1d
+    m_Address: Assets/Models/Hair/Side/06_side_straight_regular.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 8df96a6342f7d4f4daae22bbfbe9283b
     m_Address: Assets/Models/Clothes/Bottoms/24_bottoms_skirt_wide_med.prefab
     m_ReadOnly: 0
@@ -269,6 +314,11 @@ MonoBehaviour:
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 9075f0708cf2e4fe5902d8bff9629600
     m_Address: Assets/Models/Clothes/Socks/05_socks_thigh.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 91de9410c044542a4aacc34909d473d6
+    m_Address: Assets/Models/Hair/Side/01_side_pointed_short.prefab
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
@@ -392,6 +442,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c997d691e7eec436eb57dc6d54842c2c
+    m_Address: Assets/Models/Hair/Side/08_side_straight_long.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: ca0b5fecf18a840f1a76fb01afbf5827
     m_Address: Assets/Models/Clothes/Socks/06_socks_tights.prefab
     m_ReadOnly: 0
@@ -407,13 +462,33 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d1fe8c09b0b12445e993299217ac5cbe
+    m_Address: Assets/Models/Hair/Base/02_base_med.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d34781c8acba94936bc99654b43ab77e
+    m_Address: Assets/Models/Hair/Front/06_front_centerup_straight.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: d38865c985ef3485f85c6da4834da8c2
     m_Address: Assets/Models/Clothes/Bottoms/12_bottoms_pants_tight_long.prefab
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d9348cdf2a98d4871bb2f16897771dda
+    m_Address: Assets/Models/Hair/Side/03_side_pointed_med.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: d9d468ab6966946519f1833bfd4949d9
     m_Address: Assets/Models/Base/Eyebrow/07_eyebrow_D_thick.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: dccd77a5da2fe4728b66bbe88c8c8e14
+    m_Address: Assets/Models/Hair/Side/07_side_straight_med.prefab
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
@@ -442,6 +517,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e877a78eaa6ab499e8f6f1e8122104f5
+    m_Address: Assets/Models/Hair/Front/03_front_centerdown_pointed.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: e9458a914dda544bf875b568cd5c3455
     m_Address: Assets/Models/Base/Body/stand_male.prefab
     m_ReadOnly: 0
@@ -462,8 +542,18 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ef787c2632c0c447585af23b4e65afb1
+    m_Address: Assets/Models/Hair/Base/01_base_full.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: f55336adbd2594eef9ba00304c232f6a
     m_Address: Assets/Models/Clothes/Tops/19_tops_nosleeve_wide.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: fa854247af244432da88dfe31b7f889c
+    m_Address: Assets/Models/Hair/Side/05_side_straight_short.prefab
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
