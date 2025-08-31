@@ -213,6 +213,8 @@ class FloatingUIController: UIViewController {
     @objc private func didTapSave() {
         print("[FloatingUIController] Save button tapped")
         ToastManager.showToast(message: ToastMessages.avatarSaved, type: .success)
+        // Ensure Unity reflects removals before saving
+        syncUnityRemovalsWithSelections()
         // Send accumulated selections
         delegate?.didRequestSave(selections: selections)
     }
@@ -543,7 +545,12 @@ class FloatingUIController: UIViewController {
             // Toggle off (reset) this slot
             let parent = parentCategories[selectedParentIndex]
             let child = childCategories[selectedParentIndex][selectedChildIndex]
-            sendRemoveAssetToUnity(category: parent, subcategory: child)
+            if parent.lowercased() == "base" && child.lowercased() == "body" {
+                // Remove applied pose animation → back to default A-pose
+                sendResetBodyPose()
+            } else {
+                sendRemoveAssetToUnity(category: parent, subcategory: child)
+            }
             // Clear selection state and border
             currentTopIndex = -1
             updateThumbnailBorders()
@@ -588,6 +595,28 @@ class FloatingUIController: UIViewController {
         if let data = try? JSONSerialization.data(withJSONObject: payload),
            let json = String(data: data, encoding: .utf8) {
             UnityLauncher.shared().sendMessage(toUnity: "UnityBridge", method: "RemoveAsset", message: json)
+        }
+    }
+
+    private func sendResetBodyPose() {
+        UnityLauncher.shared().sendMessage(toUnity: "UnityBridge", method: "ResetBodyPose", message: "")
+    }
+
+    private func syncUnityRemovalsWithSelections() {
+        for (pi, parent) in parentCategories.enumerated() {
+            for child in childCategories[pi] {
+                let key = "\(parent)_\(child)"
+                let entry = selections[key]
+                if parent.lowercased() == "base" && child.lowercased() == "body" {
+                    // If no pose, reset body pose
+                    let pose = entry? ["pose"] ?? entry? ["model"]
+                    if pose == nil || pose == "" { sendResetBodyPose() }
+                } else {
+                    // If no model, ensure item removed
+                    let model = entry? ["model"]
+                    if model == nil || model == "" { sendRemoveAssetToUnity(category: parent, subcategory: child) }
+                }
+            }
         }
     }
 
@@ -1103,7 +1132,14 @@ class FloatingUIController: UIViewController {
         let parent = parentCategories[selectedParentIndex]
         let child = childCategories[selectedParentIndex][selectedChildIndex]
         let key = "\(parent)_\(child)"
-        guard let entry = selections[key] else { return }
+        guard let entry = selections[key] else {
+            // If Base/Body has no saved selection, apply default pose without selecting any thumbnail
+            if parent.lowercased() == "base" && child.lowercased() == "body" {
+                // Reset to default A-pose on Unity side
+                UnityLauncher.shared().sendMessage(toUnity: "UnityBridge", method: "ResetBodyPose", message: "")
+            }
+            return
+        }
         // Preselect model/pose if available
         let desiredName: String?
         if parent.lowercased() == "base" && child.lowercased() == "body" {
@@ -1120,6 +1156,16 @@ class FloatingUIController: UIViewController {
         if let hex = entry["color"], !hex.isEmpty {
             sendSelectedColorToUnity(hex: hex)
         }
+    }
+
+    private func defaultBodyPoseName() -> String? {
+        if let filePath = Bundle.main.path(forResource: "Config", ofType: "plist"),
+           let plistDict = NSDictionary(contentsOfFile: filePath) as? [String: Any],
+           let explicit = plistDict["DefaultBodyPose"] as? String,
+           !explicit.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return explicit.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return nil
     }
 
     // MARK: - External API

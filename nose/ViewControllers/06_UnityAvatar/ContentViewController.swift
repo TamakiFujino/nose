@@ -147,8 +147,9 @@ extension ContentViewController {
     func didRequestSave(selections: [String : [String : String]]) {
         print("[ContentViewController] didRequestSave() called with \(selections.count) entries")
         LoadingView.shared.showAlertLoading(title: "Saving", on: self)
+        let sanitized = sanitizeSelectionsForSave(selections)
         let avatarData = CollectionAvatar.AvatarData(
-            selections: selections,
+            selections: sanitized,
             customizations: [:],
             lastCustomizedAt: Date(),
             customizationVersion: 1
@@ -169,5 +170,30 @@ extension ContentViewController {
                 self.present(alert, animated: true)
             }
         }
+    }
+
+    private func sanitizeSelectionsForSave(_ selections: [String: [String: String]]) -> [String: [String: String]] {
+        var result: [String: [String: String]] = [:]
+        for (key, entry) in selections {
+            // key format: "Category_Subcategory"
+            let parts = key.split(separator: "_").map(String.init)
+            guard parts.count == 2 else { continue }
+            let category = parts[0].lowercased()
+            let subcategory = parts[1].lowercased()
+            if category == "base" && subcategory == "body" {
+                // Keep only if pose/model is present
+                let pose = (entry["pose"] ?? entry["model"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                if !pose.isEmpty {
+                    result[key] = entry
+                }
+            } else {
+                // Keep only if model is present
+                let model = (entry["model"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                if !model.isEmpty {
+                    result[key] = entry
+                }
+            }
+        }
+        return result
     }
 }

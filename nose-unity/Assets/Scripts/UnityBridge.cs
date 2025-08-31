@@ -76,6 +76,16 @@ public class UnityBridge : MonoBehaviour
         }
     }
 
+    // iOS calls this method to reset body pose to default (A-pose)
+    public void ResetBodyPose()
+    {
+        Debug.Log("UnityBridge: ResetBodyPose request");
+        if (assetManager != null)
+        {
+            assetManager.ResetBodyPose();
+        }
+    }
+
     // iOS calls this method to get all available categories with callback
     public void GetAvailableCategories(string callbackId)
     {

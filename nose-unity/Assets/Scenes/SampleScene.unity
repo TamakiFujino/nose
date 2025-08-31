@@ -219,8 +219,6 @@ MonoBehaviour:
   currentSubcategory: Eye
   currentAssetId: 
   poses:
-  - name: apose
-    clip: {fileID: -1820458995579703009, guid: 6ed2ac5ef24764e0fad31c08fc504b91, type: 3}
   - name: crouch
     clip: {fileID: 291726005246125317, guid: 6ed2ac5ef24764e0fad31c08fc504b91, type: 3}
   - name: run

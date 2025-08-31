@@ -69,6 +69,13 @@ public class AssetManager : MonoBehaviour
     private AnimationPlayableOutput poseOutput;
     private AnimationClipPlayable posePlayable;
 
+    // Original body pose snapshot (local transforms) and animator state for A-pose resets
+    private struct TRS { public Vector3 p; public Quaternion r; public Vector3 s; }
+    private readonly Dictionary<Transform, TRS> originalBodyPose = new Dictionary<Transform, TRS>();
+    private bool originalBodyPoseCaptured = false;
+    private bool bodyAnimatorDisabledForAPose = false;
+    private string currentPoseName = null;
+
     private void Start()
     {
         EnsureAvatarRoot();
@@ -605,11 +612,19 @@ public class AssetManager : MonoBehaviour
 
     private void ApplyBodyPose(string poseName)
     {
-        if (string.IsNullOrEmpty(poseName)) return;
+        // Ensure original pose is captured once, and animator enabled if we previously disabled it
+        CaptureOriginalBodyPoseIfNeeded();
         var animator = GetBodyAnimator();
         if (animator == null)
         {
             Debug.LogWarning("ApplyBodyPose: No Animator found on avatarRoot");
+            return;
+        }
+        if (string.IsNullOrEmpty(poseName)) return;
+        // Skip if same pose already active
+        if (!string.IsNullOrEmpty(currentPoseName) && string.Equals(currentPoseName, poseName, StringComparison.OrdinalIgnoreCase))
+        {
+            Debug.Log($"ApplyBodyPose: Pose '{poseName}' already active, skipping");
             return;
         }
 
@@ -636,10 +651,71 @@ public class AssetManager : MonoBehaviour
 
         poseOutput = AnimationPlayableOutput.Create(poseGraph, "BodyPoseOutput", animator);
         poseOutput.SetSourcePlayable(posePlayable);
-
+        // Enable animator only after graph is fully prepared to avoid a blank frame
+        if (bodyAnimatorDisabledForAPose)
+        {
+            animator.enabled = true;
+            bodyAnimatorDisabledForAPose = false;
+        }
         poseGraph.Play();
+        animator.Update(0f);
+        currentPoseName = poseName;
 
         Debug.Log($"ApplyBodyPose: Applied pose '{poseName}'");
+    }
+
+    public void ResetBodyPose()
+    {
+        // Stop any pose playable graph
+        if (poseGraph.IsValid())
+        {
+            poseGraph.Destroy();
+        }
+
+        // Disable animator so it doesn't drive bones, then restore original bind pose
+        var animator = GetBodyAnimator();
+        if (animator != null)
+        {
+            animator.enabled = false;
+            bodyAnimatorDisabledForAPose = true;
+        }
+        RestoreOriginalBodyPose();
+        currentPoseName = null;
+        Debug.Log("ResetBodyPose: Restored to original armature pose (A-pose)");
+    }
+
+    private void CaptureOriginalBodyPoseIfNeeded()
+    {
+        if (originalBodyPoseCaptured) return;
+        var root = GetSkeletonRoot();
+        if (root == null) return;
+        originalBodyPose.Clear();
+        foreach (var t in root.GetComponentsInChildren<Transform>(true))
+        {
+            TRS trs;
+            trs.p = t.localPosition;
+            trs.r = t.localRotation;
+            trs.s = t.localScale;
+            originalBodyPose[t] = trs;
+        }
+        originalBodyPoseCaptured = true;
+        Debug.Log("CaptureOriginalBodyPose: Captured body bind pose");
+    }
+
+    private void RestoreOriginalBodyPose()
+    {
+        if (!originalBodyPoseCaptured) { CaptureOriginalBodyPoseIfNeeded(); }
+        var root = GetSkeletonRoot();
+        if (root == null) return;
+        foreach (var t in root.GetComponentsInChildren<Transform>(true))
+        {
+            if (originalBodyPose.TryGetValue(t, out var trs))
+            {
+                t.localPosition = trs.p;
+                t.localRotation = trs.r;
+                t.localScale = trs.s;
+            }
+        }
     }
 
     public AssetItem GetAssetById(string assetId)
