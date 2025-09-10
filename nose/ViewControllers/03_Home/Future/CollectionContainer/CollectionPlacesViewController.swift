@@ -11,7 +11,7 @@ class CollectionPlacesViewController: UIViewController {
     private var places: [PlaceCollection.Place] = []
     private var sessionToken: GMSAutocompleteSessionToken?
     private var sharedFriendsCount: Int = 0
-    // private var avatarViewController: Avatar3DViewController?
+    
     private var isCompleted: Bool = false
     private static let imageCache = NSCache<NSString, UIImage>()
 
@@ -24,17 +24,7 @@ class CollectionPlacesViewController: UIViewController {
         return view
     }()
 
-//    private lazy var avatarContainer: UIView = {
-//        let view = UIView()
-//        view.translatesAutoresizingMaskIntoConstraints = false
-//        view.backgroundColor = .clear
-//        view.layer.cornerRadius = 8
-//        view.isUserInteractionEnabled = true
-//        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(avatarContainerTapped))
-//        view.addGestureRecognizer(tapGesture)
-//        return view
-//    }()
-
+    
     // Removed old avatar preview loading indicator
 
     private lazy var menuButton: UIButton = {
@@ -208,73 +198,11 @@ class CollectionPlacesViewController: UIViewController {
         loadAvatarThumbnail(forceRefresh: false)
     }
 
-//    private func setupAvatarView() {
-//        let avatarVC = Avatar3DViewController()
-//        avatarVC.cameraPosition = SIMD3<Float>(0.0, 3.0, 7.0)
-//        avatarViewController = avatarVC
-//
-//        addChild(avatarVC)
-//        avatarContainer.addSubview(avatarVC.view)
-//        avatarVC.view.translatesAutoresizingMaskIntoConstraints = false
-//        
-//        // Add loading indicator
-//        avatarContainer.addSubview(loadingIndicator)
-//        
-//        NSLayoutConstraint.activate([
-//            avatarVC.view.topAnchor.constraint(equalTo: avatarContainer.topAnchor),
-//            avatarVC.view.leadingAnchor.constraint(equalTo: avatarContainer.leadingAnchor),
-//            avatarVC.view.trailingAnchor.constraint(equalTo: avatarContainer.trailingAnchor),
-//            avatarVC.view.bottomAnchor.constraint(equalTo: avatarContainer.bottomAnchor),
-//            
-//            loadingIndicator.centerXAnchor.constraint(equalTo: avatarContainer.centerXAnchor),
-//            loadingIndicator.centerYAnchor.constraint(equalTo: avatarContainer.centerYAnchor)
-//        ])
-//        
-//        avatarVC.didMove(toParent: self)
-//        loadingIndicator.startAnimating()
-//        loadAvatarData()
-//    }
-    
-//    private func loadAvatarData() {
-//        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
-//        let db = Firestore.firestore()
-//        
-//        print("DEBUG: Loading avatar data for collection: \(collection.id)")
-//        
-//        db.collection("users")
-//            .document(currentUserId)
-//            .collection("collections")
-//            .document(collection.id)
-//            .getDocument { [weak self] snapshot, error in
-//                if let error = error {
-//                    print("Error loading collection: \(error.localizedDescription)")
-//                    self?.loadingIndicator.stopAnimating()
-//                    return
-//                }
-//                
-//                if let avatarData = snapshot?.data()?["avatarData"] as? [String: Any] {
-//                    print("DEBUG: Found avatar data: \(avatarData)")
-//                    if let avatarData = CollectionAvatar.AvatarData.fromFirestoreDict(avatarData, version: .v1) {
-//                        DispatchQueue.main.async {
-//                            print("DEBUG: Loading avatar data into view controller")
-//                            self?.avatarViewController?.loadAvatarData(avatarData)
-//                            self?.loadingIndicator.stopAnimating()
-//                        }
-//                    } else {
-//                        print("DEBUG: Failed to parse avatar data")
-//                        self?.loadingIndicator.stopAnimating()
-//                    }
-//                } else {
-//                    print("DEBUG: No avatar data found in collection")
-//                    self?.loadingIndicator.stopAnimating()
-//                }
-//            }
-//    }
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
 
     // MARK: - Actions
-//    @objc private func avatarContainerTapped() {
-//        showAvatarCustomization()
-//    }
 
     @objc private func menuButtonTapped() {
         let alertController = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
