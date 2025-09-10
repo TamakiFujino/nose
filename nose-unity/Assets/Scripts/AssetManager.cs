@@ -550,6 +550,10 @@ public class AssetManager : MonoBehaviour
         assetInstance.transform.localRotation = Quaternion.identity;
         assetInstance.transform.localScale = Vector3.one;
 
+        // Ensure the instantiated item's layer matches the avatarRoot layer so
+        // cameras (e.g., ThumbnailCamera) with culling masks include it
+        SetLayerRecursively(assetInstance, avatarRoot.gameObject.layer);
+
         // Rebind skinned meshes to the body skeleton so pose/rotation matches
         RebindSkinnedMeshesToBody(assetInstance);
 
@@ -569,6 +573,17 @@ public class AssetManager : MonoBehaviour
                 slotKeyToPendingColor.Remove(slotKey);
                 Debug.Log($"Applied pending color to {slotKey}: {pendingHex}");
             }
+        }
+    }
+
+    private void SetLayerRecursively(GameObject obj, int layer)
+    {
+        if (obj == null) return;
+        obj.layer = layer;
+        foreach (Transform t in obj.GetComponentsInChildren<Transform>(true))
+        {
+            if (t == null || t.gameObject == obj) continue;
+            t.gameObject.layer = layer;
         }
     }
 

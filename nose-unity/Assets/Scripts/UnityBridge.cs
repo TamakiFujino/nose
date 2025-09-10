@@ -43,6 +43,14 @@ public class UnityBridge : MonoBehaviour
         {
             Debug.LogError("UnityBridge: AssetManager not found!");
         }
+
+        // Ensure ThumbnailCamera never renders to the screen by default
+        var thumbCamGO = GameObject.Find("ThumbnailCamera");
+        if (thumbCamGO != null)
+        {
+            var cam = thumbCamGO.GetComponent<Camera>();
+            if (cam != null) cam.enabled = false;
+        }
     }
 
     // iOS calls this method to change an asset
@@ -225,10 +233,12 @@ public class UnityBridge : MonoBehaviour
 
     private IEnumerator CaptureThumbnailCoroutine(string callbackId)
     {
-        // Pick a camera: prefer a camera named "AvatarCamera", else Camera.main, else any enabled camera
+        // Pick a camera: prefer a camera named "ThumbnailCamera", then "AvatarCamera", else Camera.main, else any enabled camera
         Camera cam = null;
+        var thumbCamGO = GameObject.Find("ThumbnailCamera");
+        if (thumbCamGO != null) cam = thumbCamGO.GetComponent<Camera>();
         var avatarCamGO = GameObject.Find("AvatarCamera");
-        if (avatarCamGO != null) cam = avatarCamGO.GetComponent<Camera>();
+        if (cam == null && avatarCamGO != null) cam = avatarCamGO.GetComponent<Camera>();
         if (cam == null) cam = Camera.main;
         if (cam == null)
         {
@@ -249,15 +259,37 @@ public class UnityBridge : MonoBehaviour
 
         var prevRT = RenderTexture.active;
         var prevCamRT = cam.targetTexture;
+        var prevCamRect = cam.rect;
+        bool isThumbnailCamera = cam.gameObject != null && cam.gameObject.name == "ThumbnailCamera";
+        bool prevEnabled = cam.enabled;
         RenderTexture rt = RenderTexture.GetTemporary(width, height, 24, RenderTextureFormat.ARGB32);
         try
         {
+            // Ensure the thumbnail camera does not render to screen while capturing
+            if (isThumbnailCamera) cam.enabled = false;
+            // Render into full texture area regardless of scene viewport settings
+            cam.rect = new Rect(0f, 0f, 1f, 1f);
             cam.targetTexture = rt;
             cam.Render();
 
             RenderTexture.active = rt;
-            Texture2D tex = new Texture2D(width, height, TextureFormat.RGBA32, false);
-            tex.ReadPixels(new Rect(0, 0, width, height), 0, 0, false);
+
+            // Compute avatar viewport rect and crop to it if available
+            Rect pixelRect = new Rect(0, 0, width, height);
+            if (assetManager != null && assetManager.gameObject != null)
+            {
+                if (TryComputeAvatarViewportRect(cam, out Rect viewportRect))
+                {
+                    // Expand slightly for padding
+                    viewportRect = ExpandViewportRect(viewportRect, 0.05f);
+                    pixelRect = ViewportToPixelRect(viewportRect, width, height);
+                }
+            }
+
+            int cropW = Mathf.Clamp(Mathf.RoundToInt(pixelRect.width), 8, width);
+            int cropH = Mathf.Clamp(Mathf.RoundToInt(pixelRect.height), 8, height);
+            Texture2D tex = new Texture2D(cropW, cropH, TextureFormat.RGBA32, false);
+            tex.ReadPixels(pixelRect, 0, 0, false);
             tex.Apply(false, false);
 
             byte[] png = ImageConversion.EncodeToPNG(tex);
@@ -271,24 +303,40 @@ public class UnityBridge : MonoBehaviour
         finally
         {
             cam.targetTexture = prevCamRT;
+            cam.rect = prevCamRect;
+            if (isThumbnailCamera) cam.enabled = prevEnabled;
             RenderTexture.active = prevRT;
             RenderTexture.ReleaseTemporary(rt);
         }
     }
 
     // iOS calls this to capture and save a thumbnail to a file under Application.temporaryCachePath
-    // message should be a relative path like "avatar_captures/users/<uid>/collections/<id>/avatar.png"
-    public void CaptureAvatarThumbnailToFile(string relativePath)
+    // message format: "relative|width|height|transparentFlag" (transparentFlag: 1=true, 0/absent=false)
+    // Backwards compatible with message = relative only
+    public void CaptureAvatarThumbnailToFile(string message)
     {
-        StartCoroutine(CaptureThumbnailToFileCoroutine(relativePath));
+        StartCoroutine(CaptureThumbnailToFileCoroutine(message));
     }
 
-    private IEnumerator CaptureThumbnailToFileCoroutine(string relativePath)
+    private IEnumerator CaptureThumbnailToFileCoroutine(string message)
     {
-        // Pick a camera similar to CaptureThumbnailCoroutine
+        // Parse message parts
+        string relativePath = message;
+        int reqW = -1, reqH = -1; bool transparent = false;
+        var parts = message.Split('|');
+        if (parts.Length >= 1) relativePath = parts[0];
+        if (parts.Length >= 3)
+        {
+            int.TryParse(parts[1], out reqW);
+            int.TryParse(parts[2], out reqH);
+        }
+        if (parts.Length >= 4) transparent = parts[3] == "1";
+        // Pick a camera similar to CaptureThumbnailCoroutine, preferring "ThumbnailCamera"
         Camera cam = null;
+        var thumbCamGO = GameObject.Find("ThumbnailCamera");
+        if (thumbCamGO != null) cam = thumbCamGO.GetComponent<Camera>();
         var avatarCamGO = GameObject.Find("AvatarCamera");
-        if (avatarCamGO != null) cam = avatarCamGO.GetComponent<Camera>();
+        if (cam == null && avatarCamGO != null) cam = avatarCamGO.GetComponent<Camera>();
         if (cam == null) cam = Camera.main;
         if (cam == null)
         {
@@ -303,17 +351,42 @@ public class UnityBridge : MonoBehaviour
 
         yield return new WaitForEndOfFrame();
 
-        int width = Mathf.Clamp(Screen.width, 128, 4096);
-        int height = Mathf.Clamp(Screen.height, 128, 4096);
+        int width = reqW > 0 ? Mathf.Clamp(reqW, 64, 4096) : Mathf.Clamp(Screen.width, 128, 4096);
+        int height = reqH > 0 ? Mathf.Clamp(reqH, 64, 4096) : Mathf.Clamp(Screen.height, 128, 4096);
 
         var prevRT = RenderTexture.active;
         var prevCamRT = cam.targetTexture;
+        var prevCamRect = cam.rect;
+        bool isThumbnailCamera = cam.gameObject != null && cam.gameObject.name == "ThumbnailCamera";
+        bool prevEnabled = cam.enabled;
+        var prevClear = cam.clearFlags;
+        var prevBG = cam.backgroundColor;
+        float prevOrthoSize = cam.orthographic ? cam.orthographicSize : 0f;
+        float prevAspect = cam.aspect;
+        Vector3 prevPos = cam.transform.position; Quaternion prevRot = cam.transform.rotation;
         RenderTexture rt = RenderTexture.GetTemporary(width, height, 24, RenderTextureFormat.ARGB32);
         try
         {
+            // Ensure the thumbnail camera does not render to screen while capturing
+            if (isThumbnailCamera) cam.enabled = false;
+            // Render into full texture area regardless of scene viewport settings
+            cam.rect = new Rect(0f, 0f, 1f, 1f);
+            if (transparent)
+            {
+                cam.clearFlags = CameraClearFlags.SolidColor;
+                cam.backgroundColor = new Color(0f, 0f, 0f, 0f);
+            }
+
+            // Frame avatar to fit requested aspect without cropping
+            cam.aspect = (float)width / Mathf.Max(1, height);
+            // Add more headroom to avoid top clipping at high FOV
+            FrameAvatarForFullFigure(cam, 1.08f, -0.02f);
+            // Ensure near clip doesn't cut off toes
+            cam.nearClipPlane = Mathf.Min(cam.nearClipPlane, 0.01f);
             cam.targetTexture = rt;
             cam.Render();
             RenderTexture.active = rt;
+            // No cropping – capture full RT to preserve full figure
             Texture2D tex = new Texture2D(width, height, TextureFormat.RGBA32, false);
             tex.ReadPixels(new Rect(0, 0, width, height), 0, 0, false);
             tex.Apply(false, false);
@@ -329,8 +402,134 @@ public class UnityBridge : MonoBehaviour
         finally
         {
             cam.targetTexture = prevCamRT;
+            cam.rect = prevCamRect;
+            cam.clearFlags = prevClear;
+            cam.backgroundColor = prevBG;
+            if (cam.orthographic) cam.orthographicSize = prevOrthoSize;
+            cam.aspect = prevAspect;
+            cam.transform.SetPositionAndRotation(prevPos, prevRot);
+            if (isThumbnailCamera) cam.enabled = prevEnabled;
             RenderTexture.active = prevRT;
             RenderTexture.ReleaseTemporary(rt);
+        }
+    }
+
+    private bool TryComputeAvatarViewportRect(Camera cam, out Rect viewportRect)
+    {
+        viewportRect = new Rect(0, 0, 1, 1);
+        if (cam == null) return false;
+        var assetMgr = assetManager != null ? assetManager : GameObject.FindObjectOfType<AssetManager>();
+        if (assetMgr == null || assetMgr.avatarRoot == null) return false;
+
+        var renderers = assetMgr.avatarRoot.GetComponentsInChildren<Renderer>(true);
+        if (renderers == null || renderers.Length == 0) return false;
+
+        bool anyPoint = false;
+        float minX = 1f, minY = 1f, maxX = 0f, maxY = 0f;
+
+        foreach (var r in renderers)
+        {
+            if (r == null) continue;
+            Bounds b = r.bounds;
+            Vector3 c = b.center;
+            Vector3 e = b.extents;
+            // 8 corners of the bounds box
+            Vector3[] corners = new Vector3[]
+            {
+                c + new Vector3( e.x,  e.y,  e.z),
+                c + new Vector3( e.x,  e.y, -e.z),
+                c + new Vector3( e.x, -e.y,  e.z),
+                c + new Vector3( e.x, -e.y, -e.z),
+                c + new Vector3(-e.x,  e.y,  e.z),
+                c + new Vector3(-e.x,  e.y, -e.z),
+                c + new Vector3(-e.x, -e.y,  e.z),
+                c + new Vector3(-e.x, -e.y, -e.z)
+            };
+            foreach (var world in corners)
+            {
+                Vector3 vp = cam.WorldToViewportPoint(world);
+                // consider only points in front of camera
+                if (vp.z <= 0f) continue;
+                anyPoint = true;
+                minX = Mathf.Min(minX, vp.x);
+                minY = Mathf.Min(minY, vp.y);
+                maxX = Mathf.Max(maxX, vp.x);
+                maxY = Mathf.Max(maxY, vp.y);
+            }
+        }
+
+        if (!anyPoint) return false;
+        // Clamp to [0,1]
+        minX = Mathf.Clamp01(minX);
+        minY = Mathf.Clamp01(minY);
+        maxX = Mathf.Clamp01(maxX);
+        maxY = Mathf.Clamp01(maxY);
+        float w = Mathf.Max(0.01f, maxX - minX);
+        float h = Mathf.Max(0.01f, maxY - minY);
+        viewportRect = new Rect(minX, minY, w, h);
+        return true;
+    }
+
+    private Rect ExpandViewportRect(Rect rect, float paddingFraction)
+    {
+        float cx = rect.x + rect.width * 0.5f;
+        float cy = rect.y + rect.height * 0.5f;
+        float w = rect.width * (1f + paddingFraction * 2f);
+        float h = rect.height * (1f + paddingFraction * 2f);
+        float x = cx - w * 0.5f;
+        float y = cy - h * 0.5f;
+        // Clamp to [0,1]
+        float x0 = Mathf.Clamp01(x);
+        float y0 = Mathf.Clamp01(y);
+        float x1 = Mathf.Clamp01(x + w);
+        float y1 = Mathf.Clamp01(y + h);
+        return new Rect(x0, y0, Mathf.Max(0.01f, x1 - x0), Mathf.Max(0.01f, y1 - y0));
+    }
+
+    private Rect ViewportToPixelRect(Rect vp, int texWidth, int texHeight)
+    {
+        float px = vp.x * texWidth;
+        // Flip Y because ReadPixels uses bottom-left origin and viewport.y is from bottom,
+        // but we want the rect's bottom edge at (1 - (y + h)) in pixel space
+        float py = (1f - (vp.y + vp.height)) * texHeight;
+        float pw = vp.width * texWidth;
+        float ph = vp.height * texHeight;
+        return new Rect(Mathf.Round(px), Mathf.Round(py), Mathf.Round(pw), Mathf.Round(ph));
+    }
+
+    private void FrameAvatarForFullFigure(Camera cam, float padding, float verticalBias)
+    {
+        var mgr = assetManager != null ? assetManager : GameObject.FindObjectOfType<AssetManager>();
+        if (mgr == null || mgr.avatarRoot == null || cam == null) return;
+
+        var renderers = mgr.avatarRoot.GetComponentsInChildren<Renderer>(true);
+        if (renderers == null || renderers.Length == 0) return;
+        Bounds b = renderers[0].bounds;
+        for (int i = 1; i < renderers.Length; i++) { if (renderers[i] != null) b.Encapsulate(renderers[i].bounds); }
+
+        Vector3 center = b.center;
+        // Apply a small vertical bias so composition feels centered by eye
+        center.y += verticalBias * b.size.y;
+        float height = Mathf.Max(0.01f, b.size.y) * padding;
+        float width = Mathf.Max(0.01f, b.size.x) * padding;
+
+        if (cam.orthographic)
+        {
+            float orthoForHeight = height * 0.5f;
+            float orthoForWidth = (width * 0.5f) / Mathf.Max(0.01f, cam.aspect);
+            cam.orthographicSize = Mathf.Max(orthoForHeight, orthoForWidth);
+            cam.transform.LookAt(center);
+        }
+        else
+        {
+            float vFov = Mathf.Deg2Rad * Mathf.Max(1f, cam.fieldOfView);
+            float distByHeight = (height * 0.5f) / Mathf.Tan(vFov * 0.5f);
+            float hFov = 2f * Mathf.Atan(Mathf.Tan(vFov * 0.5f) * cam.aspect);
+            float distByWidth = (width * 0.5f) / Mathf.Tan(hFov * 0.5f);
+            float dist = Mathf.Max(distByHeight, distByWidth);
+            Vector3 forward = cam.transform.forward.sqrMagnitude > 0.0001f ? cam.transform.forward : Vector3.forward;
+            cam.transform.position = center - forward.normalized * dist;
+            cam.transform.LookAt(center);
         }
     }
     // Send response back to iOS
