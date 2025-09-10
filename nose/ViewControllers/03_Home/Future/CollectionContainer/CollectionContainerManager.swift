@@ -1,6 +1,7 @@
 import Foundation
 import FirebaseFirestore
 import FirebaseAuth
+import FirebaseStorage
 
 class CollectionContainerManager {
     static let shared = CollectionContainerManager()
@@ -168,14 +169,30 @@ class CollectionContainerManager {
                 batch.deleteDocument(collectionRef)
             }
             
-            // Commit all deletions
+            // Commit all deletions, then attempt to remove storage thumbnail and url field for owner
             batch.commit { error in
                 if let error = error {
                     print("❌ Error deleting collection: \(error.localizedDescription)")
                     completion(error)
-                } else {
-                    print("🗑 Successfully deleted collection")
-                    completion(nil)
+                    return
+                }
+
+                // Delete Storage thumbnail (owner path)
+                let path = "collection_avatars/\(currentUserId)/\(collection.id)/avatar.png"
+                let ref = Storage.storage().reference(withPath: path)
+                ref.delete { storageError in
+                    if let storageError = storageError {
+                        print("⚠️ Could not delete storage avatar: \(storageError.localizedDescription)")
+                    } else {
+                        print("🗑 Deleted storage avatar for collection \(collection.id)")
+                    }
+
+                    // Also remove avatarThumbnailURL from owner's doc (ignore errors)
+                    let ownerRef = self.db.collection("users").document(currentUserId).collection("collections").document(collection.id)
+                    ownerRef.setData(["avatarThumbnailURL": FieldValue.delete()], merge: true) { _ in
+                        print("🧹 Cleared avatarThumbnailURL for owner document, if existed")
+                        completion(nil)
+                    }
                 }
             }
         }

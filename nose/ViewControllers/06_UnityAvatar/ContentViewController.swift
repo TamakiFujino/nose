@@ -1,6 +1,7 @@
 import UIKit
 import FirebaseAuth
 import FirebaseFirestore
+import FirebaseStorage
 
 class ContentViewController: UIViewController, ContentViewControllerDelegate {
     private var floatingWindow: UIWindow?
@@ -158,20 +159,157 @@ extension ContentViewController {
         )
         CollectionManager.shared.updateAvatarData(avatarData, for: collection) { [weak self] result in
             guard let self = self else { return }
-            LoadingView.shared.hideAlertLoading()
             switch result {
             case .success:
-                let alert = UIAlertController(title: "Saved", message: "Avatar customization saved.", preferredStyle: .alert)
-                alert.addAction(UIAlertAction(title: "OK", style: .default))
-                self.present(alert, animated: true)
-                // Refresh from Firestore after save to ensure consistency
-                self.applyLatestSelectionsIfVisible()
+                self.captureAndUploadThumbnail { uploadResult in
+                    LoadingView.shared.hideAlertLoading()
+                    switch uploadResult {
+                    case .success:
+                        self.applyLatestSelectionsIfVisible()
+                    case .failure(let error):
+                        print("[ContentViewController] Thumbnail upload failed: \(error.localizedDescription)")
+                    }
+                }
             case .failure(let error):
-                let alert = UIAlertController(title: "Error", message: error.localizedDescription, preferredStyle: .alert)
-                alert.addAction(UIAlertAction(title: "OK", style: .default))
-                self.present(alert, animated: true)
+                LoadingView.shared.hideAlertLoading()
+                print("[ContentViewController] Save error: \(error.localizedDescription)")
             }
         }
+    }
+
+    private func captureAndUploadThumbnail(completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let uid = Auth.auth().currentUser?.uid else {
+            completion(.failure(NSError(domain: "ContentViewController", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not signed in"])));
+            return
+        }
+        // Prefer file-based capture to avoid bridge callback issues
+        let relative = "avatar_captures/users/\(uid)/collections/\(collection.id)/avatar.png"
+        UnityLauncher.shared().sendMessage(
+            toUnity: "UnityBridge",
+            method: "CaptureAvatarThumbnailToFile",
+            message: relative
+        )
+
+        let cachesURL = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
+        let fullPath = cachesURL.appendingPathComponent(relative).path
+        waitForFile(atPath: fullPath, timeout: 2.0, pollInterval: 0.1) { [weak self] fileResult in
+            guard let self = self else { return }
+            switch fileResult {
+            case .success:
+                do {
+                    let data = try Data(contentsOf: URL(fileURLWithPath: fullPath))
+                    self.uploadThumbnailData(data, uid: uid) { uploadResult in
+                        // Cleanup temp file
+                        try? FileManager.default.removeItem(atPath: fullPath)
+                        completion(uploadResult)
+                    }
+                } catch {
+                    completion(.failure(error))
+                }
+            case .failure:
+                // Fallback to bridge-based base64 capture
+                UnityManager.shared.requestAvatarThumbnail { result in
+                    switch result {
+                    case .failure(let error):
+                        completion(.failure(error))
+                    case .success(let data):
+                        self.uploadThumbnailData(data, uid: uid, completion: completion)
+                    }
+                }
+            }
+        }
+    }
+
+    private func uploadThumbnailData(_ data: Data, uid: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        // Give the upload time to finish if the app goes to background
+        var bgTask: UIBackgroundTaskIdentifier = .invalid
+        if bgTask == .invalid {
+            bgTask = UIApplication.shared.beginBackgroundTask(withName: "avatarUpload") {}
+        }
+
+        let path = "collection_avatars/\(uid)/\(self.collection.id)/avatar.png"
+        let ref = Storage.storage().reference(withPath: path)
+        let metadata = StorageMetadata()
+        metadata.contentType = "image/png"
+
+        // Try up to 3 attempts with exponential backoff
+        func attemptUpload(attempt: Int) {
+            ref.putData(data, metadata: metadata) { _, error in
+                if let error = error {
+                    if attempt < 3 {
+                        let delay = pow(2.0, Double(attempt - 1)) * 0.5 // 0.5s, 1s, 2s
+                        DispatchQueue.global().asyncAfter(deadline: .now() + delay) {
+                            attemptUpload(attempt: attempt + 1)
+                        }
+                    } else {
+                        if bgTask != .invalid { UIApplication.shared.endBackgroundTask(bgTask); bgTask = .invalid }
+                        completion(.failure(error))
+                    }
+                    return
+                }
+
+                // Fetch download URL (also with retry)
+                func getURL(attempt: Int) {
+                    ref.downloadURL { url, urlErr in
+                        if let urlErr = urlErr {
+                            if attempt < 3 {
+                                let delay = pow(2.0, Double(attempt - 1)) * 0.5
+                                DispatchQueue.global().asyncAfter(deadline: .now() + delay) {
+                                    getURL(attempt: attempt + 1)
+                                }
+                            } else {
+                                if bgTask != .invalid { UIApplication.shared.endBackgroundTask(bgTask); bgTask = .invalid }
+                                completion(.failure(urlErr))
+                            }
+                            return
+                        }
+                        guard let url = url else {
+                            if bgTask != .invalid { UIApplication.shared.endBackgroundTask(bgTask); bgTask = .invalid }
+                            completion(.failure(NSError(domain: "ContentViewController", code: -2, userInfo: [NSLocalizedDescriptionKey: "No download URL"])));
+                            return
+                        }
+
+                        let db = Firestore.firestore()
+                        db.collection("users").document(uid).collection("collections").document(self.collection.id)
+                            .setData([
+                                "avatarThumbnailURL": url.absoluteString,
+                                "avatarThumbnailUpdatedAt": FieldValue.serverTimestamp()
+                            ], merge: true) { err in
+                                if bgTask != .invalid { UIApplication.shared.endBackgroundTask(bgTask); bgTask = .invalid }
+                                if let err = err {
+                                    completion(.failure(err))
+                                } else {
+                                    // Notify listeners to refresh thumbnail
+                                    NotificationCenter.default.post(
+                                        name: Notification.Name("AvatarThumbnailUpdated"),
+                                        object: nil,
+                                        userInfo: ["collectionId": self.collection.id]
+                                    )
+                                    completion(.success(()))
+                                }
+                            }
+                    }
+                }
+                getURL(attempt: 1)
+            }
+        }
+        attemptUpload(attempt: 1)
+    }
+
+    private func waitForFile(atPath path: String, timeout: TimeInterval, pollInterval: TimeInterval, completion: @escaping (Result<Void, Error>) -> Void) {
+        let deadline = Date().addingTimeInterval(timeout)
+        func poll() {
+            if FileManager.default.fileExists(atPath: path) {
+                completion(.success(()))
+                return
+            }
+            if Date() > deadline {
+                completion(.failure(NSError(domain: "ContentViewController", code: -3, userInfo: [NSLocalizedDescriptionKey: "Capture timeout"])));
+                return
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + pollInterval) { poll() }
+        }
+        poll()
     }
 
     private func sanitizeSelectionsForSave(_ selections: [String: [String: String]]) -> [String: [String: String]] {

@@ -13,6 +13,7 @@ class CollectionPlacesViewController: UIViewController {
     private var sharedFriendsCount: Int = 0
     // private var avatarViewController: Avatar3DViewController?
     private var isCompleted: Bool = false
+    private static let imageCache = NSCache<NSString, UIImage>()
 
     // MARK: - UI Components
 
@@ -111,18 +112,17 @@ class CollectionPlacesViewController: UIViewController {
         return label
     }()
 
-    private lazy var customizeButton: UIButton = {
-        let button = UIButton(type: .system)
-        button.translatesAutoresizingMaskIntoConstraints = false
-        button.setTitle("Customize your avatar", for: .normal)
-        button.setTitleColor(.black, for: .normal)
-        button.backgroundColor = .thirdColor
-        button.titleLabel?.font = .systemFont(ofSize: 16, weight: .semibold)
-        button.layer.cornerRadius = 12
-        button.layer.masksToBounds = true
-        button.addTarget(self, action: #selector(customizeButtonTapped), for: .touchUpInside)
-        return button
+    private lazy var avatarImageView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.contentMode = .scaleAspectFit
+        imageView.clipsToBounds = true
+        imageView.layer.cornerRadius = 12
+        imageView.backgroundColor = .secondarySystemBackground
+        return imageView
     }()
+
+    // Removed button; using avatarImageView as trigger to customization
 
     // MARK: - Initialization
 
@@ -143,6 +143,9 @@ class CollectionPlacesViewController: UIViewController {
         loadSharedFriendsCount()
         checkIfCompleted()
         sessionToken = GMSAutocompleteSessionToken()
+
+        // Listen for avatar thumbnail updates
+        NotificationCenter.default.addObserver(self, selector: #selector(handleAvatarThumbnailUpdatedNotification(_:)), name: Notification.Name("AvatarThumbnailUpdated"), object: nil)
     }
 
     // MARK: - UI Setup
@@ -154,7 +157,10 @@ class CollectionPlacesViewController: UIViewController {
         headerView.addSubview(menuButton)
         headerView.addSubview(sharedFriendsLabel)
         headerView.addSubview(placesCountLabel)
-        headerView.addSubview(customizeButton)
+        headerView.addSubview(avatarImageView)
+        avatarImageView.isUserInteractionEnabled = true
+        let avatarTap = UITapGestureRecognizer(target: self, action: #selector(avatarImageTapped))
+        avatarImageView.addGestureRecognizer(avatarTap)
         view.addSubview(tableView)
 
         // Hide menu button if user is not the owner
@@ -164,7 +170,7 @@ class CollectionPlacesViewController: UIViewController {
             headerView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             headerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             headerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            headerView.heightAnchor.constraint(equalToConstant: 180),
+            headerView.heightAnchor.constraint(equalToConstant: 420),
 
             titleLabel.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 16),
             titleLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
@@ -181,10 +187,12 @@ class CollectionPlacesViewController: UIViewController {
             placesCountLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
             placesCountLabel.leadingAnchor.constraint(equalTo: sharedFriendsLabel.trailingAnchor, constant: 16),
 
-            customizeButton.topAnchor.constraint(equalTo: sharedFriendsLabel.bottomAnchor, constant: 16),
-            customizeButton.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
-            customizeButton.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
-            customizeButton.heightAnchor.constraint(equalToConstant: 44),
+            avatarImageView.topAnchor.constraint(equalTo: sharedFriendsLabel.bottomAnchor, constant: 12),
+            avatarImageView.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+            avatarImageView.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
+            avatarImageView.heightAnchor.constraint(equalToConstant: 300),
+
+            // No customize button; avatarImageView acts as the trigger
 
             tableView.topAnchor.constraint(equalTo: headerView.bottomAnchor),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -193,6 +201,11 @@ class CollectionPlacesViewController: UIViewController {
         ])
 
         // setupAvatarView()
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        loadAvatarThumbnail(forceRefresh: false)
     }
 
 //    private func setupAvatarView() {
@@ -311,7 +324,7 @@ class CollectionPlacesViewController: UIViewController {
         present(alertController, animated: true)
     }
 
-    @objc private func customizeButtonTapped() {
+    @objc private func avatarImageTapped() {
         let vc = ContentViewController(collection: collection)
         if let nav = navigationController {
             nav.pushViewController(vc, animated: true)
@@ -586,6 +599,83 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
                 }
             }
         }
+    }
+
+    @objc private func handleAvatarThumbnailUpdatedNotification(_ note: Notification) {
+        guard let updatedCollectionId = note.userInfo?["collectionId"] as? String,
+              updatedCollectionId == collection.id else { return }
+        loadAvatarThumbnail(forceRefresh: true)
+    }
+
+    private func loadAvatarThumbnail(forceRefresh: Bool) {
+        // 1) Try cache by collection id
+        let cacheKey = NSString(string: collection.id)
+        if !forceRefresh, let cached = CollectionPlacesViewController.imageCache.object(forKey: cacheKey) {
+            avatarImageView.image = cached
+            return
+        }
+
+        // 2) Try remote URL stored in Firestore
+        let db = Firestore.firestore()
+        db.collection("users")
+            .document(collection.userId)
+            .collection("collections")
+            .document(collection.id)
+            .getDocument { [weak self] snapshot, error in
+                guard let self = self else { return }
+                if var urlString = snapshot?.data()? ["avatarThumbnailURL"] as? String, let baseURL = URL(string: urlString) {
+                    // Cache-bust with timestamp param if available
+                    if let ts = snapshot?.data()? ["avatarThumbnailUpdatedAt"] as? Timestamp {
+                        var comps = URLComponents(url: baseURL, resolvingAgainstBaseURL: false)
+                        var q = comps?.queryItems ?? []
+                        q.append(URLQueryItem(name: "t", value: "\(Int(ts.dateValue().timeIntervalSince1970))"))
+                        comps?.queryItems = q
+                        urlString = comps?.url?.absoluteString ?? urlString
+                    }
+                    guard let finalURL = URL(string: urlString) else { self.loadAvatarThumbnailFromCachesFallback(); return }
+                    self.downloadImage(from: finalURL, ignoreCache: true) { image in
+                        DispatchQueue.main.async {
+                            if let image = image {
+                                CollectionPlacesViewController.imageCache.setObject(image, forKey: cacheKey)
+                                self.avatarImageView.image = image
+                            } else {
+                                self.loadAvatarThumbnailFromCachesFallback()
+                            }
+                        }
+                    }
+                } else {
+                    // 3) Fallback to local caches file (may exist on the device that captured)
+                    self.loadAvatarThumbnailFromCachesFallback()
+                }
+            }
+    }
+
+    private func loadAvatarThumbnailFromCachesFallback() {
+        let relativePath = "avatar_captures/users/\(collection.userId)/collections/\(collection.id)/avatar.png"
+        let cachesDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
+        let fileURL = cachesDirectory.appendingPathComponent(relativePath)
+        if FileManager.default.fileExists(atPath: fileURL.path), let image = UIImage(contentsOfFile: fileURL.path) {
+            CollectionPlacesViewController.imageCache.setObject(image, forKey: NSString(string: collection.id))
+            avatarImageView.image = image
+        } else {
+            avatarImageView.image = UIImage(systemName: "person.crop.circle")
+            avatarImageView.contentMode = .scaleAspectFit
+        }
+    }
+
+    private func downloadImage(from url: URL, ignoreCache: Bool = false, completion: @escaping (UIImage?) -> Void) {
+        var request = URLRequest(url: url)
+        if ignoreCache {
+            request.cachePolicy = .reloadIgnoringLocalCacheData
+        }
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let data = data, let image = UIImage(data: data) {
+                completion(image)
+            } else {
+                completion(nil)
+            }
+        }
+        task.resume()
     }
     
     // Add swipe actions functionality

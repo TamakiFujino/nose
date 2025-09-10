@@ -157,6 +157,32 @@ final class UnityManager {
             }
         }
     }
+
+    // Capture avatar thumbnail as Data (PNG) via Unity
+    func requestAvatarThumbnail(completion: @escaping (Result<Data, Error>) -> Void) {
+        let callbackId = generateCallbackId()
+        storeCallback(callbackId) { [weak self] json in
+            guard let self = self else { return }
+            // Parse { imageBase64, width, height } or { error }
+            if let data = json.data(using: .utf8),
+               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                if let errorMsg = obj["error"] as? String {
+                    completion(.failure(NSError(domain: "UnityManager", code: -1, userInfo: [NSLocalizedDescriptionKey: errorMsg])))
+                    return
+                }
+                if let b64 = obj["imageBase64"] as? String, let bytes = Data(base64Encoded: b64) {
+                    completion(.success(bytes))
+                    return
+                }
+            }
+            completion(.failure(NSError(domain: "UnityManager", code: -2, userInfo: [NSLocalizedDescriptionKey: "Invalid thumbnail response"])));
+        }
+        UnityLauncher.shared().sendMessage(
+            toUnity: "UnityBridge",
+            method: "CaptureAvatarThumbnail",
+            message: callbackId
+        )
+    }
     
     // MARK: - Unity Response Handling
     

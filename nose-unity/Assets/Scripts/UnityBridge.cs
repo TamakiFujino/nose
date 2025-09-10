@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -216,6 +217,122 @@ public class UnityBridge : MonoBehaviour
         SendResponseToiOS(callbackId, jsonResponse);
     }
 
+    // iOS calls this to capture a thumbnail of the avatar camera and receive base64 PNG via callbackId
+    public void CaptureAvatarThumbnail(string callbackId)
+    {
+        StartCoroutine(CaptureThumbnailCoroutine(callbackId));
+    }
+
+    private IEnumerator CaptureThumbnailCoroutine(string callbackId)
+    {
+        // Pick a camera: prefer a camera named "AvatarCamera", else Camera.main, else any enabled camera
+        Camera cam = null;
+        var avatarCamGO = GameObject.Find("AvatarCamera");
+        if (avatarCamGO != null) cam = avatarCamGO.GetComponent<Camera>();
+        if (cam == null) cam = Camera.main;
+        if (cam == null)
+        {
+            var all = GameObject.FindObjectsOfType<Camera>();
+            foreach (var c in all) { if (c != null && c.enabled) { cam = c; break; } }
+        }
+        if (cam == null)
+        {
+            SendResponseToiOS(callbackId, "{\"error\":\"No camera found\"}");
+            yield break;
+        }
+
+        // Wait for end of frame to ensure latest pose is rendered
+        yield return new WaitForEndOfFrame();
+
+        int width = Mathf.Clamp(Screen.width, 128, 4096);
+        int height = Mathf.Clamp(Screen.height, 128, 4096);
+
+        var prevRT = RenderTexture.active;
+        var prevCamRT = cam.targetTexture;
+        RenderTexture rt = RenderTexture.GetTemporary(width, height, 24, RenderTextureFormat.ARGB32);
+        try
+        {
+            cam.targetTexture = rt;
+            cam.Render();
+
+            RenderTexture.active = rt;
+            Texture2D tex = new Texture2D(width, height, TextureFormat.RGBA32, false);
+            tex.ReadPixels(new Rect(0, 0, width, height), 0, 0, false);
+            tex.Apply(false, false);
+
+            byte[] png = ImageConversion.EncodeToPNG(tex);
+            Object.Destroy(tex);
+
+            string b64 = System.Convert.ToBase64String(png);
+            var payload = new ThumbnailPayload { imageBase64 = b64, width = width, height = height };
+            string json = JsonUtility.ToJson(payload);
+            SendResponseToiOS(callbackId, json);
+        }
+        finally
+        {
+            cam.targetTexture = prevCamRT;
+            RenderTexture.active = prevRT;
+            RenderTexture.ReleaseTemporary(rt);
+        }
+    }
+
+    // iOS calls this to capture and save a thumbnail to a file under Application.temporaryCachePath
+    // message should be a relative path like "avatar_captures/users/<uid>/collections/<id>/avatar.png"
+    public void CaptureAvatarThumbnailToFile(string relativePath)
+    {
+        StartCoroutine(CaptureThumbnailToFileCoroutine(relativePath));
+    }
+
+    private IEnumerator CaptureThumbnailToFileCoroutine(string relativePath)
+    {
+        // Pick a camera similar to CaptureThumbnailCoroutine
+        Camera cam = null;
+        var avatarCamGO = GameObject.Find("AvatarCamera");
+        if (avatarCamGO != null) cam = avatarCamGO.GetComponent<Camera>();
+        if (cam == null) cam = Camera.main;
+        if (cam == null)
+        {
+            var all = GameObject.FindObjectsOfType<Camera>();
+            foreach (var c in all) { if (c != null && c.enabled) { cam = c; break; } }
+        }
+        if (cam == null)
+        {
+            Debug.LogError("CaptureAvatarThumbnailToFile: No camera found");
+            yield break;
+        }
+
+        yield return new WaitForEndOfFrame();
+
+        int width = Mathf.Clamp(Screen.width, 128, 4096);
+        int height = Mathf.Clamp(Screen.height, 128, 4096);
+
+        var prevRT = RenderTexture.active;
+        var prevCamRT = cam.targetTexture;
+        RenderTexture rt = RenderTexture.GetTemporary(width, height, 24, RenderTextureFormat.ARGB32);
+        try
+        {
+            cam.targetTexture = rt;
+            cam.Render();
+            RenderTexture.active = rt;
+            Texture2D tex = new Texture2D(width, height, TextureFormat.RGBA32, false);
+            tex.ReadPixels(new Rect(0, 0, width, height), 0, 0, false);
+            tex.Apply(false, false);
+            byte[] png = ImageConversion.EncodeToPNG(tex);
+            Object.Destroy(tex);
+
+            string dir = System.IO.Path.Combine(Application.temporaryCachePath, System.IO.Path.GetDirectoryName(relativePath) ?? string.Empty);
+            if (!System.IO.Directory.Exists(dir)) System.IO.Directory.CreateDirectory(dir);
+            string full = System.IO.Path.Combine(Application.temporaryCachePath, relativePath);
+            System.IO.File.WriteAllBytes(full, png);
+            Debug.Log($"CaptureAvatarThumbnailToFile: wrote {full}");
+        }
+        finally
+        {
+            cam.targetTexture = prevCamRT;
+            RenderTexture.active = prevRT;
+            RenderTexture.ReleaseTemporary(rt);
+        }
+    }
     // Send response back to iOS
     private void SendResponseToiOS(string callbackId, string response)
     {
@@ -268,4 +385,12 @@ public class ResponseData
 public class PoseListResponse
 {
     public string[] poses;
+}
+
+[System.Serializable]
+public class ThumbnailPayload
+{
+    public string imageBase64;
+    public int width;
+    public int height;
 }
