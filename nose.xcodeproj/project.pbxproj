@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		4984E6CB2D731BC600A6288A /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 4984E6CA2D731BC600A6288A /* Localizable.xcstrings */; };
 		49F7C2162E49E258003A3D50 /* UnityLauncher.mm in Sources */ = {isa = PBXBuildFile; fileRef = 49F7C2152E49E258003A3D50 /* UnityLauncher.mm */; };
 		49F87F4D2E64769D00C129C4 /* UnityFramework.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 49F87F4A2E64768400C129C4 /* UnityFramework.framework */; };
 		49F87F4E2E64769D00C129C4 /* UnityFramework.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 49F87F4A2E64768400C129C4 /* UnityFramework.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -69,7 +68,6 @@
 		1EA110E7250EA988152DF452 /* Pods_noseUITests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_noseUITests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		2B7F922E0F5C4EA04FBCABDB /* Pods-noseUITests.development.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseUITests.development.xcconfig"; path = "Target Support Files/Pods-noseUITests/Pods-noseUITests.development.xcconfig"; sourceTree = "<group>"; };
 		312A9D10F92AD4AC6B98F711 /* Pods_noseTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_noseTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		4984E6CA2D731BC600A6288A /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		49E99BF62D3BE432000F3CE5 /* nose.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = nose.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		49E99C0C2D3BE433000F3CE5 /* noseTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = noseTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		49E99C162D3BE433000F3CE5 /* noseUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = noseUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -191,7 +189,6 @@
 				49F7C2152E49E258003A3D50 /* UnityLauncher.mm */,
 				49B95D8D2E0CE4B8004F2DCD /* .github */,
 				49BE7E332DF41122006D6E16 /* FirebaseConfig */,
-				4984E6CA2D731BC600A6288A /* Localizable.xcstrings */,
 				49E99BF82D3BE432000F3CE5 /* nose */,
 				49E99C0F2D3BE433000F3CE5 /* noseTests */,
 				49E99C192D3BE433000F3CE5 /* noseUITests */,
@@ -395,7 +392,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				49F87F522E6476DD00C129C4 /* Data in Resources */,
-				4984E6CB2D731BC600A6288A /* Localizable.xcstrings in Resources */,
 				90E1384E390AC4D7DCDC4D2F /* Pods-nose-metadata.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

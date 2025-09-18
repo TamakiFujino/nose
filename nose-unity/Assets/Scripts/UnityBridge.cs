@@ -12,6 +12,7 @@ public class UnityBridge : MonoBehaviour
     public static event System.Action<string> OnChangeColor;
 
     private AssetManager assetManager;
+    private HorizontalRotateOnDrag rotator;
     
     // Callback system for iOS responses
     private Dictionary<string, System.Action<string>> pendingCallbacks = new Dictionary<string, System.Action<string>>();
@@ -43,6 +44,8 @@ public class UnityBridge : MonoBehaviour
         {
             Debug.LogError("UnityBridge: AssetManager not found!");
         }
+
+        rotator = FindObjectOfType<HorizontalRotateOnDrag>();
 
         // Ensure ThumbnailCamera never renders to the screen by default
         var thumbCamGO = GameObject.Find("ThumbnailCamera");
@@ -229,6 +232,26 @@ public class UnityBridge : MonoBehaviour
     public void CaptureAvatarThumbnail(string callbackId)
     {
         StartCoroutine(CaptureThumbnailCoroutine(callbackId));
+    }
+
+    // iOS calls this to rotate the avatar by sending horizontal delta in pixels (string parseable as float)
+    public void RotateAvatar(string message)
+    {
+        if (string.IsNullOrEmpty(message)) return;
+        if (rotator == null) rotator = FindObjectOfType<HorizontalRotateOnDrag>();
+        if (rotator == null)
+        {
+            Debug.LogWarning("RotateAvatar: HorizontalRotateOnDrag not found in scene");
+            return;
+        }
+        if (float.TryParse(message, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float dx))
+        {
+            rotator.ExternalDrag(dx);
+        }
+        else
+        {
+            Debug.LogWarning($"RotateAvatar: could not parse delta '{message}'");
+        }
     }
 
     private IEnumerator CaptureThumbnailCoroutine(string callbackId)

@@ -6,6 +6,8 @@ import FirebaseStorage
 class ContentViewController: UIViewController, ContentViewControllerDelegate {
     private var floatingWindow: UIWindow?
     private let collection: PlaceCollection
+    // TEMP flag was used to test; re-enable UI now that we forward drags
+    private let temporaryDisableNativeUI: Bool = false
 
     init(collection: PlaceCollection) {
         self.collection = collection
@@ -30,6 +32,11 @@ class ContentViewController: UIViewController, ContentViewControllerDelegate {
     private func launchUnity() {
         print("[ContentViewController] Launching Unity...")
         UnityLauncher.shared().launchUnityIfNeeded()
+        // TEMP: skip native overlays so touches pass to Unity
+        guard !temporaryDisableNativeUI else {
+            print("[ContentViewController] TEMP: Native UI disabled; not showing overlays")
+            return
+        }
         // Show a loading overlay immediately while Unity is preparing and before UI is ready
         showLoadingOverlayWindow()
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { self.createFloatingUI() }

@@ -4,6 +4,9 @@ import FirebaseCore
 class FloatingUIController: UIViewController {
     weak var delegate: ContentViewControllerDelegate?
     private var currentTopIndex = 0
+    private var rotateOverlayView: UIView?
+    private var rotatePan: UIPanGestureRecognizer?
+    private var lastPanTranslationX: CGFloat = 0
 
     // Category data
     private let parentCategories = ["Base", "Hair", "Clothes", "Accessories"]
@@ -150,6 +153,7 @@ class FloatingUIController: UIViewController {
 
     private func setupUI() {
         view.backgroundColor = .clear
+        setupRotateOverlay()
         view.addSubview(backButton)
         view.addSubview(saveButton)
         view.addSubview(bottomPanel)
@@ -1144,6 +1148,50 @@ class FloatingUIController: UIViewController {
         }
         updateThumbnailBorders()
         LoadingView.shared.hideOverlayLoading()
+    }
+
+    // MARK: - Rotation overlay forwarding pan to Unity
+    private func setupRotateOverlay() {
+        if rotateOverlayView != nil { return }
+        let overlay = UIView()
+        overlay.backgroundColor = .clear
+        overlay.translatesAutoresizingMaskIntoConstraints = false
+        view.insertSubview(overlay, at: 0) // keep all buttons/panels above
+        NSLayoutConstraint.activate([
+            overlay.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            overlay.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            overlay.topAnchor.constraint(equalTo: view.topAnchor),
+            overlay.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+
+        let pan = UIPanGestureRecognizer(target: self, action: #selector(handleRotatePan(_:)))
+        pan.maximumNumberOfTouches = 1
+        pan.cancelsTouchesInView = false
+        overlay.addGestureRecognizer(pan)
+        rotateOverlayView = overlay
+        rotatePan = pan
+    }
+
+    @objc private func handleRotatePan(_ gr: UIPanGestureRecognizer) {
+        // Ignore if gesture begins inside the bottomPanel to avoid fighting scroll interactions
+        let location = gr.location(in: view)
+        if bottomPanel.frame.contains(location) { return }
+        // Also ignore drags that start on top buttons or color button
+        if backButton.frame.contains(location) || saveButton.frame.contains(location) || colorButton.frame.contains(location) { return }
+
+        switch gr.state {
+        case .began:
+            lastPanTranslationX = 0
+        case .changed:
+            let tx = gr.translation(in: view).x
+            let delta = tx - lastPanTranslationX
+            lastPanTranslationX = tx
+            // Forward horizontal delta to Unity (as pixels)
+            let message = String(format: "%.3f", delta)
+            UnityLauncher.shared().sendMessage(toUnity: "UnityBridge", method: "RotateAvatar", message: message)
+        default:
+            break
+        }
     }
 
     private func applySelectionForCurrentCategory() {

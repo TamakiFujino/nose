@@ -1,0 +1,43 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Checks if the requester is the owner or a member of the collection
+    function canAccessCollection(ownerId, collectionId) {
+      let coll = firestore.get(/databases/(default)/documents/users/$(ownerId)/collections/$(collectionId));
+      return isAuthenticated() && (
+        isOwner(ownerId) || (
+          coll.data != null && coll.data.members is list && (request.auth.uid in coll.data.members)
+        )
+      );
+    }
+
+    // Basic image validation: allow only images up to 5MB
+    function isValidImageUpload() {
+      return request.resource != null &&
+             request.resource.contentType.matches('image/.*') &&
+             request.resource.size < 5 * 1024 * 1024;
+    }
+
+    // Collection avatar thumbnails
+    // Path structure: collection_avatars/{ownerUserId}/{collectionId}/avatar.png
+    match /collection_avatars/{ownerUserId}/{collectionId}/avatar.png {
+      // Members (including owner) can read
+      allow read: if canAccessCollection(ownerUserId, collectionId);
+
+      // Only owner can create/update/delete
+      allow create, update: if isOwner(ownerUserId) && isValidImageUpload();
+      allow delete: if isOwner(ownerUserId);
+    }
+  }
+}
+
+

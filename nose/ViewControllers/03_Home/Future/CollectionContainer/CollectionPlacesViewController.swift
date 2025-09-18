@@ -109,6 +109,8 @@ class CollectionPlacesViewController: UIViewController {
         imageView.clipsToBounds = true
         imageView.layer.cornerRadius = 12
         imageView.backgroundColor = .secondarySystemBackground
+        // Default placeholder image (add an asset named "AvatarPlaceholder" in Assets.xcassets)
+        imageView.image = UIImage(named: "AvatarPlaceholder") ?? UIImage(systemName: "person.crop.circle")
         return imageView
     }()
 
@@ -586,7 +588,7 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
             CollectionPlacesViewController.imageCache.setObject(image, forKey: NSString(string: collection.id))
             avatarImageView.image = image
         } else {
-            avatarImageView.image = UIImage(systemName: "person.crop.circle")
+            avatarImageView.image = UIImage(named: "AvatarPlaceholder") ?? UIImage(systemName: "person.crop.circle")
             avatarImageView.contentMode = .scaleAspectFit
         }
     }

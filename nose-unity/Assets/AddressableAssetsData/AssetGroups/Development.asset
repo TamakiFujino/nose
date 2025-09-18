@@ -197,6 +197,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 4c91121948911400f809d60adee826a9
+    m_Address: Assets/Models/Clothes/Tops/23_tops_sweater.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 4e0c58abdd2ee404ca8c2991c659f8b8
     m_Address: Assets/Models/Clothes/Socks/07_socks_loose.prefab
     m_ReadOnly: 0
@@ -239,6 +244,11 @@ MonoBehaviour:
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 66353b146e2454da3a16be6633de21cd
     m_Address: Assets/Models/Hair/Front/08_front_threeseven_med.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 67fed948bc8104165b455854dae983fb
+    m_Address: Assets/Models/Accessories/Headwear/03_beanie.prefab
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
@@ -409,6 +419,11 @@ MonoBehaviour:
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: bacee55cabde148e092cd79139b7877d
     m_Address: Assets/Models/Clothes/Socks/03_socks_med.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: bbb36300562d44157a863634487ce20d
+    m_Address: Assets/Models/Clothes/Bottoms/27_bottoms_pants_jorts.prefab
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
