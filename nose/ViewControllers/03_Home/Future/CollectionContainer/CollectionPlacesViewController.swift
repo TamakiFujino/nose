@@ -2,6 +2,7 @@ import UIKit
 import GooglePlaces
 import FirebaseFirestore
 import FirebaseAuth
+import MapKit
 
 class CollectionPlacesViewController: UIViewController {
 
@@ -494,6 +495,9 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "PlaceCell", for: indexPath) as! PlaceTableViewCell
         cell.configure(with: places[indexPath.row])
+        // Reliable built-in accessory button; handled in accessoryButtonTappedForRowAt
+        cell.accessoryType = .detailButton
+        cell.tintColor = .fourthColor
         return cell
     }
 
@@ -528,6 +532,17 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
                     self?.present(alert, animated: true)
                 }
             }
+        }
+    }
+
+    func tableView(_ tableView: UITableView, accessoryButtonTappedForRowWith indexPath: IndexPath) {
+        // Map icon tapped
+        guard indexPath.row < places.count else { return }
+        let place = places[indexPath.row]
+        if let cachedPlace = PlacesCacheManager.shared.getCachedPlace(for: place.placeId) {
+            openPlaceInMapsByName(cachedPlace.name ?? place.name)
+        } else {
+            openPlaceInMapsByName(place.name)
         }
     }
 
@@ -629,6 +644,59 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         task.resume()
     }
     
+    // MARK: - Maps Integration
+    private func openPlaceInMapsByName(_ name: String) {
+        let encoded = name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? name
+
+        let sheet = UIAlertController(title: "Open in Maps", message: name, preferredStyle: .actionSheet)
+
+        // Apple Maps (app) using maps:// scheme
+        if let appleURL = URL(string: "maps://?q=\(encoded)") {
+            sheet.addAction(UIAlertAction(title: "Apple Maps", style: .default, handler: { _ in
+                UIApplication.shared.open(appleURL, options: [:]) { success in
+                    if !success, let webURL = URL(string: "http://maps.apple.com/?q=\(encoded)") {
+                        UIApplication.shared.open(webURL, options: [:], completionHandler: nil)
+                    }
+                }
+            }))
+        }
+
+        // Google Maps, if installed
+        if let gmapsURL = URL(string: "comgooglemaps://?q=\(encoded)&zoom=16"), UIApplication.shared.canOpenURL(gmapsURL) {
+            sheet.addAction(UIAlertAction(title: "Google Maps", style: .default, handler: { _ in
+                UIApplication.shared.open(gmapsURL, options: [:], completionHandler: nil)
+            }))
+        }
+
+        // Waze, if installed
+        if let wazeURL = URL(string: "waze://?q=\(encoded)&navigate=yes"), UIApplication.shared.canOpenURL(wazeURL) {
+            sheet.addAction(UIAlertAction(title: "Waze", style: .default, handler: { _ in
+                UIApplication.shared.open(wazeURL, options: [:], completionHandler: nil)
+            }))
+        }
+
+        sheet.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+
+        if let pop = sheet.popoverPresentationController {
+            pop.sourceView = self.view
+            pop.sourceRect = CGRect(x: self.view.bounds.midX, y: self.view.bounds.midY, width: 1, height: 1)
+        }
+        present(sheet, animated: true)
+    }
+
+    // MARK: - Accessory actions
+    @objc private func didTapMapAccessory(_ sender: UIButton) {
+        let row = sender.tag
+        guard row >= 0 && row < places.count else { return }
+        let place = places[row]
+        // Use cached details if available for better name fidelity, otherwise fall back to collection name
+        if let cachedPlace = PlacesCacheManager.shared.getCachedPlace(for: place.placeId) {
+            openPlaceInMapsByName(cachedPlace.name ?? place.name)
+        } else {
+            openPlaceInMapsByName(place.name)
+        }
+    }
+    
     // Add swipe actions functionality
     func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
         // Safety check to prevent crash
@@ -638,6 +706,14 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         
         let place = places[indexPath.row]
         
+        // Open in Maps action
+        let mapAction = UIContextualAction(style: .normal, title: "Map") { [weak self] (action, view, completion) in
+            self?.openPlaceInMapsByName(place.name)
+            completion(true)
+        }
+        mapAction.backgroundColor = .systemGreen
+        mapAction.image = UIImage(systemName: "map")
+
         // Visited action
         let visitedAction = UIContextualAction(style: .normal, title: place.visited ? "Unvisited" : "Visited") { [weak self] (action, view, completion) in
             self?.toggleVisitedStatus(at: indexPath)
@@ -654,7 +730,7 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         deleteAction.backgroundColor = .fourthColor
         deleteAction.image = UIImage(systemName: "trash")
         
-        return UISwipeActionsConfiguration(actions: [deleteAction, visitedAction])
+        return UISwipeActionsConfiguration(actions: [deleteAction, visitedAction, mapAction])
     }
     
     private func confirmDeletePlace(at indexPath: IndexPath) {

@@ -37,6 +37,9 @@
 	<array>
 		<string>googlegmail</string>
 		<string>googleauth</string>
+		<string>comgooglemaps</string>
+		<string>comgooglemaps-x-callback</string>
+		<string>waze</string>
 	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
