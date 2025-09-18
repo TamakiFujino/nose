@@ -109,8 +109,6 @@ class CollectionPlacesViewController: UIViewController {
         imageView.clipsToBounds = true
         imageView.layer.cornerRadius = 12
         imageView.backgroundColor = .secondarySystemBackground
-        // Default placeholder image (add an asset named "AvatarPlaceholder" in Assets.xcassets)
-        imageView.image = UIImage(named: "AvatarPlaceholder") ?? UIImage(systemName: "person.crop.circle")
         return imageView
     }()
 
@@ -193,6 +191,8 @@ class CollectionPlacesViewController: UIViewController {
         ])
 
         // setupAvatarView()
+        // Prefill avatar image synchronously if cached on disk to avoid placeholder flash
+        prefillAvatarImageIfCached()
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -538,7 +538,7 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
     }
 
     private func loadAvatarThumbnail(forceRefresh: Bool) {
-        // 1) Try cache by collection id
+        // 1) Try in-memory cache by collection id
         let cacheKey = NSString(string: collection.id)
         if !forceRefresh, let cached = CollectionPlacesViewController.imageCache.object(forKey: cacheKey) {
             avatarImageView.image = cached
@@ -588,8 +588,29 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
             CollectionPlacesViewController.imageCache.setObject(image, forKey: NSString(string: collection.id))
             avatarImageView.image = image
         } else {
-            avatarImageView.image = UIImage(named: "AvatarPlaceholder") ?? UIImage(systemName: "person.crop.circle")
-            avatarImageView.contentMode = .scaleAspectFit
+            // Defer placeholder until we confirm there's truly no remote image later
+            // Keep whatever is currently set to avoid a flash
+            if avatarImageView.image == nil {
+                avatarImageView.image = UIImage(named: "AvatarPlaceholder") ?? UIImage(systemName: "person.crop.circle")
+                avatarImageView.contentMode = .scaleAspectFit
+            }
+        }
+    }
+
+    private func prefillAvatarImageIfCached() {
+        // Check in-memory cache first
+        let cacheKey = NSString(string: collection.id)
+        if let cached = CollectionPlacesViewController.imageCache.object(forKey: cacheKey) {
+            avatarImageView.image = cached
+            return
+        }
+        // Then check disk cache synchronously to avoid initial flash
+        let relativePath = "avatar_captures/users/\(collection.userId)/collections/\(collection.id)/avatar.png"
+        let cachesDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
+        let fileURL = cachesDirectory.appendingPathComponent(relativePath)
+        if FileManager.default.fileExists(atPath: fileURL.path), let image = UIImage(contentsOfFile: fileURL.path) {
+            CollectionPlacesViewController.imageCache.setObject(image, forKey: cacheKey)
+            avatarImageView.image = image
         }
     }
 
