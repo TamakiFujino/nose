@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1001 &71150071057596373
+--- !u!1001 &4714985693201217338
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -52,6 +52,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: 14_tops_wide_half_cropped
       objectReference: {fileID: 0}
+    - target: {fileID: 5792593229485630933, guid: 1f46cfff1470445c1882802a8aaff216, type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: e0e4eb5f24a574101ae72942ffc7e76c, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

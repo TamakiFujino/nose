@@ -38,6 +38,10 @@ public class AssetManager : MonoBehaviour
 
     // Store all available assets discovered from Addressables
     private readonly Dictionary<string, List<AssetItem>> availableAssets = new Dictionary<string, List<AssetItem>>();
+    // Fast lookup from address -> AssetItem we created
+    private readonly Dictionary<string, AssetItem> addressToAssetItem = new Dictionary<string, AssetItem>(StringComparer.Ordinal);
+    // Track per-asset region masks derived from labels/config so we can recompute mask on remove
+    private readonly Dictionary<string, int> assetIdToRegionMask = new Dictionary<string, int>();
 
     // Pending colors to apply once a slot's asset is loaded
     private readonly Dictionary<string, string> slotKeyToPendingColor = new Dictionary<string, string>();
@@ -75,6 +79,36 @@ public class AssetManager : MonoBehaviour
     private bool originalBodyPoseCaptured = false;
     private bool bodyAnimatorDisabledForAPose = false;
     private string currentPoseName = null;
+
+    [Header("Region Mask Labels")] 
+    [Tooltip("Prefix for Addressables labels that hide body regions, like 'hide:chest', 'hide:shoulder'.")]
+    public string hideLabelPrefix = "hide:";
+
+    [System.Serializable]
+    public class RegionDef { public string name; public int id; }
+
+    [Tooltip("Map region names to integer IDs used by the body region shader. Configure to match your Blender paint.")]
+    public List<RegionDef> regionDefs = new List<RegionDef>
+    {
+        new RegionDef{ name = "chest", id = 1},
+        new RegionDef{ name = "shoulder", id = 2},
+        new RegionDef{ name = "stomach", id = 3},
+        new RegionDef{ name = "upperarm_l", id = 4},
+        new RegionDef{ name = "upperarm_r", id = 5},
+        new RegionDef{ name = "forearm_l", id = 6},
+        new RegionDef{ name = "forearm_r", id = 7},
+        new RegionDef{ name = "hand_l", id = 8},
+        new RegionDef{ name = "hand_r", id = 9},
+        new RegionDef{ name = "torso", id = 10},
+        new RegionDef{ name = "hip", id = 11},
+        new RegionDef{ name = "thigh_l", id = 12},
+        new RegionDef{ name = "thigh_r", id = 13},
+        new RegionDef{ name = "calf_l", id = 14},
+        // add or adjust as needed
+    };
+
+    [Header("Region Mask Group Config")]
+    public RegionMaskConfig regionMaskConfig;
 
     private void Start()
     {
@@ -297,13 +331,21 @@ public class AssetManager : MonoBehaviour
         var loadCatalogHandle = Addressables.LoadContentCatalogAsync(catalogUrl, true);
         yield return loadCatalogHandle;
 
-        if (loadCatalogHandle.Status == AsyncOperationStatus.Succeeded)
+        if (loadCatalogHandle.IsValid())
         {
-            Debug.Log("Addressables: Remote catalog loaded successfully");
+            if (loadCatalogHandle.Status == AsyncOperationStatus.Succeeded)
+            {
+                Debug.Log("Addressables: Remote catalog loaded successfully");
+            }
+            else
+            {
+                Debug.LogWarning("Addressables: Failed to load remote catalog (will proceed with whatever is available)");
+            }
+            Addressables.Release(loadCatalogHandle);
         }
         else
         {
-            Debug.LogWarning("Addressables: Failed to load remote catalog (will proceed with whatever is available)");
+            Debug.LogWarning("Addressables: LoadContentCatalogAsync returned an invalid handle; skipping");
         }
     }
 
@@ -401,6 +443,7 @@ public class AssetManager : MonoBehaviour
         if (!availableAssets.ContainsKey(key)) availableAssets[key] = new List<AssetItem>();
         availableAssets[key].Add(assetItem);
 
+        addressToAssetItem[address] = assetItem;
         Debug.Log($"  ✅ Added: {address} → {key} (thumb: {thumbnailAddress})");
     }
 
@@ -564,6 +607,9 @@ public class AssetManager : MonoBehaviour
 
         Debug.Log($"Asset loaded via Addressables: {asset.name} (address/internalId: {address})");
 
+        // Apply region hide mask based on Addressables labels (e.g., hide:chest, hide:shoulder)
+        TryApplyRegionMaskFromLabels(address);
+
         // Apply pending color for this slot if any
         if (slotKeyToPendingColor.TryGetValue(slotKey, out string pendingHex))
         {
@@ -573,6 +619,104 @@ public class AssetManager : MonoBehaviour
                 slotKeyToPendingColor.Remove(slotKey);
                 Debug.Log($"Applied pending color to {slotKey}: {pendingHex}");
             }
+        }
+    }
+
+    private void TryApplyRegionMaskFromLabels(string address)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(address)) return;
+            // Build a set of possible keys that could identify this asset in the catalog
+            var possibleKeys = new System.Collections.Generic.HashSet<string>(System.StringComparer.Ordinal);
+            possibleKeys.Add(address);
+            // If address is Assets/Models/.../Name.prefab add Models/.../Name
+            const string assetsModels = "Assets/Models/";
+            const string models = "Models/";
+            if (address.StartsWith(assetsModels, System.StringComparison.Ordinal))
+            {
+                string noExt = address.EndsWith(".prefab", System.StringComparison.OrdinalIgnoreCase)
+                    ? address.Substring(0, address.Length - ".prefab".Length)
+                    : address;
+                string asAddress = noExt.Substring("Assets/".Length); // Models/.../Name
+                possibleKeys.Add(asAddress);
+            }
+            else if (address.StartsWith(models, System.StringComparison.Ordinal))
+            {
+                // If address is Models/.../Name add Assets/Models/.../Name.prefab
+                possibleKeys.Add("Assets/" + address + ".prefab");
+            }
+
+            // Discover labels by scanning resource locators' keys and checking which labels contain this address
+            var labels = new System.Collections.Generic.HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+            foreach (var locator in Addressables.ResourceLocators)
+            {
+                foreach (var keyObj in locator.Keys)
+                {
+                    if (!(keyObj is string lbl)) continue;
+                    // Only consider potential hide/group labels to keep it fast
+                    bool consider = false;
+                    if (!string.IsNullOrEmpty(hideLabelPrefix) && lbl.StartsWith(hideLabelPrefix, System.StringComparison.OrdinalIgnoreCase)) consider = true;
+                    if (!consider && regionMaskConfig != null)
+                    {
+                        // Quick membership check against configured group labels
+                        if (regionMaskConfig.groups.Exists(g => string.Equals(g.label, lbl, System.StringComparison.OrdinalIgnoreCase))) consider = true;
+                    }
+                    if (!consider) continue;
+
+                    if (locator.Locate(lbl, typeof(GameObject), out var labelLocs))
+                    {
+                        foreach (var l in labelLocs)
+                        {
+                            if (l != null && possibleKeys.Contains(l.PrimaryKey))
+                            {
+                                labels.Add(lbl);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            int mask = 0;
+            foreach (var label in labels)
+            {
+                // Only use RegionMaskConfig groups (hide:* legacy removed)
+            }
+
+            // Also support predefined group labels via RegionMaskConfig (e.g., 'top-short')
+            if (regionMaskConfig != null)
+            {
+                foreach (var label in labels)
+                {
+                    int groupMask = regionMaskConfig.BuildMaskForLabel(label, (regionName) =>
+                    {
+                        var def = regionDefs.Find(r => string.Equals(r.name, regionName, System.StringComparison.OrdinalIgnoreCase));
+                        return def != null ? (int?)def.id : null;
+                    });
+                    if (groupMask != 0) mask |= groupMask;
+                }
+            }
+            if (mask != 0)
+            {
+                SetBodyRegionMask(mask);
+                Debug.Log($"Applied region mask from labels ({string.Join(",", labels)}): 0x{mask:X}");
+            }
+
+            // Store mask per active asset to support recomputation on removal
+            // Find active asset id for this address
+            foreach (var kv in loadedAssets)
+            {
+                if (kv.Value != null && addressToAssetItem.TryGetValue(address, out var ai) && ai != null && kv.Key == ai.id)
+                {
+                    assetIdToRegionMask[kv.Key] = mask;
+                    break;
+                }
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"TryApplyRegionMaskFromLabels error: {e.Message}");
         }
     }
 
@@ -598,12 +742,23 @@ public class AssetManager : MonoBehaviour
     public void RemoveAssetForSlot(string category, string subcategory)
     {
         string slotKey = $"{category}:{subcategory}";
+        // Recompute mask from remaining items (excluding this slot)
+        int recomputedMask = 0;
+        foreach (var kv in slotKeyToActiveAssetId)
+        {
+            if (kv.Key == slotKey) continue;
+            if (!string.IsNullOrEmpty(kv.Value) && assetIdToRegionMask.TryGetValue(kv.Value, out int m))
+            {
+                recomputedMask |= m;
+            }
+        }
         if (slotKeyToActiveAssetId.TryGetValue(slotKey, out string activeAssetId))
         {
             if (!string.IsNullOrEmpty(activeAssetId) && loadedAssets.TryGetValue(activeAssetId, out GameObject existing))
             {
                 if (existing != null) Destroy(existing);
                 loadedAssets.Remove(activeAssetId);
+                assetIdToRegionMask.Remove(activeAssetId);
             }
             slotKeyToActiveAssetId.Remove(slotKey);
         }
@@ -615,7 +770,9 @@ public class AssetManager : MonoBehaviour
             slotKeyToHandle.Remove(slotKey);
         }
 
-        Debug.Log($"Removed asset for slot {slotKey}");
+        // Apply new union mask
+        SetBodyRegionMask(recomputedMask);
+        Debug.Log($"Removed asset for slot {slotKey}. Recomputed mask=0x{recomputedMask:X}");
     }
 
     [Serializable]
@@ -897,5 +1054,19 @@ public class AssetManager : MonoBehaviour
         if (mat0 == null) return;
         if (mat0.HasProperty("_BaseColor")) mat0.SetColor("_BaseColor", color);
         else if (mat0.HasProperty("_Color")) mat0.SetColor("_Color", color);
+    }
+
+    // Helper: allow external systems (e.g., native bridge) to set body region mask by integer bitmask
+    public void SetBodyRegionMask(int mask)
+    {
+        var smr = GetBodySkinnedMesh();
+        if (smr != null)
+        {
+            int id = Shader.PropertyToID("_RegionHideMask");
+            foreach (var m in smr.materials)
+            {
+                if (m != null && m.HasProperty(id)) m.SetInt(id, mask);
+            }
+        }
     }
 }
