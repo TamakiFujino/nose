@@ -12,6 +12,7 @@ class CollectionPlacesViewController: UIViewController {
     private var places: [PlaceCollection.Place] = []
     private var sessionToken: GMSAutocompleteSessionToken?
     private var sharedFriendsCount: Int = 0
+    private var avatarsLoadGeneration: Int = 0
     
     private var isCompleted: Bool = false
     private static let imageCache = NSCache<NSString, UIImage>()
@@ -161,12 +162,8 @@ class CollectionPlacesViewController: UIViewController {
 
         // Listen for avatar thumbnail updates
         NotificationCenter.default.addObserver(self, selector: #selector(handleAvatarThumbnailUpdatedNotification(_:)), name: Notification.Name("AvatarThumbnailUpdated"), object: nil)
-
-        // Load owner + shared members avatars
-        loadOverlappingAvatars()
+        // prefillAvatarImageIfCached() // disabled since big avatar image is not shown
     }
-
-    // MARK: - UI Setup
 
     private func setupUI() {
         view.backgroundColor = .systemBackground
@@ -176,10 +173,6 @@ class CollectionPlacesViewController: UIViewController {
         headerView.addSubview(sharedFriendsLabel)
         headerView.addSubview(placesCountLabel)
         headerView.addSubview(avatarsStackView)
-        // headerView.addSubview(avatarImageView) // removed big avatar view from header
-        // avatarImageView.isUserInteractionEnabled = true
-        // let avatarTap = UITapGestureRecognizer(target: self, action: #selector(avatarImageTapped))
-        // avatarImageView.addGestureRecognizer(avatarTap)
         headerView.addSubview(customizeButton)
         view.addSubview(tableView)
 
@@ -215,21 +208,13 @@ class CollectionPlacesViewController: UIViewController {
             customizeButton.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
             customizeButton.heightAnchor.constraint(equalToConstant: 48),
 
-            // Pin header bottom to button to eliminate extra gap before the table
             headerView.bottomAnchor.constraint(equalTo: customizeButton.bottomAnchor),
 
-            // No big avatar image below; table begins right after header
             tableView.topAnchor.constraint(equalTo: headerView.bottomAnchor, constant: 8),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
-
-        // setupAvatarView()
-        // Prefill avatar image synchronously if cached on disk to avoid placeholder flash
-        // prefillAvatarImageIfCached() // disabled since big avatar image is not shown
-        // Render overlapping avatars in header (larger size)
-        loadOverlappingAvatars()
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -692,6 +677,8 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
     }
 
     private func loadOverlappingAvatars() {
+        avatarsLoadGeneration += 1
+        let currentGen = avatarsLoadGeneration
         avatarsStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
 
         let db = Firestore.firestore()
@@ -724,6 +711,8 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         }
 
         func addAvatar(image: UIImage?) {
+            // Ignore stale completions
+            if currentGen != avatarsLoadGeneration { return }
             let iv = UIImageView(image: renderSquare(image: image) ?? UIImage(named: "AvatarPlaceholder"))
             iv.translatesAutoresizingMaskIntoConstraints = false
             iv.contentMode = .scaleAspectFill
@@ -746,26 +735,40 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
             db.collection("users").document(uid).collection("collections").document(collectionId).getDocument { snap, _ in
                 if let urlString = snap?.data()? ["avatarThumbnailURL"] as? String, let url = URL(string: urlString) {
                     self.downloadImage(from: url, ignoreCache: true) { image in
-                        DispatchQueue.main.async { addAvatar(image: image); completion() }
+                        DispatchQueue.main.async {
+                            if currentGen == self.avatarsLoadGeneration { addAvatar(image: image) }
+                            completion()
+                        }
                     }
                 } else {
-                    DispatchQueue.main.async { addAvatar(image: nil); completion() }
+                    DispatchQueue.main.async {
+                        if currentGen == self.avatarsLoadGeneration { addAvatar(image: nil) }
+                        completion()
+                    }
                 }
             }
         }
 
-        var addedIds = Set<String>()
-        // Load owner avatar first
-        addedIds.insert(ownerId)
-        loadOne(uid: ownerId) {}
+        // Fetch the owner's collection doc to get all members
+        db.collection("users").document(ownerId).collection("collections").document(collectionId).getDocument { snap, _ in
+            var orderedIds: [String] = []
+            var seen = Set<String>()
+            // Owner first
+            if !ownerId.isEmpty { orderedIds.append(ownerId); seen.insert(ownerId) }
+            // Then unique members (may already include owner)
+            if let members = snap?.data()? ["members"] as? [String] {
+                for uid in members where !uid.isEmpty && !seen.contains(uid) {
+                    orderedIds.append(uid)
+                    seen.insert(uid)
+                }
+            }
+            if orderedIds.isEmpty { return }
 
-        // Then load shared members (exclude owner)
-        Firestore.firestore().collection("users").document(ownerId).collection("collections").document(collectionId).getDocument { snap, _ in
-            let members = (snap?.data()? ["members"] as? [String] ?? []).filter { $0 != ownerId }
-            let limited = members.prefix(6)
-            for uid in limited where !addedIds.contains(uid) {
-                addedIds.insert(uid)
-                loadOne(uid: uid) {}
+            // Load all avatars (no cap) in order
+            let group = DispatchGroup()
+            for uid in orderedIds {
+                group.enter()
+                loadOne(uid: uid) { group.leave() }
             }
         }
     }
