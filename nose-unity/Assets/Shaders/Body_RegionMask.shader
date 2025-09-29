@@ -15,6 +15,7 @@ Shader "Nose/Body Region Mask"
 
 		CGPROGRAM
 		#pragma surface surf Standard fullforwardshadows addshadow
+		#pragma multi_compile __ FORCE_OPAQUE_ALPHA
 		#pragma target 3.0
 
 		sampler2D _MainTex;
@@ -41,11 +42,16 @@ Shader "Nose/Body Region Mask"
 			o.Albedo = c.rgb;
 			o.Metallic = _Metallic;
 			o.Smoothness = _Glossiness;
+			#ifdef FORCE_OPAQUE_ALPHA
+			o.Alpha = 1.0;
+			#else
 			o.Alpha = c.a;
+			#endif
 		}
 		ENDCG
 	}
 	Fallback "Diffuse"
 }
+
 
 

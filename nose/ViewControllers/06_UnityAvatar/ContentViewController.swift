@@ -191,11 +191,9 @@ extension ContentViewController {
         }
         // Prefer file-based capture to avoid bridge callback issues
         let relative = "avatar_captures/users/\(uid)/collections/\(collection.id)/avatar.png"
-        // High-res capture: 2x device scale of display size (capped by Unity at 4096)
-        let scale = UIScreen.main.scale
-        let logicalWidth = UIScreen.main.bounds.width - 32
-        let targetWidth = Int(min(4096, max(512, logicalWidth * scale * 2)))
-        let targetHeight = Int(min(4096, max(400, 300.0 * scale * 2)))
+        // Fixed capture resolution
+        let targetWidth = 1200
+        let targetHeight = 1800
         // Request transparent background
         let message = "\(relative)|\(targetWidth)|\(targetHeight)|1"
         UnityLauncher.shared().sendMessage(

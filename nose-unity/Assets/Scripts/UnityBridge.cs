@@ -14,6 +14,43 @@ public class UnityBridge : MonoBehaviour
     private AssetManager assetManager;
     private HorizontalRotateOnDrag rotator;
     
+    // Helper to snapshot and restore material state when forcing opaque capture
+    private struct MaterialState
+    {
+        public Material material;
+		public Shader shader;
+        public bool alphaTestOn;
+        public bool alphaBlendOn;
+        public bool alphaPremulOn;
+        public bool hadMode;
+        public float? mode;
+        public bool hadSurface;
+        public float? surface;
+        public bool hadColor;
+        public Color? color;
+		public bool hadRegionMask;
+		public float? regionMask;
+        public int renderQueue;
+
+        public MaterialState(Material m)
+        {
+			material = m;
+			shader = m != null ? m.shader : null;
+            alphaTestOn = m != null && m.IsKeywordEnabled("_ALPHATEST_ON");
+            alphaBlendOn = m != null && m.IsKeywordEnabled("_ALPHABLEND_ON");
+            alphaPremulOn = m != null && m.IsKeywordEnabled("_ALPHAPREMULTIPLY_ON");
+            hadMode = m != null && m.HasProperty("_Mode");
+            mode = hadMode ? (float?)m.GetFloat("_Mode") : null;
+            hadSurface = m != null && m.HasProperty("_Surface");
+            surface = hadSurface ? (float?)m.GetFloat("_Surface") : null;
+            hadColor = m != null && m.HasProperty("_Color");
+            color = hadColor ? (Color?)m.GetColor("_Color") : null;
+			hadRegionMask = m != null && m.HasProperty("_RegionHideMask");
+			regionMask = hadRegionMask ? (float?)m.GetFloat("_RegionHideMask") : null;
+            renderQueue = m != null ? m.renderQueue : -1;
+        }
+    }
+    
     // Callback system for iOS responses
     private Dictionary<string, System.Action<string>> pendingCallbacks = new Dictionary<string, System.Action<string>>();
     private int callbackIdCounter = 0;
@@ -377,7 +414,7 @@ public class UnityBridge : MonoBehaviour
         int width = reqW > 0 ? Mathf.Clamp(reqW, 64, 4096) : Mathf.Clamp(Screen.width, 128, 4096);
         int height = reqH > 0 ? Mathf.Clamp(reqH, 64, 4096) : Mathf.Clamp(Screen.height, 128, 4096);
 
-        var prevRT = RenderTexture.active;
+		var prevRT = RenderTexture.active;
         var prevCamRT = cam.targetTexture;
         var prevCamRect = cam.rect;
         bool isThumbnailCamera = cam.gameObject != null && cam.gameObject.name == "ThumbnailCamera";
@@ -387,6 +424,7 @@ public class UnityBridge : MonoBehaviour
         float prevOrthoSize = cam.orthographic ? cam.orthographicSize : 0f;
         float prevAspect = cam.aspect;
         Vector3 prevPos = cam.transform.position; Quaternion prevRot = cam.transform.rotation;
+        List<Renderer> disabledNonAvatarRenderers = null;
         RenderTexture rt = RenderTexture.GetTemporary(width, height, 24, RenderTextureFormat.ARGB32);
         try
         {
@@ -400,10 +438,29 @@ public class UnityBridge : MonoBehaviour
                 cam.backgroundColor = new Color(0f, 0f, 0f, 0f);
             }
 
+            // Hide all non-avatar renderers during capture to ensure transparency
+            var mgr = assetManager != null ? assetManager : GameObject.FindObjectOfType<AssetManager>();
+            if (mgr != null && mgr.avatarRoot != null)
+            {
+                disabledNonAvatarRenderers = new List<Renderer>();
+                var allRenderers = GameObject.FindObjectsOfType<Renderer>(true);
+                foreach (var r in allRenderers)
+                {
+                    if (r == null || !r.enabled) continue;
+                    var t = r.transform;
+                    bool underAvatar = t == mgr.avatarRoot || t.IsChildOf(mgr.avatarRoot);
+                    if (!underAvatar)
+                    {
+                        r.enabled = false;
+                        disabledNonAvatarRenderers.Add(r);
+                    }
+                }
+            }
+
             // Frame avatar to fit requested aspect without cropping
             cam.aspect = (float)width / Mathf.Max(1, height);
             // Add more headroom to avoid top clipping at high FOV
-            FrameAvatarForFullFigure(cam, 1.08f, -0.02f);
+            FrameAvatarForFullFigure(cam, 1.20f, 0.0f);
             // Ensure near clip doesn't cut off toes
             cam.nearClipPlane = Mathf.Min(cam.nearClipPlane, 0.01f);
             cam.targetTexture = rt;
@@ -424,6 +481,14 @@ public class UnityBridge : MonoBehaviour
         }
         finally
         {
+            // Restore any renderers we hid and camera state
+            if (disabledNonAvatarRenderers != null)
+            {
+                foreach (var r in disabledNonAvatarRenderers)
+                {
+                    if (r != null) r.enabled = true;
+                }
+            }
             cam.targetTexture = prevCamRT;
             cam.rect = prevCamRect;
             cam.clearFlags = prevClear;

@@ -607,8 +607,8 @@ public class AssetManager : MonoBehaviour
 
         Debug.Log($"Asset loaded via Addressables: {asset.name} (address/internalId: {address})");
 
-        // Apply region hide mask based on Addressables labels (e.g., hide:chest, hide:shoulder)
-        TryApplyRegionMaskFromLabels(address);
+        // Apply region hide mask based on Addressables labels (via RegionMaskConfig); store per-asset and apply union
+        TryApplyRegionMaskFromLabels(address, asset.id);
 
         // Apply pending color for this slot if any
         if (slotKeyToPendingColor.TryGetValue(slotKey, out string pendingHex))
@@ -622,11 +622,12 @@ public class AssetManager : MonoBehaviour
         }
     }
 
-    private void TryApplyRegionMaskFromLabels(string address)
+    private void TryApplyRegionMaskFromLabels(string address, string assetId)
     {
         try
         {
             if (string.IsNullOrEmpty(address)) return;
+            if (string.IsNullOrEmpty(assetId)) return;
             // Build a set of possible keys that could identify this asset in the catalog
             var possibleKeys = new System.Collections.Generic.HashSet<string>(System.StringComparer.Ordinal);
             possibleKeys.Add(address);
@@ -699,20 +700,23 @@ public class AssetManager : MonoBehaviour
             }
             if (mask != 0)
             {
-                SetBodyRegionMask(mask);
-                Debug.Log($"Applied region mask from labels ({string.Join(",", labels)}): 0x{mask:X}");
+                // Do not apply yet; we'll store per-asset and then apply the UNION across all active items
             }
 
             // Store mask per active asset to support recomputation on removal
-            // Find active asset id for this address
-            foreach (var kv in loadedAssets)
+            assetIdToRegionMask[assetId] = mask;
+
+            // Recompute union mask across all currently active items and apply
+            int unionMask = 0;
+            foreach (var kv in slotKeyToActiveAssetId)
             {
-                if (kv.Value != null && addressToAssetItem.TryGetValue(address, out var ai) && ai != null && kv.Key == ai.id)
+                if (!string.IsNullOrEmpty(kv.Value) && assetIdToRegionMask.TryGetValue(kv.Value, out int m))
                 {
-                    assetIdToRegionMask[kv.Key] = mask;
-                    break;
+                    unionMask |= m;
                 }
             }
+            SetBodyRegionMask(unionMask);
+            Debug.Log($"Applied region mask union from labels ({string.Join(",", labels)}): 0x{unionMask:X}");
         }
         catch (System.Exception e)
         {

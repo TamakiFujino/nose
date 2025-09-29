@@ -102,7 +102,7 @@ class CollectionPlacesViewController: UIViewController {
         label.accessibilityIdentifier = "places_count_label"
         return label
     }()
-
+    
     private lazy var avatarImageView: UIImageView = {
         let imageView = UIImageView()
         imageView.translatesAutoresizingMaskIntoConstraints = false
@@ -111,6 +111,30 @@ class CollectionPlacesViewController: UIViewController {
         imageView.layer.cornerRadius = 12
         imageView.backgroundColor = .secondarySystemBackground
         return imageView
+    }()
+
+    private lazy var avatarsStackView: UIStackView = {
+        let stack = UIStackView()
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.axis = .horizontal
+        stack.alignment = .center
+        stack.distribution = .fillProportionally
+        stack.spacing = -180 // adjust overlap to -100
+        return stack
+    }()
+
+    private lazy var customizeButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.setTitle("Customize avatar", for: .normal)
+        button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
+        button.backgroundColor = .fourthColor
+        button.setTitleColor(.white, for: .normal)
+        button.layer.cornerRadius = 24 // rounded here only
+        button.clipsToBounds = true
+        button.contentEdgeInsets = UIEdgeInsets(top: 12, left: 20, bottom: 12, right: 20)
+        button.addTarget(self, action: #selector(customizeAvatarTapped), for: .touchUpInside)
+        return button
     }()
 
     // Removed button; using avatarImageView as trigger to customization
@@ -137,6 +161,9 @@ class CollectionPlacesViewController: UIViewController {
 
         // Listen for avatar thumbnail updates
         NotificationCenter.default.addObserver(self, selector: #selector(handleAvatarThumbnailUpdatedNotification(_:)), name: Notification.Name("AvatarThumbnailUpdated"), object: nil)
+
+        // Load owner + shared members avatars
+        loadOverlappingAvatars()
     }
 
     // MARK: - UI Setup
@@ -148,10 +175,12 @@ class CollectionPlacesViewController: UIViewController {
         headerView.addSubview(menuButton)
         headerView.addSubview(sharedFriendsLabel)
         headerView.addSubview(placesCountLabel)
-        headerView.addSubview(avatarImageView)
-        avatarImageView.isUserInteractionEnabled = true
-        let avatarTap = UITapGestureRecognizer(target: self, action: #selector(avatarImageTapped))
-        avatarImageView.addGestureRecognizer(avatarTap)
+        headerView.addSubview(avatarsStackView)
+        // headerView.addSubview(avatarImageView) // removed big avatar view from header
+        // avatarImageView.isUserInteractionEnabled = true
+        // let avatarTap = UITapGestureRecognizer(target: self, action: #selector(avatarImageTapped))
+        // avatarImageView.addGestureRecognizer(avatarTap)
+        headerView.addSubview(customizeButton)
         view.addSubview(tableView)
 
         // Hide menu button if user is not the owner
@@ -161,7 +190,6 @@ class CollectionPlacesViewController: UIViewController {
             headerView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             headerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             headerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            headerView.heightAnchor.constraint(equalToConstant: 420),
 
             titleLabel.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 16),
             titleLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
@@ -178,14 +206,20 @@ class CollectionPlacesViewController: UIViewController {
             placesCountLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
             placesCountLabel.leadingAnchor.constraint(equalTo: sharedFriendsLabel.trailingAnchor, constant: 16),
 
-            avatarImageView.topAnchor.constraint(equalTo: sharedFriendsLabel.bottomAnchor, constant: 12),
-            avatarImageView.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
-            avatarImageView.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
-            avatarImageView.heightAnchor.constraint(equalToConstant: 300),
+            avatarsStackView.topAnchor.constraint(equalTo: sharedFriendsLabel.bottomAnchor, constant: 8),
+            avatarsStackView.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 0),
+            avatarsStackView.heightAnchor.constraint(equalToConstant: 216),
 
-            // No customize button; avatarImageView acts as the trigger
+            customizeButton.topAnchor.constraint(equalTo: avatarsStackView.bottomAnchor, constant: 6),
+            customizeButton.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+            customizeButton.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
+            customizeButton.heightAnchor.constraint(equalToConstant: 48),
 
-            tableView.topAnchor.constraint(equalTo: headerView.bottomAnchor),
+            // Pin header bottom to button to eliminate extra gap before the table
+            headerView.bottomAnchor.constraint(equalTo: customizeButton.bottomAnchor),
+
+            // No big avatar image below; table begins right after header
+            tableView.topAnchor.constraint(equalTo: headerView.bottomAnchor, constant: 8),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
@@ -193,12 +227,15 @@ class CollectionPlacesViewController: UIViewController {
 
         // setupAvatarView()
         // Prefill avatar image synchronously if cached on disk to avoid placeholder flash
-        prefillAvatarImageIfCached()
+        // prefillAvatarImageIfCached() // disabled since big avatar image is not shown
+        // Render overlapping avatars in header (larger size)
+        loadOverlappingAvatars()
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        loadAvatarThumbnail(forceRefresh: false)
+        // Refresh overlapping avatars on return
+        loadOverlappingAvatars()
     }
 
     deinit {
@@ -256,6 +293,15 @@ class CollectionPlacesViewController: UIViewController {
     }
 
     @objc private func avatarImageTapped() {
+        let vc = ContentViewController(collection: collection)
+        if let nav = navigationController {
+            nav.pushViewController(vc, animated: true)
+        } else {
+            present(vc, animated: true)
+        }
+    }
+    
+    @objc private func customizeAvatarTapped() {
         let vc = ContentViewController(collection: collection)
         if let nav = navigationController {
             nav.pushViewController(vc, animated: true)
@@ -549,7 +595,8 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
     @objc private func handleAvatarThumbnailUpdatedNotification(_ note: Notification) {
         guard let updatedCollectionId = note.userInfo?["collectionId"] as? String,
               updatedCollectionId == collection.id else { return }
-        loadAvatarThumbnail(forceRefresh: true)
+        // Reload the overlapping avatars immediately when thumbnail updates
+        loadOverlappingAvatars()
     }
 
     private func loadAvatarThumbnail(forceRefresh: Bool) {
@@ -642,6 +689,85 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
             }
         }
         task.resume()
+    }
+
+    private func loadOverlappingAvatars() {
+        avatarsStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+
+        let db = Firestore.firestore()
+        let ownerId = collection.userId
+        let collectionId = collection.id
+        let thumbSize: CGFloat = 216
+
+        func renderSquare(image: UIImage?) -> UIImage? {
+            guard let img = image else { return nil }
+            let format = UIGraphicsImageRendererFormat.default()
+            // Render at device scale for crisp output on Retina displays
+            format.scale = UIScreen.main.scale
+            format.opaque = false
+            let renderer = UIGraphicsImageRenderer(size: CGSize(width: thumbSize, height: thumbSize), format: format)
+            let output = renderer.image { ctx in
+                UIColor.clear.setFill()
+                ctx.fill(CGRect(x: 0, y: 0, width: thumbSize, height: thumbSize))
+                let iw = img.size.width
+                let ih = img.size.height
+                if iw <= 0 || ih <= 0 { return }
+                // High-quality aspect-fit
+                let scale = min(thumbSize / iw, thumbSize / ih)
+                let drawW = iw * scale
+                let drawH = ih * scale
+                let dx = (thumbSize - drawW) * 0.5
+                let dy = (thumbSize - drawH) * 0.5
+                img.draw(in: CGRect(x: dx, y: dy, width: drawW, height: drawH))
+            }
+            return output
+        }
+
+        func addAvatar(image: UIImage?) {
+            let iv = UIImageView(image: renderSquare(image: image) ?? UIImage(named: "AvatarPlaceholder"))
+            iv.translatesAutoresizingMaskIntoConstraints = false
+            iv.contentMode = .scaleAspectFill
+            iv.clipsToBounds = true
+            iv.layer.cornerRadius = thumbSize / 2
+            iv.layer.borderColor = UIColor.clear.cgColor // remove white curved line
+            iv.layer.borderWidth = 0
+            // Improve downscaling quality
+            iv.layer.contentsScale = UIScreen.main.scale
+            iv.layer.magnificationFilter = .linear
+            iv.layer.minificationFilter = .trilinear
+            NSLayoutConstraint.activate([
+                iv.widthAnchor.constraint(equalToConstant: thumbSize),
+                iv.heightAnchor.constraint(equalToConstant: thumbSize)
+            ])
+            avatarsStackView.addArrangedSubview(iv)
+        }
+
+        func loadOne(uid: String, completion: @escaping () -> Void) {
+            db.collection("users").document(uid).collection("collections").document(collectionId).getDocument { snap, _ in
+                if let urlString = snap?.data()? ["avatarThumbnailURL"] as? String, let url = URL(string: urlString) {
+                    self.downloadImage(from: url, ignoreCache: true) { image in
+                        DispatchQueue.main.async { addAvatar(image: image); completion() }
+                    }
+                } else {
+                    DispatchQueue.main.async { addAvatar(image: nil); completion() }
+                }
+            }
+        }
+
+        var addedIds = Set<String>()
+        // Load owner avatar first
+        addedIds.insert(ownerId)
+        loadOne(uid: ownerId) {}
+
+        // Then load shared members (exclude owner)
+        Firestore.firestore().collection("users").document(ownerId).collection("collections").document(collectionId).getDocument { snap, _ in
+            let members = (snap?.data()? ["members"] as? [String] ?? []).filter { $0 != ownerId }
+            let limited = members.prefix(6)
+            for uid in limited where !addedIds.contains(uid) {
+                addedIds.insert(uid)
+                loadOne(uid: uid) {}
+            }
+        }
     }
     
     // MARK: - Maps Integration
