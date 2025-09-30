@@ -2,6 +2,7 @@ import UIKit
 import GooglePlaces
 import FirebaseFirestore
 import FirebaseAuth
+import MapKit
 
 final class PlaceDetailViewController: UIViewController {
     
@@ -226,7 +227,7 @@ final class PlaceDetailViewController: UIViewController {
             containerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             containerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             containerView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            containerView.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.7),
+            containerView.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.6),
             
             // Save button constraints
             saveButton.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
@@ -573,7 +574,7 @@ extension PlaceDetailViewController: UIViewControllerTransitioningDelegate {
 class HalfModalPresentationController: UIPresentationController {
     private let dimmingView: UIView = {
         let view = UIView()
-        view.backgroundColor = UIColor.black.withAlphaComponent(0.5)
+        view.backgroundColor = UIColor.clear
         view.alpha = 0
         return view
     }()
@@ -592,8 +593,9 @@ class HalfModalPresentationController: UIPresentationController {
         dimmingView.frame = containerView.bounds
         containerView.addSubview(dimmingView)
         
+        // Keep background fully visible; no dimming animation
         presentedViewController.transitionCoordinator?.animate(alongsideTransition: { [weak self] _ in
-            self?.dimmingView.alpha = 1
+            self?.dimmingView.alpha = 0
         })
     }
     

@@ -97,6 +97,7 @@ final class GoogleMapManager: NSObject {
     }
     
     func showPlaceOnMap(_ place: GMSPlace) {
+        print("🗺️ GoogleMapManager.showPlaceOnMap called for: \(place.name ?? "Unknown")")
         let marker = MarkerFactory.createPlaceMarker(for: place)
         marker.map = mapView
         
@@ -105,6 +106,7 @@ final class GoogleMapManager: NSObject {
             longitude: place.coordinate.longitude,
             zoom: Constants.defaultZoom
         )
+        print("🗺️ Animating map to: \(place.coordinate.latitude), \(place.coordinate.longitude)")
         mapView.animate(to: camera)
         
         markers.append(marker)

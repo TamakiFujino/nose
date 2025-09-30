@@ -27,6 +27,7 @@ class PlacesAPIManager {
         static let detail: GMSPlaceField = [
             .name,
             .placeID,
+            .coordinate,
             .formattedAddress,
             .phoneNumber,
             .rating,

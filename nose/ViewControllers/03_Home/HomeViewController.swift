@@ -31,7 +31,7 @@ final class HomeViewController: UIViewController {
     private var dotLine: UIView?
     private var containerView: UIView?
     
-    private var mapManager: GoogleMapManager?
+    var mapManager: GoogleMapManager?
     private var searchManager: SearchManager?
     
     // MARK: - UI Components
@@ -391,40 +391,6 @@ final class HomeViewController: UIViewController {
         }
     }
     
-    private func showPlaceOnMap(_ place: GMSPlace) {
-        mapManager?.showPlaceOnMap(place)
-        
-        // Create a Place object from GMSPlace
-        let _: [String: Any] = [
-            "id": UUID().uuidString,
-            "name": place.name ?? "",
-            "latitude": place.coordinate.latitude,
-            "longitude": place.coordinate.longitude,
-            "address": place.formattedAddress ?? "",
-            "placeId": place.placeID ?? "",
-            "types": place.types ?? [],
-            "rating": place.rating,
-            "userRatingsTotal": place.userRatingsTotal,
-            "priceLevel": place.priceLevel.rawValue,
-            "photos": (place.photos ?? []).map { photo in
-                [
-                    "width": photo.maxSize.width,
-                    "height": photo.maxSize.height,
-                    "attributions": photo.attributions?.string ?? ""
-                ]
-            },
-            "createdAt": Timestamp(date: Date())
-        ]
-        
-        // Present place detail view controller
-        let detailViewController = PlaceDetailViewController(place: place, isFromCollection: false)
-        
-        // Add a slight delay to ensure proper presentation
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            guard let self = self else { return }
-            self.present(detailViewController, animated: true)
-        }
-    }
 }
 
 // MARK: - UISearchBarDelegate
@@ -469,7 +435,9 @@ extension HomeViewController: UITableViewDelegate, UITableViewDataSource {
         mapManager?.fetchPlaceDetails(for: prediction) { [weak self] place in
             if let place = place {
                 DispatchQueue.main.async {
-                    self?.showPlaceOnMap(place)
+                    self?.mapManager?.showPlaceOnMap(place)
+                    let detailViewController = PlaceDetailViewController(place: place, isFromCollection: false)
+                    self?.present(detailViewController, animated: true)
                 }
             }
         }
@@ -491,7 +459,9 @@ extension HomeViewController: GMSMapViewDelegate {
 // MARK: - SearchViewControllerDelegate
 extension HomeViewController: SearchViewControllerDelegate {
     func searchViewController(_ controller: SearchViewController, didSelectPlace place: GMSPlace) {
-        showPlaceOnMap(place)
+        mapManager?.showPlaceOnMap(place)
+        let detailViewController = PlaceDetailViewController(place: place, isFromCollection: false)
+        present(detailViewController, animated: true)
     }
 }
 
@@ -553,7 +523,9 @@ extension HomeViewController: SearchManagerDelegate {
     }
     
     func searchManager(_ manager: SearchManager, didSelectPlace place: GMSPlace) {
-        showPlaceOnMap(place)
+        mapManager?.showPlaceOnMap(place)
+        let detailViewController = PlaceDetailViewController(place: place, isFromCollection: false)
+        present(detailViewController, animated: true)
     }
 }
 

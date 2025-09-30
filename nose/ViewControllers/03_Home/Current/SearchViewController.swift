@@ -119,11 +119,39 @@ final class SearchViewController: UIViewController {
                 print("Has opening hours: \(place.openingHours != nil)")
                 
                 DispatchQueue.main.async {
-                    self?.delegate?.searchViewController(self!, didSelectPlace: place)
-                    self?.dismiss(animated: true)
+                    if let strongSelf = self {
+                        strongSelf.delegate?.searchViewController(strongSelf, didSelectPlace: place)
+                        strongSelf.dismiss(animated: true)
+                    }
                 }
             } else {
                 print("Failed to fetch place details for: \(prediction.placeID)")
+            }
+        }
+    }
+    
+    // Public: programmatically open a place by ID (used by deep links)
+    func openPlace(withId placeId: String) {
+        PlacesAPIManager.shared.fetchDetailPlaceDetails(placeID: placeId) { [weak self] fetchedPlace in
+            guard let self = self, let place = fetchedPlace else { return }
+            DispatchQueue.main.async {
+                self.delegate?.searchViewController(self, didSelectPlace: place)
+                self.dismiss(animated: true)
+            }
+        }
+    }
+
+    // Public: programmatically search by text and open the first result
+    func startSearchAndAutoOpenFirst(query: String) {
+        searchBar.text = query
+        PlacesAPIManager.shared.debouncedSearch(query: query) { [weak self] (results: [GMSAutocompletePrediction]) in
+            guard let self = self else { return }
+            DispatchQueue.main.async {
+                self.searchResults = results
+                self.tableView.reloadData()
+                if let first = results.first {
+                    self.fetchPlaceDetails(for: first)
+                }
             }
         }
     }
