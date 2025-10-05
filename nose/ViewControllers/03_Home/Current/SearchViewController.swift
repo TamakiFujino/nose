@@ -119,9 +119,12 @@ final class SearchViewController: UIViewController {
                 print("Has opening hours: \(place.openingHours != nil)")
                 
                 DispatchQueue.main.async {
-                    if let strongSelf = self {
-                        strongSelf.delegate?.searchViewController(strongSelf, didSelectPlace: place)
+                    guard let strongSelf = self else { return }
+                    if let delegate = strongSelf.delegate {
+                        delegate.searchViewController(strongSelf, didSelectPlace: place)
                         strongSelf.dismiss(animated: true)
+                    } else {
+                        strongSelf.presentPlaceDetail(place)
                     }
                 }
             } else {
@@ -135,8 +138,12 @@ final class SearchViewController: UIViewController {
         PlacesAPIManager.shared.fetchDetailPlaceDetails(placeID: placeId) { [weak self] fetchedPlace in
             guard let self = self, let place = fetchedPlace else { return }
             DispatchQueue.main.async {
-                self.delegate?.searchViewController(self, didSelectPlace: place)
-                self.dismiss(animated: true)
+                if let delegate = self.delegate {
+                    delegate.searchViewController(self, didSelectPlace: place)
+                    self.dismiss(animated: true)
+                } else {
+                    self.presentPlaceDetail(place)
+                }
             }
         }
     }
@@ -195,5 +202,28 @@ extension SearchViewController: UITableViewDelegate, UITableViewDataSource {
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let prediction = searchResults[indexPath.row]
         fetchPlaceDetails(for: prediction)
+    }
+}
+
+// MARK: - Presentation Helpers
+private extension SearchViewController {
+    func presentPlaceDetail(_ place: GMSPlace) {
+        let detailVC = PlaceDetailViewController(place: place, isFromCollection: false)
+        // If this VC was presented modally, dismiss it first, then present from the presenter to avoid stacking
+        if let presenter = self.presentingViewController {
+            self.dismiss(animated: true) {
+                if let nav = presenter as? UINavigationController {
+                    nav.pushViewController(detailVC, animated: true)
+                } else if let nav = presenter.navigationController {
+                    nav.pushViewController(detailVC, animated: true)
+                } else {
+                    presenter.present(detailVC, animated: true)
+                }
+            }
+        } else if let nav = self.navigationController {
+            nav.pushViewController(detailVC, animated: true)
+        } else {
+            self.present(detailVC, animated: true)
+        }
     }
 }

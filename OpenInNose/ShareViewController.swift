@@ -10,17 +10,18 @@ import Social
 import MobileCoreServices
 import UniformTypeIdentifiers
 
-class ShareViewController: SLComposeServiceViewController {
+@objc(ShareViewController)
+public class ShareViewController: SLComposeServiceViewController {
 
-    override func isContentValid() -> Bool {
+    public override func isContentValid() -> Bool {
         return true
     }
 
-    override func didSelectPost() {
+    public override func didSelectPost() {
         handleShare()
     }
 
-    override func configurationItems() -> [Any]! {
+    public override func configurationItems() -> [Any]! {
         return []
     }
 
@@ -62,22 +63,28 @@ class ShareViewController: SLComposeServiceViewController {
         if let pid = placeId {
             target = URL(string: "nose://open?placeId=\(pid)")
         } else {
-            // Pass the original URL through if we can’t extract yet
+            // Pass the original URL through if we can't extract yet
             let encoded = sharedURL.absoluteString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? sharedURL.absoluteString
             target = URL(string: "nose://open?url=\(encoded)")
         }
+        
         if let target = target {
-            var responder = self as UIResponder?
-            let selector = NSSelectorFromString("openURL:")
-            while responder != nil {
-                if responder?.responds(to: selector) == true {
-                    _ = responder?.perform(selector, with: target)
-                    break
+            // Use extension-safe open via NSExtensionContext
+            if let ctx = self.extensionContext {
+                ctx.open(target) { success in
+                    DispatchQueue.main.async {
+                        if !success {
+                            print("[ShareExtension] Failed to open URL: \(target.absoluteString)")
+                        }
+                        self.complete()
+                    }
                 }
-                responder = responder?.next
+            } else {
+                complete()
             }
+        } else {
+            complete()
         }
-        complete()
     }
 
     private func extractPlaceId(from url: URL) -> String? {

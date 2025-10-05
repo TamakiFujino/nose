@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine.Rendering;
 
 public class UnityBridge : MonoBehaviour
 {
@@ -13,6 +14,7 @@ public class UnityBridge : MonoBehaviour
 
     private AssetManager assetManager;
     private HorizontalRotateOnDrag rotator;
+    private CommandBuffer stencilClearCmd;
     
     // Helper to snapshot and restore material state when forcing opaque capture
     private struct MaterialState
@@ -90,6 +92,35 @@ public class UnityBridge : MonoBehaviour
         {
             var cam = thumbCamGO.GetComponent<Camera>();
             if (cam != null) cam.enabled = false;
+        }
+
+        // Attach stencil clear before opaques on avatar cameras to avoid stale stencil between category switches
+        TryAttachStencilClearToAvatarCameras();
+    }
+
+    private void TryAttachStencilClearToAvatarCameras()
+    {
+        if (stencilClearCmd != null) return;
+        Shader clearShader = Shader.Find("Nose/Stencil Clear");
+        if (clearShader == null) return;
+
+        Material clearMat = new Material(clearShader);
+        stencilClearCmd = new CommandBuffer { name = "Clear Stencil" };
+        // Draw a full-screen procedural triangle to clear stencil
+        stencilClearCmd.DrawProcedural(Matrix4x4.identity, clearMat, 0, MeshTopology.Triangles, 3);
+
+        // Apply to likely cameras
+        var avatarCam = GameObject.Find("AvatarCamera")?.GetComponent<Camera>();
+        var thumbCam = GameObject.Find("ThumbnailCamera")?.GetComponent<Camera>();
+        if (avatarCam != null)
+        {
+            avatarCam.RemoveCommandBuffer(CameraEvent.BeforeForwardOpaque, stencilClearCmd);
+            avatarCam.AddCommandBuffer(CameraEvent.BeforeForwardOpaque, stencilClearCmd);
+        }
+        if (thumbCam != null)
+        {
+            thumbCam.RemoveCommandBuffer(CameraEvent.BeforeForwardOpaque, stencilClearCmd);
+            thumbCam.AddCommandBuffer(CameraEvent.BeforeForwardOpaque, stencilClearCmd);
         }
     }
 

@@ -9,7 +9,10 @@ Shader "Nose/Standard Stencil (Body Mask)"
 	}
     SubShader
 	{
-        Tags { "RenderType"="Opaque" "Queue"="Geometry+1" }
+		Tags { "RenderType"="Opaque" "Queue"="Geometry+10" }
+		Cull Back
+		ZWrite On
+		ZTest LEqual
 		LOD 200
 
         // Body should not draw where clothing already wrote stencil = 1

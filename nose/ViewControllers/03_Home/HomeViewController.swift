@@ -159,6 +159,7 @@ final class HomeViewController: UIViewController {
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
+        definesPresentationContext = true
         setupUI()
         setupManagers()
         setupLocationManager()
@@ -461,7 +462,11 @@ extension HomeViewController: SearchViewControllerDelegate {
     func searchViewController(_ controller: SearchViewController, didSelectPlace place: GMSPlace) {
         mapManager?.showPlaceOnMap(place)
         let detailViewController = PlaceDetailViewController(place: place, isFromCollection: false)
-        present(detailViewController, animated: true)
+        // Dismiss the search UI first, then present the detail over current context so the map stays visible
+        controller.dismiss(animated: true) {
+            detailViewController.modalPresentationStyle = .overCurrentContext
+            self.present(detailViewController, animated: true)
+        }
     }
 }
 
@@ -525,7 +530,15 @@ extension HomeViewController: SearchManagerDelegate {
     func searchManager(_ manager: SearchManager, didSelectPlace place: GMSPlace) {
         mapManager?.showPlaceOnMap(place)
         let detailViewController = PlaceDetailViewController(place: place, isFromCollection: false)
-        present(detailViewController, animated: true)
+        detailViewController.modalPresentationStyle = .overCurrentContext
+        // If a SearchViewController is currently presented, dismiss it before presenting details
+        if let presented = self.presentedViewController as? SearchViewController {
+            presented.dismiss(animated: true) {
+                self.present(detailViewController, animated: true)
+            }
+        } else {
+            self.present(detailViewController, animated: true)
+        }
     }
 }
 

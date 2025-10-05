@@ -10,7 +10,9 @@ Shader "Nose/Standard Stencil (Clothing)"
     SubShader
 	{
 		Tags { "RenderType"="Opaque" "Queue"="Geometry" }
-		Cull Off
+		Cull Back
+		ZWrite On
+		ZTest LEqual
 		LOD 200
 
         // Clothing writes to stencil so underlying masked layers (e.g., Tops) can clip, but default Standard stays unaffected

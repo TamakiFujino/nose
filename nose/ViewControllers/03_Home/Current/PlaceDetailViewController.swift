@@ -168,8 +168,7 @@ final class PlaceDetailViewController: UIViewController {
         self.place = place
         self.isFromCollection = isFromCollection
         super.init(nibName: nil, bundle: nil)
-        modalPresentationStyle = .custom
-        transitioningDelegate = self
+        modalPresentationStyle = .overCurrentContext
     }
     
     required init?(coder: NSCoder) {

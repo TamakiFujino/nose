@@ -8,18 +8,17 @@
 	<string>Nose</string>
 	<key>NSExtension</key>
 	<dict>
-	<key>NSExtensionAttributes</key>
-	<dict>
-		<key>NSExtensionActivationRule</key>
+		<key>NSExtensionAttributes</key>
 		<dict>
-			<key>NSExtensionActivationSupportsWebURLWithMaxCount</key>
-			<integer>1</integer>
-			<key>NSExtensionActivationSupportsText</key>
+			<key>NSExtensionActivationRule</key>
+			<string>TRUEPREDICATE</string>
+			<key>NSExtensionActivationSupportsWebURL</key>
+			<true/>
+			<key>NSExtensionActivationSupportsWebPage</key>
 			<true/>
 		</dict>
-	</dict>
-		<key>NSExtensionMainStoryboard</key>
-		<string>MainInterface</string>
+		<key>NSExtensionPrincipalClass</key>
+		<string>ShareViewController</string>
 		<key>NSExtensionPointIdentifier</key>
 		<string>com.apple.share-services</string>
 	</dict>

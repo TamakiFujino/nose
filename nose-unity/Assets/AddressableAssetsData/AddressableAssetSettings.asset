@@ -15,7 +15,7 @@ MonoBehaviour:
   m_DefaultGroup: 434608182e5ff4d5e9d0fae32c17b029
   m_currentHash:
     serializedVersion: 2
-    Hash: 00000000000000000000000000000000
+    Hash: f67c7a5ab1d8cfc0ba9defa95c5a19d2
   m_OptimizeCatalogSize: 0
   m_BuildRemoteCatalog: 1
   m_BundleLocalCatalog: 0
@@ -101,16 +101,16 @@ MonoBehaviour:
   m_LabelTable:
     m_LabelNames:
     - default
-    - tops-no-sleeve-cropped
-    - tops-no-sleeve
-    - tops-half-sleeve-cropped
-    - tops-half-sleeve
-    - tops-seven-sleeve-cropped
-    - tops-seven-sleeve
-    - tops-long-sleeve-cropped
-    - tops-long-sleeve
-    - bottoms-mini
-    - bottoms-knee
+    - tops-nosleeve-cropped
+    - tops-nosleeve
+    - tops-half-cropped
+    - tops-half
+    - tops-seven-cropped
+    - tops-seven
+    - tops-long-cropped
+    - tops-long
+    - bottoms-short
+    - bottoms-half
     - bottoms-med
     - bottoms-long
   m_SchemaTemplates: []

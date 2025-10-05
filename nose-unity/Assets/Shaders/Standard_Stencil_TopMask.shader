@@ -7,10 +7,12 @@ Shader "Nose/Standard Stencil (Top Mask)"
 		_Glossiness ("Smoothness", Range(0,1)) = 0.5
 		_Metallic ("Metallic", Range(0,1)) = 0.0
 	}
-	SubShader
+    SubShader
 	{
-		Tags { "RenderType"="Opaque" "Queue"="Geometry+1" }
-		Cull Off
+		Tags { "RenderType"="Opaque" "Queue"="Geometry+5" }
+		Cull Back
+		ZWrite On
+		ZTest LEqual
 		LOD 200
 
 		// Tops (inner clothing) test stencil so they are hidden where outer clothing (jacket) wrote stencil

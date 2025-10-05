@@ -14,7 +14,8 @@ Shader "Nose/Body Region Mask"
 		LOD 200
 
 		CGPROGRAM
-		#pragma surface surf Standard fullforwardshadows addshadow
+        // Use custom vertex function to compute a non-interpolated region id
+        #pragma surface surf Standard fullforwardshadows addshadow vertex:vert
 		#pragma multi_compile __ FORCE_OPAQUE_ALPHA
 		#pragma target 3.0
 
@@ -24,17 +25,27 @@ Shader "Nose/Body Region Mask"
 		half _Metallic;
 		int _RegionHideMask;
 
-		struct Input
-		{
-			float2 uv_MainTex;
-			float4 color : COLOR; // vertex color encodes region id in .r as 0..1 → 0..255
-		};
+        // Input to surf; receive a non-interpolated region id to avoid seam artifacts
+        struct Input
+        {
+            float2 uv_MainTex;
+            nointerpolation float regionId; // computed per-vertex, not interpolated
+        };
 
-		void surf (Input IN, inout SurfaceOutputStandard o)
-		{
-			// Decode region id from vertex color R channel (0..255)
-			int regionId = (int)round(saturate(IN.color.r) * 255.0);
-			if (((1 << regionId) & _RegionHideMask) != 0)
+        void vert(inout appdata_full v, out Input o)
+        {
+            UNITY_INITIALIZE_OUTPUT(Input, o);
+            o.uv_MainTex = v.texcoord.xy;
+            // Decode integer region id from vertex color.r (0..1 → 0..255)
+            o.regionId = round(saturate(v.color.r) * 255.0);
+        }
+
+        void surf (Input IN, inout SurfaceOutputStandard o)
+        {
+            // Use the non-interpolated region id to avoid thin lines at boundaries
+            int regionId = (int)IN.regionId;
+            // Treat region 0 as "never hide" to avoid accidental masking of head/hands/feet
+            if (regionId > 0 && (((1 << regionId) & _RegionHideMask) != 0))
 			{
 				clip(-1); // discard pixel for hidden region
 			}

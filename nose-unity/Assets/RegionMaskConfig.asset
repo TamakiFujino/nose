@@ -13,39 +13,45 @@ MonoBehaviour:
   m_Name: RegionMaskConfig
   m_EditorClassIdentifier: 
   groups:
-  - label: tops-no-sleeve-cropped
+  - label: tops-nosleeve-cropped
+    regionNames: []
+    regionIds: 01000000
+  - label: tops-nosleeve
     regionNames: []
     regionIds: 0100000002000000
-  - label: tops-no-sleeve
+  - label: tops-short-cropped
+    regionNames: []
+    regionIds: 0100000003000000
+  - label: tops-short
     regionNames: []
     regionIds: 010000000200000003000000
-  - label: tops-half-sleeve-cropped
+  - label: tops-half-cropped
     regionNames: []
-    regionIds: 010000000200000004000000
-  - label: tops-half-sleeve
+    regionIds: 010000000300000004000000
+  - label: tops-half
     regionNames: []
     regionIds: 01000000020000000300000004000000
-  - label: tops-seven-sleeve-cropped
+  - label: tops-seven-cropped
     regionNames: []
-    regionIds: 01000000020000000400000005000000
-  - label: tops-seven-sleeve
+    regionIds: 01000000030000000400000005000000
+  - label: tops-seven
     regionNames: []
     regionIds: 0100000002000000030000000400000005000000
-  - label: tops-long-sleeve-cropped
+  - label: tops-long-cropped
     regionNames: []
-    regionIds: 0100000002000000040000000500000006000000
-  - label: tops-long-sleeve
+    regionIds: 0100000003000000040000000500000006000000
+  - label: tops-long
     regionNames: []
     regionIds: 010000000200000003000000040000000500000006000000
-  - label: bottoms-mini
+  - label: bottoms-short
     regionNames: []
-    regionIds: 0800000009000000
-  - label: bottoms-knee
+    regionIds: 07000000
+  - label: bottoms-half
     regionNames: []
-    regionIds: 08000000090000000a0000000b000000
+    regionIds: 0700000008000000
   - label: bottoms-med
     regionNames: []
-    regionIds: 08000000090000000a0000000b0000000c000000
+    regionIds: 070000000800000009000000
   - label: bottoms-long
     regionNames: []
-    regionIds: 08000000090000000a0000000b0000000c0000000d000000
+    regionIds: 0700000008000000090000000a000000

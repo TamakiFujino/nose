@@ -60,14 +60,14 @@
 /* Begin PBXCopyFilesBuildPhase section */
 		497320002E8AB28C002D3C85 /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
+			buildActionMask = 8;
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
 				49731FFA2E8AB28C002D3C85 /* OpenInNose.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
-			runOnlyForDeploymentPostprocessing = 0;
+			runOnlyForDeploymentPostprocessing = 1;
 		};
 		49F87F122E646AC700C129C4 /* Embed Frameworks */ = {
 			isa = PBXCopyFilesBuildPhase;
@@ -738,7 +738,7 @@
 				INFOPLIST_FILE = OpenInNose/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = OpenInNose;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -817,7 +817,7 @@
 				INFOPLIST_FILE = OpenInNose/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = OpenInNose;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -895,7 +895,7 @@
 				INFOPLIST_FILE = OpenInNose/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = OpenInNose;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

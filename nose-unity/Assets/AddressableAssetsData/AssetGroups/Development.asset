@@ -77,8 +77,7 @@ MonoBehaviour:
   - m_GUID: 1a06a1e1320d74c9dbf62eb3560fafac
     m_Address: Assets/Models/Clothes/Tops/21_tops_polo_short.prefab
     m_ReadOnly: 0
-    m_SerializedLabels:
-    - tops-half-sleeve-cropped
+    m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 1a06c9003ae424d78979dc1195dc3e99
     m_Address: Assets/Models/Hair/Front/02_front_brunt_long.prefab
@@ -94,13 +93,13 @@ MonoBehaviour:
     m_Address: Assets/Models/Clothes/Bottoms/01_bottoms_pants_regular_short.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - bottoms-mini
+    - bottoms-short
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 1fa9058e90d464d6380a816ee2f4bf45
     m_Address: Assets/Models/Clothes/Bottoms/18_bottoms_skirt_tight_short.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - bottoms-mini
+    - bottoms-short
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 23de54f60858447168943d35872e1e7b
     m_Address: Assets/Models/Clothes/Bottoms/25_bottoms_skirt_wide_maxi.prefab
@@ -112,13 +111,13 @@ MonoBehaviour:
     m_Address: Assets/Models/Clothes/Tops/06_tops_wide_half.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - tops-half-sleeve
+    - tops-half
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 25cdee1fa5ffd48fbae21a052235058a
     m_Address: Assets/Models/Clothes/Bottoms/28_bottoms_towel.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - bottoms-mini
+    - bottoms-short
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 292511e8473314329b389a97db4c09b9
     m_Address: Assets/Models/Hair/Front/01_front_brunt_med.prefab
@@ -140,7 +139,7 @@ MonoBehaviour:
     m_Address: Assets/Models/Clothes/Tops/11_tops_tight_seven_cropped.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - tops-seven-sleeve-cropped
+    - tops-seven-cropped
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 32dfc59655fb34e988e53194bf5e818c
     m_Address: Assets/Models/Hair/Front/04_front_centerdown_straight.prefab
@@ -157,7 +156,7 @@ MonoBehaviour:
     m_Address: Assets/Models/Clothes/Bottoms/06_bottoms_pants_slim_half.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - bottoms-knee
+    - bottoms-half
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 3586ced38a56c4a4ca83e8bc53541546
     m_Address: Assets/Models/Hair/Back/11_back_twintale_high.prefab
@@ -188,13 +187,13 @@ MonoBehaviour:
     m_Address: Assets/Models/Clothes/Tops/15_tops_wide_seven_cropped.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - tops-seven-sleeve-cropped
+    - tops-seven-cropped
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 410adc0f395614c7ba7893975e70d24a
     m_Address: Assets/Models/Clothes/Bottoms/19_bottoms_skirt_tight_knee.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - bottoms-knee
+    - bottoms-half
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 41a226e7e94ac436ea175318cbff4a9d
     m_Address: Assets/Models/Clothes/Socks/02_socks_short.prefab
@@ -210,7 +209,7 @@ MonoBehaviour:
     m_Address: Assets/Models/Clothes/Tops/12_tops_tight_long_cropped.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - tops-long-sleeve-cropped
+    - tops-long-cropped
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 480d95c46e99340d7a72518665d4f6c0
     m_Address: Assets/Models/Hair/Side/04_side_pointed_long.prefab
@@ -221,7 +220,7 @@ MonoBehaviour:
     m_Address: Assets/Models/Clothes/Tops/01_tops_tight_short.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - tops-half-sleeve
+    - tops-half
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 4c8f152620ea64a328c8b4c436856170
     m_Address: Assets/Models/Clothes/Bottoms/16_bottoms_pants_wide_long.prefab
@@ -233,7 +232,7 @@ MonoBehaviour:
     m_Address: Assets/Models/Clothes/Tops/23_tops_sweater.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - tops-long-sleeve
+    - tops-long
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 4e0c58abdd2ee404ca8c2991c659f8b8
     m_Address: Assets/Models/Clothes/Socks/07_socks_loose.prefab
@@ -259,13 +258,13 @@ MonoBehaviour:
     m_Address: Assets/Models/Clothes/Bottoms/09_bottoms_pants_tight_short.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - bottoms-mini
+    - bottoms-short
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 5dbc503c055b34302a55e79753a02a12
     m_Address: Assets/Models/Clothes/Tops/02_tops_tight_half.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - tops-half-sleeve
+    - tops-half
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 62b84e2cf27004d5b897c31b42f821f5
     m_Address: Assets/Models/Base/Eyebrow/15_eyebrow_H_thick.prefab
@@ -276,7 +275,7 @@ MonoBehaviour:
     m_Address: Assets/Models/Clothes/Bottoms/13_bottoms_pants_wide_short.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - bottoms-mini
+    - bottoms-short
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 66353b146e2454da3a16be6633de21cd
     m_Address: Assets/Models/Hair/Front/08_front_threeseven_med.prefab
@@ -298,19 +297,19 @@ MonoBehaviour:
     m_Address: Assets/Models/Clothes/Tops/09_tops_tight_short_cropped.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - tops-half-sleeve-cropped
+    - tops-half-cropped
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 6f627fb4b378b49e0b3c447f46d81b60
     m_Address: Assets/Models/Clothes/Tops/17_tops_nosleeve_tight.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - tops-no-sleeve
+    - tops-nosleeve
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 73deeccaccb0f426c9aa10cec64581c9
     m_Address: Assets/Models/Clothes/Tops/04_tops_tight_long.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - tops-long-sleeve
+    - tops-long
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 76955cd6007c04733b315c08f34a6e77
     m_Address: Assets/Models/Hair/Back/16_back_twinbun_low.prefab
@@ -347,13 +346,13 @@ MonoBehaviour:
     m_Address: Assets/Models/Clothes/Bottoms/02_bottoms_pants_regular_half.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - bottoms-knee
+    - bottoms-half
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 8b0cf4a63ad984f10908d7e599d53368
     m_Address: Assets/Models/Clothes/Tops/08_tops_wide_long.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - tops-long-sleeve
+    - tops-long
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 8d2df7c93508a427eadbf2fe499c2f1d
     m_Address: Assets/Models/Hair/Side/06_side_straight_regular.prefab
@@ -385,19 +384,19 @@ MonoBehaviour:
     m_Address: Assets/Models/Clothes/Tops/14_tops_wide_half_cropped.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - tops-half-sleeve-cropped
+    - tops-half-cropped
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 9443fed0337704a84a6832ea65ec836a
     m_Address: Assets/Models/Clothes/Bottoms/22_bottoms_skirt_wide_short.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - bottoms-mini
+    - bottoms-short
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 964dbbde8d8c943e59e65a5a4ad343ec
     m_Address: Assets/Models/Clothes/Tops/22_tops_shirt_long.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - tops-long-sleeve-cropped
+    - tops-long-cropped
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 9832dca658ae74219af9c2a29f390027
     m_Address: Assets/Models/Base/Eyebrow/10_eyebrow_E_thin.prefab
@@ -413,13 +412,13 @@ MonoBehaviour:
     m_Address: Assets/Models/Clothes/Tops/20_tops_nosleeve_wide_cropped.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - tops-no-sleeve-cropped
+    - tops-nosleeve-cropped
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: a7093227c95cc4d3b848750ff3c805c3
     m_Address: Assets/Models/Clothes/Bottoms/05_bottoms_pants_slim_short.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - bottoms-mini
+    - bottoms-short
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: a95082142f33842dc800898e6deb00fa
     m_Address: Assets/Models/Hair/Back/10_back_pony_pointed_low.prefab
@@ -451,7 +450,7 @@ MonoBehaviour:
     m_Address: Assets/Models/Clothes/Tops/03_tops_tight_seven.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - tops-seven-sleeve
+    - tops-seven
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: b3344c9895e4046e0912ccb541fc5fdd
     m_Address: Assets/Models/Clothes/Bottoms/07_bottoms_pants_slim_med.prefab
@@ -473,7 +472,7 @@ MonoBehaviour:
     m_Address: Assets/Models/Clothes/Tops/13_tops_wide_short_cropped.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - tops-half-sleeve-cropped
+    - tops-half-cropped
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: b908db7491cd54cf09c61ecace227377
     m_Address: Assets/Models/Accessories/Headwear/04_saunahat.prefab
@@ -489,7 +488,7 @@ MonoBehaviour:
     m_Address: Assets/Models/Clothes/Bottoms/27_bottoms_pants_jorts.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - bottoms-knee
+    - bottoms-half
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: c03ba1149b22d4c5c963c616f3a70fd5
     m_Address: Assets/Models/Hair/Back/04_back_straight_short.prefab
@@ -515,19 +514,19 @@ MonoBehaviour:
     m_Address: Assets/Models/Clothes/Bottoms/14_bottoms_pants_wide_half.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - bottoms-knee
+    - bottoms-half
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: c6ca79532183b401ab3d6db8063eb216
     m_Address: Assets/Models/Clothes/Tops/05_tops_wide_short.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - tops-half-sleeve
+    - tops-half
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: c80b491b8a0c84bc59902fa7de76de50
     m_Address: Assets/Models/Clothes/Tops/18_tops_nosleeve_tight_cropped.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - tops-no-sleeve-cropped
+    - tops-nosleeve-cropped
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: c997d691e7eec436eb57dc6d54842c2c
     m_Address: Assets/Models/Hair/Side/08_side_straight_long.prefab
@@ -589,13 +588,13 @@ MonoBehaviour:
     m_Address: Assets/Models/Clothes/Bottoms/23_bottoms_skirt_wide_knee.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - bottoms-knee
+    - bottoms-half
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: e43370a2e96854e3786ede111b9be9d3
     m_Address: Assets/Models/Clothes/Bottoms/26_bottoms_skirt_pleats_mini.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - bottoms-mini
+    - bottoms-short
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: e5b6b4bc871f849deba4add0003bed5b
     m_Address: Assets/Models/Clothes/Bottoms/20_bottoms_skirt_tight_med.prefab
@@ -622,19 +621,19 @@ MonoBehaviour:
     m_Address: Assets/Models/Clothes/Bottoms/10_bottoms_pants_tight_half.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - bottoms-knee
+    - bottoms-half
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: ec873089ad1c348f7ba62a8a17271507
     m_Address: Assets/Models/Clothes/Tops/07_tops_wide_seven.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - tops-seven-sleeve
+    - tops-seven
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: edfe09228b7054e91beb731a40cb2469
     m_Address: Assets/Models/Clothes/Tops/16_tops_wide_long_cropped.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - tops-long-sleeve-cropped
+    - tops-long-cropped
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: ef787c2632c0c447585af23b4e65afb1
     m_Address: Assets/Models/Hair/Base/01_base_full.prefab
@@ -645,7 +644,7 @@ MonoBehaviour:
     m_Address: Assets/Models/Clothes/Tops/19_tops_nosleeve_wide.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - tops-no-sleeve
+    - tops-nosleeve
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: fa854247af244432da88dfe31b7f889c
     m_Address: Assets/Models/Hair/Side/05_side_straight_short.prefab
@@ -656,7 +655,7 @@ MonoBehaviour:
     m_Address: Assets/Models/Clothes/Tops/10_tops_tight_half_cropped.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - tops-half-sleeve-cropped
+    - tops-half-cropped
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: fc9ba58e4b5e54358819171d8fd2d078
     m_Address: Assets/Models/Base/Eyebrow/16_eyebrow_H_thin.prefab

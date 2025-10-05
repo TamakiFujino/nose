@@ -26,6 +26,7 @@ final class GoogleMapManager: NSObject {
     private var sessionToken: GMSAutocompleteSessionToken?
     private var displayLink: CADisplayLink?
     private var markers: [GMSMarker] = []
+    private var followUserLocation: Bool = true
     
     weak var delegate: GoogleMapManagerDelegate?
     
@@ -110,6 +111,9 @@ final class GoogleMapManager: NSObject {
         mapView.animate(to: camera)
         
         markers.append(marker)
+
+        // User picked a place – stop auto recentring to current location
+        followUserLocation = false
     }
     
     func clearMarkers() {
@@ -119,6 +123,7 @@ final class GoogleMapManager: NSObject {
     
     func resetMap() {
         clearMarkers()
+        followUserLocation = true
         let camera = GMSCameraPosition.camera(
             withLatitude: Constants.defaultLatitude,
             longitude: Constants.defaultLongitude,
@@ -152,20 +157,12 @@ extension GoogleMapManager: CLLocationManagerDelegate {
         guard let location = locations.last else { return }
         currentLocation = location
         
-        if markers.isEmpty {
+        if markers.isEmpty && followUserLocation {
             moveToCurrentLocation()
         }
         
         // Update custom marker
         updateCurrentLocationMarker(at: location)
-        
-        // Update camera position to user's location
-        let camera = GMSCameraPosition.camera(
-            withLatitude: location.coordinate.latitude,
-            longitude: location.coordinate.longitude,
-            zoom: Constants.defaultZoom
-        )
-        mapView.animate(to: camera)
         
         // Stop updating location after first update
         manager.stopUpdatingLocation()

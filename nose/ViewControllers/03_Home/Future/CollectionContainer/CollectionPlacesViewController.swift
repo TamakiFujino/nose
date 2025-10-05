@@ -110,7 +110,7 @@ class CollectionPlacesViewController: UIViewController {
         imageView.contentMode = .scaleAspectFit
         imageView.clipsToBounds = true
         imageView.layer.cornerRadius = 12
-        imageView.backgroundColor = .secondarySystemBackground
+        imageView.backgroundColor = .clear
         return imageView
     }()
 
@@ -526,9 +526,6 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "PlaceCell", for: indexPath) as! PlaceTableViewCell
         cell.configure(with: places[indexPath.row])
-        // Reliable built-in accessory button; handled in accessoryButtonTappedForRowAt
-        cell.accessoryType = .detailButton
-        cell.tintColor = .fourthColor
         return cell
     }
 
