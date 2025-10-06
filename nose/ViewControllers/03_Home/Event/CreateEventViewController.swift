@@ -68,20 +68,12 @@ final class CreateEventViewController: UIViewController {
         return view
     }()
     
-    private lazy var titleLabel: UILabel = {
-        let label = UILabel()
-        label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "Create Event"
-        label.font = .systemFont(ofSize: 28, weight: .bold)
-        label.textColor = .label
-        return label
-    }()
     
-    // Event Title Section
+    // Title Section
     private lazy var titleSectionLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "Event Title"
+        label.text = "Title"
         label.font = .systemFont(ofSize: 18, weight: .semibold)
         label.textColor = .label
         return label
@@ -90,7 +82,7 @@ final class CreateEventViewController: UIViewController {
     private lazy var titleTextField: UITextField = {
         let textField = UITextField()
         textField.translatesAutoresizingMaskIntoConstraints = false
-        textField.placeholder = "Enter event title (max 25 characters)"
+        textField.placeholder = "Enter title (max 25 characters)"
         textField.borderStyle = .roundedRect
         textField.font = .systemFont(ofSize: 16)
         textField.delegate = self
@@ -111,7 +103,7 @@ final class CreateEventViewController: UIViewController {
     private lazy var dateTimeSectionLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "Event Date & Time"
+        label.text = "Date & Time"
         label.font = .systemFont(ofSize: 18, weight: .semibold)
         label.textColor = .label
         return label
@@ -181,7 +173,7 @@ final class CreateEventViewController: UIViewController {
     private lazy var locationSectionLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "Event Location"
+        label.text = "Location"
         label.font = .systemFont(ofSize: 18, weight: .semibold)
         label.textColor = .label
         return label
@@ -217,7 +209,7 @@ final class CreateEventViewController: UIViewController {
     private lazy var detailsSectionLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "Event Details"
+        label.text = "Details"
         label.font = .systemFont(ofSize: 18, weight: .semibold)
         label.textColor = .label
         return label
@@ -227,9 +219,9 @@ final class CreateEventViewController: UIViewController {
         let textView = UITextView()
         textView.translatesAutoresizingMaskIntoConstraints = false
         textView.font = .systemFont(ofSize: 16)
-        textView.layer.borderColor = UIColor.systemGray4.cgColor
-        textView.layer.borderWidth = 1
-        textView.layer.cornerRadius = 8
+        textView.layer.borderColor = UIColor.systemGray3.cgColor // Match other fields
+        textView.layer.borderWidth = 0.5 // Match other fields
+        textView.layer.cornerRadius = 5 // Match other fields
         textView.textContainerInset = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
         textView.delegate = self
         return textView
@@ -238,7 +230,7 @@ final class CreateEventViewController: UIViewController {
     private lazy var detailsPlaceholderLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "Describe your event... (max 1000 characters)"
+        label.text = "Describe the event... (max 1000 characters)"
         label.font = .systemFont(ofSize: 16)
         label.textColor = .placeholderText
         return label
@@ -258,9 +250,18 @@ final class CreateEventViewController: UIViewController {
     private lazy var imagesSectionLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "Event Images"
+        label.text = "Images"
         label.font = .systemFont(ofSize: 18, weight: .semibold)
         label.textColor = .label
+        return label
+    }()
+    
+    private lazy var imagesLimitLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.text = "Upload up to 3 images"
+        label.font = .systemFont(ofSize: 14)
+        label.textColor = .secondaryLabel
         return label
     }()
     
@@ -328,11 +329,11 @@ final class CreateEventViewController: UIViewController {
         view.addSubview(scrollView)
         scrollView.addSubview(containerView)
         
-        [titleLabel, titleSectionLabel, titleTextField, titleCharCountLabel,
+        [titleSectionLabel, titleTextField, titleCharCountLabel,
          dateTimeSectionLabel, startDateLabel, startDateButton, endDateLabel, endDateButton, durationDisplayLabel,
          locationSectionLabel, locationTextField, locationTableView,
          detailsSectionLabel, detailsTextView, detailsPlaceholderLabel, detailsCharCountLabel,
-         imagesSectionLabel, imagesCollectionView,
+         imagesSectionLabel, imagesLimitLabel, imagesCollectionView,
          cancelButton, createButton].forEach {
             containerView.addSubview($0)
         }
@@ -355,13 +356,8 @@ final class CreateEventViewController: UIViewController {
             containerView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
             containerView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
             
-            // Title
-            titleLabel.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 20),
-            titleLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 20),
-            titleLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -20),
-            
-            // Event title section
-            titleSectionLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 30),
+            // Title section
+            titleSectionLabel.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 20),
             titleSectionLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 20),
             titleSectionLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -20),
             
@@ -437,7 +433,11 @@ final class CreateEventViewController: UIViewController {
             imagesSectionLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 20),
             imagesSectionLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -20),
             
-            imagesCollectionView.topAnchor.constraint(equalTo: imagesSectionLabel.bottomAnchor, constant: 8),
+            imagesLimitLabel.topAnchor.constraint(equalTo: imagesSectionLabel.bottomAnchor, constant: 4),
+            imagesLimitLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 20),
+            imagesLimitLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -20),
+            
+            imagesCollectionView.topAnchor.constraint(equalTo: imagesLimitLabel.bottomAnchor, constant: 8),
             imagesCollectionView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 20),
             imagesCollectionView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -20),
             imagesCollectionView.heightAnchor.constraint(equalToConstant: 100),
@@ -824,7 +824,8 @@ extension CreateEventViewController: UITableViewDelegate, UITableViewDataSource 
 // MARK: - UICollectionViewDelegate & UICollectionViewDataSource
 extension CreateEventViewController: UICollectionViewDelegate, UICollectionViewDataSource {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return min(selectedImages.count + 1, 4) // +1 for add button, max 4 items
+        // Show add button only if we have fewer than 3 images
+        return selectedImages.count < 3 ? selectedImages.count + 1 : selectedImages.count
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
@@ -833,7 +834,8 @@ extension CreateEventViewController: UICollectionViewDelegate, UICollectionViewD
         if indexPath.item < selectedImages.count {
             cell.configure(with: selectedImages[indexPath.item])
             cell.isAddButton = false
-        } else if indexPath.item < 3 {
+        } else {
+            // This is the add button (only shown when selectedImages.count < 3)
             cell.configureAddButton()
             cell.isAddButton = true
         }
@@ -914,10 +916,12 @@ class ImageCollectionViewCell: UICollectionViewCell {
     private let removeButton: UIButton = {
         let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
-        button.tintColor = .systemRed
-        button.backgroundColor = .white
-        button.layer.cornerRadius = 12
+        button.setImage(UIImage(systemName: "xmark"), for: .normal)
+        button.tintColor = .firstColor
+        button.backgroundColor = .fourthColor
+        button.layer.cornerRadius = 10
+        button.layer.borderWidth = 0
+        button.contentEdgeInsets = UIEdgeInsets(top: 4, left: 4, bottom: 4, right: 4)
         return button
     }()
     
@@ -946,10 +950,10 @@ class ImageCollectionViewCell: UICollectionViewCell {
             addButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
             addButton.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
             
-            removeButton.topAnchor.constraint(equalTo: contentView.topAnchor, constant: -8),
-            removeButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: 8),
-            removeButton.widthAnchor.constraint(equalToConstant: 24),
-            removeButton.heightAnchor.constraint(equalToConstant: 24)
+            removeButton.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 3),
+            removeButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -3),
+            removeButton.widthAnchor.constraint(equalToConstant: 20),
+            removeButton.heightAnchor.constraint(equalToConstant: 20)
         ])
         
         addButton.addTarget(self, action: #selector(addButtonTapped), for: .touchUpInside)
