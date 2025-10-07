@@ -1,5 +1,6 @@
 import UIKit
 import GooglePlaces
+import FirebaseAuth
 
 protocol CreateEventViewControllerDelegate: AnyObject {
     func createEventViewController(_ controller: CreateEventViewController, didCreateEvent event: Event)
@@ -53,6 +54,7 @@ final class CreateEventViewController: UIViewController {
     private var selectedStartDate: Date = Date()
     private var selectedEndDate: Date = Calendar.current.date(byAdding: .hour, value: 1, to: Date()) ?? Date()
     private var locationPredictions: [GMSAutocompletePrediction] = []
+    private var avatarData: CollectionAvatar.AvatarData?
     
     // MARK: - UI Components
     private lazy var scrollView: UIScrollView = {
@@ -68,6 +70,32 @@ final class CreateEventViewController: UIViewController {
         return view
     }()
     
+    // Avatar Section
+    private lazy var avatarImageView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.contentMode = .scaleAspectFit
+        imageView.clipsToBounds = true
+        imageView.layer.cornerRadius = 12
+        imageView.backgroundColor = .clear
+        // Set default placeholder
+        imageView.image = UIImage(named: "avatar") ?? UIImage(systemName: "person.crop.circle")
+        return imageView
+    }()
+    
+    private lazy var customizeAvatarButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.setTitle("Customize avatar", for: .normal)
+        button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
+        button.backgroundColor = .fourthColor
+        button.setTitleColor(.white, for: .normal)
+        button.layer.cornerRadius = 24
+        button.clipsToBounds = true
+        button.contentEdgeInsets = UIEdgeInsets(top: 12, left: 20, bottom: 12, right: 20)
+        button.addTarget(self, action: #selector(customizeAvatarTapped), for: .touchUpInside)
+        return button
+    }()
     
     // Title Section
     private lazy var titleSectionLabel: UILabel = {
@@ -259,7 +287,7 @@ final class CreateEventViewController: UIViewController {
     private lazy var imagesLimitLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "Upload up to 3 images"
+        label.text = "Upload 1 image"
         label.font = .systemFont(ofSize: 14)
         label.textColor = .secondaryLabel
         return label
@@ -325,11 +353,19 @@ final class CreateEventViewController: UIViewController {
         view.backgroundColor = .systemBackground
         title = "Create Event"
         
+        // Add navigation bar close button
+        navigationItem.leftBarButtonItem = UIBarButtonItem(
+            barButtonSystemItem: .cancel,
+            target: self,
+            action: #selector(cancelButtonTapped)
+        )
+        
         // Add subviews
         view.addSubview(scrollView)
         scrollView.addSubview(containerView)
         
-        [titleSectionLabel, titleTextField, titleCharCountLabel,
+        [avatarImageView, customizeAvatarButton,
+         titleSectionLabel, titleTextField, titleCharCountLabel,
          dateTimeSectionLabel, startDateLabel, startDateButton, endDateLabel, endDateButton, durationDisplayLabel,
          locationSectionLabel, locationTextField, locationTableView,
          detailsSectionLabel, detailsTextView, detailsPlaceholderLabel, detailsCharCountLabel,
@@ -356,8 +392,18 @@ final class CreateEventViewController: UIViewController {
             containerView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
             containerView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
             
+            // Avatar section
+            avatarImageView.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 20),
+            avatarImageView.centerXAnchor.constraint(equalTo: containerView.centerXAnchor),
+            avatarImageView.widthAnchor.constraint(equalToConstant: 100),
+            avatarImageView.heightAnchor.constraint(equalToConstant: 100),
+            
+            customizeAvatarButton.topAnchor.constraint(equalTo: avatarImageView.bottomAnchor, constant: 12),
+            customizeAvatarButton.centerXAnchor.constraint(equalTo: containerView.centerXAnchor),
+            customizeAvatarButton.heightAnchor.constraint(equalToConstant: 48),
+            
             // Title section
-            titleSectionLabel.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 20),
+            titleSectionLabel.topAnchor.constraint(equalTo: customizeAvatarButton.bottomAnchor, constant: 30),
             titleSectionLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 20),
             titleSectionLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -20),
             
@@ -491,6 +537,9 @@ final class CreateEventViewController: UIViewController {
     @objc private func createButtonTapped() {
         guard validateForm() else { return }
         
+        // Show loading indicator
+        showLoadingAlert(title: "Creating Event")
+        
         let eventDateTime = EventDateTime(startDate: selectedStartDate, endDate: selectedEndDate)
         let event = Event(
             id: UUID().uuidString,
@@ -502,8 +551,22 @@ final class CreateEventViewController: UIViewController {
             createdAt: Date()
         )
         
-        delegate?.createEventViewController(self, didCreateEvent: event)
-        dismiss(animated: true)
+        // Save event to Firebase
+        EventManager.shared.createEvent(event, avatarData: avatarData) { [weak self] result in
+            DispatchQueue.main.async {
+                self?.dismiss(animated: true) {
+                    switch result {
+                    case .success(let eventId):
+                        print("✅ Event created successfully with ID: \(eventId)")
+                        self?.delegate?.createEventViewController(self!, didCreateEvent: event)
+                        self?.dismiss(animated: true)
+                    case .failure(let error):
+                        print("❌ Failed to create event: \(error.localizedDescription)")
+                        self?.showAlert(title: "Error", message: "Failed to create event. Please try again.")
+                    }
+                }
+            }
+        }
     }
     
     @objc private func startDateButtonTapped() {
@@ -512,6 +575,26 @@ final class CreateEventViewController: UIViewController {
     
     @objc private func endDateButtonTapped() {
         presentDatePickerModal(for: .end)
+    }
+    
+    @objc private func customizeAvatarTapped() {
+        // Create a temporary collection for avatar customization
+        // Since we don't have a real collection yet, we'll create a placeholder
+        let tempCollection = PlaceCollection(
+            id: "temp_event_\(UUID().uuidString)",
+            name: "Event Avatar",
+            places: [],
+            userId: Auth.auth().currentUser?.uid ?? "",
+            status: .active,
+            isOwner: true
+        )
+        
+        let vc = ContentViewController(collection: tempCollection)
+        if let nav = navigationController {
+            nav.pushViewController(vc, animated: true)
+        } else {
+            present(vc, animated: true)
+        }
     }
     
     
@@ -684,6 +767,27 @@ extension CreateEventViewController {
         present(alert, animated: true)
     }
     
+    private func showLoadingAlert(title: String) {
+        let alert = UIAlertController(title: title, message: nil, preferredStyle: .alert)
+        let loadingIndicator = UIActivityIndicatorView(style: .large)
+        loadingIndicator.translatesAutoresizingMaskIntoConstraints = false
+        loadingIndicator.startAnimating()
+        
+        alert.view.addSubview(loadingIndicator)
+        NSLayoutConstraint.activate([
+            loadingIndicator.centerXAnchor.constraint(equalTo: alert.view.centerXAnchor),
+            loadingIndicator.centerYAnchor.constraint(equalTo: alert.view.centerYAnchor, constant: 20)
+        ])
+        
+        present(alert, animated: true)
+    }
+    
+    // MARK: - Avatar Data Handling
+    func updateAvatarData(_ avatarData: CollectionAvatar.AvatarData) {
+        self.avatarData = avatarData
+        // You could also update the avatar image view here if needed
+    }
+    
 }
 
 // MARK: - UITextFieldDelegate
@@ -824,8 +928,8 @@ extension CreateEventViewController: UITableViewDelegate, UITableViewDataSource 
 // MARK: - UICollectionViewDelegate & UICollectionViewDataSource
 extension CreateEventViewController: UICollectionViewDelegate, UICollectionViewDataSource {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        // Show add button only if we have fewer than 3 images
-        return selectedImages.count < 3 ? selectedImages.count + 1 : selectedImages.count
+        // Show add button only if we have fewer than 1 image
+        return selectedImages.count < 1 ? selectedImages.count + 1 : selectedImages.count
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
@@ -835,7 +939,7 @@ extension CreateEventViewController: UICollectionViewDelegate, UICollectionViewD
             cell.configure(with: selectedImages[indexPath.item])
             cell.isAddButton = false
         } else {
-            // This is the add button (only shown when selectedImages.count < 3)
+            // This is the add button (only shown when selectedImages.count < 1)
             cell.configureAddButton()
             cell.isAddButton = true
         }

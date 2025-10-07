@@ -17,7 +17,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window = UIWindow(windowScene: windowScene)
         
         // Set HomeViewController (map screen) as root inside a navigation controller
-        let homeVC = CreateEventViewController()
+        let homeVC = HomeViewController()
         let nav = UINavigationController(rootViewController: homeVC)
         window?.rootViewController = nav
         window?.makeKeyAndVisible()

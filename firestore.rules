@@ -136,6 +136,33 @@ service cloud.firestore {
         request.resource.data.updatedAt is timestamp;
     }
     
+    // Validate event data structure
+    function isValidEventData() {
+      return request.resource.data.keys().hasAll(['id', 'title', 'startDate', 'endDate', 'location', 'details', 'imageURLs', 'createdAt', 'userId', 'status']) &&
+        request.resource.data.id is string &&
+        request.resource.data.title is string &&
+        request.resource.data.startDate is timestamp &&
+        request.resource.data.endDate is timestamp &&
+        request.resource.data.location is map &&
+        request.resource.data.details is string &&
+        request.resource.data.imageURLs is list &&
+        request.resource.data.createdAt is timestamp &&
+        request.resource.data.userId is string &&
+        request.resource.data.status is string;
+    }
+    
+    // Validate event update (allows partial updates)
+    function isValidEventUpdate() {
+      return (request.resource.data.title is string) &&
+        (request.resource.data.startDate is timestamp) &&
+        (request.resource.data.endDate is timestamp) &&
+        (request.resource.data.location is map) &&
+        (request.resource.data.details is string) &&
+        (request.resource.data.imageURLs is list) &&
+        (request.resource.data.userId is string) &&
+        (request.resource.data.status is string);
+    }
+    
     // User document rules
     match /users/{userId} {
       // Anyone can read user documents
@@ -206,6 +233,38 @@ service cloud.firestore {
       match /places/{placeId} {
         allow read: if isAuthenticated();
         allow write: if isOwner(userId) && isValidPlaceData();
+      }
+      
+      // User's events subcollection
+      match /events/{eventId} {
+        // Anyone can read events (for now - you might want to restrict this later)
+        allow read: if isAuthenticated();
+        // Allow create if:
+        // 1. User is the owner and the event data is valid
+        allow create: if isAuthenticated() && 
+          request.auth.uid == userId && 
+          isValidEventData();
+        // Allow update if:
+        // 1. User is the owner of the event
+        // 2. The update is valid (allows partial updates)
+        allow update: if isAuthenticated() && 
+          request.auth.uid == resource.data.userId && (
+            // Allow status-only updates (for soft delete)
+            (request.resource.data.keys().hasOnly(['status', 'deletedAt']) && 
+             request.resource.data.status is string) ||
+            // Allow avatar-only updates
+            (request.resource.data.keys().hasOnly(['avatarData', 'updatedAt']) && 
+             request.resource.data.avatarData is map) ||
+            // Allow full event updates
+            isValidEventUpdate()
+          );
+        // Allow delete if:
+        // 1. User is the owner of the event, OR
+        // 2. User is deleting from their own events path
+        allow delete: if isAuthenticated() && (
+          request.auth.uid == resource.data.userId ||
+          request.auth.uid == userId
+        );
       }
     }
 

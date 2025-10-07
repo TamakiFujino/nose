@@ -57,6 +57,14 @@ final class HomeViewController: UIViewController {
         )
     }()
     
+    private lazy var createEventButton: IconButton = {
+        IconButton(
+            image: UIImage(systemName: "calendar"),
+            action: #selector(createEventButtonTapped),
+            target: self
+        )
+    }()
+    
     private lazy var searchButton: IconButton = {
         IconButton(
             image: UIImage(systemName: "magnifyingglass"),
@@ -187,7 +195,7 @@ final class HomeViewController: UIViewController {
     
     private func setupSubviews() {
         [mapView, headerView, dotSlider, searchButton, sparkButton, boxButton,
-         searchResultsTableView, currentLocationButton, profileButton, messageView].forEach {
+         searchResultsTableView, currentLocationButton, profileButton, createEventButton, messageView].forEach {
             view.addSubview($0)
         }
         
@@ -221,6 +229,12 @@ final class HomeViewController: UIViewController {
             profileButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: Constants.standardPadding),
             profileButton.widthAnchor.constraint(equalToConstant: Constants.buttonSize),
             profileButton.heightAnchor.constraint(equalToConstant: Constants.buttonSize),
+            
+            // Create event button constraints
+            createEventButton.topAnchor.constraint(equalTo: profileButton.bottomAnchor, constant: 12),
+            createEventButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: Constants.standardPadding),
+            createEventButton.widthAnchor.constraint(equalToConstant: Constants.buttonSize),
+            createEventButton.heightAnchor.constraint(equalToConstant: Constants.buttonSize),
             
             // Search button constraints
             searchButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 65),
@@ -339,6 +353,14 @@ final class HomeViewController: UIViewController {
     @objc private func profileButtonTapped() {
         let settingVC = SettingsViewController()
         navigationController?.pushViewController(settingVC, animated: true)
+    }
+    
+    @objc private func createEventButtonTapped() {
+        let createEventVC = CreateEventViewController()
+        createEventVC.delegate = self
+        let navController = UINavigationController(rootViewController: createEventVC)
+        navController.modalPresentationStyle = .fullScreen
+        present(navController, animated: true)
     }
     
     @objc private func searchButtonTapped() {
@@ -539,6 +561,15 @@ extension HomeViewController: SearchManagerDelegate {
         } else {
             self.present(detailViewController, animated: true)
         }
+    }
+}
+
+// MARK: - CreateEventViewControllerDelegate
+extension HomeViewController: CreateEventViewControllerDelegate {
+    func createEventViewController(_ controller: CreateEventViewController, didCreateEvent event: Event) {
+        // Handle the created event
+        print("Event created: \(event.title)")
+        // You can add logic here to save the event or update the UI
     }
 }
 
