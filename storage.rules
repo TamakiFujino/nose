@@ -39,11 +39,19 @@ service firebase.storage {
     }
 
     // Event images - optimized for storage efficiency
-    match /event_images/{allPaths=**} {
+    // Match specific path pattern: event_images/{userId}/{fileName}
+    match /event_images/{userId}/{fileName} {
       // Anyone authenticated can read event images
       allow read: if isAuthenticated();
       
-      // Any authenticated user can create event images with size validation
+      // User can create/update their own event images with size validation
+      allow create, update: if isAuthenticated() && isValidImageUpload();
+      allow delete: if isAuthenticated() && isOwner(userId);
+    }
+    
+    // Fallback for any other event_images paths
+    match /event_images/{allPaths=**} {
+      allow read: if isAuthenticated();
       allow create, update: if isAuthenticated() && isValidImageUpload();
       allow delete: if isAuthenticated();
     }

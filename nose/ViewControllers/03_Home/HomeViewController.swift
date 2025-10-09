@@ -22,6 +22,7 @@ final class HomeViewController: UIViewController {
     private var sessionToken: GMSAutocompleteSessionToken?
     private var currentDotIndex: Int = 1  // Track current dot index (0: left, 1: middle, 2: right)
     private var collections: [PlaceCollection] = []
+    private var events: [Event] = []
     private let locationManager = CLLocationManager()
     
     // Add properties to track dots and line
@@ -172,6 +173,13 @@ final class HomeViewController: UIViewController {
         setupManagers()
         setupLocationManager()
         setupNotificationObservers()
+        loadEvents()
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        // Refresh events when view appears
+        loadEvents()
     }
     
     deinit {
@@ -287,6 +295,7 @@ final class HomeViewController: UIViewController {
     private func setupManagers() {
         sessionToken = GMSAutocompleteSessionToken()
         mapManager = GoogleMapManager(mapView: mapView)
+        mapManager?.delegate = self
         searchManager = SearchManager()
         searchManager?.delegate = self
         
@@ -356,9 +365,8 @@ final class HomeViewController: UIViewController {
     }
     
     @objc private func createEventButtonTapped() {
-        let createEventVC = CreateEventViewController()
-        createEventVC.delegate = self
-        let navController = UINavigationController(rootViewController: createEventVC)
+        let manageEventVC = ManageEventViewController()
+        let navController = UINavigationController(rootViewController: manageEventVC)
         navController.modalPresentationStyle = .fullScreen
         present(navController, animated: true)
     }
@@ -410,6 +418,22 @@ final class HomeViewController: UIViewController {
             DispatchQueue.main.async {
                 self?.searchPredictions = predictions
                 self?.searchResultsTableView.reloadData()
+            }
+        }
+    }
+    
+    private func loadEvents() {
+        print("📍 Loading current and future events for map...")
+        EventManager.shared.fetchAllCurrentAndFutureEvents { [weak self] result in
+            switch result {
+            case .success(let events):
+                print("✅ Loaded \(events.count) events")
+                self?.events = events
+                DispatchQueue.main.async {
+                    self?.mapManager?.showEventsOnMap(events)
+                }
+            case .failure(let error):
+                print("❌ Failed to load events: \(error.localizedDescription)")
             }
         }
     }
@@ -569,7 +593,23 @@ extension HomeViewController: CreateEventViewControllerDelegate {
     func createEventViewController(_ controller: CreateEventViewController, didCreateEvent event: Event) {
         // Handle the created event
         print("Event created: \(event.title)")
-        // You can add logic here to save the event or update the UI
+        // Reload events to show the new one on the map
+        loadEvents()
+    }
+}
+
+// MARK: - GoogleMapManagerDelegate
+extension HomeViewController: GoogleMapManagerDelegate {
+    func googleMapManager(_ manager: GoogleMapManager, didFailWithError error: Error) {
+        print("❌ Map error: \(error.localizedDescription)")
+    }
+    
+    func googleMapManager(_ manager: GoogleMapManager, didTapEventMarker event: Event) {
+        print("🎯 Showing event detail: \(event.title)")
+        let eventDetailVC = EventDetailViewController(event: event)
+        eventDetailVC.modalPresentationStyle = .overCurrentContext
+        eventDetailVC.modalTransitionStyle = .crossDissolve
+        present(eventDetailVC, animated: true)
     }
 }
 

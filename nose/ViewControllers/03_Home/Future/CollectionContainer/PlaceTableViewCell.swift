@@ -1,5 +1,6 @@
 import UIKit
 import GooglePlaces
+import FirebaseFirestore
 
 class PlaceTableViewCell: UITableViewCell {
     // MARK: - UI Components
@@ -60,6 +61,15 @@ class PlaceTableViewCell: UITableViewCell {
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+    
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        // Clear images to prevent showing stale data
+        placeImageView.image = nil
+        placeImageView.tintColor = nil
+        nameLabel.text = nil
+        ratingLabel.text = nil
     }
 
     // MARK: - Setup
@@ -125,5 +135,69 @@ class PlaceTableViewCell: UITableViewCell {
                 }
             }
         }
+    }
+    
+    func configureWithEvent(_ event: Event) {
+        nameLabel.text = event.title
+        
+        // Format date for event
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "MMM dd, HH:mm"
+        let dateString = dateFormatter.string(from: event.dateTime.startDate)
+        ratingLabel.text = "⚡ \(dateString) • \(event.location.name)"
+        
+        backgroundColor = .systemBackground
+        visitedIndicator.isHidden = true
+        
+        // Clear image immediately to prevent showing old images
+        placeImageView.image = nil
+        placeImageView.tintColor = nil
+        placeImageView.contentMode = .scaleAspectFill
+        
+        // Use already loaded image if available
+        if !event.images.isEmpty {
+            print("📸 Using loaded event image for: \(event.title)")
+            placeImageView.image = event.images[0]
+        } else {
+            print("📥 Need to download event image for: \(event.title)")
+            loadEventImage(eventId: event.id, userId: event.userId)
+        }
+    }
+    
+    private func loadEventImage(eventId: String, userId: String) {
+        // Show placeholder while loading
+        placeImageView.image = UIImage(systemName: "photo")
+        placeImageView.tintColor = .systemGray3
+        
+        let db = Firestore.firestore()
+        db.collection("users")
+            .document(userId)
+            .collection("events")
+            .document(eventId)
+            .getDocument { [weak self] snapshot, error in
+                if let error = error {
+                    print("❌ Error loading event image: \(error.localizedDescription)")
+                    return
+                }
+                
+                guard let data = snapshot?.data(),
+                      let imageURLs = data["imageURLs"] as? [String],
+                      let firstImageURL = imageURLs.first,
+                      !firstImageURL.isEmpty,
+                      let url = URL(string: firstImageURL) else {
+                    print("⚠️ No event image URL found")
+                    return
+                }
+                
+                // Download event image
+                URLSession.shared.dataTask(with: url) { data, response, error in
+                    if let data = data, let image = UIImage(data: data) {
+                        DispatchQueue.main.async {
+                            self?.placeImageView.image = image
+                            self?.placeImageView.contentMode = .scaleAspectFill
+                        }
+                    }
+                }.resume()
+            }
     }
 } 

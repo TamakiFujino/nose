@@ -20,6 +20,10 @@ class ContentViewController: UIViewController, ContentViewControllerDelegate {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        // Set a proper background color to avoid black screen
+        view.backgroundColor = .systemBackground
+        
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { self.launchUnity() }
     }
 
@@ -164,6 +168,28 @@ extension ContentViewController {
             lastCustomizedAt: Date(),
             customizationVersion: 1
         )
+        // Post notification for CreateEventViewController to capture avatar data
+        NotificationCenter.default.post(
+            name: NSNotification.Name("AvatarDataUpdated"),
+            object: nil,
+            userInfo: ["selections": sanitized]
+        )
+        
+        // Check if this is a temporary collection for event creation
+        if collection.id == "temp_event_avatar" {
+            // For temporary collections, capture the avatar image and post notification
+            captureTemporaryAvatarImage { [weak self] result in
+                LoadingView.shared.hideAlertLoading()
+                switch result {
+                case .success:
+                    print("✅ Avatar image captured and data posted via notification for temporary collection")
+                case .failure(let error):
+                    print("❌ Failed to capture temporary avatar image: \(error.localizedDescription)")
+                }
+            }
+            return
+        }
+        
         CollectionManager.shared.updateAvatarData(avatarData, for: collection) { [weak self] result in
             guard let self = self else { return }
             switch result {
@@ -184,6 +210,35 @@ extension ContentViewController {
         }
     }
 
+    private func captureTemporaryAvatarImage(completion: @escaping (Result<Void, Error>) -> Void) {
+        // Capture avatar image for temporary event storage
+        let tempRelativePath = "temp_event_avatar.png"
+        let targetWidth = 1200
+        let targetHeight = 1800
+        
+        // Request transparent background
+        let message = "\(tempRelativePath)|\(targetWidth)|\(targetHeight)|1"
+        UnityLauncher.shared().sendMessage(
+            toUnity: "UnityBridge",
+            method: "CaptureAvatarThumbnailToFile",
+            message: message
+        )
+
+        let cachesURL = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
+        let fullPath = cachesURL.appendingPathComponent(tempRelativePath).path
+        
+        waitForFile(atPath: fullPath, timeout: 2.0, pollInterval: 0.1) { [weak self] fileResult in
+            switch fileResult {
+            case .success:
+                print("[ContentViewController] Temporary avatar image captured successfully")
+                completion(.success(()))
+            case .failure(let error):
+                print("[ContentViewController] Failed to capture temporary avatar image: \(error.localizedDescription)")
+                completion(.failure(error))
+            }
+        }
+    }
+    
     private func captureAndUploadThumbnail(completion: @escaping (Result<Void, Error>) -> Void) {
         guard let uid = Auth.auth().currentUser?.uid else {
             completion(.failure(NSError(domain: "ContentViewController", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not signed in"])));

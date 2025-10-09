@@ -197,17 +197,20 @@ service cloud.firestore {
         allow read: if isAuthenticated();
         // Allow create if:
         // 1. User is authenticated and creating their own collection, OR
-        // 2. This is a collection sharing operation (owner sharing with another user)
+        // 2. This is a collection sharing operation (owner sharing with another user), OR
+        // 3. This is a temporary collection for event avatar customization
         allow create: if isAuthenticated() && (
           (request.auth.uid == userId) ||
           (request.resource.data.isOwner == false && 
            request.resource.data.sharedBy is string && 
-           request.resource.data.sharedBy == request.auth.uid)
+           request.resource.data.sharedBy == request.auth.uid) ||
+          (collectionId == "temp_event_avatar" && request.auth.uid == userId)
         );
         // Allow update if:
         // 1. User is the owner of the collection OR a member of the existing collection
         // 2. The update is valid
-        allow update: if isAuthenticated() && 
+        // 3. This is a temporary collection for event avatar customization
+        allow update: if isAuthenticated() && (
           (request.auth.uid == resource.data.userId || isMemberOfExisting()) && (
             // Allow member removal operations
             isValidMemberRemoval() ||
@@ -219,7 +222,12 @@ service cloud.firestore {
              request.resource.data.avatarData is map) ||
             // Allow full collection updates
             isValidCollectionUpdate()
-          );
+          ) ||
+          // Allow updates to temporary event avatar collections
+          (collectionId == "temp_event_avatar" && request.auth.uid == userId && 
+           request.resource.data.keys().hasOnly(['avatarData']) && 
+           request.resource.data.avatarData is map)
+        );
         // Allow delete if:
         // 1. User is the owner of the collection, OR
         // 2. User is deleting from their own collections path (for shared collections)
@@ -293,5 +301,12 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow write: if false; // Only allow writes through admin SDK
     }
+    
+    // Collection group rules for events (allows querying across all users)
+    match /{path=**}/events/{eventId} {
+      // Allow any authenticated user to read active events
+      allow read: if isAuthenticated();
+    }
   }
 }
+
