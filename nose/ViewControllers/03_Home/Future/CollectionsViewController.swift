@@ -7,6 +7,7 @@ class CollectionsViewController: UIViewController {
     // MARK: - Properties
     private var personalCollections: [PlaceCollection] = []
     private var sharedCollections: [PlaceCollection] = []
+    private var collectionEventCounts: [String: Int] = [:] // collectionId -> event count
     private var currentTab: CollectionTab = .personal
     
     private enum CollectionTab {
@@ -140,6 +141,13 @@ class CollectionsViewController: UIViewController {
                     data["status"] = PlaceCollection.Status.active.rawValue
                 }
                 
+                // Store events count for this collection
+                if let eventsArray = data["events"] as? [[String: Any]] {
+                    self?.collectionEventCounts[document.documentID] = eventsArray.count
+                } else {
+                    self?.collectionEventCounts[document.documentID] = 0
+                }
+                
                 if let collection = PlaceCollection(dictionary: data) {
                     print("✅ Loaded owned collection: '\(collection.name)' (ID: \(collection.id))")
                     return collection
@@ -206,6 +214,13 @@ class CollectionsViewController: UIViewController {
                                     collectionData["status"] = PlaceCollection.Status.active.rawValue
                                 }
                                 
+                                // Store events count for this collection
+                                if let eventsArray = originalData["events"] as? [[String: Any]] {
+                                    self?.collectionEventCounts[collectionId] = eventsArray.count
+                                } else {
+                                    self?.collectionEventCounts[collectionId] = 0
+                                }
+                                
                                 if let collection = PlaceCollection(dictionary: collectionData) {
                                     print("✅ Loaded shared collection: '\(collection.name)' (ID: \(collection.id))")
                                     loadedCollections.append(collection)
@@ -244,7 +259,28 @@ extension CollectionsViewController: UITableViewDelegate, UITableViewDataSource 
         
         var content = cell.defaultContentConfiguration()
         content.text = collection.name
-        content.secondaryText = "\(collection.places.count) places"
+        
+        // Count both places and events
+        let placesCount = collection.places.count
+        let eventsCount = collectionEventCounts[collection.id] ?? 0
+        let totalCount = placesCount + eventsCount
+        
+        // Create attributed string with bookmark icon
+        let imageAttachment = NSTextAttachment()
+        imageAttachment.image = UIImage(systemName: "bookmark.fill")?.withTintColor(.secondaryLabel)
+        let imageString = NSAttributedString(attachment: imageAttachment)
+        
+        let textString = NSAttributedString(string: " \(totalCount)", attributes: [
+            .foregroundColor: UIColor.secondaryLabel,
+            .font: UIFont.systemFont(ofSize: 14)
+        ])
+        
+        let attributedText = NSMutableAttributedString()
+        attributedText.append(imageString)
+        attributedText.append(textString)
+        
+        content.secondaryAttributedText = attributedText
+        
         cell.contentConfiguration = content
         
         return cell

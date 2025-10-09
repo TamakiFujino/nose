@@ -1,14 +1,20 @@
 import UIKit
 import GooglePlaces
+import FirebaseFirestore
 
 protocol SearchViewControllerDelegate: AnyObject {
     func searchViewController(_ controller: SearchViewController, didSelectPlace place: GMSPlace)
 }
 
+enum SearchResult {
+    case place(GMSAutocompletePrediction)
+    case event(Event)
+}
+
 final class SearchViewController: UIViewController {
     
     // MARK: - Properties
-    private var searchResults: [GMSAutocompletePrediction] = []
+    private var searchResults: [SearchResult] = []
     private var sessionToken: GMSAutocompleteSessionToken?
     
     weak var delegate: SearchViewControllerDelegate?
@@ -17,7 +23,7 @@ final class SearchViewController: UIViewController {
     private lazy var searchBar: UISearchBar = {
         let searchBar = UISearchBar()
         searchBar.translatesAutoresizingMaskIntoConstraints = false
-        searchBar.placeholder = "Search for a place"
+        searchBar.placeholder = "Search for places or events"
         searchBar.delegate = self
         searchBar.searchBarStyle = .minimal
         searchBar.becomeFirstResponder()
@@ -95,11 +101,47 @@ final class SearchViewController: UIViewController {
         searchResults = []
         tableView.reloadData()
         
-        // Use debounced search to prevent rapid-fire API calls
-        PlacesAPIManager.shared.debouncedSearch(query: query) { [weak self] (results: [GMSAutocompletePrediction]) in
-            DispatchQueue.main.async {
-                self?.searchResults = results
-                self?.tableView.reloadData()
+        // Search both places and events in parallel
+        let dispatchGroup = DispatchGroup()
+        var placeResults: [SearchResult] = []
+        var eventResults: [SearchResult] = []
+        
+        // Search places using Google Places API
+        dispatchGroup.enter()
+        PlacesAPIManager.shared.debouncedSearch(query: query) { (results: [GMSAutocompletePrediction]) in
+            placeResults = results.map { .place($0) }
+            dispatchGroup.leave()
+        }
+        
+        // Search events in Firestore
+        dispatchGroup.enter()
+        searchEvents(query: query) { events in
+            eventResults = events.map { .event($0) }
+            dispatchGroup.leave()
+        }
+        
+        // Combine results when both searches complete
+        dispatchGroup.notify(queue: .main) { [weak self] in
+            // Events first, then places
+            self?.searchResults = eventResults + placeResults
+            self?.tableView.reloadData()
+        }
+    }
+    
+    private func searchEvents(query: String, completion: @escaping ([Event]) -> Void) {
+        // Search current and future events by title
+        EventManager.shared.fetchAllCurrentAndFutureEvents { result in
+            switch result {
+            case .success(let allEvents):
+                let filtered = allEvents.filter { event in
+                    event.title.lowercased().contains(query.lowercased()) ||
+                    event.location.name.lowercased().contains(query.lowercased()) ||
+                    event.location.address.lowercased().contains(query.lowercased())
+                }
+                completion(filtered)
+            case .failure(let error):
+                print("❌ Error searching events: \(error.localizedDescription)")
+                completion([])
             }
         }
     }
@@ -154,7 +196,7 @@ final class SearchViewController: UIViewController {
         PlacesAPIManager.shared.debouncedSearch(query: query) { [weak self] (results: [GMSAutocompletePrediction]) in
             guard let self = self else { return }
             DispatchQueue.main.async {
-                self.searchResults = results
+                self.searchResults = results.map { .place($0) }
                 self.tableView.reloadData()
                 if let first = results.first {
                     self.fetchPlaceDetails(for: first)
@@ -189,19 +231,42 @@ extension SearchViewController: UITableViewDelegate, UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "SearchResultCell", for: indexPath)
-        let prediction = searchResults[indexPath.row]
+        let result = searchResults[indexPath.row]
         
         var content = cell.defaultContentConfiguration()
-        content.text = prediction.attributedPrimaryText.string
-        content.secondaryText = prediction.attributedSecondaryText?.string
+        
+        switch result {
+        case .place(let prediction):
+            content.text = prediction.attributedPrimaryText.string
+            content.secondaryText = prediction.attributedSecondaryText?.string
+            content.image = UIImage(systemName: "mappin.circle.fill")
+            content.imageProperties.tintColor = .fourthColor
+            
+        case .event(let event):
+            content.text = event.title
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "MMM dd, HH:mm"
+            let dateString = dateFormatter.string(from: event.dateTime.startDate)
+            content.secondaryText = "⚡ \(dateString) • \(event.location.name)"
+            content.image = UIImage(systemName: "bolt.fill")
+            content.imageProperties.tintColor = .fifthColor
+        }
+        
         cell.contentConfiguration = content
         
         return cell
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        let prediction = searchResults[indexPath.row]
-        fetchPlaceDetails(for: prediction)
+        let result = searchResults[indexPath.row]
+        
+        switch result {
+        case .place(let prediction):
+            fetchPlaceDetails(for: prediction)
+            
+        case .event(let event):
+            presentEventDetail(event)
+        }
     }
 }
 
@@ -223,6 +288,22 @@ private extension SearchViewController {
         } else if let nav = self.navigationController {
             nav.pushViewController(detailVC, animated: true)
         } else {
+            self.present(detailVC, animated: true)
+        }
+    }
+    
+    func presentEventDetail(_ event: Event) {
+        let detailVC = EventDetailViewController(event: event)
+        // If this VC was presented modally, dismiss it first, then present from the presenter
+        if let presenter = self.presentingViewController {
+            self.dismiss(animated: true) {
+                detailVC.modalPresentationStyle = .overCurrentContext
+                detailVC.modalTransitionStyle = .crossDissolve
+                presenter.present(detailVC, animated: true)
+            }
+        } else {
+            detailVC.modalPresentationStyle = .overCurrentContext
+            detailVC.modalTransitionStyle = .crossDissolve
             self.present(detailVC, animated: true)
         }
     }

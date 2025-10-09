@@ -10,6 +10,7 @@ class CollectionPlacesViewController: UIViewController {
 
     private let collection: PlaceCollection
     private var places: [PlaceCollection.Place] = []
+    private var events: [Event] = []
     private var sessionToken: GMSAutocompleteSessionToken?
     private var sharedFriendsCount: Int = 0
     private var avatarsLoadGeneration: Int = 0
@@ -400,8 +401,180 @@ class CollectionPlacesViewController: UIViewController {
 
     private func loadPlaces() {
         places = collection.places
+        loadEvents()
         updatePlacesCountLabel()
         tableView.reloadData()
+    }
+    
+    private func loadEvents() {
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        let db = Firestore.firestore()
+        
+        // Load events from the collection
+        db.collection("users")
+            .document(currentUserId)
+            .collection("collections")
+            .document(collection.id)
+            .getDocument { [weak self] snapshot, error in
+                if let error = error {
+                    print("❌ Error loading events: \(error.localizedDescription)")
+                    return
+                }
+                
+                guard let data = snapshot?.data(),
+                      let eventsArray = data["events"] as? [[String: Any]] else {
+                    print("📄 No events in collection")
+                    DispatchQueue.main.async {
+                        self?.events = []
+                        self?.updatePlacesCountLabel()
+                        self?.tableView.reloadData()
+                    }
+                    return
+                }
+                
+                print("📄 Found \(eventsArray.count) events in collection")
+                
+                // Use DispatchGroup to verify each event still exists
+                let group = DispatchGroup()
+                var loadedEvents: [Event] = []
+                
+                for eventDict in eventsArray {
+                    guard let eventId = eventDict["eventId"] as? String,
+                          let title = eventDict["title"] as? String,
+                          let startTimestamp = eventDict["startDate"] as? Timestamp,
+                          let endTimestamp = eventDict["endDate"] as? Timestamp,
+                          let locationName = eventDict["locationName"] as? String,
+                          let locationAddress = eventDict["locationAddress"] as? String,
+                          let userId = eventDict["userId"] as? String else {
+                        print("⚠️ Skipping event with incomplete data")
+                        continue
+                    }
+                    
+                    let latitude = eventDict["latitude"] as? Double ?? 0.0
+                    let longitude = eventDict["longitude"] as? Double ?? 0.0
+                    let coordinates = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+                    
+                    // Verify the event still exists in the user's events collection
+                    group.enter()
+                    db.collection("users")
+                        .document(userId)
+                        .collection("events")
+                        .document(eventId)
+                        .getDocument { eventSnapshot, eventError in
+                            defer { group.leave() }
+                            
+                            // Check if event exists and is active
+                            guard let eventData = eventSnapshot?.data(),
+                                  let status = eventData["status"] as? String,
+                                  status == "active" else {
+                                print("⚠️ Event \(eventId) no longer exists or is inactive, skipping")
+                                return
+                            }
+                            
+                            // Get event details
+                            let details = eventData["details"] as? String ?? ""
+                            let createdAtTimestamp = eventData["createdAt"] as? Timestamp ?? Timestamp(date: Date())
+                            
+                            // Download event image if available
+                            var eventImages: [UIImage] = []
+                            if let imageURLs = eventData["imageURLs"] as? [String],
+                               let firstImageURL = imageURLs.first,
+                               !firstImageURL.isEmpty,
+                               let url = URL(string: firstImageURL) {
+                                
+                                // Download image synchronously for this event
+                                if let imageData = try? Data(contentsOf: url),
+                                   let image = UIImage(data: imageData) {
+                                    eventImages.append(image)
+                                }
+                            }
+                            
+                            let eventDateTime = EventDateTime(
+                                startDate: startTimestamp.dateValue(),
+                                endDate: endTimestamp.dateValue()
+                            )
+                            let eventLocation = EventLocation(
+                                name: locationName,
+                                address: locationAddress,
+                                coordinates: coordinates
+                            )
+                            
+                            let event = Event(
+                                id: eventId,
+                                title: title,
+                                dateTime: eventDateTime,
+                                location: eventLocation,
+                                details: details,
+                                images: eventImages,
+                                createdAt: createdAtTimestamp.dateValue(),
+                                userId: userId
+                            )
+                            
+                            loadedEvents.append(event)
+                        }
+                }
+                
+                // Wait for all event verifications to complete
+                group.notify(queue: .main) {
+                    print("✅ Loaded \(loadedEvents.count) active events")
+                    self?.events = loadedEvents
+                    self?.updatePlacesCountLabel()
+                    self?.tableView.reloadData()
+                    
+                    // Clean up deleted events from the collection if count doesn't match
+                    if loadedEvents.count != eventsArray.count {
+                        print("🧹 Cleaning up \(eventsArray.count - loadedEvents.count) deleted events from collection")
+                        self?.cleanupDeletedEvents(activeEvents: loadedEvents)
+                    }
+                }
+            }
+    }
+    
+    private func cleanupDeletedEvents(activeEvents: [Event]) {
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        let db = Firestore.firestore()
+        
+        // Create array of active event IDs
+        let activeEventIds = Set(activeEvents.map { $0.id })
+        
+        // Get the collection document
+        let userCollectionRef = db.collection("users")
+            .document(currentUserId)
+            .collection("collections")
+            .document(collection.id)
+        
+        let ownerCollectionRef = db.collection("users")
+            .document(collection.userId)
+            .collection("collections")
+            .document(collection.id)
+        
+        userCollectionRef.getDocument { snapshot, error in
+            guard let data = snapshot?.data(),
+                  var eventsArray = data["events"] as? [[String: Any]] else {
+                return
+            }
+            
+            // Filter out deleted events
+            let cleanedEvents = eventsArray.filter { eventDict in
+                guard let eventId = eventDict["eventId"] as? String else { return false }
+                return activeEventIds.contains(eventId)
+            }
+            
+            // Only update if there's a difference
+            if cleanedEvents.count != eventsArray.count {
+                let batch = db.batch()
+                batch.updateData(["events": cleanedEvents], forDocument: userCollectionRef)
+                batch.updateData(["events": cleanedEvents], forDocument: ownerCollectionRef)
+                
+                batch.commit { error in
+                    if let error = error {
+                        print("❌ Error cleaning up deleted events: \(error.localizedDescription)")
+                    } else {
+                        print("✅ Successfully cleaned up deleted events from collection")
+                    }
+                }
+            }
+        }
     }
 
     private func loadSharedFriendsCount() {
@@ -470,14 +643,15 @@ class CollectionPlacesViewController: UIViewController {
         imageAttachment.image = UIImage(systemName: "bookmark.fill")?.withTintColor(.secondaryLabel)
         let imageString = NSAttributedString(attachment: imageAttachment)
         
-        let textString = NSAttributedString(string: " \(places.count)")
+        let totalItems = places.count + events.count
+        let textString = NSAttributedString(string: " \(totalItems)")
         
         let attributedText = NSMutableAttributedString()
         attributedText.append(imageString)
         attributedText.append(textString)
         
         placesCountLabel.attributedText = attributedText
-        placesCountLabel.accessibilityValue = "\(places.count)"
+        placesCountLabel.accessibilityValue = "\(totalItems)"
     }
     
     private func showLoadingAlert(title: String) {
@@ -519,18 +693,53 @@ class CollectionPlacesViewController: UIViewController {
 // MARK: - UITableViewDelegate & UITableViewDataSource
 
 extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSource {
+    func numberOfSections(in tableView: UITableView) -> Int {
+        return 2 // Section 0: Events, Section 1: Places
+    }
+    
+    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        if section == 0 {
+            return events.isEmpty ? nil : "Events"
+        } else {
+            return places.isEmpty ? nil : "Places"
+        }
+    }
+    
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        places.count
+        if section == 0 {
+            return events.count
+        } else {
+            return places.count
+        }
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "PlaceCell", for: indexPath) as! PlaceTableViewCell
-        cell.configure(with: places[indexPath.row])
-        return cell
+        if indexPath.section == 0 {
+            // Event cell
+            let cell = tableView.dequeueReusableCell(withIdentifier: "PlaceCell", for: indexPath) as! PlaceTableViewCell
+            let event = events[indexPath.row]
+            cell.configureWithEvent(event)
+            return cell
+        } else {
+            // Place cell
+            let cell = tableView.dequeueReusableCell(withIdentifier: "PlaceCell", for: indexPath) as! PlaceTableViewCell
+            cell.configure(with: places[indexPath.row])
+            return cell
+        }
     }
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
+        
+        if indexPath.section == 0 {
+            // Event tapped
+            let event = events[indexPath.row]
+            let detailVC = EventDetailViewController(event: event)
+            present(detailVC, animated: true)
+            return
+        }
+        
+        // Place tapped
         let place = places[indexPath.row]
         
         // Since PlaceCollection.Place doesn't have coordinates, we need to fetch the place details
@@ -825,7 +1034,24 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
     
     // Add swipe actions functionality
     func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
-        // Safety check to prevent crash
+        // Handle events section
+        if indexPath.section == 0 {
+            guard indexPath.row < events.count else {
+                return UISwipeActionsConfiguration(actions: [])
+            }
+            
+            // Delete action for events
+            let deleteAction = UIContextualAction(style: .destructive, title: "Delete") { [weak self] (action, view, completion) in
+                self?.confirmDeleteEvent(at: indexPath)
+                completion(false)
+            }
+            deleteAction.backgroundColor = .fourthColor
+            deleteAction.image = UIImage(systemName: "trash")
+            
+            return UISwipeActionsConfiguration(actions: [deleteAction])
+        }
+        
+        // Handle places section
         guard indexPath.row < places.count else {
             return UISwipeActionsConfiguration(actions: [])
         }
@@ -859,6 +1085,26 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         return UISwipeActionsConfiguration(actions: [deleteAction, visitedAction, mapAction])
     }
     
+    private func confirmDeleteEvent(at indexPath: IndexPath) {
+        guard indexPath.row < events.count else { return }
+        let event = events[indexPath.row]
+        let alertController = UIAlertController(
+            title: "Remove Event",
+            message: "Are you sure you want to remove '\(event.title)' from this collection?",
+            preferredStyle: .alert
+        )
+        
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+        let deleteAction = UIAlertAction(title: "Remove", style: .destructive) { [weak self] _ in
+            self?.deleteEvent(at: indexPath)
+        }
+        
+        alertController.addAction(cancelAction)
+        alertController.addAction(deleteAction)
+        
+        present(alertController, animated: true)
+    }
+    
     private func confirmDeletePlace(at indexPath: IndexPath) {
         // Safety check to prevent crash
         guard indexPath.row < places.count else { return }
@@ -878,6 +1124,74 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         alertController.addAction(deleteAction)
         
         present(alertController, animated: true)
+    }
+    
+    private func deleteEvent(at indexPath: IndexPath) {
+        guard indexPath.row < events.count else { return }
+        let event = events[indexPath.row]
+        showLoadingAlert(title: "Removing Event")
+        
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        let db = Firestore.firestore()
+        
+        // Get references to both collections
+        let userCollectionRef = db.collection("users")
+            .document(currentUserId)
+            .collection("collections")
+            .document(collection.id)
+            
+        let ownerCollectionRef = db.collection("users")
+            .document(collection.userId)
+            .collection("collections")
+            .document(collection.id)
+        
+        // Get current collection data
+        userCollectionRef.getDocument { [weak self] snapshot, error in
+            if let error = error {
+                print("❌ Error getting collection: \(error.localizedDescription)")
+                self?.dismiss(animated: true) {
+                    ToastManager.showToast(message: "Failed to remove event", type: .error)
+                }
+                return
+            }
+            
+            guard let data = snapshot?.data(),
+                  var eventsArray = data["events"] as? [[String: Any]] else {
+                print("❌ No events array found in collection")
+                self?.dismiss(animated: true) {
+                    ToastManager.showToast(message: "Failed to remove event", type: .error)
+                }
+                return
+            }
+            
+            // Remove the event with matching eventId
+            eventsArray.removeAll { eventDict in
+                guard let eventId = eventDict["eventId"] as? String else { return false }
+                return eventId == event.id
+            }
+            
+            // Create a batch to update both collections
+            let batch = db.batch()
+            batch.updateData(["events": eventsArray], forDocument: userCollectionRef)
+            batch.updateData(["events": eventsArray], forDocument: ownerCollectionRef)
+            
+            // Commit the batch
+            batch.commit { error in
+                self?.dismiss(animated: true) {
+                    if let error = error {
+                        print("❌ Error removing event: \(error.localizedDescription)")
+                        ToastManager.showToast(message: "Failed to remove event", type: .error)
+                    } else {
+                        // Update local data
+                        self?.events.remove(at: indexPath.row)
+                        self?.tableView.deleteRows(at: [indexPath], with: .automatic)
+                        self?.updatePlacesCountLabel()
+                        ToastManager.showToast(message: "Event removed", type: .success)
+                        NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
+                    }
+                }
+            }
+        }
     }
     
     private func toggleVisitedStatus(at indexPath: IndexPath) {
