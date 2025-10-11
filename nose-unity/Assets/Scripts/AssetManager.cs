@@ -52,6 +52,9 @@ public class AssetManager : MonoBehaviour
     [Tooltip("Base URL where addressables are hosted (without trailing slash)")]
     public string remoteCatalogBaseUrl = "https://nose-a2309.web.app/addressables";
 
+    [Tooltip("If set, use this full catalog URL directly instead of composing from base + platform + version")]
+    public string remoteCatalogOverrideUrl = "";
+
     [Tooltip("Platform folder name under the hosting path (usually iOS or Android)")]
     public string platformFolderOverride = ""; // leave empty to auto-detect
 
@@ -325,7 +328,9 @@ public class AssetManager : MonoBehaviour
     {
         string platform = GetPlatformFolder();
         string version = Application.version; // matches PlayerSettings.bundleVersion (e.g., 0.1)
-        string catalogUrl = $"{remoteCatalogBaseUrl}/{platform}/catalog_{version}.json";
+        string catalogUrl = !string.IsNullOrEmpty(remoteCatalogOverrideUrl)
+            ? remoteCatalogOverrideUrl
+            : $"{remoteCatalogBaseUrl}/{platform}/catalog_{version}.json";
 
         Debug.Log($"Addressables: Attempting to load remote catalog at {catalogUrl}");
         var loadCatalogHandle = Addressables.LoadContentCatalogAsync(catalogUrl, true);

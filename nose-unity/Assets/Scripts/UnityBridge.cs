@@ -98,6 +98,24 @@ public class UnityBridge : MonoBehaviour
         TryAttachStencilClearToAvatarCameras();
     }
 
+    // iOS calls this to override the remote catalog URL explicitly
+    public void SetRemoteCatalogURL(string url)
+    {
+        try
+        {
+            var mgr = assetManager != null ? assetManager : FindObjectOfType<AssetManager>();
+            if (mgr != null)
+            {
+                mgr.remoteCatalogOverrideUrl = url;
+                Debug.Log($"UnityBridge: remote catalog override set to {url}");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"SetRemoteCatalogURL error: {e.Message}");
+        }
+    }
+
     private void TryAttachStencilClearToAvatarCameras()
     {
         if (stencilClearCmd != null) return;

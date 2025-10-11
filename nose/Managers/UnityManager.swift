@@ -22,6 +22,8 @@ final class UnityManager {
     
     /// Load all categories from Unity via UnityBridge
     func loadCategories() async throws {
+        // Configure remote catalog URL for Unity based on Config.plist
+        configureUnityRemoteCatalogURL()
         // Prevent multiple simultaneous loads
         if let existingTask = loadingTask {
             try await existingTask.value
@@ -37,6 +39,23 @@ final class UnityManager {
         } catch {
             loadingTask = nil
             throw error
+        }
+    }
+
+    private func configureUnityRemoteCatalogURL() {
+        guard let filePath = Bundle.main.path(forResource: "Config", ofType: "plist"),
+              let plistDict = NSDictionary(contentsOfFile: filePath) as? [String: Any] else { return }
+        let env = Bundle.main.object(forInfoDictionaryKey: "NoseEnvironment") as? String ?? "Development"
+        let isStaging = env.caseInsensitiveCompare("Staging") == .orderedSame || env.caseInsensitiveCompare("Production") == .orderedSame
+        let key = isStaging ? "AddressablesCatalogURLStaging" : "AddressablesCatalogURL"
+        let catalogUrl = plistDict[key] as? String
+        if let url = catalogUrl, !url.isEmpty {
+            // Send to Unity to override
+            UnityLauncher.shared().sendMessage(
+                toUnity: "AssetManager",
+                method: "SetRemoteCatalogURL",
+                message: url
+            )
         }
     }
     

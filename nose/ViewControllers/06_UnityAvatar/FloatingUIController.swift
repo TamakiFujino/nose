@@ -912,6 +912,7 @@ class FloatingUIController: UIViewController {
             var thumbURLString: String? = nil
             if let base = hostingBaseURL() {
                 var thumbURL = URL(string: base)
+                if let env = environmentPrefix() { thumbURL?.appendPathComponent(env) }
                 thumbURL?.appendPathComponent("Thumbs")
                 thumbURL?.appendPathComponent(category)
                 thumbURL?.appendPathComponent(subcategory)
@@ -967,9 +968,13 @@ class FloatingUIController: UIViewController {
            let url = URL(string: explicit.trimmingCharacters(in: .whitespacesAndNewlines)) {
             return url
         }
-        // Default to Firebase Hosting base + /palettes/default.json
-        if let base = hostingBaseURL(), let url = URL(string: base + "/palettes/default.json") {
-            return url
+        // Default to Firebase Hosting base + /{env}/palettes/default.json
+        if let base = hostingBaseURL() {
+            var comps = URL(string: base)
+            if let env = environmentPrefix() { comps?.appendPathComponent(env) }
+            comps?.appendPathComponent("palettes")
+            comps?.appendPathComponent("default.json")
+            if let url = comps { return url }
         }
         return nil
     }
@@ -1004,11 +1009,20 @@ class FloatingUIController: UIViewController {
         }.resume()
     }
 
+    private func environmentPrefix() -> String? {
+        if let env = Bundle.main.object(forInfoDictionaryKey: "NoseEnvironment") as? String {
+            if env.caseInsensitiveCompare("Development") == .orderedSame { return "dev" }
+            if env.caseInsensitiveCompare("Staging") == .orderedSame { return "staging" }
+            if env.caseInsensitiveCompare("Production") == .orderedSame { return "staging" }
+        }
+        return nil
+    }
+
     private func resolvedThumbnailURL(for asset: AssetItem) -> URL? {
         guard let base = hostingBaseURL() else { return nil }
-        // Compose: {base}/Thumbs/{Category}/{Subcategory}/{Name}.jpg
-        // Use URLComponents to safely append path components
+        // Compose: {base}/{env}/Thumbs/{Category}/{Subcategory}/{Name}.jpg
         var url = URL(string: base)
+        if let env = environmentPrefix() { url?.appendPathComponent(env) }
         url?.appendPathComponent("Thumbs")
         url?.appendPathComponent(asset.category)
         url?.appendPathComponent(asset.subcategory)

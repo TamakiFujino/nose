@@ -1,0 +1,41 @@
+# CocoaPods
+Pods/
+
+# Xcode user data
+*.xcuserstate
+*.xcuserdata/
+DerivedData/
+
+# Unity
+nose-unity/Library/
+nose-unity/Temp/
+nose-unity/Logs/
+nose-unity/obj/
+nose-unity/Build*/
+nose-unity/UserSettings/
+
+# Unity generated server/build outputs
+unity-build/
+nose-unity/ServerData/
+
+# Firebase sensitive plists
+FirebaseConfig/GoogleService-Info-Development.plist
+FirebaseConfig/GoogleService-Info-Staging.plist
+FirebaseConfig/GoogleService-Info-Production.plist
+Pods/*GoogleService-Info*.plist
+
+# Local config that may contain secrets
+Config.plist
+
+# Fastlane/Artifacts
+fastlane/report.xml
+fastlane/test_output/
+
+# OS files
+.DS_Store
+
+# Node/npm caches
+node_modules/
+
+# Addressables cache states
+nose-unity/Assets/AddressableAssetsData/*/*.bin

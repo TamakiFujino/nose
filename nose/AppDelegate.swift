@@ -36,6 +36,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         GMSServices.provideAPIKey(mapsAPIKey)
         GMSPlacesClient.provideAPIKey(placesAPIKey)
         
+        // Bridge Unity notification fallback (when UnityBridgeShim posts from UnityFramework)
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("NoseUnityResponseNotification"),
+            object: nil,
+            queue: .main
+        ) { notification in
+            if let json = notification.userInfo?["json"] as? String {
+                UnityResponseHandler.handleUnityResponseStatic(json)
+            }
+        }
+
         return true
     }
     
