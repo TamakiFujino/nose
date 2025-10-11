@@ -912,7 +912,6 @@ class FloatingUIController: UIViewController {
             var thumbURLString: String? = nil
             if let base = hostingBaseURL() {
                 var thumbURL = URL(string: base)
-                if let env = environmentPrefix() { thumbURL?.appendPathComponent(env) }
                 thumbURL?.appendPathComponent("Thumbs")
                 thumbURL?.appendPathComponent(category)
                 thumbURL?.appendPathComponent(subcategory)
@@ -968,13 +967,9 @@ class FloatingUIController: UIViewController {
            let url = URL(string: explicit.trimmingCharacters(in: .whitespacesAndNewlines)) {
             return url
         }
-        // Default to Firebase Hosting base + /{env}/palettes/default.json
-        if let base = hostingBaseURL() {
-            var comps = URL(string: base)
-            if let env = environmentPrefix() { comps?.appendPathComponent(env) }
-            comps?.appendPathComponent("palettes")
-            comps?.appendPathComponent("default.json")
-            if let url = comps { return url }
+        // Default to Firebase Hosting base + /palettes/default.json
+        if let base = hostingBaseURL(), let url = URL(string: base + "/palettes/default.json") {
+            return url
         }
         return nil
     }
@@ -1020,9 +1015,8 @@ class FloatingUIController: UIViewController {
 
     private func resolvedThumbnailURL(for asset: AssetItem) -> URL? {
         guard let base = hostingBaseURL() else { return nil }
-        // Compose: {base}/{env}/Thumbs/{Category}/{Subcategory}/{Name}.jpg
+        // Compose: {base}/Thumbs/{Category}/{Subcategory}/{Name}.jpg
         var url = URL(string: base)
-        if let env = environmentPrefix() { url?.appendPathComponent(env) }
         url?.appendPathComponent("Thumbs")
         url?.appendPathComponent(asset.category)
         url?.appendPathComponent(asset.subcategory)

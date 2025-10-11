@@ -7,10 +7,15 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		491514A72E99F03B00D5C35F /* UnityFramework.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 49F87F4A2E64768400C129C4 /* UnityFramework.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		4915172B2E9A01C800D5C35F /* GoogleService-Info-Development.plist in Resources */ = {isa = PBXBuildFile; fileRef = 491517272E9A01C800D5C35F /* GoogleService-Info-Development.plist */; };
+		4915172C2E9A01C800D5C35F /* GoogleService-Info-Staging.plist in Resources */ = {isa = PBXBuildFile; fileRef = 491517292E9A01C800D5C35F /* GoogleService-Info-Staging.plist */; };
+		4915172D2E9A01C800D5C35F /* GoogleService-Info-Production.plist in Resources */ = {isa = PBXBuildFile; fileRef = 491517282E9A01C800D5C35F /* GoogleService-Info-Production.plist */; };
+		4915172F2E9A026F00D5C35F /* Config.plist in Resources */ = {isa = PBXBuildFile; fileRef = 4915172E2E9A026F00D5C35F /* Config.plist */; };
 		49731FFA2E8AB28C002D3C85 /* OpenInNose.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 49731FF02E8AB28C002D3C85 /* OpenInNose.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		49A0F1A32EA9B00100F1A2B4 /* nose/Bridging/UnityBridgeShim.m in Sources */ = {isa = PBXBuildFile; fileRef = 49A0F1A22EA9B00100F1A2B3 /* nose/Bridging/UnityBridgeShim.m */; };
 		49F7C2162E49E258003A3D50 /* UnityLauncher.mm in Sources */ = {isa = PBXBuildFile; fileRef = 49F7C2152E49E258003A3D50 /* UnityLauncher.mm */; };
 		49F87F4D2E64769D00C129C4 /* UnityFramework.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 49F87F4A2E64768400C129C4 /* UnityFramework.framework */; };
-		49F87F4E2E64769D00C129C4 /* UnityFramework.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 49F87F4A2E64768400C129C4 /* UnityFramework.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		49F87F522E6476DD00C129C4 /* Data in Resources */ = {isa = PBXBuildFile; fileRef = 49F87F512E6476DD00C129C4 /* Data */; };
 		57F5337D85E99C4A21D785F6 /* Pods_noseTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 312A9D10F92AD4AC6B98F711 /* Pods_noseTests.framework */; };
 		90E1384E390AC4D7DCDC4D2F /* Pods-nose-metadata.plist in Resources */ = {isa = PBXBuildFile; fileRef = 6BAD938A99764361A6E14FC3 /* Pods-nose-metadata.plist */; };
@@ -75,7 +80,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-				49F87F4E2E64769D00C129C4 /* UnityFramework.framework in Embed Frameworks */,
+				491514A72E99F03B00D5C35F /* UnityFramework.framework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -87,7 +92,12 @@
 		1EA110E7250EA988152DF452 /* Pods_noseUITests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_noseUITests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		2B7F922E0F5C4EA04FBCABDB /* Pods-noseUITests.development.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseUITests.development.xcconfig"; path = "Target Support Files/Pods-noseUITests/Pods-noseUITests.development.xcconfig"; sourceTree = "<group>"; };
 		312A9D10F92AD4AC6B98F711 /* Pods_noseTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_noseTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		491517272E9A01C800D5C35F /* GoogleService-Info-Development.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info-Development.plist"; sourceTree = "<group>"; };
+		491517282E9A01C800D5C35F /* GoogleService-Info-Production.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info-Production.plist"; sourceTree = "<group>"; };
+		491517292E9A01C800D5C35F /* GoogleService-Info-Staging.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info-Staging.plist"; sourceTree = "<group>"; };
+		4915172E2E9A026F00D5C35F /* Config.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Config.plist; sourceTree = "<group>"; };
 		49731FF02E8AB28C002D3C85 /* OpenInNose.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = OpenInNose.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		49A0F1A22EA9B00100F1A2B3 /* nose/Bridging/UnityBridgeShim.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = nose/Bridging/UnityBridgeShim.m; sourceTree = "<group>"; };
 		49E99BF62D3BE432000F3CE5 /* nose.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = nose.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		49E99C0C2D3BE433000F3CE5 /* noseTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = noseTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		49E99C162D3BE433000F3CE5 /* noseUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = noseUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -116,15 +126,6 @@
 			);
 			target = 49731FEF2E8AB28C002D3C85 /* OpenInNose */;
 		};
-		49B963512E0FFE74004F2DCD /* Exceptions for "FirebaseConfig" folder in "nose" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				"GoogleService-Info-Development.plist",
-				"GoogleService-Info-Production.plist",
-				"GoogleService-Info-Staging.plist",
-			);
-			target = 49E99BF52D3BE432000F3CE5 /* nose */;
-		};
 		49B964BC2E1009AB004F2DCD /* Exceptions for "InfoPlist" folder in "nose" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -148,14 +149,6 @@
 			path = .github;
 			sourceTree = "<group>";
 		};
-		49BE7E332DF41122006D6E16 /* FirebaseConfig */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				49B963512E0FFE74004F2DCD /* Exceptions for "FirebaseConfig" folder in "nose" target */,
-			);
-			path = FirebaseConfig;
-			sourceTree = "<group>";
-		};
 		49E99BF82D3BE432000F3CE5 /* nose */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = nose;
@@ -169,11 +162,6 @@
 		49E99C192D3BE433000F3CE5 /* noseUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = noseUITests;
-			sourceTree = "<group>";
-		};
-		49EE64242DFBC64F004DA63B /* FirebaseConfig */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = FirebaseConfig;
 			sourceTree = "<group>";
 		};
 		49EE642B2DFBC651004DA63B /* InfoPlist */ = {
@@ -222,15 +210,26 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		4915172A2E9A01C800D5C35F /* FirebaseConfig */ = {
+			isa = PBXGroup;
+			children = (
+				491517272E9A01C800D5C35F /* GoogleService-Info-Development.plist */,
+				491517282E9A01C800D5C35F /* GoogleService-Info-Production.plist */,
+				491517292E9A01C800D5C35F /* GoogleService-Info-Staging.plist */,
+			);
+			path = FirebaseConfig;
+			sourceTree = "<group>";
+		};
 		49E99BED2D3BE432000F3CE5 = {
 			isa = PBXGroup;
 			children = (
+				4915172A2E9A01C800D5C35F /* FirebaseConfig */,
 				49F87F512E6476DD00C129C4 /* Data */,
 				49F87F3E2E64768400C129C4 /* Unity-iPhone.xcodeproj */,
 				49F7C2142E49E254003A3D50 /* UnityLauncher.h */,
 				49F7C2152E49E258003A3D50 /* UnityLauncher.mm */,
+				49A0F1A22EA9B00100F1A2B3 /* nose/Bridging/UnityBridgeShim.m */,
 				49B95D8D2E0CE4B8004F2DCD /* .github */,
-				49BE7E332DF41122006D6E16 /* FirebaseConfig */,
 				49E99BF82D3BE432000F3CE5 /* nose */,
 				49E99C0F2D3BE433000F3CE5 /* noseTests */,
 				49E99C192D3BE433000F3CE5 /* noseUITests */,
@@ -238,9 +237,9 @@
 				49E99BF72D3BE432000F3CE5 /* Products */,
 				50579441D3777C7C7B70948F /* Pods */,
 				8FBDA29887B8DBD5028A9EBC /* Frameworks */,
-				49EE64242DFBC64F004DA63B /* FirebaseConfig */,
 				49EE642B2DFBC651004DA63B /* InfoPlist */,
 				49F7C2172E49E25A003A3D50 /* nose-Bridging-Header.h */,
+				4915172E2E9A026F00D5C35F /* Config.plist */,
 			);
 			sourceTree = "<group>";
 		};
@@ -310,8 +309,6 @@
 				49731FF12E8AB28C002D3C85 /* OpenInNose */,
 			);
 			name = OpenInNose;
-			packageProductDependencies = (
-			);
 			productName = OpenInNose;
 			productReference = 49731FF02E8AB28C002D3C85 /* OpenInNose.appex */;
 			productType = "com.apple.product-type.app-extension";
@@ -338,9 +335,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				49B95D8D2E0CE4B8004F2DCD /* .github */,
-				49BE7E332DF41122006D6E16 /* FirebaseConfig */,
 				49E99BF82D3BE432000F3CE5 /* nose */,
-				49EE64242DFBC64F004DA63B /* FirebaseConfig */,
 				49EE642B2DFBC651004DA63B /* InfoPlist */,
 			);
 			name = nose;
@@ -470,6 +465,10 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4915172F2E9A026F00D5C35F /* Config.plist in Resources */,
+				4915172B2E9A01C800D5C35F /* GoogleService-Info-Development.plist in Resources */,
+				4915172C2E9A01C800D5C35F /* GoogleService-Info-Staging.plist in Resources */,
+				4915172D2E9A01C800D5C35F /* GoogleService-Info-Production.plist in Resources */,
 				49F87F522E6476DD00C129C4 /* Data in Resources */,
 				90E1384E390AC4D7DCDC4D2F /* Pods-nose-metadata.plist in Resources */,
 			);
@@ -636,6 +635,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				49F7C2162E49E258003A3D50 /* UnityLauncher.mm in Sources */,
+				49A0F1A32EA9B00100F1A2B4 /* nose/Bridging/UnityBridgeShim.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -987,8 +987,7 @@
 		};
 		49BE6D882DF30415006D6E16 /* Staging */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReferenceAnchor = 49E99BF82D3BE432000F3CE5 /* nose */;
-			baseConfigurationReferenceRelativePath = Configs/Staging.xcconfig;
+			baseConfigurationReference = E8780BB7672D195B5EAA5BD5 /* Pods-nose.staging.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -1061,8 +1060,7 @@
 		};
 		49E99C202D3BE433000F3CE5 /* Development */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReferenceAnchor = 49E99BF82D3BE432000F3CE5 /* nose */;
-			baseConfigurationReferenceRelativePath = Configs/Development.xcconfig;
+			baseConfigurationReference = F1BCB3623F34C0020E1D1F3E /* Pods-nose.development.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -1097,8 +1095,7 @@
 		};
 		49E99C212D3BE433000F3CE5 /* Production */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReferenceAnchor = 49E99BF82D3BE432000F3CE5 /* nose */;
-			baseConfigurationReferenceRelativePath = Configs/Production.xcconfig;
+			baseConfigurationReference = D4DA86044569CF6E1673F2DE /* Pods-nose.production.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
