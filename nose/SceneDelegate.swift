@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import GoogleSignIn
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
@@ -17,7 +18,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window = UIWindow(windowScene: windowScene)
         
         // Set HomeViewController (map screen) as root inside a navigation controller
-        let homeVC = HomeViewController()
+        let homeVC = ViewController()
         let nav = UINavigationController(rootViewController: homeVC)
         window?.rootViewController = nav
         window?.makeKeyAndVisible()
@@ -30,6 +31,13 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
         guard let url = URLContexts.first?.url else { return }
+        
+        // Handle Google Sign-In URL first
+        if GIDSignIn.sharedInstance.handle(url) {
+            return
+        }
+        
+        // Handle other deep links
         _ = DeepLinkManager.shared.handle(url: url, in: window)
     }
 

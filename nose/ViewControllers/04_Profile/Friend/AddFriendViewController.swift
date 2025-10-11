@@ -1,6 +1,7 @@
 import UIKit
 import FirebaseAuth
 import FirebaseFirestore
+import FirebaseStorage
 
 class AddFriendViewController: UIViewController {
     
@@ -8,6 +9,7 @@ class AddFriendViewController: UIViewController {
     private var searchResults: [User] = []
     private var isSearching = false
     private var currentUser: User?
+    private let storage = Storage.storage()
     
     // MARK: - UI Components
     private lazy var searchContainer: UIView = {
@@ -68,6 +70,16 @@ class AddFriendViewController: UIViewController {
         return view
     }()
     
+    private lazy var resultProfileImageView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.contentMode = .scaleAspectFit
+        imageView.backgroundColor = .secondColor
+        imageView.clipsToBounds = true
+        imageView.layer.cornerRadius = 8
+        return imageView
+    }()
+    
     private lazy var resultNameLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -82,6 +94,7 @@ class AddFriendViewController: UIViewController {
         button.setTitle("Add Friend", for: .normal)
         button.addTarget(self, action: #selector(addFriendButtonTapped), for: .touchUpInside)
         button.accessibilityIdentifier = "add_friend_button"
+        button.isHidden = true // Initially hidden
         return button
     }()
     
@@ -118,8 +131,9 @@ class AddFriendViewController: UIViewController {
         userIdContainer.addSubview(userIdValueLabel)
         userIdContainer.addSubview(copyButton)
         view.addSubview(resultContainer)
+        resultContainer.addSubview(resultProfileImageView)
         resultContainer.addSubview(resultNameLabel)
-        resultContainer.addSubview(addFriendButton)
+        view.addSubview(addFriendButton)
         view.addSubview(activityIndicator)
         
         // Setup constraints
@@ -154,15 +168,20 @@ class AddFriendViewController: UIViewController {
             resultContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             resultContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             
-            resultNameLabel.topAnchor.constraint(equalTo: resultContainer.topAnchor),
+            resultProfileImageView.topAnchor.constraint(equalTo: resultContainer.topAnchor),
+            resultProfileImageView.centerXAnchor.constraint(equalTo: resultContainer.centerXAnchor),
+            resultProfileImageView.widthAnchor.constraint(equalToConstant: 200), // Same as preview size
+            resultProfileImageView.heightAnchor.constraint(equalToConstant: 300), // 1.5x width for portrait
+            
+            resultNameLabel.topAnchor.constraint(equalTo: resultProfileImageView.bottomAnchor, constant: 16),
             resultNameLabel.leadingAnchor.constraint(equalTo: resultContainer.leadingAnchor, constant: 16),
             resultNameLabel.trailingAnchor.constraint(equalTo: resultContainer.trailingAnchor, constant: -16),
+            resultNameLabel.bottomAnchor.constraint(equalTo: resultContainer.bottomAnchor),
             
-            addFriendButton.topAnchor.constraint(equalTo: resultNameLabel.bottomAnchor, constant: 24),
-            addFriendButton.leadingAnchor.constraint(equalTo: resultContainer.leadingAnchor, constant: 16),
-            addFriendButton.trailingAnchor.constraint(equalTo: resultContainer.trailingAnchor, constant: -16),
+            addFriendButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            addFriendButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            addFriendButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
             addFriendButton.heightAnchor.constraint(equalToConstant: 50),
-            addFriendButton.bottomAnchor.constraint(equalTo: resultContainer.bottomAnchor),
             
             activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor)
@@ -222,6 +241,7 @@ class AddFriendViewController: UIViewController {
             print("DEBUG: UserId is empty")
             searchResults = []
             resultContainer.isHidden = true
+            addFriendButton.isHidden = true
             showAlert(title: "Invalid Input", message: "Please enter a User ID to search")
             return
         }
@@ -232,6 +252,7 @@ class AddFriendViewController: UIViewController {
             print("DEBUG: Invalid userId format - must be 10 alphanumeric characters")
             searchResults = []
             resultContainer.isHidden = true
+            addFriendButton.isHidden = true
             showAlert(title: "Invalid User ID", message: "User ID must be exactly 10 characters (letters and numbers)")
             return
         }
@@ -241,6 +262,7 @@ class AddFriendViewController: UIViewController {
             print("DEBUG: User searched their own ID")
             searchResults = []
             resultContainer.isHidden = true
+            addFriendButton.isHidden = true
             showAlert(title: "Cannot Add Yourself", message: "You cannot add yourself as a friend")
             return
         }
@@ -248,6 +270,7 @@ class AddFriendViewController: UIViewController {
         isSearching = true
         activityIndicator.startAnimating()
         resultContainer.isHidden = true
+        addFriendButton.isHidden = true
         
         print("DEBUG: Querying Firestore for user with userId: \(userId)")
         let db = Firestore.firestore()
@@ -289,6 +312,7 @@ class AddFriendViewController: UIViewController {
                     print("DEBUG: Found user is deleted")
                     self.searchResults = []
                     self.resultContainer.isHidden = true
+                    self.addFriendButton.isHidden = true
                     self.showAlert(title: "User Not Found", message: "No user found with this User ID. Please check the ID and try again.")
                     return
                 }
@@ -305,6 +329,7 @@ class AddFriendViewController: UIViewController {
                             print("DEBUG: Current user has blocked the found user")
                             self.searchResults = []
                             self.resultContainer.isHidden = true
+                            self.addFriendButton.isHidden = true
                             self.showAlert(title: "Cannot Add Friend", message: "You have blocked this user. Please unblock them first to add them as a friend.")
                             return
                         }
@@ -318,6 +343,7 @@ class AddFriendViewController: UIViewController {
                                     print("DEBUG: Current user is blocked by the found user")
                                     self.searchResults = []
                                     self.resultContainer.isHidden = true
+                                    self.addFriendButton.isHidden = true
                                     self.showAlert(title: "User Not Found", message: "No user found with this User ID. Please check the ID and try again.")
                                     return
                                 }
@@ -331,6 +357,7 @@ class AddFriendViewController: UIViewController {
                                             print("DEBUG: User is already a friend")
                                             self.searchResults = []
                                             self.resultContainer.isHidden = true
+                                            self.addFriendButton.isHidden = true
                                             self.showAlert(title: "Already Friends", message: "This user is already in your friends list")
                                             return
                                         }
@@ -339,7 +366,9 @@ class AddFriendViewController: UIViewController {
                                         DispatchQueue.main.async {
                                             print("DEBUG: Showing result for user: \(foundUser.name)")
                                             self.resultNameLabel.text = foundUser.name
+                                            self.loadProfileImage(for: foundUser)
                                             self.resultContainer.isHidden = false
+                                            self.addFriendButton.isHidden = false
                                         }
                                     }
                             }
@@ -349,6 +378,7 @@ class AddFriendViewController: UIViewController {
                 self.isSearching = false
                 self.activityIndicator.stopAnimating()
                 self.resultContainer.isHidden = true
+                self.addFriendButton.isHidden = true
                 self.showAlert(title: "User Not Found", message: "No user found with this User ID. Please check the ID and try again.")
             }
         }
@@ -401,8 +431,78 @@ class AddFriendViewController: UIViewController {
                     // Clear the search field and result container
                     self?.searchBar.text = ""
                     self?.resultContainer.isHidden = true
+                    self?.addFriendButton.isHidden = true
                     self?.searchResults = []
                 }
+            }
+        }
+    }
+    
+    private func loadProfileImage(for user: User) {
+        print("🔍 Loading profile image for user: \(user.name)")
+        
+        // First, get the saved profile image collection ID from the user's document
+        let db = Firestore.firestore()
+        db.collection("users")
+            .document(user.id)
+            .getDocument { [weak self] snapshot, error in
+                guard let self = self else { return }
+                
+                if let error = error {
+                    print("❌ Error fetching user data for profile image: \(error.localizedDescription)")
+                    self.showDefaultProfileImage()
+                    return
+                }
+                
+                guard let data = snapshot?.data(),
+                      let collectionId = data["profileImageCollectionId"] as? String else {
+                    print("⚠️ No profile image set for user, showing default")
+                    self.showDefaultProfileImage()
+                    return
+                }
+                
+                print("✅ Found profile image collection ID: \(collectionId)")
+                
+                if collectionId == "default" {
+                    self.showDefaultProfileImage()
+                } else {
+                    self.loadImageFromStorage(userId: user.id, collectionId: collectionId)
+                }
+            }
+    }
+    
+    private func showDefaultProfileImage() {
+        if let defaultImage = UIImage(named: "avatar") {
+            DispatchQueue.main.async {
+                self.resultProfileImageView.image = defaultImage
+            }
+            print("✅ Showing default profile image")
+        } else {
+            print("❌ Could not load default avatar image")
+        }
+    }
+    
+    private func loadImageFromStorage(userId: String, collectionId: String) {
+        let imageRef = storage.reference()
+            .child("collection_avatars/\(userId)/\(collectionId)/avatar.png")
+        
+        print("🔍 Loading image from: collection_avatars/\(userId)/\(collectionId)/avatar.png")
+        
+        imageRef.getData(maxSize: 5 * 1024 * 1024) { [weak self] data, error in
+            if let error = error {
+                print("❌ Error loading profile image: \(error.localizedDescription)")
+                self?.showDefaultProfileImage()
+                return
+            }
+            
+            if let data = data, let image = UIImage(data: data) {
+                print("✅ Successfully loaded profile image")
+                DispatchQueue.main.async {
+                    self?.resultProfileImageView.image = image
+                }
+            } else {
+                print("❌ Could not create image from data")
+                self?.showDefaultProfileImage()
             }
         }
     }

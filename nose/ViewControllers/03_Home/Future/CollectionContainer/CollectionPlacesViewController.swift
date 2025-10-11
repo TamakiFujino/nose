@@ -437,6 +437,7 @@ class CollectionPlacesViewController: UIViewController {
                 // Use DispatchGroup to verify each event still exists
                 let group = DispatchGroup()
                 var loadedEvents: [Event] = []
+                let appendQueue = DispatchQueue(label: "com.nose.collection.loadedEventsAppend")
                 
                 for eventDict in eventsArray {
                     guard let eventId = eventDict["eventId"] as? String,
@@ -461,56 +462,59 @@ class CollectionPlacesViewController: UIViewController {
                         .collection("events")
                         .document(eventId)
                         .getDocument { eventSnapshot, eventError in
-                            defer { group.leave() }
-                            
                             // Check if event exists and is active
                             guard let eventData = eventSnapshot?.data(),
                                   let status = eventData["status"] as? String,
                                   status == "active" else {
                                 print("⚠️ Event \(eventId) no longer exists or is inactive, skipping")
+                                group.leave()
                                 return
                             }
-                            
-                            // Get event details
+
                             let details = eventData["details"] as? String ?? ""
                             let createdAtTimestamp = eventData["createdAt"] as? Timestamp ?? Timestamp(date: Date())
-                            
-                            // Download event image if available
-                            var eventImages: [UIImage] = []
+
+                            let completeAndAppend: ([UIImage]) -> Void = { images in
+                                let eventDateTime = EventDateTime(
+                                    startDate: startTimestamp.dateValue(),
+                                    endDate: endTimestamp.dateValue()
+                                )
+                                let eventLocation = EventLocation(
+                                    name: locationName,
+                                    address: locationAddress,
+                                    coordinates: coordinates
+                                )
+                                let event = Event(
+                                    id: eventId,
+                                    title: title,
+                                    dateTime: eventDateTime,
+                                    location: eventLocation,
+                                    details: details,
+                                    images: images,
+                                    createdAt: createdAtTimestamp.dateValue(),
+                                    userId: userId
+                                )
+                                appendQueue.async {
+                                    loadedEvents.append(event)
+                                    group.leave()
+                                }
+                            }
+
                             if let imageURLs = eventData["imageURLs"] as? [String],
                                let firstImageURL = imageURLs.first,
                                !firstImageURL.isEmpty,
                                let url = URL(string: firstImageURL) {
-                                
-                                // Download image synchronously for this event
-                                if let imageData = try? Data(contentsOf: url),
-                                   let image = UIImage(data: imageData) {
-                                    eventImages.append(image)
-                                }
+                                let request = URLRequest(url: url)
+                                URLSession.shared.dataTask(with: request) { data, _, _ in
+                                    if let data = data, let image = UIImage(data: data) {
+                                        completeAndAppend([image])
+                                    } else {
+                                        completeAndAppend([])
+                                    }
+                                }.resume()
+                            } else {
+                                completeAndAppend([])
                             }
-                            
-                            let eventDateTime = EventDateTime(
-                                startDate: startTimestamp.dateValue(),
-                                endDate: endTimestamp.dateValue()
-                            )
-                            let eventLocation = EventLocation(
-                                name: locationName,
-                                address: locationAddress,
-                                coordinates: coordinates
-                            )
-                            
-                            let event = Event(
-                                id: eventId,
-                                title: title,
-                                dateTime: eventDateTime,
-                                location: eventLocation,
-                                details: details,
-                                images: eventImages,
-                                createdAt: createdAtTimestamp.dateValue(),
-                                userId: userId
-                            )
-                            
-                            loadedEvents.append(event)
                         }
                 }
                 

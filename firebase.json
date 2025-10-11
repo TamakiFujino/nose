@@ -2,20 +2,13 @@
   "hosting": [
     {
       "target": "dev",
-      "public": "hosting",
+      "public": "hosting/dev",
       "ignore": ["**/.*", "**/node_modules/**"],
       "cleanUrls": true,
       "rewrites": [],
       "headers": [
         {
           "source": "addressables/**",
-          "headers": [
-            { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" },
-            { "key": "Access-Control-Allow-Origin", "value": "*" }
-          ]
-        },
-        {
-          "source": "dev/addressables/**",
           "headers": [
             { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" },
             { "key": "Access-Control-Allow-Origin", "value": "*" }

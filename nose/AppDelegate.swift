@@ -22,6 +22,22 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             print("Project ID: \(options.projectID ?? "nil")")
             print("Google App ID: \(options.googleAppID)")
             print("Database URL: \(options.databaseURL ?? "nil")")
+            print("Client ID: \(options.clientID)")
+        }
+        
+        // Configure Google Sign-In
+        guard let clientID = FirebaseApp.app()?.options.clientID else {
+            fatalError("No client ID found in Firebase configuration")
+        }
+        
+        if let path = Bundle.main.path(forResource: "GoogleService-Info-Development", ofType: "plist"),
+           let plist = NSDictionary(contentsOfFile: path),
+           let reversedClientID = plist["REVERSED_CLIENT_ID"] as? String {
+            print("✅ Google Sign-In Config:")
+            print("Client ID: \(clientID)")
+            print("Reversed Client ID: \(reversedClientID)")
+        } else {
+            print("⚠️ Could not find GoogleService-Info-Development.plist")
         }
         
         // Get API keys from Config.plist
