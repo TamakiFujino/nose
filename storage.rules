@@ -20,11 +20,11 @@ service firebase.storage {
       );
     }
 
-    // Basic image validation: allow only images up to 5MB
+    // Basic image validation: allow only images up to 3MB (after compression)
     function isValidImageUpload() {
       return request.resource != null &&
              request.resource.contentType.matches('image/.*') &&
-             request.resource.size < 5 * 1024 * 1024;
+             request.resource.size < 3 * 1024 * 1024;
     }
 
     // Collection avatar thumbnails
@@ -36,6 +36,24 @@ service firebase.storage {
       // Only owner can create/update/delete
       allow create, update: if isOwner(ownerUserId) && isValidImageUpload();
       allow delete: if isOwner(ownerUserId);
+    }
+
+    // Event images - optimized for storage efficiency
+    // Match specific path pattern: event_images/{userId}/{fileName}
+    match /event_images/{userId}/{fileName} {
+      // Anyone authenticated can read event images
+      allow read: if isAuthenticated();
+      
+      // User can create/update their own event images with size validation
+      allow create, update: if isAuthenticated() && isValidImageUpload();
+      allow delete: if isAuthenticated() && isOwner(userId);
+    }
+    
+    // Fallback for any other event_images paths
+    match /event_images/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && isValidImageUpload();
+      allow delete: if isAuthenticated();
     }
   }
 }

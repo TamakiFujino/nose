@@ -310,6 +310,54 @@ MonoBehaviour:
     clip: {fileID: -6288439273897693895, guid: 6ed2ac5ef24764e0fad31c08fc504b91, type: 3}
   - name: stand_male
     clip: {fileID: 1653070984646740306, guid: 6ed2ac5ef24764e0fad31c08fc504b91, type: 3}
+  - name: hip
+    clip: {fileID: 5991404869197753399, guid: 08088760bdf3b4a74a9863d5c734a6f9, type: 3}
+  - name: heart_felt
+    clip: {fileID: 2258237089367729248, guid: 08088760bdf3b4a74a9863d5c734a6f9, type: 3}
+  - name: female_lean
+    clip: {fileID: 717941621892783288, guid: 08088760bdf3b4a74a9863d5c734a6f9, type: 3}
+  - name: female_jump
+    clip: {fileID: -3146997953263684460, guid: 08088760bdf3b4a74a9863d5c734a6f9, type: 3}
+  - name: female_crossleg
+    clip: {fileID: -693114984136229827, guid: 08088760bdf3b4a74a9863d5c734a6f9, type: 3}
+  - name: excited
+    clip: {fileID: -667560538060656454, guid: 08088760bdf3b4a74a9863d5c734a6f9, type: 3}
+  - name: dynamic
+    clip: {fileID: 7569938106311090, guid: 08088760bdf3b4a74a9863d5c734a6f9, type: 3}
+  - name: dance
+    clip: {fileID: -3215602265514389638, guid: 08088760bdf3b4a74a9863d5c734a6f9, type: 3}
+  - name: cmon
+    clip: {fileID: -8740181111537776297, guid: 08088760bdf3b4a74a9863d5c734a6f9, type: 3}
+  - name: clap
+    clip: {fileID: 2514261302117413762, guid: 08088760bdf3b4a74a9863d5c734a6f9, type: 3}
+  - name: ballet
+    clip: {fileID: 7323281358601504782, guid: 08088760bdf3b4a74a9863d5c734a6f9, type: 3}
+  - name: arms_crossed
+    clip: {fileID: 2805616035607599100, guid: 08088760bdf3b4a74a9863d5c734a6f9, type: 3}
+  - name: look_back
+    clip: {fileID: -4568455137057927765, guid: 08088760bdf3b4a74a9863d5c734a6f9, type: 3}
+  - name: power
+    clip: {fileID: 5926348107510107819, guid: 08088760bdf3b4a74a9863d5c734a6f9, type: 3}
+  - name: punch
+    clip: {fileID: 7708923615119871136, guid: 08088760bdf3b4a74a9863d5c734a6f9, type: 3}
+  - name: rally
+    clip: {fileID: -6114315126127219099, guid: 08088760bdf3b4a74a9863d5c734a6f9, type: 3}
+  - name: run
+    clip: {fileID: 1303299601406483602, guid: 08088760bdf3b4a74a9863d5c734a6f9, type: 3}
+  - name: runway
+    clip: {fileID: -2301873289576600194, guid: 08088760bdf3b4a74a9863d5c734a6f9, type: 3}
+  - name: salute
+    clip: {fileID: 1117801339386932268, guid: 08088760bdf3b4a74a9863d5c734a6f9, type: 3}
+  - name: shy
+    clip: {fileID: 359751623330809681, guid: 08088760bdf3b4a74a9863d5c734a6f9, type: 3}
+  - name: surprised
+    clip: {fileID: 1393972832845977054, guid: 08088760bdf3b4a74a9863d5c734a6f9, type: 3}
+  - name: talk
+    clip: {fileID: -2290526399546188905, guid: 08088760bdf3b4a74a9863d5c734a6f9, type: 3}
+  - name: victory_double
+    clip: {fileID: 8636189982785743086, guid: 08088760bdf3b4a74a9863d5c734a6f9, type: 3}
+  - name: walk
+    clip: {fileID: -4799524434163024911, guid: 08088760bdf3b4a74a9863d5c734a6f9, type: 3}
   hideLabelPrefix: 'hide:'
   regionDefs:
   - name: chest
@@ -1101,7 +1149,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 39a608079e90748379b4c9090fe8cf3f, type: 2}
+  - {fileID: 2100000, guid: 6bd163f43592b46caa257b0153d673dd, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
