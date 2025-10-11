@@ -5,11 +5,23 @@ import FirebaseFirestore
 
 protocol SaveToCollectionViewControllerDelegate: AnyObject {
     func saveToCollectionViewController(_ controller: SaveToCollectionViewController, didSavePlace place: GMSPlace, toCollection collection: PlaceCollection)
+    func saveToCollectionViewController(_ controller: SaveToCollectionViewController, didSaveEvent event: Event, toCollection collection: PlaceCollection)
+}
+
+// Make delegate methods optional
+extension SaveToCollectionViewControllerDelegate {
+    func saveToCollectionViewController(_ controller: SaveToCollectionViewController, didSavePlace place: GMSPlace, toCollection collection: PlaceCollection) {}
+    func saveToCollectionViewController(_ controller: SaveToCollectionViewController, didSaveEvent event: Event, toCollection collection: PlaceCollection) {}
+}
+
+enum SaveItemType {
+    case place(GMSPlace)
+    case event(Event)
 }
 
 class SaveToCollectionViewController: UIViewController {
     // MARK: - Properties
-    private let place: GMSPlace
+    private let itemToSave: SaveItemType
     private var ownedCollections: [PlaceCollection] = []
     private var sharedCollections: [PlaceCollection] = []
     private var selectedCollection: PlaceCollection?
@@ -41,9 +53,14 @@ class SaveToCollectionViewController: UIViewController {
         return label
     }()
     
-    private lazy var placeNameLabel: UILabel = {
+    private lazy var itemNameLabel: UILabel = {
         let label = UILabel()
-        label.text = place.name
+        switch itemToSave {
+        case .place(let place):
+            label.text = place.name
+        case .event(let event):
+            label.text = event.title
+        }
         label.font = .systemFont(ofSize: 16)
         label.textColor = .fourthColor
         label.numberOfLines = 0
@@ -94,7 +111,12 @@ class SaveToCollectionViewController: UIViewController {
     
     // MARK: - Initialization
     init(place: GMSPlace) {
-        self.place = place
+        self.itemToSave = .place(place)
+        super.init(nibName: nil, bundle: nil)
+    }
+    
+    init(event: Event) {
+        self.itemToSave = .event(event)
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -115,7 +137,7 @@ class SaveToCollectionViewController: UIViewController {
         
         view.addSubview(closeButton)
         view.addSubview(titleLabel)
-        view.addSubview(placeNameLabel)
+        view.addSubview(itemNameLabel)
         view.addSubview(segmentedControl)
         view.addSubview(collectionsTableView)
         view.addSubview(createNewCollectionButton)
@@ -132,13 +154,13 @@ class SaveToCollectionViewController: UIViewController {
             titleLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
             titleLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             
-            // Place name label constraints
-            placeNameLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
-            placeNameLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            placeNameLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            // Item name label constraints
+            itemNameLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
+            itemNameLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            itemNameLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             
             // Segmented control constraints
-            segmentedControl.topAnchor.constraint(equalTo: placeNameLabel.bottomAnchor, constant: 16),
+            segmentedControl.topAnchor.constraint(equalTo: itemNameLabel.bottomAnchor, constant: 16),
             segmentedControl.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             segmentedControl.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             
@@ -338,6 +360,15 @@ class SaveToCollectionViewController: UIViewController {
     @objc private func saveButtonTapped() {
         guard let collection = selectedCollection else { return }
         
+        switch itemToSave {
+        case .place(let place):
+            savePlaceToCollection(place: place, collection: collection)
+        case .event(let event):
+            saveEventToCollection(event: event, collection: collection)
+        }
+    }
+    
+    private func savePlaceToCollection(place: GMSPlace, collection: PlaceCollection) {
         print("💾 Saving place '\(place.name ?? "Unknown")' to collection '\(collection.name)'")
         print("💾 Current places in collection: \(collection.places.count)")
         
@@ -455,9 +486,87 @@ class SaveToCollectionViewController: UIViewController {
                             // Refresh collections to update the count
                             self.loadCollections()
                             // Notify delegate and dismiss
-                            self.delegate?.saveToCollectionViewController(self, didSavePlace: self.place, toCollection: collection)
+                            if case .place(let place) = self.itemToSave {
+                                self.delegate?.saveToCollectionViewController(self, didSavePlace: place, toCollection: collection)
+                            }
                             self.dismiss(animated: true)
                         }
+                    }
+                }
+            }
+        }
+    }
+    
+    private func saveEventToCollection(event: Event, collection: PlaceCollection) {
+        print("💾 Saving event '\(event.title)' to collection '\(collection.name)'")
+        
+        // Show loading indicator
+        let loadingAlert = UIAlertController(title: "Saving...", message: nil, preferredStyle: .alert)
+        present(loadingAlert, animated: true)
+        
+        // Create event data
+        let eventData: [String: Any] = [
+            "eventId": event.id,
+            "title": event.title,
+            "startDate": Timestamp(date: event.dateTime.startDate),
+            "endDate": Timestamp(date: event.dateTime.endDate),
+            "locationName": event.location.name,
+            "locationAddress": event.location.address,
+            "latitude": event.location.coordinates?.latitude ?? 0.0,
+            "longitude": event.location.coordinates?.longitude ?? 0.0,
+            "addedAt": Timestamp(date: Date()),
+            "userId": event.userId
+        ]
+        
+        // Get references for both user and owner collections
+        let db = Firestore.firestore()
+        let currentUserId = Auth.auth().currentUser?.uid ?? ""
+        
+        // Reference to the current user's collection
+        let userCollectionRef = db.collection("users")
+            .document(currentUserId)
+            .collection("collections")
+            .document(collection.id)
+        
+        // If this is a shared collection, also get reference to owner's collection
+        let ownerCollectionRef = collection.isOwner ? nil : db.collection("users")
+            .document(collection.userId)
+            .collection("collections")
+            .document(collection.id)
+        
+        // Create a batch write
+        let batch = db.batch()
+        
+        // Update user's copy with events array
+        batch.updateData([
+            "events": FieldValue.arrayUnion([eventData])
+        ], forDocument: userCollectionRef)
+        
+        // If this is a shared collection, also update owner's copy
+        if let ownerRef = ownerCollectionRef {
+            batch.updateData([
+                "events": FieldValue.arrayUnion([eventData])
+            ], forDocument: ownerRef)
+        }
+        
+        // Commit the batch
+        batch.commit { error in
+            DispatchQueue.main.async {
+                loadingAlert.dismiss(animated: true) {
+                    if let error = error {
+                        print("❌ Error saving event: \(error.localizedDescription)")
+                        let errorAlert = UIAlertController(
+                            title: "Error",
+                            message: "Failed to save event. Please try again.",
+                            preferredStyle: .alert
+                        )
+                        errorAlert.addAction(UIAlertAction(title: "OK", style: .default))
+                        self.present(errorAlert, animated: true)
+                    } else {
+                        print("✅ Successfully saved event to collection")
+                        self.loadCollections()
+                        self.delegate?.saveToCollectionViewController(self, didSaveEvent: event, toCollection: collection)
+                        self.dismiss(animated: true)
                     }
                 }
             }

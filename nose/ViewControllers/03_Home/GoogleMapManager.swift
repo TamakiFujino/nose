@@ -5,6 +5,7 @@ import GooglePlaces
 
 protocol GoogleMapManagerDelegate: AnyObject {
     func googleMapManager(_ manager: GoogleMapManager, didFailWithError error: Error)
+    func googleMapManager(_ manager: GoogleMapManager, didTapEventMarker event: Event)
 }
 
 final class GoogleMapManager: NSObject {
@@ -26,6 +27,7 @@ final class GoogleMapManager: NSObject {
     private var sessionToken: GMSAutocompleteSessionToken?
     private var displayLink: CADisplayLink?
     private var markers: [GMSMarker] = []
+    private var eventMarkers: [GMSMarker] = []
     private var followUserLocation: Bool = true
     
     weak var delegate: GoogleMapManagerDelegate?
@@ -121,8 +123,36 @@ final class GoogleMapManager: NSObject {
         markers.removeAll()
     }
     
+    func clearEventMarkers() {
+        eventMarkers.forEach { $0.map = nil }
+        eventMarkers.removeAll()
+    }
+    
+    func showEventsOnMap(_ events: [Event]) {
+        print("🗺️ GoogleMapManager.showEventsOnMap called with \(events.count) events")
+        
+        // Clear existing event markers
+        clearEventMarkers()
+        
+        // Create and add markers for each event
+        for event in events {
+            guard event.location.coordinates != nil else {
+                print("⚠️ Skipping event '\(event.title)' - no coordinates")
+                continue
+            }
+            
+            let marker = MarkerFactory.createEventMarker(for: event)
+            marker.map = mapView
+            eventMarkers.append(marker)
+            print("✅ Added event marker: \(event.title)")
+        }
+        
+        print("📍 Total event markers on map: \(eventMarkers.count)")
+    }
+    
     func resetMap() {
         clearMarkers()
+        clearEventMarkers()
         followUserLocation = true
         let camera = GMSCameraPosition.camera(
             withLatitude: Constants.defaultLatitude,
@@ -196,6 +226,16 @@ extension GoogleMapManager: CLLocationManagerDelegate {
 extension GoogleMapManager: GMSMapViewDelegate {
     func mapView(_ mapView: GMSMapView, didTapAt coordinate: CLLocationCoordinate2D) {
         // Handle map tap if needed
+    }
+    
+    func mapView(_ mapView: GMSMapView, didTap marker: GMSMarker) -> Bool {
+        // Check if this is an event marker
+        if let event = marker.userData as? Event {
+            print("🎯 Event marker tapped: \(event.title)")
+            delegate?.googleMapManager(self, didTapEventMarker: event)
+            return true // Consume the event
+        }
+        return false // Let default behavior happen for other markers
     }
     
     func mapViewDidFinishTileRendering(_ mapView: GMSMapView) {
