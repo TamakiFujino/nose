@@ -12,7 +12,7 @@ class FloatingUIController: UIViewController {
     private let parentCategories = ["Base", "Hair", "Clothes", "Accessories"]
     private let childCategories = [
         ["Eye", "Eyebrow", "Body"],
-        ["Base", "Front", "Side", "Back"],
+        ["Base", "Front", "Side", "Back", "Arrange"],
         ["Tops", "Bottoms", "Jacket", "Socks"],
         ["Headwear", "Eyewear", "Neckwear"]
     ]
@@ -78,7 +78,8 @@ class FloatingUIController: UIViewController {
         let stackView = UIStackView()
         stackView.axis = .horizontal
         stackView.spacing = 8
-        stackView.distribution = .fillEqually
+        stackView.distribution = .fill
+        stackView.alignment = .leading
         stackView.translatesAutoresizingMaskIntoConstraints = false
         return stackView
     }()
@@ -90,6 +91,17 @@ class FloatingUIController: UIViewController {
         stackView.distribution = .fillEqually
         stackView.translatesAutoresizingMaskIntoConstraints = false
         return stackView
+    }()
+
+    private lazy var childCategoryScrollView: UIScrollView = {
+        let scrollView = UIScrollView()
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.showsHorizontalScrollIndicator = false
+        scrollView.alwaysBounceHorizontal = true
+        scrollView.alwaysBounceVertical = false
+        scrollView.showsVerticalScrollIndicator = false
+        scrollView.isDirectionalLockEnabled = true
+        return scrollView
     }()
 
     private lazy var thumbnailStackView: UIStackView = {
@@ -158,7 +170,8 @@ class FloatingUIController: UIViewController {
         view.addSubview(saveButton)
         view.addSubview(bottomPanel)
         bottomPanel.addSubview(parentCategoryStackView)
-        bottomPanel.addSubview(childCategoryStackView)
+        bottomPanel.addSubview(childCategoryScrollView)
+        childCategoryScrollView.addSubview(childCategoryStackView)
         bottomPanel.addSubview(thumbnailScrollView)
         thumbnailScrollView.addSubview(thumbnailContentView)
         thumbnailContentView.addSubview(thumbnailStackView)
@@ -183,15 +196,22 @@ class FloatingUIController: UIViewController {
             parentCategoryStackView.topAnchor.constraint(equalTo: bottomPanel.topAnchor, constant: 10),
             parentCategoryStackView.heightAnchor.constraint(equalToConstant: 30),
 
-            childCategoryStackView.leadingAnchor.constraint(equalTo: bottomPanel.leadingAnchor, constant: 20),
-            childCategoryStackView.trailingAnchor.constraint(equalTo: bottomPanel.trailingAnchor, constant: -20),
-            childCategoryStackView.topAnchor.constraint(equalTo: parentCategoryStackView.bottomAnchor, constant: 10),
-            childCategoryStackView.heightAnchor.constraint(equalToConstant: 30),
+            childCategoryScrollView.leadingAnchor.constraint(equalTo: bottomPanel.leadingAnchor, constant: 20),
+            childCategoryScrollView.trailingAnchor.constraint(equalTo: bottomPanel.trailingAnchor, constant: -20),
+            childCategoryScrollView.topAnchor.constraint(equalTo: parentCategoryStackView.bottomAnchor, constant: 10),
+            childCategoryScrollView.heightAnchor.constraint(equalToConstant: 30),
+
+            // Stack inside horizontal scroll view
+            childCategoryStackView.leadingAnchor.constraint(equalTo: childCategoryScrollView.contentLayoutGuide.leadingAnchor),
+            childCategoryStackView.trailingAnchor.constraint(equalTo: childCategoryScrollView.contentLayoutGuide.trailingAnchor),
+            childCategoryStackView.topAnchor.constraint(equalTo: childCategoryScrollView.contentLayoutGuide.topAnchor),
+            childCategoryStackView.bottomAnchor.constraint(equalTo: childCategoryScrollView.contentLayoutGuide.bottomAnchor),
+            childCategoryStackView.heightAnchor.constraint(equalTo: childCategoryScrollView.frameLayoutGuide.heightAnchor),
 
             // Thumbnails scroll view fills remaining space
             thumbnailScrollView.leadingAnchor.constraint(equalTo: bottomPanel.leadingAnchor),
             thumbnailScrollView.trailingAnchor.constraint(equalTo: bottomPanel.trailingAnchor),
-            thumbnailScrollView.topAnchor.constraint(equalTo: childCategoryStackView.bottomAnchor, constant: 10),
+            thumbnailScrollView.topAnchor.constraint(equalTo: childCategoryScrollView.bottomAnchor, constant: 10),
             thumbnailScrollView.bottomAnchor.constraint(equalTo: bottomPanel.bottomAnchor, constant: -10),
 
             // Content view anchors to scroll contentLayoutGuide and matches scroll width
@@ -691,8 +711,14 @@ class FloatingUIController: UIViewController {
         button.translatesAutoresizingMaskIntoConstraints = false
         if !isParent {
             button.heightAnchor.constraint(equalToConstant: 26).isActive = true
+            // Ensure minimum width so tabs don't get too small; scroll handles overflow
+            button.widthAnchor.constraint(greaterThanOrEqualToConstant: 80).isActive = true
         } else {
             button.heightAnchor.constraint(equalToConstant: 30).isActive = true
+            // Parent tabs: minimum width, size to content
+            button.widthAnchor.constraint(greaterThanOrEqualToConstant: 80).isActive = true
+            button.setContentHuggingPriority(.required, for: .horizontal)
+            button.setContentCompressionResistancePriority(.required, for: .horizontal)
         }
         if isParent {
             button.addTarget(self, action: #selector(parentCategoryTapped(_:)), for: .touchUpInside)

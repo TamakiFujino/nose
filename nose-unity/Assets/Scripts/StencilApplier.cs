@@ -3,7 +3,8 @@ using UnityEngine;
 public class StencilApplier : MonoBehaviour
 {
     [Header("Shaders")]
-    public Shader clothingShader;
+    public Shader jacketStencilWriterShader;   // Writes stencil (outer garment)
+    public Shader innerClothingMaskShader;     // Tests stencil to hide under jacket
     public Shader bodyMaskShader;
 
     [Header("Targets")]
@@ -16,7 +17,8 @@ public class StencilApplier : MonoBehaviour
 
     private void Awake()
     {
-        if (clothingShader == null) clothingShader = Shader.Find("Nose/Standard Stencil (Clothing)");
+        if (jacketStencilWriterShader == null) jacketStencilWriterShader = Shader.Find("Nose/Standard Stencil (Clothing)");
+        if (innerClothingMaskShader == null) innerClothingMaskShader = Shader.Find("Nose/Standard Stencil (Top Mask)");
         if (bodyMaskShader == null) bodyMaskShader = Shader.Find("Nose/Standard Stencil (Body Mask)");
         if (bodySkinnedMesh == null)
         {
@@ -42,13 +44,21 @@ public class StencilApplier : MonoBehaviour
     private void OnAssetChanged(AssetItem asset)
     {
         if (asset == null) return;
-        // Apply clothing shader to newly loaded items (non-base/body)
-        if (!(asset.category.Equals("Base", System.StringComparison.OrdinalIgnoreCase) && asset.subcategory.Equals("Body", System.StringComparison.OrdinalIgnoreCase)))
+        var mgr = FindObjectOfType<AssetManager>();
+        if (mgr != null && mgr.loadedAssets.TryGetValue(asset.id, out GameObject go) && go != null)
         {
-            var mgr = FindObjectOfType<AssetManager>();
-            if (mgr != null && mgr.loadedAssets.TryGetValue(asset.id, out GameObject go) && go != null)
+            // Apply body mask only if explicitly enabled via inspector (applyBodyMaskToBody)
+            // For clothing, choose correct shader based on subcategory
+            if (asset.category.Equals("Clothes", System.StringComparison.OrdinalIgnoreCase))
             {
-                ApplyClothing(go);
+                if (asset.subcategory.Equals("Jacket", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    ApplyShaderRecursive(go, jacketStencilWriterShader);
+                }
+                else
+                {
+                    ApplyShaderRecursive(go, innerClothingMaskShader);
+                }
             }
         }
     }
@@ -68,16 +78,16 @@ public class StencilApplier : MonoBehaviour
         bodySkinnedMesh.materials = mats;
     }
 
-    private void ApplyClothing(GameObject root)
+    private void ApplyShaderRecursive(GameObject root, Shader shader)
     {
-        if (root == null || clothingShader == null) return;
+        if (root == null || shader == null) return;
         foreach (var r in root.GetComponentsInChildren<Renderer>(true))
         {
             var mats = r.materials;
             for (int i = 0; i < mats.Length; i++)
             {
                 if (mats[i] == null) continue;
-                mats[i].shader = clothingShader;
+                mats[i].shader = shader;
             }
             r.materials = mats;
         }

@@ -819,11 +819,12 @@ public class AssetManager : MonoBehaviour
 		}
 		else if (string.Equals(category, "Clothes", StringComparison.OrdinalIgnoreCase))
 		{
-			// Draw bottoms before tops; jacket above tops; socks lowest among clothes
-			if (string.Equals(subcategory, "Socks", StringComparison.OrdinalIgnoreCase)) offset = 5;
-			else if (string.Equals(subcategory, "Bottoms", StringComparison.OrdinalIgnoreCase)) offset = 10;
-			else if (string.Equals(subcategory, "Tops", StringComparison.OrdinalIgnoreCase)) offset = 20;
-			else if (string.Equals(subcategory, "Jacket", StringComparison.OrdinalIgnoreCase)) offset = 30;
+			// For stencil masking: jacket (stencil writer) must render BEFORE inner clothing (mask testers)
+			// Order (low to high): Jacket < Bottoms < Tops; socks lowest among clothes if needed
+			if (string.Equals(subcategory, "Socks", StringComparison.OrdinalIgnoreCase)) offset = 2;     // earliest within clothes
+			else if (string.Equals(subcategory, "Jacket", StringComparison.OrdinalIgnoreCase)) offset = 8; // render before other clothes
+			else if (string.Equals(subcategory, "Bottoms", StringComparison.OrdinalIgnoreCase)) offset = 12;
+			else if (string.Equals(subcategory, "Tops", StringComparison.OrdinalIgnoreCase)) offset = 20;  // render after jacket so stencil is set
 			else offset = 25;
 		}
 		else if (string.Equals(category, "Hair", StringComparison.OrdinalIgnoreCase))
