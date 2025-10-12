@@ -724,6 +724,30 @@ class FloatingUIController: UIViewController {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1, execute: work)
     }
 
+    // MARK: - Slot visibility without removal
+    private func slotHasSelection(category: String, subcategory: String) -> Bool {
+        let key = "\(category)_\(subcategory)"
+        if category.lowercased() == "base" && subcategory.lowercased() == "body" {
+            let pose = selections[key]? ["pose"] ?? selections[key]? ["model"]
+            return (pose != nil && !(pose!.isEmpty))
+        } else {
+            let model = selections[key]? ["model"]
+            return (model != nil && !(model!.isEmpty))
+        }
+    }
+
+    private func setSlotVisibilityInUnity(category: String, subcategory: String, visible: Bool) {
+        let payload: [String: Any] = [
+            "category": category,
+            "subcategory": subcategory,
+            "visible": visible
+        ]
+        if let data = try? JSONSerialization.data(withJSONObject: payload),
+           let json = String(data: data, encoding: .utf8) {
+            UnityLauncher.shared().sendMessage(toUnity: "UnityBridge", method: "SetCategoryVisibility", message: json)
+        }
+    }
+
     private func updateChildCategories() {
         childCategoryStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
         let currentChildCategories = childCategories[selectedParentIndex]

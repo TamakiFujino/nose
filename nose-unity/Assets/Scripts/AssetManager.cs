@@ -83,6 +83,14 @@ public class AssetManager : MonoBehaviour
     private bool bodyAnimatorDisabledForAPose = false;
     private string currentPoseName = null;
 
+    [Header("Debug")]
+    public bool verboseLogs = false;
+    public bool verboseDiscoveryLogs = false;
+
+    // Hidden item unload management
+    private const float hiddenUnloadDelaySeconds = 15f;
+    private readonly Dictionary<string, Coroutine> pendingUnloadBySlot = new Dictionary<string, Coroutine>();
+
     [Header("Region Mask Labels")] 
     [Tooltip("Prefix for Addressables labels that hide body regions, like 'hide:chest', 'hide:shoulder'.")]
     public string hideLabelPrefix = "hide:";
@@ -118,7 +126,7 @@ public class AssetManager : MonoBehaviour
         EnsureAvatarRoot();
         SetupUnityBridge();
         StartCoroutine(InitializeAddressables());
-        Debug.Log("AssetManager: Ready to receive asset data from iOS");
+        if (verboseLogs) Debug.Log("AssetManager: Ready to receive asset data from iOS");
     }
 
     private void EnsureAvatarRoot()
@@ -307,21 +315,45 @@ public class AssetManager : MonoBehaviour
         {
             var update = Addressables.UpdateCatalogs(catalogs);
             yield return update;
-            Debug.Log("Addressables: Updated existing catalogs");
+            if (verboseLogs) Debug.Log("Addressables: Updated existing catalogs");
         }
         else
         {
-            Debug.Log("Addressables: No existing catalogs to update");
+            if (verboseLogs) Debug.Log("Addressables: No existing catalogs to update");
         }
 
         // Explicitly load remote catalog from Firebase Hosting (in case no local bootstrap exists)
         yield return TryLoadRemoteCatalog();
 
+        // Attempt to load RegionMaskConfig from Addressables if not assigned in the Inspector
+        yield return LoadRegionMaskConfigIfNeeded();
+
         addressablesInitialized = true;
-        Debug.Log("AssetManager: Addressables initialized");
+        if (verboseLogs) Debug.Log("AssetManager: Addressables initialized");
 
         // Discover available assets from Addressables
         yield return DiscoverAvailableAssets();
+    }
+
+    private IEnumerator LoadRegionMaskConfigIfNeeded()
+    {
+        if (regionMaskConfig != null)
+        {
+            yield break;
+        }
+        // Addressables entry added at: Assets/RegionMaskConfig.asset
+        var handle = Addressables.LoadAssetAsync<RegionMaskConfig>("Assets/RegionMaskConfig.asset");
+        yield return handle;
+        if (handle.Status == AsyncOperationStatus.Succeeded && handle.Result != null)
+        {
+            regionMaskConfig = handle.Result;
+            Debug.Log("RegionMaskConfig loaded from Addressables.");
+        }
+        else
+        {
+            Debug.LogWarning("RegionMaskConfig not assigned and couldn't be loaded from Addressables. Region masking will be skipped.");
+        }
+        if (handle.IsValid()) Addressables.Release(handle);
     }
 
     private IEnumerator TryLoadRemoteCatalog()
@@ -356,7 +388,7 @@ public class AssetManager : MonoBehaviour
 
     private IEnumerator DiscoverAvailableAssets()
     {
-        Debug.Log("🔍 Discovering Addressables by catalog keys (no labels)...");
+        if (verboseDiscoveryLogs) Debug.Log("🔍 Discovering Addressables by catalog keys (no labels)...");
 
         int discovered = 0;
         var seenKeys = new HashSet<string>();
@@ -391,12 +423,15 @@ public class AssetManager : MonoBehaviour
             }
         }
 
-        Debug.Log($"🔍 Catalog key scan discovered {discovered} assets under 'Models/'");
+        if (verboseDiscoveryLogs) Debug.Log($"🔍 Catalog key scan discovered {discovered} assets under 'Models/'");
 
-        Debug.Log($"✅ Asset discovery complete. Total categories: {availableAssets.Count}");
-        foreach (var kvp in availableAssets)
+        if (verboseDiscoveryLogs)
         {
-            Debug.Log($"  📁 {kvp.Key}: {kvp.Value.Count} assets");
+            Debug.Log($"✅ Asset discovery complete. Total categories: {availableAssets.Count}");
+            foreach (var kvp in availableAssets)
+            {
+                Debug.Log($"  📁 {kvp.Key}: {kvp.Value.Count} assets");
+            }
         }
 
         OnAssetsCatalogLoaded?.Invoke();
@@ -432,11 +467,13 @@ public class AssetManager : MonoBehaviour
         // e.g., Thumbs/Clothes/Tops/02_tops_tight_half
         string thumbnailAddress = $"Thumbs/{category}/{subcategory}/{assetName}";
 
+        // Prefer internal id for loading to avoid InvalidKeyException on primary address
+        string internalIdForLoad = $"Assets/Models/{category}/{subcategory}/{assetName}.prefab";
         var assetItem = new AssetItem
         {
             id = $"{category}_{subcategory}_{assetName}",
             name = assetName,
-            modelPath = address,
+            modelPath = internalIdForLoad,
             thumbnailPath = thumbnailAddress,
             category = category,
             subcategory = subcategory,
@@ -493,6 +530,26 @@ public class AssetManager : MonoBehaviour
         currentSubcategory = asset.subcategory;
         currentAssetId = asset.id;
 
+        // Early-out if same asset already active for this slot to avoid redundant loads
+        string slotKey = $"{asset.category}:{asset.subcategory}";
+        if (slotKeyToActiveAssetId.TryGetValue(slotKey, out string activeId) &&
+            !string.IsNullOrEmpty(activeId) && string.Equals(activeId, asset.id, StringComparison.Ordinal))
+        {
+            // Ensure any pending color is applied even if we skip reload
+            if (slotKeyToPendingColor.TryGetValue(slotKey, out string pendingHex) &&
+                loadedAssets.TryGetValue(activeId, out GameObject existingGo) && existingGo != null)
+            {
+                if (TryParseHexColor(pendingHex, out Color pendingColor))
+                {
+                    ApplyColorToObject(existingGo, pendingColor, true);
+                    slotKeyToPendingColor.Remove(slotKey);
+                }
+            }
+            OnAssetChanged?.Invoke(asset);
+            OnCategoryChanged?.Invoke(asset.category, asset.subcategory);
+            return;
+        }
+
         // For Base/Body, apply pose instead of loading an addressable prefab
         if (string.Equals(asset.category, "Base", StringComparison.OrdinalIgnoreCase) &&
             string.Equals(asset.subcategory, "Body", StringComparison.OrdinalIgnoreCase))
@@ -545,16 +602,14 @@ public class AssetManager : MonoBehaviour
             yield break;
         }
 
-        // Try primary address first (e.g., "Models/Clothes/Tops/02_tops_tight_half")
+        // Try the provided address first (can be internal id or address)
         var handle = Addressables.LoadAssetAsync<GameObject>(address);
         yield return handle;
 
         if (!(handle.Status == AsyncOperationStatus.Succeeded && handle.Result != null))
         {
-            Debug.LogWarning($"Addressables: primary address failed '{address}', trying internal id fallback...");
-            if (handle.IsValid()) Addressables.Release(handle);
-
             // Fallback to internal id path used in catalog m_InternalIds: Assets/Models/.../{name}.prefab
+            if (handle.IsValid()) Addressables.Release(handle);
             string internalId = $"Assets/Models/{asset.category}/{asset.subcategory}/{asset.name}.prefab";
             var fallback = Addressables.LoadAssetAsync<GameObject>(internalId);
             yield return fallback;
@@ -566,8 +621,7 @@ public class AssetManager : MonoBehaviour
             }
             else
             {
-                string err = $"Addressables: failed to load '{asset.name}' via both address ('{address}') and internal id ('{internalId}')";
-                Debug.LogError(err);
+                Debug.LogError($"Addressables: failed to load '{asset.name}'");
                 if (fallback.IsValid()) Addressables.Release(fallback);
                 yield break;
             }
@@ -604,6 +658,9 @@ public class AssetManager : MonoBehaviour
 
         // Rebind skinned meshes to the body skeleton so pose/rotation matches
         RebindSkinnedMeshesToBody(assetInstance);
+
+		// Enforce a stable render order to reduce z-fighting at garment overlaps
+		ApplyStableRenderOrder(asset.category, asset.subcategory, assetInstance);
 
         // Track new instance and handle
         loadedAssets[asset.id] = assetInstance;
@@ -748,6 +805,55 @@ public class AssetManager : MonoBehaviour
         }
     }
 
+	// Ensure deterministic rendering order among categories/subcategories to minimize edge artifacts
+	private void ApplyStableRenderOrder(string category, string subcategory, GameObject root)
+	{
+		if (root == null) return;
+		// Base queues: Opaque ~2000; keep within opaque/cutout range
+		int baseQueue = 2000;
+		int offset = 0;
+		// Body draws first
+		if (string.Equals(category, "Base", StringComparison.OrdinalIgnoreCase))
+		{
+			offset = 0; // Body
+		}
+		else if (string.Equals(category, "Clothes", StringComparison.OrdinalIgnoreCase))
+		{
+			// Draw bottoms before tops; jacket above tops; socks lowest among clothes
+			if (string.Equals(subcategory, "Socks", StringComparison.OrdinalIgnoreCase)) offset = 5;
+			else if (string.Equals(subcategory, "Bottoms", StringComparison.OrdinalIgnoreCase)) offset = 10;
+			else if (string.Equals(subcategory, "Tops", StringComparison.OrdinalIgnoreCase)) offset = 20;
+			else if (string.Equals(subcategory, "Jacket", StringComparison.OrdinalIgnoreCase)) offset = 30;
+			else offset = 25;
+		}
+		else if (string.Equals(category, "Hair", StringComparison.OrdinalIgnoreCase))
+		{
+			offset = 40;
+		}
+		else
+		{
+			offset = 50; // accessories and others
+		}
+
+		int desiredQueue = baseQueue + offset;
+		foreach (var r in root.GetComponentsInChildren<Renderer>(true))
+		{
+			if (r == null) continue;
+			var mats = r.materials;
+			if (mats == null) continue;
+			for (int i = 0; i < mats.Length; i++)
+			{
+				var m = mats[i];
+				if (m == null) continue;
+				// Only adjust if currently in opaque/cutout range to avoid breaking transparents
+				if (m.renderQueue <= 2450)
+				{
+					m.renderQueue = desiredQueue;
+				}
+			}
+		}
+	}
+
     public void RemoveAssetForSlot(string category, string subcategory)
     {
         string slotKey = $"{category}:{subcategory}";
@@ -782,6 +888,68 @@ public class AssetManager : MonoBehaviour
         // Apply new union mask
         SetBodyRegionMask(recomputedMask);
         Debug.Log($"Removed asset for slot {slotKey}. Recomputed mask=0x{recomputedMask:X}");
+    }
+
+    // Toggle visibility for a category/subcategory without changing mask bookkeeping or unloading
+    public void SetVisibilityForSlot(string category, string subcategory, bool visible)
+    {
+        string slotKey = $"{category}:{subcategory}";
+        if (slotKeyToActiveAssetId.TryGetValue(slotKey, out string activeAssetId))
+        {
+            if (!string.IsNullOrEmpty(activeAssetId))
+            {
+                SetAssetActive(activeAssetId, visible);
+                if (verboseLogs) Debug.Log($"Set visibility for slot {slotKey} → {visible}");
+
+                // Schedule unload when hidden, cancel if shown again
+                if (!visible)
+                {
+                    if (pendingUnloadBySlot.TryGetValue(slotKey, out var co) && co != null)
+                    {
+                        StopCoroutine(co);
+                        pendingUnloadBySlot.Remove(slotKey);
+                    }
+                    var routine = StartCoroutine(UnloadHiddenAfterDelay(slotKey, activeAssetId));
+                    pendingUnloadBySlot[slotKey] = routine;
+                }
+                else
+                {
+                    if (pendingUnloadBySlot.TryGetValue(slotKey, out var co) && co != null)
+                    {
+                        StopCoroutine(co);
+                        pendingUnloadBySlot.Remove(slotKey);
+                    }
+                }
+            }
+        }
+    }
+
+    private IEnumerator UnloadHiddenAfterDelay(string slotKey, string assetId)
+    {
+        yield return new WaitForSeconds(hiddenUnloadDelaySeconds);
+        // If still hidden, unload to free memory
+        if (!slotKeyToActiveAssetId.TryGetValue(slotKey, out string currentId) || currentId != assetId)
+        {
+            yield break; // slot changed; ignore
+        }
+        if (!loadedAssets.TryGetValue(assetId, out GameObject go) || go == null)
+        {
+            yield break; // already gone
+        }
+        if (go.activeSelf)
+        {
+            yield break; // became visible; don't unload
+        }
+        // Destroy instance and release handle, keep mask bookkeeping so union remains correct
+        if (verboseLogs) Debug.Log($"Unloading hidden asset for slot {slotKey} after delay");
+        Destroy(go);
+        loadedAssets.Remove(assetId);
+        if (slotKeyToHandle.TryGetValue(slotKey, out var handle))
+        {
+            if (handle.IsValid()) Addressables.Release(handle);
+            slotKeyToHandle.Remove(slotKey);
+        }
+        pendingUnloadBySlot.Remove(slotKey);
     }
 
     [Serializable]

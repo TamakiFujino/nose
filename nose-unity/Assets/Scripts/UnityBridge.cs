@@ -16,6 +16,11 @@ public class UnityBridge : MonoBehaviour
     private HorizontalRotateOnDrag rotator;
     private CommandBuffer stencilClearCmd;
     
+    // Debounce duplicate ChangeAsset calls per slot to avoid redundant loads
+    private class LastAssetCall { public string assetId; public float time; }
+    private readonly Dictionary<string, LastAssetCall> lastAssetPerSlot = new Dictionary<string, LastAssetCall>();
+    private const float changeAssetDebounceSeconds = 0.15f;
+    
     // Helper to snapshot and restore material state when forcing opaque capture
     private struct MaterialState
     {
@@ -145,21 +150,50 @@ public class UnityBridge : MonoBehaviour
     // iOS calls this method to change an asset
     public void ChangeAsset(string assetJson)
     {
-        Debug.Log($"UnityBridge: Received asset change request: {assetJson}");
+        // Concise log to reduce noise
+        if (!string.IsNullOrEmpty(assetJson))
+        {
+            try { var tmp = JsonUtility.FromJson<MinimalAsset>(assetJson); Debug.Log($"ChangeAsset: {tmp.category}/{tmp.subcategory}/{tmp.name}"); }
+            catch { Debug.Log("ChangeAsset: received"); }
+        }
+        // Debounce duplicates for the same slot/id within a short window
+        try
+        {
+            var m = JsonUtility.FromJson<MinimalAsset>(assetJson);
+            if (m != null && !string.IsNullOrEmpty(m.category) && !string.IsNullOrEmpty(m.subcategory) && !string.IsNullOrEmpty(m.id))
+            {
+                string slotKey = m.category + ":" + m.subcategory;
+                float now = Time.realtimeSinceStartup;
+                if (lastAssetPerSlot.TryGetValue(slotKey, out var last) && last != null)
+                {
+                    if (last.assetId == m.id && (now - last.time) < changeAssetDebounceSeconds)
+                    {
+                        Debug.Log("ChangeAsset: debounced duplicate for slot " + slotKey);
+                        return;
+                    }
+                }
+                lastAssetPerSlot[slotKey] = new LastAssetCall { assetId = m.id, time = now };
+            }
+        }
+        catch { /* ignore parse issues, proceed */ }
+
         OnChangeAsset?.Invoke(assetJson);
     }
 
     // iOS calls this method to change a color
     public void ChangeColor(string colorJson)
     {
-        Debug.Log($"UnityBridge: Received color change request: {colorJson}");
+        if (!string.IsNullOrEmpty(colorJson))
+        {
+            try { var tmp = JsonUtility.FromJson<MinimalColor>(colorJson); Debug.Log($"ChangeColor: {tmp.category}/{tmp.subcategory} -> {tmp.colorHex}"); }
+            catch { Debug.Log("ChangeColor: received"); }
+        }
         OnChangeColor?.Invoke(colorJson);
     }
 
     // iOS calls this method to remove an asset for a category/subcategory
     public void RemoveAsset(string message)
     {
-        Debug.Log($"UnityBridge: Received remove asset request: {message}");
         try
         {
             var data = JsonUtility.FromJson<CategoryRequest>(message);
@@ -171,6 +205,24 @@ public class UnityBridge : MonoBehaviour
         catch (System.Exception e)
         {
             Debug.LogError($"RemoveAsset parse error: {e.Message}");
+        }
+    }
+
+    // iOS calls this to hide/show a category/subcategory without unloading or changing masks
+    // message format: {"category":"Clothes","subcategory":"Tops","visible":true}
+    public void SetCategoryVisibility(string message)
+    {
+        try
+        {
+            var data = JsonUtility.FromJson<VisibilityRequest>(message);
+            if (assetManager != null && data != null)
+            {
+                assetManager.SetVisibilityForSlot(data.category, data.subcategory, data.visible);
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"SetCategoryVisibility parse error: {e.Message}");
         }
     }
 
@@ -711,6 +763,14 @@ public class CategoryRequest
 }
 
 [System.Serializable]
+public class VisibilityRequest
+{
+    public string category;
+    public string subcategory;
+    public bool visible;
+}
+
+[System.Serializable]
 public class ResponseData
 {
     public string callbackId;
@@ -730,3 +790,9 @@ public class ThumbnailPayload
     public int width;
     public int height;
 }
+
+// Minimal log structs to reduce JSON spam parsing
+[System.Serializable]
+public class MinimalAsset { public string category; public string subcategory; public string name; public string id; }
+[System.Serializable]
+public class MinimalColor { public string category; public string subcategory; public string colorHex; }
