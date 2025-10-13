@@ -90,9 +90,9 @@ class SaveToCollectionViewController: UIViewController {
         let button = UIButton(type: .system)
         button.setImage(UIImage(systemName: "plus"), for: .normal)
         button.tintColor = .fourthColor
-        button.backgroundColor = .white
+        button.backgroundColor = .firstColor
         button.layer.cornerRadius = 22
-        button.layer.shadowColor = UIColor.black.cgColor
+        button.layer.shadowColor = UIColor.sixthColor.cgColor
         button.layer.shadowOffset = CGSize(width: 0, height: 2)
         button.layer.shadowRadius = 4
         button.layer.shadowOpacity = 0.1
@@ -133,7 +133,7 @@ class SaveToCollectionViewController: UIViewController {
     
     // MARK: - Setup
     private func setupUI() {
-        view.backgroundColor = .systemBackground
+        view.backgroundColor = .firstColor
         
         view.addSubview(closeButton)
         view.addSubview(titleLabel)

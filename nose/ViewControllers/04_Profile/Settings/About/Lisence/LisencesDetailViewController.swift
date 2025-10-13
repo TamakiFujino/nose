@@ -11,7 +11,7 @@ class LicenseDetailViewController: UIViewController {
         let backButton = UIBarButtonItem()
         backButton.title = ""  // Hide the "Back" text
         self.navigationItem.backBarButtonItem = backButton
-        self.navigationController?.navigationBar.tintColor = .black
+        self.navigationController?.navigationBar.tintColor = .sixthColor
 
         view.backgroundColor = .firstColor
 
@@ -22,7 +22,7 @@ class LicenseDetailViewController: UIViewController {
         textView.translatesAutoresizingMaskIntoConstraints = false
         textView.isEditable = false
         textView.backgroundColor = .clear
-        textView.textColor = .black
+        textView.textColor = .sixthColor
         textView.font = UIFont.systemFont(ofSize: 16)
         textView.text = licenseText
         view.addSubview(textView)

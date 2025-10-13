@@ -59,7 +59,7 @@ final class AccountViewController: UIViewController {
     private func setupUI() {
         view.backgroundColor = .firstColor
         title = "Account"
-        navigationController?.navigationBar.tintColor = .label
+        navigationController?.navigationBar.tintColor = .sixthColor
         navigationItem.largeTitleDisplayMode = .never
         
         // Hide back button text
@@ -169,7 +169,7 @@ extension AccountViewController: UITableViewDelegate, UITableViewDataSource {
         
         var content = cell.defaultContentConfiguration()
         content.text = item.rawValue
-        content.textProperties.color = item.isDestructive ? .systemRed : .label
+        content.textProperties.color = item.isDestructive ? .statusError : .sixthColor
         cell.contentConfiguration = content
         
         cell.backgroundColor = .clear

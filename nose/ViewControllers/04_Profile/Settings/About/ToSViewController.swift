@@ -29,13 +29,13 @@ class ToSViewController: UIViewController, WKNavigationDelegate {
     private func setupLoadingView() {
         loadingView = UIView()
         loadingView.translatesAutoresizingMaskIntoConstraints = false
-        loadingView.backgroundColor = UIColor.black.withAlphaComponent(0.5)
+        loadingView.backgroundColor = UIColor.sixthColor.withAlphaComponent(0.5)
         loadingView.isHidden = true
         view.addSubview(loadingView)
         
         activityIndicator = UIActivityIndicatorView(style: .large)
         activityIndicator.translatesAutoresizingMaskIntoConstraints = false
-        activityIndicator.color = .white
+        activityIndicator.color = .firstColor
         loadingView.addSubview(activityIndicator)
         
         NSLayoutConstraint.activate([

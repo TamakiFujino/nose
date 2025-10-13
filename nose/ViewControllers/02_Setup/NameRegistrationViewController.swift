@@ -20,7 +20,7 @@ final class NameRegistrationViewController: UIViewController {
         label.text = "What should we call you?"
         label.textAlignment = .center
         label.font = .systemFont(ofSize: 24, weight: .bold)
-        label.textColor = .black
+        label.textColor = .textPrimary
         return label
     }()
     
@@ -42,7 +42,7 @@ final class NameRegistrationViewController: UIViewController {
         label.translatesAutoresizingMaskIntoConstraints = false
         label.textAlignment = .right
         label.font = .systemFont(ofSize: 12)
-        label.textColor = .gray
+        label.textColor = .fifthColor
         label.text = "0/\(Constants.maxNameLength)"
         return label
     }()
@@ -70,7 +70,7 @@ final class NameRegistrationViewController: UIViewController {
     
     // MARK: - Setup
     private func setupUI() {
-        view.backgroundColor = .white
+        view.backgroundColor = .backgroundPrimary
         setupSubviews()
         setupConstraints()
     }
@@ -108,8 +108,8 @@ final class NameRegistrationViewController: UIViewController {
     @objc private func textFieldDidChange(_ textField: UITextField) {
         let count = textField.text?.count ?? 0
         characterCountLabel.text = "\(count)/\(Constants.maxNameLength)"
-        characterCountLabel.textColor = count > Constants.maxNameLength ? .systemRed :
-                                      count < Constants.minNameLength ? .systemOrange : .gray
+        characterCountLabel.textColor = count > Constants.maxNameLength ? .statusError :
+                                      count < Constants.minNameLength ? .statusWarning : .fifthColor
     }
     
     @objc private func continueButtonTapped() {

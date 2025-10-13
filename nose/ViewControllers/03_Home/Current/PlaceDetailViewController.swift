@@ -24,7 +24,7 @@ final class PlaceDetailViewController: UIViewController {
     private lazy var containerView: UIView = {
         let view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
-        view.backgroundColor = .systemBackground
+        view.backgroundColor = .firstColor
         view.layer.cornerRadius = 20
         view.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
         view.clipsToBounds = true
@@ -68,7 +68,7 @@ final class PlaceDetailViewController: UIViewController {
     private lazy var nameLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.font = .systemFont(ofSize: 24, weight: .bold)
+        label.font = AppFonts.displayMedium(24)
         label.text = place.name
         label.numberOfLines = 0
         return label
@@ -87,7 +87,7 @@ final class PlaceDetailViewController: UIViewController {
         // Rating stars
         let ratingLabel = UILabel()
         ratingLabel.text = String(format: "%.1f", place.rating)
-        ratingLabel.font = .systemFont(ofSize: 16, weight: .medium)
+        ratingLabel.font = AppFonts.title(16)
         
         let starImage = UIImageView(image: UIImage(systemName: "star.fill"))
         starImage.tintColor = .fourthColor
@@ -101,7 +101,7 @@ final class PlaceDetailViewController: UIViewController {
     private lazy var phoneNumberLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.font = .systemFont(ofSize: 16)
+        label.font = AppFonts.body(16)
         label.textColor = .fourthColor
         label.text = place.phoneNumber ?? "Phone number not available"
         label.numberOfLines = 0
@@ -111,8 +111,8 @@ final class PlaceDetailViewController: UIViewController {
     private lazy var addressLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.font = .systemFont(ofSize: 16)
-        label.textColor = .systemGray
+        label.font = AppFonts.body(16)
+        label.textColor = .fourthColor
         label.text = place.formattedAddress
         label.numberOfLines = 0
         return label
@@ -126,7 +126,7 @@ final class PlaceDetailViewController: UIViewController {
         
         let titleLabel = UILabel()
         titleLabel.text = "Opening Hours"
-        titleLabel.font = .systemFont(ofSize: 18, weight: .semibold)
+        titleLabel.font = AppFonts.title(18)
         
         stackView.addArrangedSubview(titleLabel)
         
@@ -134,14 +134,14 @@ final class PlaceDetailViewController: UIViewController {
             for day in weekdayText {
                 let dayLabel = UILabel()
                 dayLabel.text = day
-                dayLabel.font = .systemFont(ofSize: 14)
+                dayLabel.font = AppFonts.body(14)
                 stackView.addArrangedSubview(dayLabel)
             }
         } else {
             let noHoursLabel = UILabel()
             noHoursLabel.text = "Opening hours not available"
-            noHoursLabel.font = .systemFont(ofSize: 14)
-            noHoursLabel.textColor = .systemGray
+            noHoursLabel.font = AppFonts.body(14)
+            noHoursLabel.textColor = .fourthColor
             stackView.addArrangedSubview(noHoursLabel)
         }
         
@@ -153,7 +153,7 @@ final class PlaceDetailViewController: UIViewController {
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setImage(UIImage(systemName: "bookmark"), for: .normal)
         button.tintColor = .fourthColor
-        button.backgroundColor = .white
+        button.backgroundColor = .firstColor
         button.layer.cornerRadius = 25
         button.layer.shadowColor = UIColor.sixthColor.cgColor
         button.layer.shadowOffset = CGSize(width: 0, height: 2)
@@ -366,10 +366,10 @@ final class PlaceDetailViewController: UIViewController {
         let rating = place.rating
         let ratingLabel = UILabel()
         ratingLabel.text = String(format: "%.1f", rating)
-        ratingLabel.font = .systemFont(ofSize: 16, weight: .medium)
+        ratingLabel.font = AppFonts.title(16)
         
         let starImage = UIImageView(image: UIImage(systemName: "star.fill"))
-        starImage.tintColor = .systemYellow
+        starImage.tintColor = .fourthColor
         
         ratingView.arrangedSubviews.forEach { $0.removeFromSuperview() }
         ratingView.addArrangedSubview(starImage)
@@ -397,7 +397,7 @@ final class PlaceDetailViewController: UIViewController {
             let noHoursLabel = UILabel()
             noHoursLabel.text = "Opening hours not available"
             noHoursLabel.font = .systemFont(ofSize: 14)
-            noHoursLabel.textColor = .systemGray
+            noHoursLabel.textColor = .fourthColor
             openingHoursView.addArrangedSubview(noHoursLabel)
         }
         
@@ -643,7 +643,7 @@ class PhotoCell: UICollectionViewCell {
     private let loadingView: UIView = {
         let view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
-        view.backgroundColor = .systemGray6
+        view.backgroundColor = .backgroundSecondary
         return view
     }()
     

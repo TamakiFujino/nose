@@ -72,7 +72,7 @@ class ProfileImageViewController: UIViewController {
         
         let collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.translatesAutoresizingMaskIntoConstraints = false
-        collectionView.backgroundColor = .systemBackground
+        collectionView.backgroundColor = .firstColor
         collectionView.delegate = self
         collectionView.dataSource = self
         collectionView.register(AvatarImageCell.self, forCellWithReuseIdentifier: "AvatarImageCell")
@@ -91,7 +91,7 @@ class ProfileImageViewController: UIViewController {
         label.translatesAutoresizingMaskIntoConstraints = false
         label.text = "No avatar images found"
         label.font = .systemFont(ofSize: 16)
-        label.textColor = .secondaryLabel
+        label.textColor = .fourthColor
         label.textAlignment = .center
         label.isHidden = true
         return label
@@ -167,7 +167,7 @@ class ProfileImageViewController: UIViewController {
     
     // MARK: - Setup
     private func setupUI() {
-        view.backgroundColor = .systemBackground
+        view.backgroundColor = .firstColor
         
         view.addSubview(previewContainerView)
         previewContainerView.addSubview(previewImageView)

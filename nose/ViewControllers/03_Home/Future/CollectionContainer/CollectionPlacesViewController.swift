@@ -23,7 +23,7 @@ class CollectionPlacesViewController: UIViewController {
     private lazy var headerView: UIView = {
         let view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
-        view.backgroundColor = .systemBackground
+        view.backgroundColor = .firstColor
         return view
     }()
 
@@ -45,7 +45,7 @@ class CollectionPlacesViewController: UIViewController {
         tableView.delegate = self
         tableView.dataSource = self
         tableView.register(PlaceTableViewCell.self, forCellReuseIdentifier: "PlaceCell")
-        tableView.backgroundColor = .systemBackground
+        tableView.backgroundColor = .backgroundPrimary
         tableView.rowHeight = 100
         return tableView
     }()
@@ -55,7 +55,7 @@ class CollectionPlacesViewController: UIViewController {
         label.translatesAutoresizingMaskIntoConstraints = false
         label.text = collection.name
         label.font = .systemFont(ofSize: 20, weight: .bold)
-        label.textColor = .label
+        label.textColor = .sixthColor
         return label
     }()
 
@@ -63,11 +63,11 @@ class CollectionPlacesViewController: UIViewController {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = .systemFont(ofSize: 14)
-        label.textColor = .secondaryLabel
+        label.textColor = .fourthColor
         
         // Create attributed string with icon
         let imageAttachment = NSTextAttachment()
-        imageAttachment.image = UIImage(systemName: "person.2.fill")?.withTintColor(.secondaryLabel)
+        imageAttachment.image = UIImage(systemName: "person.2.fill")?.withTintColor(.fourthColor)
         let imageString = NSAttributedString(attachment: imageAttachment)
         
         let textString = NSAttributedString(string: " 0")
@@ -86,11 +86,11 @@ class CollectionPlacesViewController: UIViewController {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = .systemFont(ofSize: 14)
-        label.textColor = .secondaryLabel
+        label.textColor = .fourthColor
         
         // Create attributed string with icon
         let imageAttachment = NSTextAttachment()
-        imageAttachment.image = UIImage(systemName: "mappin.circle.fill")?.withTintColor(.secondaryLabel)
+        imageAttachment.image = UIImage(systemName: "mappin.circle.fill")?.withTintColor(.fourthColor)
         let imageString = NSAttributedString(attachment: imageAttachment)
         
         let textString = NSAttributedString(string: " 0")
@@ -131,7 +131,7 @@ class CollectionPlacesViewController: UIViewController {
         button.setTitle("Customize avatar", for: .normal)
         button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
         button.backgroundColor = .fourthColor
-        button.setTitleColor(.white, for: .normal)
+        button.setTitleColor(.firstColor, for: .normal)
         button.layer.cornerRadius = 24 // rounded here only
         button.clipsToBounds = true
         button.contentEdgeInsets = UIEdgeInsets(top: 12, left: 20, bottom: 12, right: 20)
@@ -167,7 +167,7 @@ class CollectionPlacesViewController: UIViewController {
     }
 
     private func setupUI() {
-        view.backgroundColor = .systemBackground
+        view.backgroundColor = .backgroundPrimary
         view.addSubview(headerView)
         headerView.addSubview(titleLabel)
         headerView.addSubview(menuButton)
@@ -629,7 +629,7 @@ class CollectionPlacesViewController: UIViewController {
 
     private func updateSharedFriendsLabel() {
         let imageAttachment = NSTextAttachment()
-        imageAttachment.image = UIImage(systemName: "person.2.fill")?.withTintColor(.secondaryLabel)
+        imageAttachment.image = UIImage(systemName: "person.2.fill")?.withTintColor(.fourthColor)
         let imageString = NSAttributedString(attachment: imageAttachment)
         
         let textString = NSAttributedString(string: " \(sharedFriendsCount)")
@@ -644,7 +644,7 @@ class CollectionPlacesViewController: UIViewController {
 
     private func updatePlacesCountLabel() {
         let imageAttachment = NSTextAttachment()
-        imageAttachment.image = UIImage(systemName: "bookmark.fill")?.withTintColor(.secondaryLabel)
+        imageAttachment.image = UIImage(systemName: "bookmark.fill")?.withTintColor(.fourthColor)
         let imageString = NSAttributedString(attachment: imageAttachment)
         
         let totalItems = places.count + events.count
@@ -1067,7 +1067,7 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
             self?.openPlaceInMapsByName(place.name)
             completion(true)
         }
-        mapAction.backgroundColor = .systemGreen
+        mapAction.backgroundColor = .statusSuccess
         mapAction.image = UIImage(systemName: "map")
 
         // Visited action

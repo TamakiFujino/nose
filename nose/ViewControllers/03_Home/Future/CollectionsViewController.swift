@@ -31,7 +31,7 @@ class CollectionsViewController: UIViewController {
         tableView.delegate = self
         tableView.dataSource = self
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "CollectionCell")
-        tableView.backgroundColor = .systemBackground
+        tableView.backgroundColor = .firstColor
         return tableView
     }()
     
@@ -63,7 +63,7 @@ class CollectionsViewController: UIViewController {
     
     // MARK: - Setup
     private func setupUI() {
-        view.backgroundColor = .systemBackground
+        view.backgroundColor = .firstColor
         
         // Add subviews
         view.addSubview(titleLabel)
@@ -267,11 +267,11 @@ extension CollectionsViewController: UITableViewDelegate, UITableViewDataSource 
         
         // Create attributed string with bookmark icon
         let imageAttachment = NSTextAttachment()
-        imageAttachment.image = UIImage(systemName: "bookmark.fill")?.withTintColor(.secondaryLabel)
+        imageAttachment.image = UIImage(systemName: "bookmark.fill")?.withTintColor(.fourthColor)
         let imageString = NSAttributedString(attachment: imageAttachment)
         
         let textString = NSAttributedString(string: " \(totalCount)", attributes: [
-            .foregroundColor: UIColor.secondaryLabel,
+            .foregroundColor: UIColor.fourthColor,
             .font: UIFont.systemFont(ofSize: 14)
         ])
         

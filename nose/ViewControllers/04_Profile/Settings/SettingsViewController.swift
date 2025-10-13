@@ -48,7 +48,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
 
     private func setupNavigationBar() {
         navigationItem.title = "Settings"
-        self.navigationController?.navigationBar.tintColor = .black
+        self.navigationController?.navigationBar.tintColor = .sixthColor
         
         // Remove any existing right bar button items
         navigationItem.rightBarButtonItems = nil
@@ -214,7 +214,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             print("  - Info dictionary keys: \(Bundle.main.infoDictionary?.keys.joined(separator: ", ") ?? "None")")
             
             cell.detailTextLabel?.text = fullVersion
-            cell.detailTextLabel?.textColor = .secondaryLabel
+            cell.detailTextLabel?.textColor = .fourthColor
             cell.detailTextLabel?.accessibilityIdentifier = "app_version_text"
             cell.selectionStyle = .none  // Disable selection for app version cell
         } else {

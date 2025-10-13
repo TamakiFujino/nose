@@ -3,16 +3,38 @@
     {
       "target": "dev",
       "public": "hosting/dev",
-      "ignore": ["**/.*", "**/node_modules/**"],
-      "cleanUrls": true,
-      "rewrites": [],
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
       "headers": [
         {
-          "source": "addressables/**",
-          "headers": [
-            { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" },
-            { "key": "Access-Control-Allow-Origin", "value": "*" }
-          ]
+          "source": "/addressables/**/*.bundle",
+          "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+        },
+        {
+          "source": "/addressables/**/catalog_*.json",
+          "headers": [{ "key": "Cache-Control", "value": "public, max-age=3600" }]
+        },
+        {
+          "source": "/addressables/**/catalog_*.hash",
+          "headers": [{ "key": "Cache-Control", "value": "no-cache, max-age=0" }]
+        }
+      ]
+    },
+    {
+      "target": "staging",
+      "public": "hosting/staging",
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "headers": [
+        {
+          "source": "/addressables/**/*.bundle",
+          "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+        },
+        {
+          "source": "/addressables/**/catalog_*.json",
+          "headers": [{ "key": "Cache-Control", "value": "public, max-age=3600" }]
+        },
+        {
+          "source": "/addressables/**/catalog_*.hash",
+          "headers": [{ "key": "Cache-Control", "value": "no-cache, max-age=0" }]
         }
       ]
     }

@@ -18,7 +18,7 @@ final class EventDetailViewController: UIViewController {
     private lazy var containerView: UIView = {
         let view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
-        view.backgroundColor = .systemBackground
+        view.backgroundColor = .firstColor
         view.layer.cornerRadius = 20
         view.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
         view.clipsToBounds = true
@@ -39,7 +39,7 @@ final class EventDetailViewController: UIViewController {
         imageView.translatesAutoresizingMaskIntoConstraints = false
         imageView.contentMode = .scaleAspectFill
         imageView.clipsToBounds = true
-        imageView.backgroundColor = .systemGray6
+        imageView.backgroundColor = .thirdColor
         return imageView
     }()
     
@@ -57,8 +57,8 @@ final class EventDetailViewController: UIViewController {
     private lazy var titleLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.font = .systemFont(ofSize: 24, weight: .bold)
-        label.textColor = .label
+        label.font = AppFonts.displayMedium(24)
+        label.textColor = .sixthColor
         label.numberOfLines = 0
         return label
     }()
@@ -66,8 +66,8 @@ final class EventDetailViewController: UIViewController {
     private lazy var dateLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.font = .systemFont(ofSize: 16)
-        label.textColor = .systemGray
+        label.font = AppFonts.body(16)
+        label.textColor = .fourthColor
         label.numberOfLines = 0
         return label
     }()
@@ -75,8 +75,8 @@ final class EventDetailViewController: UIViewController {
     private lazy var locationLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.font = .systemFont(ofSize: 16)
-        label.textColor = .systemGray
+        label.font = AppFonts.body(16)
+        label.textColor = .fourthColor
         label.numberOfLines = 0
         return label
     }()
@@ -84,8 +84,8 @@ final class EventDetailViewController: UIViewController {
     private lazy var detailsLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.font = .systemFont(ofSize: 16)
-        label.textColor = .label
+        label.font = AppFonts.body(16)
+        label.textColor = .sixthColor
         label.numberOfLines = 0
         return label
     }()
@@ -95,7 +95,7 @@ final class EventDetailViewController: UIViewController {
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setImage(UIImage(systemName: "bookmark"), for: .normal)
         button.tintColor = .fourthColor
-        button.backgroundColor = .white
+        button.backgroundColor = .firstColor
         button.layer.cornerRadius = 25
         button.layer.shadowColor = UIColor.sixthColor.cgColor
         button.layer.shadowOffset = CGSize(width: 0, height: 2)
@@ -227,7 +227,7 @@ final class EventDetailViewController: UIViewController {
             detailsLabel.text = event.details
         } else {
             detailsLabel.text = "No additional details"
-            detailsLabel.textColor = .systemGray
+            detailsLabel.textColor = .fourthColor
         }
     }
     
@@ -260,7 +260,7 @@ final class EventDetailViewController: UIViewController {
                     print("❌ Error loading event: \(error.localizedDescription)")
                     DispatchQueue.main.async {
                         self?.eventImageView.image = UIImage(systemName: "photo")
-                        self?.eventImageView.tintColor = .systemGray3
+                        self?.eventImageView.tintColor = .thirdColor
                     }
                     return
                 }
@@ -273,7 +273,7 @@ final class EventDetailViewController: UIViewController {
                     print("⚠️ No event image URL found")
                     DispatchQueue.main.async {
                         self?.eventImageView.image = UIImage(systemName: "photo")
-                        self?.eventImageView.tintColor = .systemGray3
+                        self?.eventImageView.tintColor = .borderSubtle
                     }
                     return
                 }
@@ -291,7 +291,7 @@ final class EventDetailViewController: UIViewController {
                         print("❌ Failed to load event image")
                         DispatchQueue.main.async {
                             self?.eventImageView.image = UIImage(systemName: "photo")
-                            self?.eventImageView.tintColor = .systemGray3
+                            self?.eventImageView.tintColor = .thirdColor
                         }
                     }
                 }.resume()
@@ -301,7 +301,7 @@ final class EventDetailViewController: UIViewController {
     private func loadAvatarImageFromFirestore() {
         // Set placeholder while loading
         avatarImageView.image = UIImage(systemName: "person.circle")
-        avatarImageView.tintColor = .systemGray3
+        avatarImageView.tintColor = .thirdColor
         
         let db = Firestore.firestore()
         db.collection("users")

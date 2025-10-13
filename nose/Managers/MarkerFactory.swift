@@ -54,7 +54,7 @@ final class MarkerFactory {
         backgroundCircle.layer.cornerRadius = size / 2
         backgroundCircle.layer.masksToBounds = true
         backgroundCircle.layer.borderWidth = 3
-        backgroundCircle.layer.borderColor = UIColor.white.cgColor
+        backgroundCircle.layer.borderColor = UIColor.firstColor.cgColor
         markerView.addSubview(backgroundCircle)
         
         // Bolt icon
@@ -66,7 +66,7 @@ final class MarkerFactory {
             height: iconSize
         ))
         iconImageView.image = UIImage(systemName: "bolt.fill")
-        iconImageView.tintColor = .white
+        iconImageView.tintColor = .firstColor
         iconImageView.contentMode = .scaleAspectFit
         markerView.addSubview(iconImageView)
         

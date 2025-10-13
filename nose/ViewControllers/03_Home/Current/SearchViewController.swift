@@ -62,7 +62,7 @@ final class SearchViewController: UIViewController {
     
     // MARK: - Setup
     private func setupUI() {
-        view.backgroundColor = .systemBackground
+        view.backgroundColor = .firstColor
         
         // Add subviews
         view.addSubview(searchBar)

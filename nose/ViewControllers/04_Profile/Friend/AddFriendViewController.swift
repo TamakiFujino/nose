@@ -41,7 +41,7 @@ class AddFriendViewController: UIViewController {
         label.translatesAutoresizingMaskIntoConstraints = false
         label.text = "Your User ID:"
         label.font = .systemFont(ofSize: 14, weight: .medium)
-        label.textColor = .secondaryLabel
+        label.textColor = .fourthColor
         return label
     }()
     
@@ -49,7 +49,7 @@ class AddFriendViewController: UIViewController {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = .systemFont(ofSize: 14, weight: .medium)
-        label.textColor = .secondaryLabel
+        label.textColor = .fourthColor
         return label
     }()
     
@@ -57,7 +57,7 @@ class AddFriendViewController: UIViewController {
         let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setImage(UIImage(systemName: "doc.on.doc"), for: .normal)
-        button.tintColor = .secondaryLabel
+        button.tintColor = .fourthColor
         button.addTarget(self, action: #selector(copyButtonTapped), for: .touchUpInside)
         return button
     }()
@@ -120,7 +120,7 @@ class AddFriendViewController: UIViewController {
         title = "Add Friend"
         
         // Configure navigation bar
-        navigationController?.navigationBar.tintColor = .label
+        navigationController?.navigationBar.tintColor = .sixthColor
         navigationItem.largeTitleDisplayMode = .never
         
         // Add subviews

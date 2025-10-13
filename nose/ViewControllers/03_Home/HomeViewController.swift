@@ -136,11 +136,11 @@ final class HomeViewController: UIViewController {
     private lazy var messageView: UIView = {
         let view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
-        view.backgroundColor = UIColor.white.withAlphaComponent(0.95)
+        view.backgroundColor = UIColor.firstColor.withAlphaComponent(0.95)
         view.layer.cornerRadius = 12
         view.alpha = 0
         // Add shadow
-        view.layer.shadowColor = UIColor.black.cgColor
+        view.layer.shadowColor = UIColor.sixthColor.cgColor
         view.layer.shadowOffset = CGSize(width: 0, height: 2)
         view.layer.shadowRadius = 8
         view.layer.shadowOpacity = 0.1
@@ -150,7 +150,7 @@ final class HomeViewController: UIViewController {
     private lazy var titleLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.textColor = .black
+        label.textColor = .sixthColor
         label.font = .systemFont(ofSize: 24, weight: .bold)
         label.textAlignment = .center
         return label
@@ -159,7 +159,7 @@ final class HomeViewController: UIViewController {
     private lazy var subtitleLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.textColor = .black.withAlphaComponent(0.7)
+        label.textColor = UIColor.sixthColor.withAlphaComponent(0.7)
         label.font = .systemFont(ofSize: 16, weight: .regular)
         label.textAlignment = .center
         return label
@@ -188,7 +188,7 @@ final class HomeViewController: UIViewController {
     
     // MARK: - Setup
     private func setupUI() {
-        view.backgroundColor = .white
+        view.backgroundColor = .firstColor
         setupSubviews()
         setupConstraints()
         

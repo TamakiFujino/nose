@@ -41,7 +41,7 @@ class ManageEventViewController: UIViewController {
         tableView.delegate = self
         tableView.dataSource = self
         tableView.register(EventTableViewCell.self, forCellReuseIdentifier: "EventCell")
-        tableView.backgroundColor = .systemBackground
+        tableView.backgroundColor = .backgroundPrimary
         tableView.separatorStyle = .singleLine
         tableView.rowHeight = UITableView.automaticDimension
         tableView.estimatedRowHeight = 120
@@ -121,7 +121,7 @@ class ManageEventViewController: UIViewController {
     // MARK: - Setup
     
     private func setupUI() {
-        view.backgroundColor = .systemBackground
+        view.backgroundColor = .backgroundPrimary
         title = "My Events"
         
         // Add navigation bar buttons
@@ -302,7 +302,7 @@ extension ManageEventViewController: UITableViewDelegate, UITableViewDataSource 
             self?.confirmDeleteEvent(at: indexPath)
             completion(true)
         }
-        deleteAction.backgroundColor = .systemRed
+        deleteAction.backgroundColor = .statusError
         deleteAction.image = UIImage(systemName: "trash")
         
         return UISwipeActionsConfiguration(actions: [deleteAction])
@@ -373,7 +373,7 @@ class EventTableViewCell: UITableViewCell {
         imageView.translatesAutoresizingMaskIntoConstraints = false
         imageView.contentMode = .scaleAspectFill
         imageView.clipsToBounds = true
-        imageView.backgroundColor = .systemGray6
+        imageView.backgroundColor = .backgroundSecondary
         return imageView
     }()
     
@@ -496,14 +496,14 @@ class EventTableViewCell: UITableViewCell {
         
         // Show placeholder
         eventImageView.image = UIImage(systemName: "photo")
-        eventImageView.tintColor = .systemGray3
+        eventImageView.tintColor = .borderSubtle
         eventImageView.contentMode = .scaleAspectFit
     }
     
     private func loadAvatarImage(for event: Event) {
         // Set placeholder while loading
         avatarImageView.image = UIImage(systemName: "person.circle")
-        avatarImageView.tintColor = .systemGray3
+        avatarImageView.tintColor = .borderSubtle
         
         let db = Firestore.firestore()
         db.collection("users")

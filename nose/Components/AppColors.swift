@@ -51,4 +51,16 @@ extension UIColor {
     static let blueColor = UIColor(hex: "#A6B6D3") ?? .blue
     static let purpleColor = UIColor(hex: "#8E8BBA") ?? .purple
 
+    // Semantic aliases
+    static let backgroundPrimary = UIColor.firstColor
+    static let backgroundSecondary = UIColor.secondColor
+    static let borderSubtle = UIColor.thirdColor
+    static let textSecondary = UIColor.fourthColor
+    static let textPrimary = UIColor.sixthColor
+    static let accent = UIColor.blueColor
+    static let statusError = UIColor.redColor
+    static let statusSuccess = UIColor.greenColor
+    // No orange in palette; warnings map to red for now
+    static let statusWarning = UIColor.redColor
+
 }

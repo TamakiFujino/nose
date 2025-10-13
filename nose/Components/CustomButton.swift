@@ -17,6 +17,6 @@ class CustomButton: UIButton {
         self.layer.cornerRadius = 8
         self.clipsToBounds = true
         self.backgroundColor = UIColor.thirdColor
-        self.titleLabel?.font = UIFont.boldSystemFont(ofSize: 18)
+        self.titleLabel?.font = AppFonts.bodyBold(18)
     }
 }

@@ -45,7 +45,7 @@ class FriendsViewController: UIViewController {
         title = "Friends"
         
         // Configure navigation bar
-        navigationController?.navigationBar.tintColor = .label
+        navigationController?.navigationBar.tintColor = .sixthColor
         navigationItem.largeTitleDisplayMode = .never
         
         // Add subviews
@@ -344,7 +344,7 @@ extension FriendsViewController: UITableViewDelegate, UITableViewDataSource {
         
         var content = cell.defaultContentConfiguration()
         content.text = user.name
-        content.textProperties.color = .label
+        content.textProperties.color = .sixthColor
         content.textProperties.font = .systemFont(ofSize: 17, weight: .medium)
         
         // Configure cell background
@@ -357,7 +357,7 @@ extension FriendsViewController: UITableViewDelegate, UITableViewDataSource {
         
         // Add a custom selected background view
         let selectedBackgroundView = UIView()
-        selectedBackgroundView.backgroundColor = UIColor.white.withAlphaComponent(0.2)
+        selectedBackgroundView.backgroundColor = UIColor.firstColor.withAlphaComponent(0.2)
         cell.selectedBackgroundView = selectedBackgroundView
         
         cell.contentConfiguration = content

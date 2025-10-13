@@ -103,7 +103,7 @@ final class CreateEventViewController: UIViewController {
         button.setTitle("Customize avatar", for: .normal)
         button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
         button.backgroundColor = .fourthColor
-        button.setTitleColor(.white, for: .normal)
+        button.setTitleColor(.firstColor, for: .normal)
         button.layer.cornerRadius = 24
         button.clipsToBounds = true
         button.contentEdgeInsets = UIEdgeInsets(top: 12, left: 20, bottom: 12, right: 20)
@@ -163,10 +163,10 @@ final class CreateEventViewController: UIViewController {
     private lazy var startDateButton: UIButton = {
         let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.backgroundColor = .systemBackground
+        button.backgroundColor = .backgroundPrimary
         button.layer.cornerRadius = 5 // UITextField roundedRect uses 5pt radius
         button.layer.borderWidth = 0.5 // UITextField roundedRect uses 0.5pt border
-        button.layer.borderColor = UIColor.systemGray3.cgColor // UITextField roundedRect uses systemGray3
+        button.layer.borderColor = UIColor.borderSubtle.cgColor // UITextField roundedRect uses systemGray3
         button.contentHorizontalAlignment = .left
         button.titleEdgeInsets = UIEdgeInsets(top: 0, left: 8, bottom: 0, right: 8) // UITextField roundedRect uses 8pt padding
         button.setTitleColor(.label, for: .normal)
@@ -187,10 +187,10 @@ final class CreateEventViewController: UIViewController {
     private lazy var endDateButton: UIButton = {
         let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.backgroundColor = .systemBackground
+        button.backgroundColor = .backgroundPrimary
         button.layer.cornerRadius = 5 // UITextField roundedRect uses 5pt radius
         button.layer.borderWidth = 0.5 // UITextField roundedRect uses 0.5pt border
-        button.layer.borderColor = UIColor.systemGray3.cgColor // UITextField roundedRect uses systemGray3
+        button.layer.borderColor = UIColor.borderSubtle.cgColor // UITextField roundedRect uses systemGray3
         button.contentHorizontalAlignment = .left
         button.titleEdgeInsets = UIEdgeInsets(top: 0, left: 8, bottom: 0, right: 8) // UITextField roundedRect uses 8pt padding
         button.setTitleColor(.label, for: .normal)
@@ -240,8 +240,8 @@ final class CreateEventViewController: UIViewController {
         tableView.isHidden = true
         tableView.layer.cornerRadius = 8
         tableView.layer.borderWidth = 1
-        tableView.layer.borderColor = UIColor.systemGray4.cgColor
-        tableView.backgroundColor = .systemBackground
+        tableView.layer.borderColor = UIColor.borderSubtle.cgColor
+        tableView.backgroundColor = .backgroundPrimary
         // Ensure it appears above other elements
         tableView.layer.zPosition = 1000
         return tableView
@@ -261,7 +261,7 @@ final class CreateEventViewController: UIViewController {
         let textView = UITextView()
         textView.translatesAutoresizingMaskIntoConstraints = false
         textView.font = .systemFont(ofSize: 16)
-        textView.layer.borderColor = UIColor.systemGray3.cgColor // Match other fields
+        textView.layer.borderColor = UIColor.borderSubtle.cgColor // Match other fields
         textView.layer.borderWidth = 0.5 // Match other fields
         textView.layer.cornerRadius = 5 // Match other fields
         textView.textContainerInset = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
@@ -329,9 +329,9 @@ final class CreateEventViewController: UIViewController {
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setTitle("Cancel", for: .normal)
         button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
-        button.setTitleColor(.systemRed, for: .normal)
+        button.setTitleColor(.statusError, for: .normal)
         button.layer.borderWidth = 1
-        button.layer.borderColor = UIColor.systemRed.cgColor
+        button.layer.borderColor = UIColor.statusError.cgColor
         button.layer.cornerRadius = 12
         button.addTarget(self, action: #selector(cancelButtonTapped), for: .touchUpInside)
         return button
@@ -342,7 +342,7 @@ final class CreateEventViewController: UIViewController {
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setTitle(isEditMode ? "Update Event" : "Create Event", for: .normal)
         button.titleLabel?.font = .systemFont(ofSize: 16, weight: .semibold)
-        button.setTitleColor(.white, for: .normal)
+        button.setTitleColor(.firstColor, for: .normal)
         button.backgroundColor = .fourthColor
         button.layer.cornerRadius = 12
         button.addTarget(self, action: #selector(createButtonTapped), for: .touchUpInside)
@@ -370,7 +370,7 @@ final class CreateEventViewController: UIViewController {
     
     // MARK: - Setup
     private func setupUI() {
-        view.backgroundColor = .systemBackground
+        view.backgroundColor = .backgroundPrimary
         title = isEditMode ? "Edit Event" : "Create Event"
         
         // Add navigation bar close button
@@ -998,7 +998,7 @@ extension CreateEventViewController: UITextFieldDelegate {
             
             if newText.count <= 25 {
                 titleCharCountLabel.text = "\(newText.count)/25"
-                titleCharCountLabel.textColor = newText.count > 20 ? .systemRed : .secondaryLabel
+                titleCharCountLabel.textColor = newText.count > 20 ? .statusError : .textSecondary
                 return true
             }
             return false
@@ -1045,7 +1045,7 @@ extension CreateEventViewController: UITextViewDelegate {
         
         let count = textView.text.count
         detailsCharCountLabel.text = "\(count)/1000"
-        detailsCharCountLabel.textColor = count > 900 ? .systemRed : .secondaryLabel
+        detailsCharCountLabel.textColor = count > 900 ? .statusError : .textSecondary
         
         if count > 1000 {
             textView.text = String(textView.text.prefix(1000))
@@ -1202,7 +1202,7 @@ class ImageCollectionViewCell: UICollectionViewCell {
         imageView.contentMode = .scaleAspectFill
         imageView.clipsToBounds = true
         imageView.layer.cornerRadius = 8
-        imageView.backgroundColor = .systemGray6
+        imageView.backgroundColor = .backgroundSecondary
         return imageView
     }()
     
@@ -1211,7 +1211,7 @@ class ImageCollectionViewCell: UICollectionViewCell {
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setImage(UIImage(systemName: "plus"), for: .normal)
         button.tintColor = .fourthColor
-        button.backgroundColor = .systemGray6
+        button.backgroundColor = .backgroundSecondary
         button.layer.cornerRadius = 8
         return button
     }()

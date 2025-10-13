@@ -31,7 +31,7 @@ class LoadingView {
     }
     
     // MARK: - Overlay Style Loading
-    func showOverlayLoading(on view: UIView, message: String? = nil, backgroundColor: UIColor = .systemBackground) {
+    func showOverlayLoading(on view: UIView, message: String? = nil, backgroundColor: UIColor = .backgroundPrimary) {
         DispatchQueue.main.async {
             // Create overlay view
             let overlayView = UIView(frame: view.bounds)

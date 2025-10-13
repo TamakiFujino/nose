@@ -22,10 +22,9 @@ final class ViewController: UIViewController {
         label.translatesAutoresizingMaskIntoConstraints = false
         label.text = "Map your journey\nStyle your future"
         label.textAlignment = .center
-        // set font to gotham
-        let font = UIFont(name: "Gotham-Bold", size: 32) ?? UIFont.systemFont(ofSize: 32, weight: .bold)
-        label.font = font
-        label.textColor = .white
+        // centralized typography
+        label.font = AppFonts.displayLarge(32)
+        label.textColor = .firstColor
         label.numberOfLines = 0
         label.alpha = 0 // Initially invisible
         return label
@@ -52,12 +51,12 @@ final class ViewController: UIViewController {
     private lazy var loadingView: UIView = {
         let view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
-        view.backgroundColor = UIColor.black.withAlphaComponent(0.5)
+        view.backgroundColor = UIColor.sixthColor.withAlphaComponent(0.5)
         view.isHidden = true
         
         let activityIndicator = UIActivityIndicatorView(style: .large)
         activityIndicator.translatesAutoresizingMaskIntoConstraints = false
-        activityIndicator.color = .white
+        activityIndicator.color = .firstColor
         activityIndicator.startAnimating()
         
         view.addSubview(activityIndicator)
@@ -91,7 +90,7 @@ final class ViewController: UIViewController {
     // MARK: - Setup
     private func setupLaunchStyle() {
         // Start with launch screen style (white background + logo)
-        view.backgroundColor = .white
+        view.backgroundColor = .firstColor
         view.addSubview(launchLogoImageView)
         
         // Setup launch logo constraints
@@ -116,7 +115,7 @@ final class ViewController: UIViewController {
         
         if backgroundImage.image == nil {
             // Set a fallback background color
-            view.backgroundColor = .systemBlue
+            view.backgroundColor = .blueColor
         }
         
         backgroundImage.contentMode = .scaleAspectFill
@@ -205,7 +204,7 @@ final class ViewController: UIViewController {
         let titleLabel = UILabel()
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         titleLabel.text = title
-        titleLabel.font = .systemFont(ofSize: 18, weight: .bold)
+        titleLabel.font = AppFonts.bodyBold(18)
         titleLabel.textColor = .firstColor
         
         containerView.addSubview(iconImageView)

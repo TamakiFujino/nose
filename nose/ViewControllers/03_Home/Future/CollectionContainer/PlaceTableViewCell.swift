@@ -10,7 +10,7 @@ class PlaceTableViewCell: UITableViewCell {
         imageView.contentMode = .scaleAspectFill
         imageView.clipsToBounds = true
         imageView.layer.cornerRadius = 8
-        imageView.backgroundColor = .systemGray5
+        imageView.backgroundColor = .thirdColor
         return imageView
     }()
 
@@ -18,7 +18,7 @@ class PlaceTableViewCell: UITableViewCell {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = .systemFont(ofSize: 16, weight: .medium)
-        label.textColor = .label
+        label.textColor = .sixthColor
         return label
     }()
 
@@ -26,7 +26,7 @@ class PlaceTableViewCell: UITableViewCell {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = .systemFont(ofSize: 14)
-        label.textColor = .secondaryLabel
+        label.textColor = .fourthColor
         return label
     }()
     
@@ -109,7 +109,7 @@ class PlaceTableViewCell: UITableViewCell {
         if place.visited {
             backgroundColor = .secondColor
         } else {
-            backgroundColor = .systemBackground
+            backgroundColor = .firstColor
         }
         
         // Hide visited indicator since we're using background color instead
@@ -146,7 +146,7 @@ class PlaceTableViewCell: UITableViewCell {
         let dateString = dateFormatter.string(from: event.dateTime.startDate)
         ratingLabel.text = "⚡ \(dateString) • \(event.location.name)"
         
-        backgroundColor = .systemBackground
+        backgroundColor = .firstColor
         visitedIndicator.isHidden = true
         
         // Clear image immediately to prevent showing old images
@@ -167,7 +167,7 @@ class PlaceTableViewCell: UITableViewCell {
     private func loadEventImage(eventId: String, userId: String) {
         // Show placeholder while loading
         placeImageView.image = UIImage(systemName: "photo")
-        placeImageView.tintColor = .systemGray3
+        placeImageView.tintColor = .thirdColor
         
         let db = Firestore.firestore()
         db.collection("users")

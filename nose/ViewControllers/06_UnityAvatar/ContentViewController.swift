@@ -22,7 +22,7 @@ class ContentViewController: UIViewController, ContentViewControllerDelegate {
         super.viewDidLoad()
         
         // Set a proper background color to avoid black screen
-        view.backgroundColor = .systemBackground
+        view.backgroundColor = .backgroundPrimary
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { self.launchUnity() }
     }

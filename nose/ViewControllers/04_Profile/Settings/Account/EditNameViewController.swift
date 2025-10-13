@@ -33,7 +33,7 @@ final class EditNameViewController: UIViewController {
         label.translatesAutoresizingMaskIntoConstraints = false
         label.textAlignment = .right
         label.font = .systemFont(ofSize: 12)
-        label.textColor = .gray
+        label.textColor = .fifthColor
         label.text = "0/\(Constants.maxNameLength)"
         return label
     }()
@@ -57,7 +57,7 @@ final class EditNameViewController: UIViewController {
     private func setupUI() {
         view.backgroundColor = .firstColor
         title = "Edit Name"
-        navigationController?.navigationBar.tintColor = .label
+        navigationController?.navigationBar.tintColor = .sixthColor
         navigationItem.largeTitleDisplayMode = .never
         
         setupSubviews()
@@ -117,11 +117,11 @@ final class EditNameViewController: UIViewController {
         
         // Update label color based on character count
         if count > Constants.maxNameLength {
-            characterCountLabel.textColor = .systemRed
+            characterCountLabel.textColor = .statusError
         } else if count < Constants.minNameLength {
-            characterCountLabel.textColor = .systemOrange
+            characterCountLabel.textColor = .statusWarning
         } else {
-            characterCountLabel.textColor = .gray
+            characterCountLabel.textColor = .fifthColor
         }
     }
     

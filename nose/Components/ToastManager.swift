@@ -5,7 +5,7 @@ class ToastManager {
         guard let window = UIApplication.shared.windows.first(where: { $0.isKeyWindow }) else { return }
 
         let containerView = UIView()
-        containerView.backgroundColor = .white
+        containerView.backgroundColor = .backgroundPrimary
         containerView.alpha = 0.0
         containerView.layer.cornerRadius = 10
         containerView.clipsToBounds = true
@@ -19,7 +19,7 @@ class ToastManager {
         // Message label
         let messageLabel = UILabel()
         messageLabel.text = message
-        messageLabel.textColor = .black
+        messageLabel.textColor = .textPrimary
         messageLabel.font = .systemFont(ofSize: 14, weight: .medium)
         messageLabel.numberOfLines = 0
         messageLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -78,11 +78,11 @@ class ToastManager {
     private static func circleColor(for type: ToastType) -> UIColor {
         switch type {
         case .success:
-            return .systemGreen
+            return .statusSuccess
         case .error:
-            return .systemRed
+            return .statusError
         case .info:
-            return .lightGray
+            return .borderSubtle
         }
     }
 }

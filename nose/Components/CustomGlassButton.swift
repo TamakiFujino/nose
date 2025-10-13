@@ -29,12 +29,12 @@ class CustomGlassButton: UIButton {
         // Base styles
         layer.cornerRadius = cornerRadius
         clipsToBounds = true
-        backgroundColor = UIColor.white.withAlphaComponent(0.1) // glass background
-        layer.borderColor = UIColor.white.withAlphaComponent(0.3).cgColor
+        backgroundColor = UIColor.firstColor.withAlphaComponent(0.1) // glass background
+        layer.borderColor = UIColor.firstColor.withAlphaComponent(0.3).cgColor
         layer.borderWidth = 1.0
 
         setTitleColor(.firstColor, for: .normal)
-        titleLabel?.font = UIFont.boldSystemFont(ofSize: 18)
+        titleLabel?.font = AppFonts.bodyBold(18)
 
         // Enable press animation
         addTarget(self, action: #selector(pressDown), for: [.touchDown, .touchDragEnter])

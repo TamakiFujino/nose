@@ -40,7 +40,7 @@ class BoxViewController: UIViewController {
         tableView.delegate = self
         tableView.dataSource = self
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "CollectionCell")
-        tableView.backgroundColor = .systemBackground
+        tableView.backgroundColor = .backgroundPrimary
         return tableView
     }()
     
@@ -53,7 +53,7 @@ class BoxViewController: UIViewController {
     
     // MARK: - Setup
     private func setupUI() {
-        view.backgroundColor = .systemBackground
+        view.backgroundColor = .backgroundPrimary
         view.addSubview(titleLabel)
         view.addSubview(segmentedControl)
         view.addSubview(tableView)
