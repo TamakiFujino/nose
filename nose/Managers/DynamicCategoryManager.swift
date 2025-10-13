@@ -125,14 +125,14 @@ final class DynamicCategoryManager {
     // MARK: - Private Methods
     
     private func performCategoryLoad() async throws {
-        print("🔄 Loading categories from Firebase Storage...")
+        Logger.log("Load categories from Firebase Storage", level: .debug, category: "DynamicCategory")
         
         // Load categories index file first
         try await loadCategoriesIndex()
         
         // Discover available JSON files in Firebase Storage
         let jsonFiles = try await discoverJsonFiles()
-        print("📁 Found JSON files: \(jsonFiles)")
+        Logger.log("Found JSON files: \(jsonFiles.count)", level: .debug, category: "DynamicCategory")
         
         // Load each JSON file concurrently
         var allCategories: [String: [String: [String]]] = [:]
@@ -218,22 +218,22 @@ final class DynamicCategoryManager {
         
         do {
             let data = try await jsonRef.data(maxSize: maxSize)
-            print("📦 Downloaded \(filename): \(String(data: data, encoding: .utf8) ?? "unable to decode")")
+        Logger.log("Downloaded: \(filename)", level: .debug, category: "DynamicCategory")
             
             let json = try JSONSerialization.jsonObject(with: data, options: [])
             guard let categoryData = json as? [String: [String]] else {
-                print("❌ \(filename) is not in expected format [String: [String]]")
+                Logger.log("Invalid format in \(filename)", level: .warn, category: "DynamicCategory")
                 throw CategoryLoadError.invalidFormat(filename)
             }
             
-            print("✅ Successfully loaded \(categoryData.count) subcategories from \(filename)")
+            Logger.log("Loaded \(categoryData.count) subcategories from \(filename)", level: .info, category: "DynamicCategory")
             return categoryData
         } catch let error as NSError {
             if error.domain == "com.google.HTTPStatus" && error.code == 404 {
-                print("⚠️ \(filename) not found in Firebase Storage. Using empty category data.")
+                Logger.log("\(filename) not found; using empty", level: .warn, category: "DynamicCategory")
                 return [:]
             }
-            print("❌ Error loading \(filename): \(error.localizedDescription)")
+            Logger.log("Load error for \(filename): \(error.localizedDescription)", level: .error, category: "DynamicCategory")
             throw CategoryLoadError.loadFailed(filename, error.localizedDescription)
         }
     }
@@ -244,7 +244,7 @@ final class DynamicCategoryManager {
         
         do {
             let data = try await indexRef.data(maxSize: maxSize)
-            print("📦 Downloaded categories.json: \(String(data: data, encoding: .utf8) ?? "unable to decode")")
+            Logger.log("Downloaded categories.json", level: .debug, category: "DynamicCategory")
             
             let json = try JSONSerialization.jsonObject(with: data, options: [])
             guard let indexDict = json as? [String: Any] else {
@@ -255,22 +255,22 @@ final class DynamicCategoryManager {
             // Load order
             if let orderArray = indexDict["order"] as? [String] {
                 categoryOrder = orderArray
-                print("📋 Loaded category order: \(categoryOrder)")
+                Logger.log("Loaded category order: \(categoryOrder.count)", level: .debug, category: "DynamicCategory")
             }
             
             // Load metadata
             if let metadataDict = indexDict["metadata"] as? [String: [String: String]] {
                 categoryMetadata = metadataDict
-                print("📋 Loaded category metadata: \(categoryMetadata)")
+                Logger.log("Loaded category metadata: \(categoryMetadata.keys.count)", level: .debug, category: "DynamicCategory")
             }
             
         } catch let error as NSError {
             if error.domain == "com.google.HTTPStatus" && error.code == 404 {
-                print("⚠️ categories.json not found. Using alphabetical order.")
+                Logger.log("categories.json not found; alphabetical order", level: .warn, category: "DynamicCategory")
                 categoryOrder = []
                 categoryMetadata = [:]
             } else {
-                print("❌ Error loading categories.json: \(error.localizedDescription)")
+                Logger.log("categories.json error: \(error.localizedDescription)", level: .error, category: "DynamicCategory")
                 throw error
             }
         }
@@ -283,7 +283,7 @@ final class DynamicCategoryManager {
             categoryGroups[mainCategory] = Array(subcategories.keys)
         }
         
-        print("🏗️ Built category groups: \(categoryGroups)")
+        Logger.log("Built category groups: \(categoryGroups.keys.count)", level: .debug, category: "DynamicCategory")
     }
     
     private func applyCategoryOrdering() {
@@ -294,7 +294,7 @@ final class DynamicCategoryManager {
         let missingCategories = mainCategories.filter { !validOrder.contains($0) }
         categoryOrder = validOrder + missingCategories
         
-        print("📋 Applied category ordering: \(categoryOrder)")
+        Logger.log("Applied ordering: \(categoryOrder.count)", level: .debug, category: "DynamicCategory")
     }
     
     // MARK: - Error Types

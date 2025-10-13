@@ -9,7 +9,6 @@ class PlacesAPIManager {
         static let searchDebounceDelay: TimeInterval = 0.5  // 500ms delay
         static let maxDailyRequests = 1000
         static let maxRequestsPerMinute = 60  // Increased to 60 requests per minute for better UX
-        static let burstAllowance = 10  // Allow burst of 10 requests for user interactions
     }
     
     // MARK: - Optimized Field Configurations
@@ -158,7 +157,7 @@ class PlacesAPIManager {
             return
         }
         
-        print("🔍 Performing search for: '\(query)' (Request #\(dailyRequestCount + 1))")
+        Logger.log("Search: '\(query)' (#\(dailyRequestCount + 1))", level: .debug, category: "PlacesAPI")
         
         let placesClient = GMSPlacesClient.shared()
         let filter = GMSAutocompleteFilter()
@@ -170,7 +169,7 @@ class PlacesAPIManager {
             sessionToken: nil
         ) { [weak self] results, error in
             if let error = error {
-                print("❌ Search error: \(error.localizedDescription)")
+                Logger.log("Search error: \(error.localizedDescription)", level: .error, category: "PlacesAPI")
                 completion([])
                 return
             }
@@ -183,7 +182,7 @@ class PlacesAPIManager {
                 return
             }
             
-            print("✅ Search completed: \(results.count) results found")
+            Logger.log("Search completed: \(results.count) results", level: .info, category: "PlacesAPI")
             completion(results)
         }
     }
@@ -204,13 +203,12 @@ class PlacesAPIManager {
             return
         }
         
-        print("🔍 Fetching place details for: \(placeID) (Request #\(dailyRequestCount + 1))")
-        print("🔍 Requested fields: \(fields)")
+        Logger.log("Details for: \(placeID) (#\(dailyRequestCount + 1)) fields=\(fields)", level: .debug, category: "PlacesAPI")
         
         let placesClient = GMSPlacesClient.shared()
         placesClient.fetchPlace(fromPlaceID: placeID, placeFields: fields, sessionToken: nil) { [weak self] place, error in
             if let error = error {
-                print("❌ Place details error: \(error.localizedDescription)")
+                Logger.log("Place details error: \(error.localizedDescription)", level: .error, category: "PlacesAPI")
                 completion(nil)
                 return
             }
@@ -221,7 +219,7 @@ class PlacesAPIManager {
             if let place = place {
                 // Cache the place
                 PlacesCacheManager.shared.cachePlace(place)
-                print("✅ Place details fetched and cached")
+                Logger.log("Details fetched & cached", level: .debug, category: "PlacesAPI")
             }
             
             completion(place)
@@ -284,13 +282,12 @@ class PlacesAPIManager {
             return
         }
         
-        print("🔍 Fetching place details for user interaction: \(placeID) (Request #\(dailyRequestCount + 1))")
-        print("🔍 Requested fields: \(fields)")
+        Logger.log("UI Details for: \(placeID) (#\(dailyRequestCount + 1)) fields=\(fields)", level: .debug, category: "PlacesAPI")
         
         let placesClient = GMSPlacesClient.shared()
         placesClient.fetchPlace(fromPlaceID: placeID, placeFields: fields, sessionToken: nil) { [weak self] place, error in
             if let error = error {
-                print("❌ Place details error: \(error.localizedDescription)")
+                Logger.log("UI details error: \(error.localizedDescription)", level: .error, category: "PlacesAPI")
                 completion(nil)
                 return
             }
@@ -301,7 +298,7 @@ class PlacesAPIManager {
             if let place = place {
                 // Cache the place
                 PlacesCacheManager.shared.cachePlace(place)
-                print("✅ Place details fetched and cached for user interaction")
+                Logger.log("UI details fetched & cached", level: .debug, category: "PlacesAPI")
             }
             
             completion(place)
@@ -312,7 +309,7 @@ class PlacesAPIManager {
     func loadPlacePhoto(photo: GMSPlacePhotoMetadata, placeID: String, photoIndex: Int, completion: @escaping (UIImage?) -> Void) {
         let photoID = "\(placeID)_\(photoIndex)"
         
-        print("🖼️ Starting photo load for: \(photoID)")
+        Logger.log("Photo load start: \(photoID)", level: .debug, category: "PlacesAPI")
         
         // Check cache first
         if let cachedImage = PlacesCacheManager.shared.getCachedPhoto(for: photoID) {
@@ -328,13 +325,12 @@ class PlacesAPIManager {
             return
         }
         
-        print("🖼️ Loading photo for: \(photoID) (Request #\(dailyRequestCount + 1))")
+        Logger.log("Photo load: \(photoID) (#\(dailyRequestCount + 1))", level: .debug, category: "PlacesAPI")
         
         let placesClient = GMSPlacesClient.shared()
         placesClient.loadPlacePhoto(photo) { [weak self] image, error in
             if let error = error {
-                print("❌ Photo loading error: \(error.localizedDescription)")
-                print("❌ Error details: \(error)")
+                Logger.log("Photo error: \(error.localizedDescription)", level: .error, category: "PlacesAPI")
                 completion(nil)
                 return
             }
@@ -345,10 +341,9 @@ class PlacesAPIManager {
             if let image = image {
                 // Cache the photo
                 PlacesCacheManager.shared.cachePhoto(image, for: photoID)
-                print("✅ Photo loaded and cached for: \(photoID)")
-                print("✅ Image size: \(image.size)")
+                Logger.log("Photo cached: \(photoID) size=\(image.size)", level: .debug, category: "PlacesAPI")
             } else {
-                print("❌ No image returned for: \(photoID)")
+                Logger.log("No image returned: \(photoID)", level: .warn, category: "PlacesAPI")
             }
             
             completion(image)

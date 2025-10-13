@@ -11,6 +11,62 @@ class EventManager {
     private let storage = Storage.storage()
     
     private init() {}
+
+    // MARK: - Helpers (centralize common Firestore payloads)
+    private func buildLocationDict(for event: Event) -> [String: Any] {
+        return [
+            "name": event.location.name,
+            "address": event.location.address,
+            "latitude": event.location.coordinates?.latitude ?? 0.0,
+            "longitude": event.location.coordinates?.longitude ?? 0.0
+        ]
+    }
+
+    private func buildCreateEventData(
+        event: Event,
+        userId: String,
+        eventId: String,
+        imageURLs: [String],
+        avatarData: CollectionAvatar.AvatarData?,
+        avatarURL: String?
+    ) -> [String: Any] {
+        var data: [String: Any] = [
+            "id": eventId,
+            "title": event.title,
+            "startDate": Timestamp(date: event.dateTime.startDate),
+            "endDate": Timestamp(date: event.dateTime.endDate),
+            "location": buildLocationDict(for: event),
+            "details": event.details,
+            "imageURLs": imageURLs,
+            "createdAt": Timestamp(date: event.createdAt),
+            "userId": userId,
+            "status": "active",
+            "version": 1
+        ]
+        if let avatarData = avatarData { data["avatarData"] = avatarData.toFirestoreDict() }
+        if let avatarURL = avatarURL, !avatarURL.isEmpty { data["avatarImageURL"] = avatarURL }
+        return data
+    }
+
+    private func buildUpdateEventData(
+        event: Event,
+        imageURLs: [String],
+        avatarData: CollectionAvatar.AvatarData?,
+        avatarURL: String?
+    ) -> [String: Any] {
+        var data: [String: Any] = [
+            "title": event.title,
+            "startDate": Timestamp(date: event.dateTime.startDate),
+            "endDate": Timestamp(date: event.dateTime.endDate),
+            "location": buildLocationDict(for: event),
+            "details": event.details,
+            "imageURLs": imageURLs,
+            "updatedAt": FieldValue.serverTimestamp()
+        ]
+        if let avatarData = avatarData { data["avatarData"] = avatarData.toFirestoreDict() }
+        if let avatarURL = avatarURL, !avatarURL.isEmpty { data["avatarImageURL"] = avatarURL }
+        return data
+    }
     
     private func handleAuthError() -> NSError {
         return NSError(domain: "EventManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])
@@ -32,39 +88,19 @@ class EventManager {
                 // Upload temporary avatar image if it exists
                 self?.uploadTemporaryAvatarImage(eventId: eventId, userId: userId) { avatarResult in
                     // Create event data with image URLs instead of base64
-                    var eventData: [String: Any] = [
-                        "id": eventId,
-                        "title": event.title,
-                        "startDate": Timestamp(date: event.dateTime.startDate),
-                        "endDate": Timestamp(date: event.dateTime.endDate),
-                        "location": [
-                            "name": event.location.name,
-                            "address": event.location.address,
-                            "latitude": event.location.coordinates?.latitude ?? 0.0,
-                            "longitude": event.location.coordinates?.longitude ?? 0.0
-                        ],
-                        "details": event.details,
-                        "imageURLs": imageURLs, // Store URLs instead of base64
-                        "createdAt": Timestamp(date: event.createdAt),
-                        "userId": userId,
-                        "status": "active",
-                        "version": 1
-                    ]
-                    
-                    // Add avatar data if provided
-                    if let avatarData = avatarData {
-                        eventData["avatarData"] = avatarData.toFirestoreDict()
-                    }
-                    
-                    // Add avatar image URL if uploaded successfully
-                    switch avatarResult {
-                    case .success(let avatarURL):
-                        eventData["avatarImageURL"] = avatarURL
-                        print("✅ Avatar image uploaded successfully: \(avatarURL)")
-                    case .failure(let error):
-                        print("⚠️ Avatar image upload failed: \(error.localizedDescription)")
-                        // Continue without avatar image - not critical
-                    }
+                    let avatarURL: String? = {
+                        if case .success(let url) = avatarResult { return url }
+                        Logger.log("Avatar image upload failed or missing", level: .warn, category: "Event")
+                        return nil
+                    }()
+                    let eventData = self?.buildCreateEventData(
+                        event: event,
+                        userId: userId,
+                        eventId: eventId,
+                        imageURLs: imageURLs,
+                        avatarData: avatarData,
+                        avatarURL: avatarURL
+                    ) ?? [:]
                     
                     let eventRef = self?.db.collection("users")
                         .document(userId)
@@ -73,11 +109,10 @@ class EventManager {
                     
                     eventRef?.setData(eventData) { error in
                         if let error = error {
-                            print("❌ Error creating event: \(error.localizedDescription)")
+                            Logger.log("Create error: \(error.localizedDescription)", level: .error, category: "Event")
                             completion(.failure(error))
                         } else {
-                            print("✅ Successfully created event: \(eventId)")
-                            print("📊 Event data saved: title=\(eventData["title"] ?? "nil"), status=\(eventData["status"] ?? "nil")")
+                            Logger.log("Created: \(eventId) title=\(event.title)", level: .info, category: "Event")
                             // Clean up temporary avatar image after successful event creation
                             self?.deleteTemporaryAvatarImage()
                             completion(.success(eventId))
@@ -86,8 +121,64 @@ class EventManager {
                 }
                 
             case .failure(let error):
-                print("❌ Error uploading event images: \(error.localizedDescription)")
+                Logger.log("Image upload error: \(error.localizedDescription)", level: .error, category: "Event")
                 completion(.failure(error))
+            }
+        }
+    }
+
+    // MARK: - Async/Await wrappers
+    func createEvent(_ event: Event, avatarData: CollectionAvatar.AvatarData?) async throws -> String {
+        try await withCheckedThrowingContinuation { continuation in
+            self.createEvent(event, avatarData: avatarData) { result in
+                switch result {
+                case .success(let id): continuation.resume(returning: id)
+                case .failure(let error): continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    func fetchAllCurrentAndFutureEvents() async throws -> [Event] {
+        try await withCheckedThrowingContinuation { continuation in
+            self.fetchAllCurrentAndFutureEvents { result in
+                switch result {
+                case .success(let events): continuation.resume(returning: events)
+                case .failure(let error): continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    func fetchEvents(userId: String) async throws -> [Event] {
+        try await withCheckedThrowingContinuation { continuation in
+            self.fetchEvents(userId: userId) { result in
+                switch result {
+                case .success(let events): continuation.resume(returning: events)
+                case .failure(let error): continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    func updateEvent(_ event: Event, avatarData: CollectionAvatar.AvatarData?) async throws {
+        try await withCheckedThrowingContinuation { continuation in
+            self.updateEvent(event, avatarData: avatarData) { result in
+                switch result {
+                case .success: continuation.resume()
+                case .failure(let error): continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    func deleteEvent(eventId: String) async throws {
+        try await withCheckedThrowingContinuation { continuation in
+            self.deleteEvent(eventId: eventId) { result in
+                switch result {
+                case .success: continuation.resume()
+                case .failure(let error): continuation.resume(throwing: error)
+                }
             }
         }
     }
@@ -96,7 +187,7 @@ class EventManager {
     
     /// Fetch all current and future events from all users for map display
     func fetchAllCurrentAndFutureEvents(completion: @escaping (Result<[Event], Error>) -> Void) {
-        print("🔍 Fetching all current and future events for map")
+        Logger.log("Fetch all current/future events", level: .debug, category: "Event")
         let now = Date()
         
         // Query all users' events where endDate is in the future
@@ -105,18 +196,18 @@ class EventManager {
             .whereField("endDate", isGreaterThanOrEqualTo: Timestamp(date: now))
             .getDocuments { snapshot, error in
                 if let error = error {
-                    print("❌ Error fetching all events: \(error.localizedDescription)")
+                    Logger.log("Fetch all error: \(error.localizedDescription)", level: .error, category: "Event")
                     completion(.failure(error))
                     return
                 }
                 
                 guard let documents = snapshot?.documents else {
-                    print("📄 No event documents found")
+                    Logger.log("No events found", level: .info, category: "Event")
                     completion(.success([]))
                     return
                 }
                 
-                print("📄 Found \(documents.count) current/future event documents")
+                Logger.log("Found \(documents.count) future events", level: .debug, category: "Event")
                 let group = DispatchGroup()
                 var events: [Event] = []
                 
@@ -134,7 +225,7 @@ class EventManager {
                           let createdAtTimestamp = data["createdAt"] as? Timestamp,
                           let imageURLs = data["imageURLs"] as? [String],
                           let userId = data["userId"] as? String else {
-                        print("⚠️ Skipping event with incomplete data")
+                        Logger.log("Skip event: incomplete data", level: .warn, category: "Event")
                         continue
                     }
                     
@@ -168,14 +259,14 @@ class EventManager {
                 
                 // Wait for all images to download before completing
                 group.notify(queue: .main) {
-                    print("✅ Loaded \(events.count) events with images")
+                    Logger.log("Loaded \(events.count) events (with images)", level: .info, category: "Event")
                     completion(.success(events))
                 }
             }
     }
     
     func fetchEvents(userId: String, completion: @escaping (Result<[Event], Error>) -> Void) {
-        print("🔍 Fetching events for user: \(userId)")
+        Logger.log("Fetch events for user: \(userId)", level: .debug, category: "Event")
         db.collection("users")
             .document(userId)
             .collection("events")
@@ -183,26 +274,25 @@ class EventManager {
             .order(by: "createdAt", descending: true)
             .getDocuments { snapshot, error in
                 if let error = error {
-                    print("❌ Error fetching events: \(error.localizedDescription)")
+                    Logger.log("Fetch user events error: \(error.localizedDescription)", level: .error, category: "Event")
                     completion(.failure(error))
                     return
                 }
                 
                 guard let documents = snapshot?.documents else {
-                    print("📄 No event documents found")
+                    Logger.log("No user events found", level: .info, category: "Event")
                     completion(.success([]))
                     return
                 }
                 
-                print("📄 Found \(documents.count) event documents")
+                Logger.log("Found \(documents.count) events", level: .debug, category: "Event")
                 let group = DispatchGroup()
                 var events: [Event] = []
                 
                 for document in documents {
                     let data = document.data()
                     
-                    print("📋 Parsing event: \(document.documentID)")
-                    print("   Keys: \(data.keys.sorted())")
+                    Logger.log("Parsing event: \(document.documentID)", level: .debug, category: "Event")
                     
                     // Parse the event data
                     guard let title = data["title"] as? String,
@@ -214,9 +304,7 @@ class EventManager {
                           let details = data["details"] as? String,
                           let createdAtTimestamp = data["createdAt"] as? Timestamp,
                           let imageURLs = data["imageURLs"] as? [String] else {
-                        print("⚠️ Skipping event \(document.documentID) with incomplete data")
-                        print("   Missing fields - title: \(data["title"] != nil), startDate: \(data["startDate"] != nil), endDate: \(data["endDate"] != nil)")
-                        print("   location: \(data["location"] != nil), details: \(data["details"] != nil), imageURLs: \(data["imageURLs"] != nil)")
+                        Logger.log("Skip event \(document.documentID): incomplete fields", level: .warn, category: "Event")
                         continue
                     }
                     
@@ -269,37 +357,16 @@ class EventManager {
                 // Upload temporary avatar image if it exists
                 self?.uploadTemporaryAvatarImage(eventId: event.id, userId: userId) { avatarResult in
                     // Create event update data with image URLs
-                    var eventData: [String: Any] = [
-                        "title": event.title,
-                        "startDate": Timestamp(date: event.dateTime.startDate),
-                        "endDate": Timestamp(date: event.dateTime.endDate),
-                        "location": [
-                            "name": event.location.name,
-                            "address": event.location.address,
-                            "latitude": event.location.coordinates?.latitude ?? 0.0,
-                            "longitude": event.location.coordinates?.longitude ?? 0.0
-                        ],
-                        "details": event.details,
-                        "imageURLs": imageURLs,
-                        "updatedAt": FieldValue.serverTimestamp()
-                    ]
-                    
-                    // Add avatar data if provided
-                    if let avatarData = avatarData {
-                        eventData["avatarData"] = avatarData.toFirestoreDict()
-                    }
-                    
-                    // Add avatar image URL if uploaded successfully
-                    switch avatarResult {
-                    case .success(let avatarURL):
-                        if !avatarURL.isEmpty {
-                            eventData["avatarImageURL"] = avatarURL
-                            print("✅ Avatar image updated: \(avatarURL)")
-                        }
-                    case .failure(let error):
-                        print("⚠️ Avatar image update failed: \(error.localizedDescription)")
-                        // Continue without updating avatar image - not critical
-                    }
+                    let avatarURL: String? = {
+                        if case .success(let url) = avatarResult { return url }
+                        return nil
+                    }()
+                    let eventData = self?.buildUpdateEventData(
+                        event: event,
+                        imageURLs: imageURLs,
+                        avatarData: avatarData,
+                        avatarURL: avatarURL
+                    ) ?? [:]
                     
                     let eventRef = self?.db.collection("users")
                         .document(userId)
@@ -308,10 +375,10 @@ class EventManager {
                     
                     eventRef?.updateData(eventData) { error in
                         if let error = error {
-                            print("❌ Error updating event: \(error.localizedDescription)")
+                            Logger.log("Update error: \(error.localizedDescription)", level: .error, category: "Event")
                             completion(.failure(error))
                         } else {
-                            print("✅ Successfully updated event: \(event.id)")
+                            Logger.log("Updated: \(event.id)", level: .info, category: "Event")
                             // Clean up temporary avatar image after successful update
                             self?.deleteTemporaryAvatarImage()
                             completion(.success(()))
@@ -320,7 +387,7 @@ class EventManager {
                 }
                 
             case .failure(let error):
-                print("❌ Error uploading event images during update: \(error.localizedDescription)")
+                Logger.log("Image upload error (update): \(error.localizedDescription)", level: .error, category: "Event")
                 completion(.failure(error))
             }
         }
@@ -340,10 +407,10 @@ class EventManager {
         
         eventRef.updateData(["status": "deleted", "deletedAt": FieldValue.serverTimestamp()]) { error in
             if let error = error {
-                print("❌ Error deleting event: \(error.localizedDescription)")
+                Logger.log("Delete error: \(error.localizedDescription)", level: .error, category: "Event")
                 completion(.failure(error))
             } else {
-                print("✅ Successfully deleted event: \(eventId)")
+                Logger.log("Deleted: \(eventId)", level: .info, category: "Event")
                 completion(.success(()))
             }
         }
@@ -421,7 +488,7 @@ class EventManager {
             // Upload image
             let uploadTask = imageRef.putData(imageData, metadata: nil) { metadata, error in
                 if let error = error {
-                    print("❌ Error uploading image \(index): \(error.localizedDescription)")
+                    Logger.log("Image \(index) upload error: \(error.localizedDescription)", level: .error, category: "Event")
                     uploadErrors.append(error)
                     group.leave()
                     return
@@ -430,11 +497,11 @@ class EventManager {
                 // Get download URL
                 imageRef.downloadURL { url, error in
                     if let error = error {
-                        print("❌ Error getting download URL for image \(index): \(error.localizedDescription)")
+                        Logger.log("Image \(index) URL error: \(error.localizedDescription)", level: .error, category: "Event")
                         uploadErrors.append(error)
                     } else if let url = url {
                         imageURLs.append(url.absoluteString)
-                        print("✅ Successfully uploaded image \(index): \(url.absoluteString)")
+                        Logger.log("Image \(index) uploaded", level: .debug, category: "Event")
                     }
                     group.leave()
                 }
@@ -471,17 +538,17 @@ class EventManager {
                 defer { group.leave() }
                 
                 if let error = error {
-                    print("❌ Error downloading image from \(urlString): \(error.localizedDescription)")
+                    Logger.log("Image download error: \(urlString)", level: .error, category: "Event")
                     return
                 }
                 
                 guard let data = data, let image = UIImage(data: data) else {
-                    print("❌ Failed to create image from data for URL: \(urlString)")
+                    Logger.log("Image decode failed: \(urlString)", level: .warn, category: "Event")
                     return
                 }
                 
                 images.append(image)
-                print("✅ Successfully downloaded image from: \(urlString)")
+                Logger.log("Image downloaded: \(urlString)", level: .debug, category: "Event")
             }.resume()
         }
         
@@ -499,32 +566,23 @@ class EventManager {
         guard FileManager.default.fileExists(atPath: tempImagePath.path),
               let imageData = try? Data(contentsOf: tempImagePath) else {
             // No temporary avatar image - return success without URL
-            print("⚠️ No temporary avatar image found")
+            Logger.log("No temp avatar image found", level: .warn, category: "Event")
             completion(.success(""))
             return
         }
         
-        print("📤 Uploading temporary avatar image...")
-        print("   File size: \(imageData.count) bytes (\(Double(imageData.count) / 1024.0 / 1024.0) MB)")
-        print("   User ID: \(userId)")
-        print("   Event ID: \(eventId)")
+        Logger.log("Upload temp avatar image (\(imageData.count) bytes) for event=\(eventId)", level: .debug, category: "Event")
         
         // Upload to Firebase Storage
         let storageRef = storage.reference()
         let fileName = "event_\(eventId)_avatar_\(UUID().uuidString).png"
         let imageRef = storageRef.child("event_images/\(userId)/\(fileName)")
         
-        print("   Storage path: event_images/\(userId)/\(fileName)")
-        print("   Full storage URL: gs://nose-a2309.firebasestorage.app/event_images/\(userId)/\(fileName)")
+        Logger.log("Storage path: event_images/\(userId)/\(fileName)", level: .debug, category: "Event")
         
         let uploadTask = imageRef.putData(imageData, metadata: nil) { metadata, error in
             if let error = error {
-                print("❌ Error uploading temporary avatar image: \(error.localizedDescription)")
-                print("   Error code: \(error._code)")
-                print("   Error domain: \(error._domain)")
-                if let nsError = error as NSError? {
-                    print("   NSError userInfo: \(nsError.userInfo)")
-                }
+                Logger.log("Temp avatar upload error: \(error.localizedDescription)", level: .error, category: "Event")
                 completion(.failure(error))
                 return
             }
@@ -532,10 +590,10 @@ class EventManager {
             // Get download URL
             imageRef.downloadURL { url, error in
                 if let error = error {
-                    print("❌ Error getting download URL for avatar image: \(error.localizedDescription)")
+                    Logger.log("Avatar URL error: \(error.localizedDescription)", level: .error, category: "Event")
                     completion(.failure(error))
                 } else if let url = url {
-                    print("✅ Successfully uploaded temporary avatar image: \(url.absoluteString)")
+                    Logger.log("Temp avatar uploaded", level: .info, category: "Event")
                     completion(.success(url.absoluteString))
                 } else {
                     completion(.failure(NSError(domain: "EventManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get download URL"])))
@@ -552,7 +610,7 @@ class EventManager {
     private func deleteTemporaryAvatarImage() {
         let tempImagePath = getTemporaryAvatarImagePath()
         try? FileManager.default.removeItem(at: tempImagePath)
-        print("🗑️ Deleted temporary avatar image")
+        Logger.log("Deleted temp avatar image", level: .debug, category: "Event")
     }
     
     // MARK: - Image Cleanup
@@ -575,10 +633,10 @@ class EventManager {
                 
                 imageRef.delete { error in
                     if let error = error {
-                        print("❌ Error deleting image: \(error.localizedDescription)")
+                        Logger.log("Delete image error: \(error.localizedDescription)", level: .error, category: "Event")
                         deleteErrors.append(error)
                     } else {
-                        print("✅ Successfully deleted image: \(urlString)")
+                        Logger.log("Deleted image: \(urlString)", level: .debug, category: "Event")
                     }
                     group.leave()
                 }

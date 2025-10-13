@@ -7,7 +7,7 @@ final class DeepLinkManager {
     private init() {}
 
     func handle(url: URL, in window: UIWindow?) -> Bool {
-        print("[DeepLink] handle url=\(url.absoluteString)")
+        Logger.log("Handle URL=\(url.absoluteString)", level: .debug, category: "DeepLink")
         
         // Simple parsing for nose://open?placeId=...
         if url.scheme?.lowercased() == "nose" {
@@ -15,19 +15,19 @@ final class DeepLinkManager {
             if let queryItems = comps?.queryItems,
                let placeId = queryItems.first(where: { $0.name == "placeId" })?.value,
                !placeId.isEmpty {
-                print("[DeepLink] found placeId=\(placeId)")
+                Logger.log("Found placeId=\(placeId)", level: .debug, category: "DeepLink")
                 openPlaceInApp(placeId: placeId, in: window)
                 return true
             }
         }
         
-        print("[DeepLink] no recognizable content in url")
+        Logger.log("No recognizable content in URL", level: .warn, category: "DeepLink")
         showAlert(title: "Cannot Open Link", message: "This link doesn't include a recognizable place.", in: window)
         return false
     }
     
     private func openPlaceInApp(placeId: String, in window: UIWindow?) {
-        print("[DeepLink] Opening place \(placeId) in app")
+        Logger.log("Open place in app: \(placeId)", level: .info, category: "DeepLink")
         
         // Fetch place details
         PlacesAPIManager.shared.fetchDetailPlaceDetails(placeID: placeId) { [weak self] place in
@@ -35,10 +35,10 @@ final class DeepLinkManager {
             
             DispatchQueue.main.async {
                 if let place = place {
-                    print("[DeepLink] Successfully fetched place: \(place.name ?? "Unknown")")
+                    Logger.log("Fetched place: \(place.name ?? "Unknown")", level: .info, category: "DeepLink")
                     self.showPlaceInMap(place: place, in: window)
                 } else {
-                    print("[DeepLink] Failed to fetch place details")
+                    Logger.log("Failed to fetch place details", level: .warn, category: "DeepLink")
                     self.showAlert(title: "Place Not Found", message: "Could not find details for this place.", in: window)
                 }
             }
@@ -77,7 +77,7 @@ final class DeepLinkManager {
     }
     
     private func showAlert(title: String, message: String, in window: UIWindow?) {
-        print("[DeepLink] alert: \(title) - \(message)")
+        Logger.log("Alert: \(title) - \(message)", level: .warn, category: "DeepLink")
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         

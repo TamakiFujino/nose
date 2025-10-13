@@ -6,8 +6,6 @@ class PlacesCacheManager {
     
     // Configuration for API usage optimization
     struct Config {
-        static let maxPhotosPerPlace = 5
-        static let maxPhotosPerCell = 1
         static let photoCacheSize = 100 // Maximum number of cached photos
     }
     

@@ -50,6 +50,7 @@ final class CreateEventViewController: UIViewController {
     
     // MARK: - Properties
     weak var delegate: CreateEventViewControllerDelegate?
+    private let eventRepository: EventRepository = FirebaseEventRepository()
     private var selectedLocation: EventLocation?
     private var selectedImages: [UIImage] = []
     private var sessionToken: GMSAutocompleteSessionToken?
@@ -658,7 +659,7 @@ final class CreateEventViewController: UIViewController {
         }
         
         // Save event to Firebase
-        EventManager.shared.createEvent(event, avatarData: avatarData) { [weak self] result in
+        eventRepository.createEvent(event, avatarData: avatarData) { [weak self] result in
             DispatchQueue.main.async {
                 LoadingView.shared.hideOverlayLoading()
                 switch result {
@@ -693,7 +694,7 @@ final class CreateEventViewController: UIViewController {
         )
         
         // Update event in Firebase
-        EventManager.shared.updateEvent(updatedEvent, avatarData: avatarData) { [weak self] result in
+        eventRepository.updateEvent(updatedEvent, avatarData: avatarData) { [weak self] result in
             DispatchQueue.main.async {
                 LoadingView.shared.hideOverlayLoading()
                 switch result {

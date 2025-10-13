@@ -47,7 +47,7 @@ final class AvatarResourceManager {
 
     // MARK: - Preload all resources (colors & model index jsons)
     func preloadAllResources() async throws {
-        print("🔄 Starting to preload all resources...")
+        Logger.log("Preload all resources", level: .debug, category: "AvatarRes")
         
         // Load colors and models concurrently
         async let colorsTask = loadColors()
@@ -63,53 +63,53 @@ final class AvatarResourceManager {
         }
         cachedModels = models
         
-        print("✅ Preloaded \(colors.count) colors and \(models.count) model categories")
+        Logger.log("Preloaded colors=\(colors.count) models=\(models.count)", level: .info, category: "AvatarRes")
     }
 
     private func loadColors() async throws -> [UIColor] {
-        print("🔄 Loading colors...")
+        Logger.log("Load colors", level: .debug, category: "AvatarRes")
 
         let jsonRef = storage.reference().child("avatar_assets/json/colors.json")
         let maxSize: Int64 = 10 * 1024 // 10KB is more than enough for hex codes
 
         do {
             let data = try await jsonRef.data(maxSize: maxSize)
-            print("📦 Downloaded colors.json: \(String(data: data, encoding: .utf8) ?? "unable to decode")")
+            Logger.log("Downloaded colors.json", level: .debug, category: "AvatarRes")
 
             let jsonObject = try JSONSerialization.jsonObject(with: data, options: [])
             
             guard let colorObjects = jsonObject as? [[String: String]] else {
-                print("❌ colors.json is not in expected format [[String: String]]")
+                Logger.log("colors.json invalid format", level: .warn, category: "AvatarRes")
                 return []
             }
 
-            print("🎨 Found \(colorObjects.count) color objects")
+            Logger.log("Found color objects: \(colorObjects.count)", level: .debug, category: "AvatarRes")
 
             let colors: [UIColor] = colorObjects.compactMap { obj -> UIColor? in
                 guard let hex = obj["hex"] else {
-                    print("⚠️ Skipping color object due to missing 'hex'")
+                    Logger.log("Skip color: missing hex", level: .warn, category: "AvatarRes")
                     return nil
                 }
                 guard let color = UIColor(hex: hex) else {
-                    print("⚠️ Failed to convert hex '\(hex)' to UIColor")
+                    Logger.log("Hex to UIColor failed: \(hex)", level: .warn, category: "AvatarRes")
                     return nil
                 }
                 // Store hex in cachedColors
                 cachedColors.append(hex)
-                print("🎨 Converted hex \(hex) to color: \(color.toHexString())")
+                Logger.log("Converted hex to color: \(hex)", level: .debug, category: "AvatarRes")
                 return color
             }
 
-            print("✅ Successfully loaded \(colors.count) valid colors")
+            Logger.log("Loaded valid colors: \(colors.count)", level: .info, category: "AvatarRes")
             return colors
         } catch {
-            print("❌ Error loading colors.json: \(error.localizedDescription)")
+            Logger.log("colors.json error: \(error.localizedDescription)", level: .error, category: "AvatarRes")
             throw error
         }
     }
 
     private func loadModels() async throws -> [String: [String: [String]]] {
-        print("🔄 Loading models...")
+        Logger.log("Load models", level: .debug, category: "AvatarRes")
         
         // Load categories dynamically from Firebase Storage
         try await DynamicCategoryManager.shared.loadCategories()
@@ -130,35 +130,11 @@ final class AvatarResourceManager {
             allModels[mainCategory] = categoryModels
         }
         
-        print("✅ Successfully loaded models from all categories")
+        Logger.log("Loaded models from all categories", level: .info, category: "AvatarRes")
         return allModels
     }
     
-    private func loadModelFile(_ filename: String) async throws -> [String: [String]] {
-        let jsonRef = storage.reference().child("avatar_assets/json/\(filename)")
-        let maxSize: Int64 = 1 * 1024 * 1024 // 1MB
-        
-        do {
-            let data = try await jsonRef.data(maxSize: maxSize)
-            print("📦 Downloaded \(filename): \(String(data: data, encoding: .utf8) ?? "unable to decode")")
-            
-            let json = try JSONSerialization.jsonObject(with: data, options: [])
-            guard let modelObjects = json as? [String: [String]] else {
-                print("❌ \(filename) is not in expected format [String: [String]]")
-                return [:]
-            }
-            
-            print("✅ Successfully loaded \(modelObjects.count) categories from \(filename)")
-            return modelObjects
-        } catch let error as NSError {
-            if error.domain == "com.google.HTTPStatus" && error.code == 404 {
-                print("⚠️ \(filename) not found in Firebase Storage. Using empty model list.")
-                return [:]
-            }
-            print("❌ Error loading \(filename): \(error.localizedDescription)")
-            throw error
-        }
-    }
+    
 
     // MARK: - API for color/model index
     var colorModels: [String] {  // Return hex strings directly
@@ -182,13 +158,13 @@ final class AvatarResourceManager {
         if let entity = modelEntities[modelName] {
             // Update access time for LRU
             modelAccessTimes[modelName] = Date()
-            print("📦 Using cached model entity for: \(modelName)")
+            Logger.log("Using cached model: \(modelName)", level: .debug, category: "AvatarRes")
             return entity.clone(recursive: true)
         }
         
         // Check if there's an ongoing loading task
         if let existingTask = loadingTasks[modelName] {
-            print("⏳ Using existing loading task for: \(modelName)")
+            Logger.log("Existing model load task: \(modelName)", level: .debug, category: "AvatarRes")
             do {
                 let entity = try await existingTask.value
                 guard let entity = entity else {
@@ -196,7 +172,7 @@ final class AvatarResourceManager {
                 }
                 return entity.clone(recursive: true)
             } catch {
-                print("❌ Error in existing task for \(modelName): \(error)")
+                Logger.log("Existing load task error for \(modelName): \(error)", level: .warn, category: "AvatarRes")
                 // Remove failed task and continue with new task
                 loadingTasks.removeValue(forKey: modelName)
             }
@@ -212,7 +188,7 @@ final class AvatarResourceManager {
             
             // Check if file exists in cache
             if self.fileManager.fileExists(atPath: modelFileURL.path) {
-                print("📦 Found cached file for: \(modelName)")
+                Logger.log("Found cached file: \(modelName)", level: .debug, category: "AvatarRes")
                 do {
                     let modelEntity = try await self.loadModelFromFile(modelFileURL)
                     await self.applyOptimizedMaterials(to: modelEntity)
@@ -232,13 +208,13 @@ final class AvatarResourceManager {
                     }
                     return modelEntity
                 } catch {
-                    print("❌ Error loading cached model: \(error)")
+                    Logger.log("Cached model load error: \(error)", level: .warn, category: "AvatarRes")
                     // Continue to download if cached file is corrupted
                 }
             }
             
             // Download if not in cache
-            print("⬇️ Downloading model: \(modelName)")
+            Logger.log("Downloading model: \(modelName)", level: .debug, category: "AvatarRes")
             try await self.downloadModel(named: modelName, to: modelFileURL)
             
             let modelEntity = try await self.loadModelFromFile(modelFileURL)
@@ -276,7 +252,7 @@ final class AvatarResourceManager {
         } catch {
             // Clean up task after error
             loadingTasks.removeValue(forKey: modelName)
-            print("❌ Error loading model for \(modelName): \(error)")
+            Logger.log("Model load error for \(modelName): \(error)", level: .error, category: "AvatarRes")
             throw error
         }
     }
@@ -286,7 +262,7 @@ final class AvatarResourceManager {
         
         // Guard against missing materials after clone
         guard !model.materials.isEmpty else {
-            print("❌ Model has no materials, skipping optimization: \(entity.name)")
+            Logger.log("No materials; skip optimize: \(entity.name)", level: .warn, category: "AvatarRes")
             return
         }
         
@@ -318,40 +294,39 @@ final class AvatarResourceManager {
             throw NSError(domain: "AvatarResourceManager", code: 422, userInfo: [NSLocalizedDescriptionKey: "Model file is empty"])
         }
         
-        print("🔍 Loading model from file: \(fileURL.lastPathComponent)")
-        print("📊 File size: \(fileSize) bytes")
+        Logger.log("Load model file: \(fileURL.lastPathComponent) size=\(fileSize)", level: .debug, category: "AvatarRes")
         
         // Load model based on iOS version
         let entity: ModelEntity
         if #available(iOS 15.0, *) {
             do {
-                print("🔄 Using ModelEntity.loadModel...")
+                Logger.log("Using ModelEntity.loadModel", level: .debug, category: "AvatarRes")
                 entity = try await ModelEntity.loadModel(contentsOf: fileURL)
             } catch {
-                print("❌ ModelEntity.loadModel failed: \(error)")
+                Logger.log("ModelEntity.loadModel failed: \(error)", level: .error, category: "AvatarRes")
                 throw error
             }
         } else {
             do {
-                print("🔄 Using ModelEntity.load...")
+                Logger.log("Using ModelEntity.load (legacy)", level: .debug, category: "AvatarRes")
                 let loadedEntity = try await ModelEntity.load(contentsOf: fileURL)
                 guard let modelEntity = loadedEntity as? ModelEntity else {
-                    print("❌ Loaded entity is not a ModelEntity")
+                    Logger.log("Loaded entity not ModelEntity", level: .error, category: "AvatarRes")
                     throw NSError(domain: "AvatarResourceManager", code: 422, userInfo: [NSLocalizedDescriptionKey: "Invalid model type"])
                 }
                 entity = modelEntity
             } catch {
-                print("❌ ModelEntity.load failed: \(error)")
+                Logger.log("ModelEntity.load failed: \(error)", level: .error, category: "AvatarRes")
                 throw error
             }
         }
         
         // Optimize entity settings
-        print("⚙️ Optimizing entity settings...")
+        Logger.log("Optimize entity settings", level: .debug, category: "AvatarRes")
         entity.generateCollisionShapes(recursive: false)
         entity.components[PhysicsBodyComponent.self] = nil
         
-        print("✅ Model loaded and optimized successfully")
+        Logger.log("Model loaded & optimized", level: .info, category: "AvatarRes")
         return entity
     }
 
@@ -370,7 +345,7 @@ final class AvatarResourceManager {
     func loadThumbnail(for modelName: String) async throws -> UIImage {
         // Check memory cache first
         if let cached = thumbnailCache.object(forKey: modelName as NSString) {
-            print("📦 Using cached thumbnail for: \(modelName)")
+            Logger.log("Using cached thumbnail: \(modelName)", level: .debug, category: "AvatarRes")
             return cached
         }
         
@@ -383,13 +358,13 @@ final class AvatarResourceManager {
         }
         
         if let existingTask = existingTask {
-            print("⏳ Using existing thumbnail loading task for: \(modelName)")
+            Logger.log("Existing thumb task: \(modelName)", level: .debug, category: "AvatarRes")
             do {
                 if let image = try await existingTask.value {
                     return image
                 }
             } catch {
-                print("❌ Error in existing task for \(modelName): \(error)")
+                Logger.log("Existing thumb task error for \(modelName): \(error)", level: .warn, category: "AvatarRes")
                 // Remove failed task and continue with new task
                 await withCheckedContinuation { continuation in
                     thumbnailTaskQueue.async {
@@ -432,7 +407,7 @@ final class AvatarResourceManager {
                 
                 return resizedImage
             } catch {
-                print("❌ Failed to load thumbnail for \(modelName): \(error)")
+                Logger.log("Thumb load failed for \(modelName): \(error)", level: .error, category: "AvatarRes")
                 throw error
             }
         }
@@ -473,14 +448,14 @@ final class AvatarResourceManager {
                     continuation.resume(returning: ())
                 }
             }
-            print("❌ Error loading thumbnail for \(modelName): \(error)")
+            Logger.log("Thumb load error for \(modelName): \(error)", level: .error, category: "AvatarRes")
             throw error
         }
     }
     
     // MARK: - Batch Thumbnail Loading
     func loadThumbnails(for models: [String]) async throws -> [String: UIImage] {
-        print("🔄 Loading \(models.count) thumbnails...")
+        Logger.log("Load thumbnails: \(models.count)", level: .debug, category: "AvatarRes")
         var results: [String: UIImage] = [:]
         
         // Filter out already loaded thumbnails with synchronization
@@ -511,7 +486,7 @@ final class AvatarResourceManager {
             }
         }
         
-        print("✅ Loaded \(results.count) thumbnails")
+        Logger.log("Loaded thumbnails: \(results.count)", level: .info, category: "AvatarRes")
         return results
     }
     
@@ -567,7 +542,7 @@ final class AvatarResourceManager {
             }
             
             // If we can't determine the category, log an error and return a safe default
-            print("⚠️ Warning: Could not determine category for model: \(modelName)")
+            Logger.log("Cannot determine category for model: \(modelName)", level: .warn, category: "AvatarRes")
             if let firstCategory = categoryGroups.first {
                 return (firstCategory.key, firstCategory.value.first ?? "unknown")
             }
@@ -575,7 +550,7 @@ final class AvatarResourceManager {
         
         // If DynamicCategoryManager is not loaded, we can't determine the category
         // This should not happen in normal operation since categories are loaded before models
-        print("❌ Error: DynamicCategoryManager not loaded, cannot determine category for model: \(modelName)")
+        Logger.log("DynamicCategoryManager not loaded; cannot map: \(modelName)", level: .error, category: "AvatarRes")
         return ("unknown", "unknown")
     }
 
@@ -609,7 +584,7 @@ final class AvatarResourceManager {
                 currentSize -= fileSize
             }
         } catch {
-            print("Error cleaning cache: \(error)")
+            Logger.log("Error cleaning cache: \(error)", level: .warn, category: "AvatarRes")
         }
     }
     
@@ -621,38 +596,19 @@ final class AvatarResourceManager {
     }
     
     // MARK: - Cache Operations
-    private func getCachedFilePath(for path: String) -> URL {
-        // Create a unique filename based on the Firebase path
-        let filename = path.replacingOccurrences(of: "/", with: "_")
-        return cacheDirectory.appendingPathComponent(filename)
-    }
     
-    private func isFileCached(at path: String) -> Bool {
-        let filePath = getCachedFilePath(for: path)
-        return fileManager.fileExists(atPath: filePath.path)
-    }
-    
-    private func saveToCache(data: Data, for path: String) {
-        let filePath = getCachedFilePath(for: path)
-        try? data.write(to: filePath)
-    }
-    
-    private func loadFromCache(for path: String) -> Data? {
-        let filePath = getCachedFilePath(for: path)
-        return try? Data(contentsOf: filePath)
-    }
     
     // MARK: - Category Loading
     func loadCategory(_ category: String) async throws {
         // Check if category is already loaded
         if loadedCategories.contains(category) {
-            print("✅ Category \(category) already loaded")
+            Logger.log("Category already loaded: \(category)", level: .debug, category: "AvatarRes")
             return
         }
         
-        print("🔄 Loading category: \(category)")
+        Logger.log("Load category: \(category)", level: .debug, category: "AvatarRes")
         guard let subcategories = cachedModels[category] else {
-            print("❌ Category \(category) not found in cached models")
+            Logger.log("Category not in cached models: \(category)", level: .warn, category: "AvatarRes")
             return
         }
         
@@ -679,6 +635,6 @@ final class AvatarResourceManager {
         
         // Mark category as loaded
         loadedCategories.insert(category)
-        print("✅ Category \(category) loaded successfully")
+        Logger.log("Category loaded: \(category)", level: .info, category: "AvatarRes")
     }
 }
