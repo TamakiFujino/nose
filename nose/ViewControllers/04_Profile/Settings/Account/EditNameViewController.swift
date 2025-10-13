@@ -163,9 +163,8 @@ final class EditNameViewController: UIViewController {
     
     // MARK: - Helper Methods
     private func showAlert(title: String, message: String, completion: ((UIAlertAction) -> Void)? = nil) {
-        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: completion))
-        present(alert, animated: true)
+        let ok = UIAlertAction(title: "OK", style: .default, handler: completion)
+        AlertManager.present(on: self, title: title, message: message, style: .info, preferredStyle: .alert, actions: [ok])
     }
 }
 

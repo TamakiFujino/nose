@@ -19,7 +19,7 @@ class CustomTabBar: UIView {
     // Setup for the custom tab bar
     private func setupCustomAppearance() {
         // Set tab bar background color
-        // self.backgroundColor = UIColor.secondColor
+        // self.backgroundColor = UIColor.backgroundSecondary
     }
 
     private func setupSegmentedControl() {
@@ -29,16 +29,20 @@ class CustomTabBar: UIView {
         NSLayoutConstraint.activate([
             segmentedControl.centerXAnchor.constraint(equalTo: self.centerXAnchor),
             segmentedControl.centerYAnchor.constraint(equalTo: self.centerYAnchor),
-            segmentedControl.leadingAnchor.constraint(equalTo: self.leadingAnchor, constant: 20),
-            segmentedControl.trailingAnchor.constraint(equalTo: self.trailingAnchor, constant: -20)
+            segmentedControl.leadingAnchor.constraint(equalTo: self.leadingAnchor, constant: DesignTokens.Spacing.xl),
+            segmentedControl.trailingAnchor.constraint(equalTo: self.trailingAnchor, constant: -DesignTokens.Spacing.xl)
         ])
 
         // Set segmented control appearance
-        segmentedControl.selectedSegmentTintColor = .thirdColor
+        segmentedControl.selectedSegmentTintColor = .borderSubtle
         // Set unselected control color
-        segmentedControl.backgroundColor = .firstColor // Set background color for unselected tabs
-        segmentedControl.setTitleTextAttributes([.foregroundColor: UIColor.sixthColor], for: .selected)
-        segmentedControl.setTitleTextAttributes([.foregroundColor: UIColor.sixthColor], for: .normal)
+        segmentedControl.backgroundColor = .backgroundPrimary
+        segmentedControl.setTitleTextAttributes([.foregroundColor: UIColor.textPrimary], for: .selected)
+        segmentedControl.setTitleTextAttributes([.foregroundColor: UIColor.fourthColor], for: .normal)
+
+        // Rounded appearance
+        segmentedControl.layer.cornerRadius = DesignTokens.Radii.md
+        segmentedControl.layer.masksToBounds = true
     }
 
     // Method to configure items of the segmented control

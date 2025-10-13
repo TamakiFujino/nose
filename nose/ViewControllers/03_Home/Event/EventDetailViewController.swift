@@ -90,17 +90,13 @@ final class EventDetailViewController: UIViewController {
         return label
     }()
     
-    private lazy var saveButton: UIButton = {
-        let button = UIButton(type: .system)
+    private lazy var saveButton: CustomButton = {
+        let button = CustomButton()
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setImage(UIImage(systemName: "bookmark"), for: .normal)
         button.tintColor = .fourthColor
-        button.backgroundColor = .firstColor
-        button.layer.cornerRadius = 25
-        button.layer.shadowColor = UIColor.sixthColor.cgColor
-        button.layer.shadowOffset = CGSize(width: 0, height: 2)
-        button.layer.shadowRadius = 4
-        button.layer.shadowOpacity = 0.2
+        button.style = .secondary
+        button.size = .large
         button.addTarget(self, action: #selector(saveButtonTapped), for: .touchUpInside)
         return button
     }()

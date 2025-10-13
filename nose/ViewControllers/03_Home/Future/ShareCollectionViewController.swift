@@ -36,14 +36,12 @@ final class ShareCollectionViewController: UIViewController {
         return tableView
     }()
     
-    private lazy var shareButton: UIButton = {
-        let button = UIButton(type: .system)
+    private lazy var shareButton: CustomButton = {
+        let button = CustomButton()
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setTitle("Update Sharing", for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
-        button.backgroundColor = .fourthColor
-        button.setTitleColor(.firstColor, for: .normal)
-        button.layer.cornerRadius = 8
+        button.size = .large
+        button.style = .primary
         button.addTarget(self, action: #selector(shareButtonTapped), for: .touchUpInside)
         return button
     }()

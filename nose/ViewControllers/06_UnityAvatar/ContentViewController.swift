@@ -179,7 +179,7 @@ extension ContentViewController {
         if collection.id == "temp_event_avatar" {
             // For temporary collections, capture the avatar image and post notification
             captureTemporaryAvatarImage { [weak self] result in
-                LoadingView.shared.hideAlertLoading()
+                LoadingView.shared.hideOverlayLoading()
                 switch result {
                 case .success:
                     print("✅ Avatar image captured and data posted via notification for temporary collection")
@@ -195,7 +195,7 @@ extension ContentViewController {
             switch result {
             case .success:
                 self.captureAndUploadThumbnail { uploadResult in
-                    LoadingView.shared.hideAlertLoading()
+                    LoadingView.shared.hideOverlayLoading()
                     switch uploadResult {
                     case .success:
                         self.applyLatestSelectionsIfVisible()
@@ -204,7 +204,7 @@ extension ContentViewController {
                     }
                 }
             case .failure(let error):
-                LoadingView.shared.hideAlertLoading()
+                LoadingView.shared.hideOverlayLoading()
                 print("[ContentViewController] Save error: \(error.localizedDescription)")
             }
         }

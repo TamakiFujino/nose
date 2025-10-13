@@ -379,9 +379,8 @@ class SaveToCollectionViewController: UIViewController {
             return
         }
         
-        // Show loading indicator
-        let loadingAlert = UIAlertController(title: "Saving...", message: nil, preferredStyle: .alert)
-        present(loadingAlert, animated: true)
+        // Show non-blocking overlay loading
+        LoadingView.shared.showOverlayLoading(on: self.view, message: "Saving...")
         
         // Create place data
         let placeData: [String: Any] = [
@@ -469,29 +468,24 @@ class SaveToCollectionViewController: UIViewController {
             // Commit the batch
             batch.commit { error in
                 DispatchQueue.main.async {
-                    loadingAlert.dismiss(animated: true) {
-                        if let error = error {
-                            print("❌ Error saving place: \(error.localizedDescription)")
-                            print("❌ Error details: \(error)")
-                            // Show error alert
-                            let errorAlert = UIAlertController(
-                                title: "Error",
-                                message: "Failed to save place. Please try again.",
-                                preferredStyle: .alert
-                            )
-                            errorAlert.addAction(UIAlertAction(title: "OK", style: .default))
-                            self.present(errorAlert, animated: true)
-                        } else {
-                            print("✅ Successfully saved place to collection")
-                            // Refresh collections to update the count
-                            self.loadCollections()
-                            // Notify delegate and dismiss
-                            if case .place(let place) = self.itemToSave {
-                                self.delegate?.saveToCollectionViewController(self, didSavePlace: place, toCollection: collection)
-                            }
-                            self.dismiss(animated: true)
+                    LoadingView.shared.hideOverlayLoading()
+                    do { /* retain scope parity */ } 
+                    
+                    if let error = error {
+                        print("❌ Error saving place: \(error.localizedDescription)")
+                        print("❌ Error details: \(error)")
+                        AlertManager.present(on: self, title: "Error", message: "Failed to save place. Please try again.", style: .error)
+                    } else {
+                        print("✅ Successfully saved place to collection")
+                        // Refresh collections to update the count
+                        self.loadCollections()
+                        // Notify delegate and dismiss
+                        if case .place(let place) = self.itemToSave {
+                            self.delegate?.saveToCollectionViewController(self, didSavePlace: place, toCollection: collection)
                         }
+                        self.dismiss(animated: true)
                     }
+                    
                 }
             }
         }
@@ -500,9 +494,8 @@ class SaveToCollectionViewController: UIViewController {
     private func saveEventToCollection(event: Event, collection: PlaceCollection) {
         print("💾 Saving event '\(event.title)' to collection '\(collection.name)'")
         
-        // Show loading indicator
-        let loadingAlert = UIAlertController(title: "Saving...", message: nil, preferredStyle: .alert)
-        present(loadingAlert, animated: true)
+        // Show non-blocking overlay loading
+        LoadingView.shared.showOverlayLoading(on: self.view, message: "Saving...")
         
         // Create event data
         let eventData: [String: Any] = [
@@ -552,22 +545,15 @@ class SaveToCollectionViewController: UIViewController {
         // Commit the batch
         batch.commit { error in
             DispatchQueue.main.async {
-                loadingAlert.dismiss(animated: true) {
-                    if let error = error {
-                        print("❌ Error saving event: \(error.localizedDescription)")
-                        let errorAlert = UIAlertController(
-                            title: "Error",
-                            message: "Failed to save event. Please try again.",
-                            preferredStyle: .alert
-                        )
-                        errorAlert.addAction(UIAlertAction(title: "OK", style: .default))
-                        self.present(errorAlert, animated: true)
-                    } else {
-                        print("✅ Successfully saved event to collection")
-                        self.loadCollections()
-                        self.delegate?.saveToCollectionViewController(self, didSaveEvent: event, toCollection: collection)
-                        self.dismiss(animated: true)
-                    }
+                LoadingView.shared.hideOverlayLoading()
+                if let error = error {
+                    print("❌ Error saving event: \(error.localizedDescription)")
+                    AlertManager.present(on: self, title: "Error", message: "Failed to save event. Please try again.", style: .error)
+                } else {
+                    print("✅ Successfully saved event to collection")
+                    self.loadCollections()
+                    self.delegate?.saveToCollectionViewController(self, didSaveEvent: event, toCollection: collection)
+                    self.dismiss(animated: true)
                 }
             }
         }

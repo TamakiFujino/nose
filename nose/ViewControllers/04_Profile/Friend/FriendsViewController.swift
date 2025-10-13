@@ -249,24 +249,12 @@ class FriendsViewController: UIViewController {
     }
     
     private func showAlert(title: String, message: String) {
-        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
-        present(alert, animated: true)
+        AlertManager.present(on: self, title: title, message: message, style: .info)
     }
     
     private func blockUser(_ user: User) {
-        // Show confirmation alert
-        let alert = UIAlertController(
-            title: "Are you sure you block user \"\(user.name)\"?",
-            message: "You will not be able to share a collection or add as a friend",
-            preferredStyle: .alert
-        )
-        
-        // Add cancel action
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        
-        // Add block action
-        alert.addAction(UIAlertAction(title: "Block", style: .destructive) { [weak self] _ in
+        let cancel = UIAlertAction(title: "Cancel", style: .cancel)
+        let confirm = UIAlertAction(title: "Block", style: .destructive) { [weak self] _ in
             guard let currentUserId = Auth.auth().currentUser?.uid else { return }
             
             print("🔒 FriendsViewController: Starting block operation for user: \(user.name)")
@@ -285,24 +273,13 @@ class FriendsViewController: UIViewController {
                     }
                 }
             }
-        })
-        
-        present(alert, animated: true)
+        }
+        AlertManager.present(on: self, title: "Are you sure you block user \"\(user.name)\"?", message: "You will not be able to share a collection or add as a friend", style: .error, preferredStyle: .alert, actions: [cancel, confirm])
     }
     
     private func unblockUser(_ user: User) {
-        // Show confirmation alert
-        let alert = UIAlertController(
-            title: "Are you sure you unblock user \"\(user.name)\"?",
-            message: "\(user.name) will be able to add you as a friend with your User ID",
-            preferredStyle: .alert
-        )
-        
-        // Add cancel action
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        
-        // Add unblock action
-        alert.addAction(UIAlertAction(title: "Unblock", style: .default) { [weak self] _ in
+        let cancel = UIAlertAction(title: "Cancel", style: .cancel)
+        let confirm = UIAlertAction(title: "Unblock", style: .default) { [weak self] _ in
             guard let currentUserId = Auth.auth().currentUser?.uid else { return }
             
             print("🔓 FriendsViewController: Starting unblock operation for user: \(user.name)")
@@ -321,9 +298,8 @@ class FriendsViewController: UIViewController {
                     }
                 }
             }
-        })
-        
-        present(alert, animated: true)
+        }
+        AlertManager.present(on: self, title: "Are you sure you unblock user \"\(user.name)\"?", message: "\(user.name) will be able to add you as a friend with your User ID", style: .info, preferredStyle: .alert, actions: [cancel, confirm])
     }
 }
 

@@ -125,14 +125,12 @@ class CollectionPlacesViewController: UIViewController {
         return stack
     }()
 
-    private lazy var customizeButton: UIButton = {
-        let button = UIButton(type: .system)
+    private lazy var customizeButton: CustomButton = {
+        let button = CustomButton()
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setTitle("Customize avatar", for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
-        button.backgroundColor = .fourthColor
-        button.setTitleColor(.firstColor, for: .normal)
-        button.layer.cornerRadius = 24 // rounded here only
+        button.size = .large
+        button.style = .primary
         button.clipsToBounds = true
         button.contentEdgeInsets = UIEdgeInsets(top: 12, left: 20, bottom: 12, right: 20)
         button.addTarget(self, action: #selector(customizeAvatarTapped), for: .touchUpInside)
@@ -304,79 +302,47 @@ class CollectionPlacesViewController: UIViewController {
     }
     
     private func completeCollection() {
-        let alertController = UIAlertController(
-            title: "Complete Collection",
-            message: "Are you sure you want to mark '\(collection.name)' as completed?",
-            preferredStyle: .alert
-        )
-        
         let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
         let completeAction = UIAlertAction(title: "Complete", style: .default) { [weak self] _ in
             self?.markCollectionAsCompleted()
         }
-        
-        alertController.addAction(cancelAction)
-        alertController.addAction(completeAction)
-        
-        present(alertController, animated: true)
+        AlertManager.present(on: self, title: "Complete Collection", message: "Are you sure you want to mark '\(collection.name)' as completed?", style: .info, preferredStyle: .alert, actions: [cancelAction, completeAction])
     }
     
     private func markCollectionAsCompleted() {
         showLoadingAlert(title: "Completing Collection")
         
         CollectionContainerManager.shared.completeCollection(collection) { [weak self] error in
-            self?.dismiss(animated: true) {
+            LoadingView.shared.hideOverlayLoading()
                 if error != nil {
                     ToastManager.showToast(message: "Failed to complete collection", type: .error)
                 } else {
                     ToastManager.showToast(message: "Collection completed", type: .success)
                     // Dismiss the view controller and post notification
-                    self?.dismiss(animated: true) {
-                        NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
-                    }
+                    NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
                 }
-            }
         }
     }
     
     private func confirmDeleteCollection() {
-        // Create a custom alert controller with a more prominent warning
-        let alertController = UIAlertController(
-            title: "Delete Collection",
-            message: "Are you sure you want to delete '\(collection.name)'? This action cannot be undone.",
-            preferredStyle: .alert
-        )
-        
-        // Add a destructive delete action
         let deleteAction = UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
             self?.deleteCollection()
         }
-        
-        // Add a cancel action
         let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
-        
-        // Add actions to the alert controller
-        alertController.addAction(deleteAction)
-        alertController.addAction(cancelAction)
-        
-        // Present the alert controller
-        present(alertController, animated: true)
+        AlertManager.present(on: self, title: "Delete Collection", message: "Are you sure you want to delete '\(collection.name)'? This action cannot be undone.", style: .error, preferredStyle: .alert, actions: [cancelAction, deleteAction])
     }
     
     private func deleteCollection() {
         showLoadingAlert(title: "Deleting Collection")
         
         CollectionContainerManager.shared.deleteCollection(collection) { [weak self] error in
-            self?.dismiss(animated: true) {
+            LoadingView.shared.hideOverlayLoading()
                 if error != nil {
                     ToastManager.showToast(message: "Failed to delete collection", type: .error)
                 } else {
                     ToastManager.showToast(message: "Collection deleted", type: .success)
-                    self?.dismiss(animated: true) {
-                        NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
-                    }
+                    NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
                 }
-            }
         }
     }
 
@@ -384,16 +350,13 @@ class CollectionPlacesViewController: UIViewController {
         showLoadingAlert(title: "Putting back collection")
         
         CollectionContainerManager.shared.putBackCollection(collection) { [weak self] error in
-            self?.dismiss(animated: true) {
+            LoadingView.shared.hideOverlayLoading()
                 if error != nil {
                     ToastManager.showToast(message: "Failed to put back collection", type: .error)
                 } else {
                     ToastManager.showToast(message: "Collection put back", type: .success)
-                    self?.dismiss(animated: true) {
-                        NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
-                    }
+                    NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
                 }
-            }
         }
     }
 
@@ -659,7 +622,7 @@ class CollectionPlacesViewController: UIViewController {
     }
     
     private func showLoadingAlert(title: String) {
-        LoadingView.shared.showAlertLoading(title: title, on: self)
+        LoadingView.shared.showOverlayLoading(on: self.view, message: title)
     }
 
     private func checkIfCompleted() {
@@ -1092,42 +1055,22 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
     private func confirmDeleteEvent(at indexPath: IndexPath) {
         guard indexPath.row < events.count else { return }
         let event = events[indexPath.row]
-        let alertController = UIAlertController(
-            title: "Remove Event",
-            message: "Are you sure you want to remove '\(event.title)' from this collection?",
-            preferredStyle: .alert
-        )
-        
         let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
         let deleteAction = UIAlertAction(title: "Remove", style: .destructive) { [weak self] _ in
             self?.deleteEvent(at: indexPath)
         }
-        
-        alertController.addAction(cancelAction)
-        alertController.addAction(deleteAction)
-        
-        present(alertController, animated: true)
+        AlertManager.present(on: self, title: "Remove Event", message: "Are you sure you want to remove '\(event.title)' from this collection?", style: .error, preferredStyle: .alert, actions: [cancelAction, deleteAction])
     }
     
     private func confirmDeletePlace(at indexPath: IndexPath) {
         // Safety check to prevent crash
         guard indexPath.row < places.count else { return }
         let place = places[indexPath.row]
-        let alertController = UIAlertController(
-            title: "Delete Place",
-            message: "Are you sure you want to remove '\(place.name)' from this collection?",
-            preferredStyle: .alert
-        )
-        
         let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
         let deleteAction = UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
             self?.deletePlace(at: indexPath)
         }
-        
-        alertController.addAction(cancelAction)
-        alertController.addAction(deleteAction)
-        
-        present(alertController, animated: true)
+        AlertManager.present(on: self, title: "Delete Place", message: "Are you sure you want to remove '\(place.name)' from this collection?", style: .error, preferredStyle: .alert, actions: [cancelAction, deleteAction])
     }
     
     private func deleteEvent(at indexPath: IndexPath) {

@@ -106,7 +106,7 @@ class CollectionsViewController: UIViewController {
     }
     
     private func showLoadingAlert(title: String) {
-        LoadingView.shared.showAlertLoading(title: title, on: self)
+        LoadingView.shared.showOverlayLoading(on: self.view, message: title)
     }
     
     // MARK: - Data Loading

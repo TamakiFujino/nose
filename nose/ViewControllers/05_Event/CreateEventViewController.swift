@@ -97,14 +97,12 @@ final class CreateEventViewController: UIViewController {
         return imageView
     }()
     
-    private lazy var customizeAvatarButton: UIButton = {
-        let button = UIButton(type: .system)
+    private lazy var customizeAvatarButton: CustomButton = {
+        let button = CustomButton()
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setTitle("Customize avatar", for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
-        button.backgroundColor = .fourthColor
-        button.setTitleColor(.firstColor, for: .normal)
-        button.layer.cornerRadius = 24
+        button.size = .large
+        button.style = .primary
         button.clipsToBounds = true
         button.contentEdgeInsets = UIEdgeInsets(top: 12, left: 20, bottom: 12, right: 20)
         button.addTarget(self, action: #selector(customizeAvatarTapped), for: .touchUpInside)
@@ -324,27 +322,22 @@ final class CreateEventViewController: UIViewController {
     }()
     
     // Buttons
-    private lazy var cancelButton: UIButton = {
-        let button = UIButton(type: .system)
+    private lazy var cancelButton: CustomButton = {
+        let button = CustomButton()
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setTitle("Cancel", for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
-        button.setTitleColor(.statusError, for: .normal)
-        button.layer.borderWidth = 1
-        button.layer.borderColor = UIColor.statusError.cgColor
-        button.layer.cornerRadius = 12
+        button.size = .large
+        button.style = .destructive
         button.addTarget(self, action: #selector(cancelButtonTapped), for: .touchUpInside)
         return button
     }()
     
-    private lazy var createButton: UIButton = {
-        let button = UIButton(type: .system)
+    private lazy var createButton: CustomButton = {
+        let button = CustomButton()
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setTitle(isEditMode ? "Update Event" : "Create Event", for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 16, weight: .semibold)
-        button.setTitleColor(.firstColor, for: .normal)
-        button.backgroundColor = .fourthColor
-        button.layer.cornerRadius = 12
+        button.size = .large
+        button.style = .primary
         button.addTarget(self, action: #selector(createButtonTapped), for: .touchUpInside)
         return button
     }()
@@ -642,8 +635,8 @@ final class CreateEventViewController: UIViewController {
             return
         }
         
-        // Show loading indicator
-        showLoadingAlert(title: "Creating Event")
+        // Show non-blocking overlay loading
+        LoadingView.shared.showOverlayLoading(on: self.view, message: "Creating Event")
         
         let eventDateTime = EventDateTime(startDate: selectedStartDate, endDate: selectedEndDate)
         let event = Event(
@@ -667,6 +660,7 @@ final class CreateEventViewController: UIViewController {
         // Save event to Firebase
         EventManager.shared.createEvent(event, avatarData: avatarData) { [weak self] result in
             DispatchQueue.main.async {
+                LoadingView.shared.hideOverlayLoading()
                 switch result {
                 case .success(let eventId):
                     print("✅ Event created successfully with ID: \(eventId)")
@@ -674,9 +668,7 @@ final class CreateEventViewController: UIViewController {
                     self?.dismiss(animated: true)
                 case .failure(let error):
                     print("❌ Failed to create event: \(error.localizedDescription)")
-                    self?.dismiss(animated: true) {
-                        self?.showAlert(title: "Error", message: "Failed to create event. Please try again.")
-                    }
+                    self?.showAlert(title: "Error", message: "Failed to create event. Please try again.")
                 }
             }
         }
@@ -685,8 +677,8 @@ final class CreateEventViewController: UIViewController {
     private func updateEvent() {
         guard let eventToEdit = eventToEdit else { return }
         
-        // Show loading indicator
-        showLoadingAlert(title: "Updating Event")
+        // Show non-blocking overlay loading
+        LoadingView.shared.showOverlayLoading(on: self.view, message: "Updating Event")
         
         let eventDateTime = EventDateTime(startDate: selectedStartDate, endDate: selectedEndDate)
         let updatedEvent = Event(
@@ -703,6 +695,7 @@ final class CreateEventViewController: UIViewController {
         // Update event in Firebase
         EventManager.shared.updateEvent(updatedEvent, avatarData: avatarData) { [weak self] result in
             DispatchQueue.main.async {
+                LoadingView.shared.hideOverlayLoading()
                 switch result {
                 case .success:
                     print("✅ Event updated successfully")
@@ -710,9 +703,7 @@ final class CreateEventViewController: UIViewController {
                     self?.dismiss(animated: true)
                 case .failure(let error):
                     print("❌ Failed to update event: \(error.localizedDescription)")
-                    self?.dismiss(animated: true) {
-                        self?.showAlert(title: "Error", message: "Failed to update event. Please try again.")
-                    }
+                    self?.showAlert(title: "Error", message: "Failed to update event. Please try again.")
                 }
             }
         }
@@ -949,24 +940,11 @@ extension CreateEventViewController {
     }
     
     private func showAlert(title: String, message: String) {
-        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
-        present(alert, animated: true)
+        AlertManager.present(on: self, title: title, message: message, style: .info)
     }
     
     private func showLoadingAlert(title: String) {
-        let alert = UIAlertController(title: title, message: nil, preferredStyle: .alert)
-        let loadingIndicator = UIActivityIndicatorView(style: .large)
-        loadingIndicator.translatesAutoresizingMaskIntoConstraints = false
-        loadingIndicator.startAnimating()
-        
-        alert.view.addSubview(loadingIndicator)
-        NSLayoutConstraint.activate([
-            loadingIndicator.centerXAnchor.constraint(equalTo: alert.view.centerXAnchor),
-            loadingIndicator.centerYAnchor.constraint(equalTo: alert.view.centerYAnchor, constant: 20)
-        ])
-        
-        present(alert, animated: true)
+        LoadingView.shared.showOverlayLoading(on: self.view, message: title)
     }
     
     // MARK: - Avatar Data Handling
