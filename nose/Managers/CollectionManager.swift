@@ -77,8 +77,7 @@ class CollectionManager {
     }
     
     func fetchCollections(userId: String, completion: @escaping (Result<[PlaceCollection], Error>) -> Void) {
-        db.collection(collectionsCollection)
-            .whereField("userId", isEqualTo: userId)
+        userCollectionsRef(for: userId)
             .whereField("status", isEqualTo: PlaceCollection.Status.active.rawValue)
             .getDocuments(source: .server) { [weak self] snapshot, error in
                 guard let self = self else { return }
@@ -149,7 +148,7 @@ class CollectionManager {
         collection = collection.migrate()
         
         // Update the document with migrated data
-        db.collection(collectionsCollection).document(collection.id).setData(collection.dictionary, merge: true) { error in
+        document.reference.setData(collection.dictionary, merge: true) { error in
             if let error = error {
                 completion(.failure(error))
             } else {

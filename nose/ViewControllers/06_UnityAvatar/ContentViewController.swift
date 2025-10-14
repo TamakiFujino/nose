@@ -99,6 +99,11 @@ class ContentViewController: UIViewController, ContentViewControllerDelegate {
     }
 
     private func fetchExistingSelections(completion: @escaping ([String: [String: String]]?) -> Void) {
+        // In temporary event avatar mode, we never read/write Firestore for selections
+        if collection.id == "temp_event_avatar" {
+            completion(nil)
+            return
+        }
         guard let userId = Auth.auth().currentUser?.uid else { completion(nil); return }
         let db = Firestore.firestore()
         db.collection("users")
@@ -130,6 +135,8 @@ protocol ContentViewControllerDelegate: AnyObject {
 extension ContentViewController {
     func didRequestClose() {
         print("[ContentViewController] didRequestClose() called")
+        // Ensure any overlays are dismissed
+        LoadingView.shared.hideOverlayLoading()
         // Remove floating UI and go back
         floatingWindow?.isHidden = true
         floatingWindow?.rootViewController = nil
@@ -150,8 +157,14 @@ extension ContentViewController {
             print("[ContentViewController] No UIWindowScene available")
         }
         if let nav = navigationController {
-            print("[ContentViewController] Popping view controller")
-            nav.popViewController(animated: true)
+            if nav.presentingViewController != nil && nav.viewControllers.first === self {
+                // We are the root of a presented navigation controller; dismiss it
+                print("[ContentViewController] Dismissing presented navigation controller")
+                nav.dismiss(animated: true)
+            } else {
+                print("[ContentViewController] Popping view controller")
+                nav.popViewController(animated: true)
+            }
         } else {
             print("[ContentViewController] Dismissing view controller")
             dismiss(animated: true)
@@ -160,7 +173,7 @@ extension ContentViewController {
 
     func didRequestSave(selections: [String : [String : String]]) {
         print("[ContentViewController] didRequestSave() called with \(selections.count) entries")
-        LoadingView.shared.showAlertLoading(title: "Saving", on: self)
+        LoadingView.shared.showOverlayLoading(on: self.view, message: "Saving...")
         let sanitized = sanitizeSelectionsForSave(selections)
         let avatarData = CollectionAvatar.AvatarData(
             selections: sanitized,

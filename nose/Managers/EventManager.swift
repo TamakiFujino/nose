@@ -72,6 +72,38 @@ class EventManager {
         return NSError(domain: "EventManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])
     }
     
+    // MARK: - Limits & Quotas
+    /// Counts user's events that are active and not in the past (endDate >= now)
+    func countActiveAndFutureEvents(userId: String, completion: @escaping (Result<Int, Error>) -> Void) {
+        let now = Date()
+        db.collection("users")
+            .document(userId)
+            .collection("events")
+            .whereField("status", isEqualTo: "active")
+            .whereField("endDate", isGreaterThanOrEqualTo: Timestamp(date: now))
+            .getDocuments { snapshot, error in
+                if let error = error {
+                    Logger.log("Count events error: \(error.localizedDescription)", level: .error, category: "Event")
+                    completion(.failure(error))
+                } else {
+                    let count = snapshot?.documents.count ?? 0
+                    Logger.log("Active/future events count: \(count)", level: .debug, category: "Event")
+                    completion(.success(count))
+                }
+            }
+    }
+    
+    func countActiveAndFutureEvents(userId: String) async throws -> Int {
+        try await withCheckedThrowingContinuation { continuation in
+            self.countActiveAndFutureEvents(userId: userId) { result in
+                switch result {
+                case .success(let count): continuation.resume(returning: count)
+                case .failure(let error): continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+    
     // MARK: - Event Creation and Saving
     func createEvent(_ event: Event, avatarData: CollectionAvatar.AvatarData?, completion: @escaping (Result<String, Error>) -> Void) {
         guard let userId = Auth.auth().currentUser?.uid else {
@@ -479,14 +511,16 @@ class EventManager {
             }
             
             // Check final size before upload (additional safety check)
-            if imageData.count > 3 * 1024 * 1024 { // 3MB limit
+            if imageData.count > 10 * 1024 * 1024 { // 10MB limit (aligned with Storage rules)
                 uploadErrors.append(NSError(domain: "EventManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Image too large after compression"]))
                 group.leave()
                 continue
             }
             
             // Upload image
-            let uploadTask = imageRef.putData(imageData, metadata: nil) { metadata, error in
+            let metadata = StorageMetadata()
+            metadata.contentType = "image/jpeg"
+            let uploadTask = imageRef.putData(imageData, metadata: metadata) { metadata, error in
                 if let error = error {
                     Logger.log("Image \(index) upload error: \(error.localizedDescription)", level: .error, category: "Event")
                     uploadErrors.append(error)
@@ -580,7 +614,9 @@ class EventManager {
         
         Logger.log("Storage path: event_images/\(userId)/\(fileName)", level: .debug, category: "Event")
         
-        let uploadTask = imageRef.putData(imageData, metadata: nil) { metadata, error in
+        let metadata = StorageMetadata()
+        metadata.contentType = "image/png"
+        let uploadTask = imageRef.putData(imageData, metadata: metadata) { metadata, error in
             if let error = error {
                 Logger.log("Temp avatar upload error: \(error.localizedDescription)", level: .error, category: "Event")
                 completion(.failure(error))

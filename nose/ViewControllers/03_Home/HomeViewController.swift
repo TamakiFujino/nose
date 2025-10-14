@@ -25,12 +25,7 @@ final class HomeViewController: UIViewController {
     private var events: [Event] = []
     private let locationManager = CLLocationManager()
     
-    // Add properties to track dots and line
-    private var leftDot: UIView?
-    private var middleDot: UIView?
-    private var rightDot: UIView?
-    private var dotLine: UIView?
-    private var containerView: UIView?
+    // (Removed) Previously used to track dot slider views; managed by TimelineSliderView now
     
     var mapManager: GoogleMapManager?
     private var searchManager: SearchManager?
@@ -423,17 +418,18 @@ final class HomeViewController: UIViewController {
     }
     
     private func loadEvents() {
-        print("📍 Loading current and future events for map...")
-        EventManager.shared.fetchAllCurrentAndFutureEvents { [weak self] result in
-            switch result {
-            case .success(let events):
-                print("✅ Loaded \(events.count) events")
-                self?.events = events
-                DispatchQueue.main.async {
-                    self?.mapManager?.showEventsOnMap(events)
+        Task { [weak self] in
+            guard let self = self else { return }
+            Logger.log("Loading current and future events for map...", level: .info, category: "Home")
+            do {
+                let events = try await EventManager.shared.fetchAllCurrentAndFutureEvents()
+                Logger.log("Loaded \(events.count) events", level: .info, category: "Home")
+                self.events = events
+                await MainActor.run {
+                    self.mapManager?.showEventsOnMap(events)
                 }
-            case .failure(let error):
-                print("❌ Failed to load events: \(error.localizedDescription)")
+            } catch {
+                Logger.log("Failed to load events: \(error.localizedDescription)", level: .error, category: "Home")
             }
         }
     }

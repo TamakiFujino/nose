@@ -100,7 +100,7 @@ final class GoogleMapManager: NSObject {
     }
     
     func showPlaceOnMap(_ place: GMSPlace) {
-        print("🗺️ GoogleMapManager.showPlaceOnMap called for: \(place.name ?? "Unknown")")
+        Logger.log("showPlaceOnMap: \(place.name ?? "Unknown")", level: .debug, category: "Map")
         let marker = MarkerFactory.createPlaceMarker(for: place)
         marker.map = mapView
         
@@ -109,7 +109,7 @@ final class GoogleMapManager: NSObject {
             longitude: place.coordinate.longitude,
             zoom: Constants.defaultZoom
         )
-        print("🗺️ Animating map to: \(place.coordinate.latitude), \(place.coordinate.longitude)")
+        Logger.log("Animating map to: \(place.coordinate.latitude), \(place.coordinate.longitude)", level: .debug, category: "Map")
         mapView.animate(to: camera)
         
         markers.append(marker)
@@ -129,7 +129,7 @@ final class GoogleMapManager: NSObject {
     }
     
     func showEventsOnMap(_ events: [Event]) {
-        print("🗺️ GoogleMapManager.showEventsOnMap called with \(events.count) events")
+        Logger.log("showEventsOnMap with \(events.count) events", level: .debug, category: "Map")
         
         // Clear existing event markers
         clearEventMarkers()
@@ -137,17 +137,17 @@ final class GoogleMapManager: NSObject {
         // Create and add markers for each event
         for event in events {
             guard event.location.coordinates != nil else {
-                print("⚠️ Skipping event '\(event.title)' - no coordinates")
+                Logger.log("Skipping event '\(event.title)' - no coordinates", level: .warn, category: "Map")
                 continue
             }
             
             let marker = MarkerFactory.createEventMarker(for: event)
             marker.map = mapView
             eventMarkers.append(marker)
-            print("✅ Added event marker: \(event.title)")
+            Logger.log("Added event marker: \(event.title)", level: .debug, category: "Map")
         }
         
-        print("📍 Total event markers on map: \(eventMarkers.count)")
+        Logger.log("Total event markers on map: \(eventMarkers.count)", level: .debug, category: "Map")
     }
     
     func resetMap() {

@@ -7,44 +7,7 @@ protocol CreateEventViewControllerDelegate: AnyObject {
     func createEventViewController(_ controller: CreateEventViewController, didCreateEvent event: Event)
 }
 
-struct Event {
-    let id: String
-    let title: String
-    let dateTime: EventDateTime
-    let location: EventLocation
-    let details: String
-    let images: [UIImage]
-    let createdAt: Date
-    let userId: String
-}
-
-struct EventDateTime {
-    let startDate: Date
-    let endDate: Date
-    
-    var duration: TimeInterval {
-        return endDate.timeIntervalSince(startDate)
-    }
-    
-    var formattedDuration: String {
-        let hours = Int(duration / 3600)
-        let minutes = Int((duration.truncatingRemainder(dividingBy: 3600)) / 60)
-        
-        if hours > 0 && minutes > 0 {
-            return "\(hours)h \(minutes)m"
-        } else if hours > 0 {
-            return "\(hours)h"
-        } else {
-            return "\(minutes)m"
-        }
-    }
-}
-
-struct EventLocation {
-    let name: String
-    let address: String
-    let coordinates: CLLocationCoordinate2D?
-}
+// Event models moved to Models/Event.swift
 
 final class CreateEventViewController: UIViewController {
     
@@ -582,7 +545,7 @@ final class CreateEventViewController: UIViewController {
                 if let data = snapshot?.data() {
                     // Load avatar customization data if available
                     if let avatarDataDict = data["avatarData"] as? [String: Any] {
-                        print("🎨 Loading saved avatar data for editing")
+                        Logger.log("Loading saved avatar data for editing", level: .info, category: "Events")
                         self?.avatarData = CollectionAvatar.AvatarData.fromFirestoreDict(avatarDataDict, version: .v1)
                         
                         // Save avatar data locally for ContentViewController
@@ -653,9 +616,9 @@ final class CreateEventViewController: UIViewController {
         
         // Debug: Log avatar data if present
         if let avatarData = avatarData {
-            print("🎭 Saving event with avatar data: \(avatarData.selections.count) categories")
+            Logger.log("Saving event with avatar data: \(avatarData.selections.count) categories", level: .info, category: "Events")
         } else {
-            print("🎭 Saving event without avatar data")
+            Logger.log("Saving event without avatar data", level: .info, category: "Events")
         }
         
         // Save event to Firebase
@@ -664,11 +627,11 @@ final class CreateEventViewController: UIViewController {
                 LoadingView.shared.hideOverlayLoading()
                 switch result {
                 case .success(let eventId):
-                    print("✅ Event created successfully with ID: \(eventId)")
+                    Logger.log("Event created successfully with ID: \(eventId)", level: .info, category: "Events")
                     self?.delegate?.createEventViewController(self!, didCreateEvent: event)
                     self?.dismiss(animated: true)
                 case .failure(let error):
-                    print("❌ Failed to create event: \(error.localizedDescription)")
+                    Logger.log("Failed to create event: \(error.localizedDescription)", level: .error, category: "Events")
                     self?.showAlert(title: "Error", message: "Failed to create event. Please try again.")
                 }
             }
@@ -699,11 +662,11 @@ final class CreateEventViewController: UIViewController {
                 LoadingView.shared.hideOverlayLoading()
                 switch result {
                 case .success:
-                    print("✅ Event updated successfully")
+                    Logger.log("Event updated successfully", level: .info, category: "Events")
                     self?.delegate?.createEventViewController(self!, didCreateEvent: updatedEvent)
                     self?.dismiss(animated: true)
                 case .failure(let error):
-                    print("❌ Failed to update event: \(error.localizedDescription)")
+                    Logger.log("Failed to update event: \(error.localizedDescription)", level: .error, category: "Events")
                     self?.showAlert(title: "Error", message: "Failed to update event. Please try again.")
                 }
             }
@@ -721,8 +684,7 @@ final class CreateEventViewController: UIViewController {
     @objc private func customizeAvatarTapped() {
         guard let userId = Auth.auth().currentUser?.uid else { return }
         
-        // Create a temporary collection for avatar customization
-        // We'll use a consistent ID so we can retrieve the avatar data later
+        // Create a temporary collection model for avatar customization (no Firestore write)
         let tempCollectionId = "temp_event_avatar"
         let tempCollection = PlaceCollection(
             id: tempCollectionId,
@@ -733,46 +695,17 @@ final class CreateEventViewController: UIViewController {
             isOwner: true
         )
         
-        // If we have existing avatar data (edit mode), save it to the temp collection first
+        // If we have existing avatar data (edit mode), persist locally so ContentViewController can load it
         if let existingAvatarData = avatarData {
-            let db = Firestore.firestore()
-            db.collection("users")
-                .document(userId)
-                .collection("collections")
-                .document(tempCollectionId)
-                .setData([
-                    "id": tempCollectionId,
-                    "name": "Event Avatar",
-                    "places": [],
-                    "userId": userId,
-                    "status": "active",
-                    "createdAt": Timestamp(date: Date()),
-                    "isOwner": true,
-                    "version": 1,
-                    "avatarData": existingAvatarData.toFirestoreDict()
-                ], merge: true) { [weak self] error in
-                    if let error = error {
-                        print("❌ Error saving avatar data to temp collection: \(error.localizedDescription)")
-                    } else {
-                        print("✅ Saved existing avatar data to temp collection")
-                    }
-                    
-                    // Navigate to ContentViewController
-                    let vc = ContentViewController(collection: tempCollection)
-                    if let nav = self?.navigationController {
-                        nav.pushViewController(vc, animated: true)
-                    } else {
-                        self?.present(vc, animated: true)
-                    }
-                }
+            saveAvatarDataLocally(existingAvatarData)
+        }
+        
+        // Navigate to ContentViewController
+        let vc = ContentViewController(collection: tempCollection)
+        if let nav = navigationController {
+            nav.pushViewController(vc, animated: true)
         } else {
-            // No existing avatar data, just navigate
-            let vc = ContentViewController(collection: tempCollection)
-            if let nav = navigationController {
-                nav.pushViewController(vc, animated: true)
-            } else {
-                present(vc, animated: true)
-            }
+            present(vc, animated: true)
         }
     }
     
@@ -873,7 +806,7 @@ final class CreateEventViewController: UIViewController {
         ) { [weak self] predictions, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    print("Error searching locations: \(error.localizedDescription)")
+                    Logger.log("Error searching locations: \(error.localizedDescription)", level: .error, category: "Events")
                     return
                 }
                 
@@ -951,7 +884,7 @@ extension CreateEventViewController {
     // MARK: - Avatar Data Handling
     func updateAvatarData(_ avatarData: CollectionAvatar.AvatarData) {
         self.avatarData = avatarData
-        print("✅ Avatar data updated for event creation: \(avatarData.selections.count) selections")
+        Logger.log("Avatar data updated for event creation: \(avatarData.selections.count) selections", level: .info, category: "Events")
     }
     
     private func updateAvatarImageView() {
@@ -962,7 +895,7 @@ extension CreateEventViewController {
             // Load and display the temporary avatar image
             self.loadTemporaryAvatarImage()
             
-            print("🎨 Avatar image view updated with actual avatar")
+            Logger.log("Avatar image view updated with actual avatar", level: .debug, category: "Events")
         }
     }
     
@@ -1290,9 +1223,9 @@ extension CreateEventViewController {
                 self?.loadTemporaryAvatarImage()
             }
             
-            print("✅ Retrieved saved avatar data for event: \(avatarData.selections.count) categories")
+            Logger.log("Retrieved saved avatar data for event: \(avatarData.selections.count) categories", level: .info, category: "Events")
         } else {
-            print("📝 No saved avatar data found - user can customize avatar")
+            Logger.log("No saved avatar data found - user can customize avatar", level: .debug, category: "Events")
         }
     }
     
@@ -1300,7 +1233,7 @@ extension CreateEventViewController {
         // Save avatar data locally so it persists across app sessions
         if let data = try? JSONEncoder().encode(avatarData) {
             UserDefaults.standard.set(data, forKey: "temp_event_avatar_data")
-            print("💾 Saved avatar data locally")
+            Logger.log("Saved avatar data locally", level: .debug, category: "Events")
         }
     }
     
@@ -1315,11 +1248,11 @@ extension CreateEventViewController {
             // Display the temporary avatar image
             avatarImageView.image = image
             avatarImageView.contentMode = .scaleAspectFit
-            print("🖼️ Loaded temporary avatar image from local storage")
+            Logger.log("Loaded temporary avatar image from local storage", level: .debug, category: "Events")
         } else {
             // Fallback to default avatar if no temporary image exists
             avatarImageView.image = UIImage(named: "avatar") ?? UIImage(systemName: "person.crop.circle")
-            print("🖼️ No temporary avatar image found, using default")
+            Logger.log("No temporary avatar image found, using default", level: .debug, category: "Events")
         }
     }
     
@@ -1335,9 +1268,9 @@ extension CreateEventViewController {
         if let imageData = image.pngData() {
             do {
                 try imageData.write(to: tempImagePath)
-                print("💾 Saved temporary avatar image to: \(tempImagePath.path)")
+                Logger.log("Saved temporary avatar image to: \(tempImagePath.path)", level: .debug, category: "Events")
             } catch {
-                print("❌ Failed to save temporary avatar image: \(error.localizedDescription)")
+                Logger.log("Failed to save temporary avatar image: \(error.localizedDescription)", level: .error, category: "Events")
             }
         }
     }
@@ -1352,7 +1285,7 @@ extension CreateEventViewController {
         // Delete the temporary avatar image file
         let tempImagePath = getTemporaryAvatarImagePath()
         try? FileManager.default.removeItem(at: tempImagePath)
-        print("🗑️ Deleted temporary avatar image")
+        Logger.log("Deleted temporary avatar image", level: .debug, category: "Events")
     }
     
     private func setupNotifications() {
@@ -1385,6 +1318,6 @@ extension CreateEventViewController {
         // Update the avatar image view to reflect the new avatar
         updateAvatarImageView()
         
-        print("✅ Avatar data updated via notification: \(selections.count) categories")
+        Logger.log("Avatar data updated via notification: \(selections.count) categories", level: .info, category: "Events")
     }
 }

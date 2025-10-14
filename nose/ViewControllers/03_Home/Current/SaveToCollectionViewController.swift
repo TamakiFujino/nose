@@ -28,10 +28,6 @@ class SaveToCollectionViewController: UIViewController {
     private var newCollectionName: String = ""
     private var currentTab: CollectionTab = .personal
     
-    private enum CollectionTab {
-        case personal
-        case shared
-    }
     
     weak var delegate: SaveToCollectionViewControllerDelegate?
     

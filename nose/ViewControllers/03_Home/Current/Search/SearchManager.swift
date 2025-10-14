@@ -35,7 +35,7 @@ final class SearchManager: NSObject {
             guard let self = self else { return }
             
             if let error = error {
-                print("Error searching places: \(error.localizedDescription)")
+                Logger.log("Error searching places: \(error.localizedDescription)", level: .error, category: "Search")
                 return
             }
             
@@ -61,7 +61,7 @@ final class SearchManager: NSObject {
                     self.delegate?.searchManager(self, didSelectPlace: place)
                 }
             } else {
-                print("Failed to fetch place details for: \(prediction.placeID)")
+                Logger.log("Failed to fetch place details for: \(prediction.placeID)", level: .warn, category: "Search")
             }
         }
     }

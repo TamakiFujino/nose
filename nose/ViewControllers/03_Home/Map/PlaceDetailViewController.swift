@@ -151,10 +151,15 @@ final class PlaceDetailViewController: UIViewController {
     private lazy var saveButton: CustomButton = {
         let button = CustomButton()
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.setImage(UIImage(systemName: "bookmark"), for: .normal)
+        let symbolConfig = UIImage.SymbolConfiguration(pointSize: 22, weight: .semibold)
+        button.setImage(UIImage(systemName: "bookmark")?.withConfiguration(symbolConfig), for: .normal)
         button.tintColor = .fourthColor
         button.style = .secondary
         button.size = .large
+        button.imageView?.contentMode = .scaleAspectFit
+        button.contentEdgeInsets = .zero
+        button.imageEdgeInsets = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
+        button.clipsToBounds = true
         button.addTarget(self, action: #selector(saveButtonTapped), for: .touchUpInside)
         return button
     }()
@@ -174,7 +179,7 @@ final class PlaceDetailViewController: UIViewController {
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
-        print("PlaceDetailViewController - viewDidLoad")
+        Logger.log("PlaceDetailViewController - viewDidLoad", level: .debug, category: "PlaceDetail")
         setupUI()
         fetchPlaceDetails()
         
@@ -184,23 +189,26 @@ final class PlaceDetailViewController: UIViewController {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        print("PlaceDetailViewController - viewWillAppear")
+        Logger.log("PlaceDetailViewController - viewWillAppear", level: .debug, category: "PlaceDetail")
     }
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        print("PlaceDetailViewController - viewDidAppear")
+        Logger.log("PlaceDetailViewController - viewDidAppear", level: .debug, category: "PlaceDetail")
     }
     
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         updateScrollViewContentSize()
-        print("Container view height: \(containerView.frame.height)")
+        Logger.log("Container view height: \(containerView.frame.height)", level: .debug, category: "PlaceDetail")
+        // Ensure circular save button
+        saveButton.layer.cornerRadius = saveButton.bounds.height / 2
+        saveButton.clipsToBounds = true
     }
     
     // MARK: - Setup
     private func setupUI() {
-        print("PlaceDetailViewController - setupUI")
+        Logger.log("PlaceDetailViewController - setupUI", level: .debug, category: "PlaceDetail")
         view.backgroundColor = .clear
         
         // Add subviews
@@ -238,49 +246,49 @@ final class PlaceDetailViewController: UIViewController {
             scrollView.widthAnchor.constraint(equalTo: containerView.widthAnchor),
             
             // Drag indicator constraints
-            dragIndicator.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 8),
+            dragIndicator.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: DesignTokens.Spacing.sm),
             dragIndicator.centerXAnchor.constraint(equalTo: scrollView.centerXAnchor),
             dragIndicator.widthAnchor.constraint(equalToConstant: 40),
             dragIndicator.heightAnchor.constraint(equalToConstant: 5),
             
             // Photo collection view constraints
-            photoCollectionView.topAnchor.constraint(equalTo: dragIndicator.bottomAnchor, constant: 16),
+            photoCollectionView.topAnchor.constraint(equalTo: dragIndicator.bottomAnchor, constant: DesignTokens.Spacing.lg),
             photoCollectionView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
             photoCollectionView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
             photoCollectionView.heightAnchor.constraint(equalToConstant: 200),
             photoCollectionView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
             
             // Page control constraints
-            pageControl.topAnchor.constraint(equalTo: photoCollectionView.bottomAnchor, constant: 8),
+            pageControl.topAnchor.constraint(equalTo: photoCollectionView.bottomAnchor, constant: DesignTokens.Spacing.sm),
             pageControl.centerXAnchor.constraint(equalTo: scrollView.centerXAnchor),
             
             // Name label constraints
-            nameLabel.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 16),
-            nameLabel.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -16),
+            nameLabel.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: DesignTokens.Spacing.lg),
+            nameLabel.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -DesignTokens.Spacing.lg),
             
             // Rating view constraints
-            ratingView.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 8),
-            ratingView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 16),
+            ratingView.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: DesignTokens.Spacing.sm),
+            ratingView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: DesignTokens.Spacing.lg),
             
             // Phone number constraints
-            phoneNumberLabel.topAnchor.constraint(equalTo: ratingView.bottomAnchor, constant: 16),
-            phoneNumberLabel.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 16),
-            phoneNumberLabel.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -16),
+            phoneNumberLabel.topAnchor.constraint(equalTo: ratingView.bottomAnchor, constant: DesignTokens.Spacing.lg),
+            phoneNumberLabel.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: DesignTokens.Spacing.lg),
+            phoneNumberLabel.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -DesignTokens.Spacing.lg),
             
             // Address label constraints
-            addressLabel.topAnchor.constraint(equalTo: phoneNumberLabel.bottomAnchor, constant: 16),
-            addressLabel.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 16),
-            addressLabel.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -16),
+            addressLabel.topAnchor.constraint(equalTo: phoneNumberLabel.bottomAnchor, constant: DesignTokens.Spacing.lg),
+            addressLabel.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: DesignTokens.Spacing.lg),
+            addressLabel.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -DesignTokens.Spacing.lg),
             
             // Opening hours view constraints
-            openingHoursView.topAnchor.constraint(equalTo: addressLabel.bottomAnchor, constant: 24),
-            openingHoursView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 16),
-            openingHoursView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -16),
-            openingHoursView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -24)
+            openingHoursView.topAnchor.constraint(equalTo: addressLabel.bottomAnchor, constant: DesignTokens.Spacing.xxl),
+            openingHoursView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: DesignTokens.Spacing.lg),
+            openingHoursView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -DesignTokens.Spacing.lg),
+            openingHoursView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -DesignTokens.Spacing.xxl)
         ])
         
         // Setup initial name label constraint
-        nameLabelTopConstraint = nameLabel.topAnchor.constraint(equalTo: pageControl.bottomAnchor, constant: 16)
+        nameLabelTopConstraint = nameLabel.topAnchor.constraint(equalTo: pageControl.bottomAnchor, constant: DesignTokens.Spacing.lg)
         nameLabelTopConstraint?.isActive = true
         
         // Add tap gesture to dismiss
@@ -288,29 +296,29 @@ final class PlaceDetailViewController: UIViewController {
         tapGesture.delegate = self
         view.addGestureRecognizer(tapGesture)
         
-        print("PlaceDetailViewController - UI setup completed")
+        Logger.log("PlaceDetailViewController - UI setup completed", level: .debug, category: "PlaceDetail")
     }
     
     // MARK: - Helper Methods
     private func fetchPlaceDetails() {
-        print("🔍 Initial place data:")
-        print("🔍 Name: \(place.name ?? "Unknown")")
-        print("🔍 Place ID: \(place.placeID ?? "Unknown")")
-        print("🔍 Has photos: \(place.photos != nil)")
-        print("🔍 Photo count: \(place.photos?.count ?? 0)")
-        print("🔍 Has phone: \(place.phoneNumber != nil)")
-        print("🔍 Has opening hours: \(place.openingHours != nil)")
+        Logger.log("Initial place data", level: .debug, category: "PlaceDetail")
+        Logger.log("Name: \(place.name ?? "Unknown")", level: .debug, category: "PlaceDetail")
+        Logger.log("Place ID: \(place.placeID ?? "Unknown")", level: .debug, category: "PlaceDetail")
+        Logger.log("Has photos: \(place.photos != nil)", level: .debug, category: "PlaceDetail")
+        Logger.log("Photo count: \(place.photos?.count ?? 0)", level: .debug, category: "PlaceDetail")
+        Logger.log("Has phone: \(place.phoneNumber != nil)", level: .debug, category: "PlaceDetail")
+        Logger.log("Has opening hours: \(place.openingHours != nil)", level: .debug, category: "PlaceDetail")
         
         // Check if we already have sufficient place data
         if place.phoneNumber != nil && place.openingHours != nil && place.photos != nil {
-            print("✅ Place already has sufficient details, using existing data")
+            Logger.log("Place already has sufficient details, using existing data", level: .info, category: "PlaceDetail")
             updateUIWithPlaceDetails(place)
             loadPhotos()
             return
         }
         
         guard let placeID = place.placeID else {
-            print("Error: Place ID is nil")
+            Logger.log("Error: Place ID is nil", level: .error, category: "PlaceDetail")
             // Use the initial place data since we can't fetch details
             updateUIWithPlaceDetails(place)
             return
@@ -318,7 +326,7 @@ final class PlaceDetailViewController: UIViewController {
         
         // Check cache first
         if let cachedPlace = PlacesCacheManager.shared.getCachedPlace(for: placeID) {
-            print("Using cached place details for: \(placeID)")
+            Logger.log("Using cached place details for: \(placeID)", level: .info, category: "PlaceDetail")
             self.detailedPlace = cachedPlace
             DispatchQueue.main.async {
                 self.updateUIWithPlaceDetails(cachedPlace)
@@ -327,14 +335,14 @@ final class PlaceDetailViewController: UIViewController {
             return
         }
         
-        print("🔍 Fetching detailed place information for: \(placeID)")
+        Logger.log("Fetching detailed place information for: \(placeID)", level: .info, category: "PlaceDetail")
         
         PlacesAPIManager.shared.fetchDetailPlaceDetails(placeID: placeID) { [weak self] (fetchedPlace) in
             if let fetchedPlace = fetchedPlace {
-                print("✅ Successfully fetched place details")
-                print("✅ Place name: \(fetchedPlace.name ?? "Unknown")")
-                print("✅ Place has photos: \(fetchedPlace.photos != nil)")
-                print("✅ Number of photos: \(fetchedPlace.photos?.count ?? 0)")
+                Logger.log("Successfully fetched place details", level: .info, category: "PlaceDetail")
+                Logger.log("Place name: \(fetchedPlace.name ?? "Unknown")", level: .debug, category: "PlaceDetail")
+                Logger.log("Has photos: \(fetchedPlace.photos != nil)", level: .debug, category: "PlaceDetail")
+                Logger.log("Number of photos: \(fetchedPlace.photos?.count ?? 0)", level: .debug, category: "PlaceDetail")
                 self?.detailedPlace = fetchedPlace
                 
                 DispatchQueue.main.async {
@@ -346,7 +354,7 @@ final class PlaceDetailViewController: UIViewController {
                     }
                 }
             } else {
-                print("Failed to fetch place details, using existing data")
+                Logger.log("Failed to fetch place details, using existing data", level: .warn, category: "PlaceDetail")
                 // Fall back to initial place data
                 DispatchQueue.main.async {
                     if let self = self {
@@ -407,18 +415,18 @@ final class PlaceDetailViewController: UIViewController {
         // Use detailedPlace if available, otherwise fall back to initial place
         let placeToUse = detailedPlace ?? place
         
-        print("🔍 Loading photos for place: \(placeToUse.name ?? "Unknown")")
-        print("🔍 Place has photos: \(placeToUse.photos != nil)")
-        print("🔍 Number of photos: \(placeToUse.photos?.count ?? 0)")
+        Logger.log("Loading photos for place: \(placeToUse.name ?? "Unknown")", level: .debug, category: "PlaceDetail")
+        Logger.log("Has photos: \(placeToUse.photos != nil)", level: .debug, category: "PlaceDetail")
+        Logger.log("Number of photos: \(placeToUse.photos?.count ?? 0)", level: .debug, category: "PlaceDetail")
         
         guard let placePhotos = placeToUse.photos, !placePhotos.isEmpty else {
-            print("❌ No photos available for this place")
+            Logger.log("No photos available for this place", level: .info, category: "PlaceDetail")
             photoCollectionView.isHidden = true
             pageControl.isHidden = true
             
             // Update name label constraint to be directly below drag indicator when no photos
             nameLabelTopConstraint?.isActive = false
-            nameLabelTopConstraint = nameLabel.topAnchor.constraint(equalTo: dragIndicator.bottomAnchor, constant: 16)
+            nameLabelTopConstraint = nameLabel.topAnchor.constraint(equalTo: dragIndicator.bottomAnchor, constant: DesignTokens.Spacing.lg)
             nameLabelTopConstraint?.isActive = true
             
             updateScrollViewContentSize()
@@ -438,7 +446,7 @@ final class PlaceDetailViewController: UIViewController {
         let maxPhotos = 5
         let limitedPhotos = Array(placePhotos.prefix(maxPhotos))
         
-        print("Found \(placePhotos.count) photos, loading first \(limitedPhotos.count)")
+        Logger.log("Found \(placePhotos.count) photos, loading first \(limitedPhotos.count)", level: .debug, category: "PlaceDetail")
         
         // Show photo collection view immediately with loading placeholders
         photoCollectionView.isHidden = false
@@ -454,7 +462,7 @@ final class PlaceDetailViewController: UIViewController {
         
         // Load photos one by one with caching
         for (index, photo) in limitedPhotos.enumerated() {
-            print("🔄 Starting to load photo \(index + 1) of \(limitedPhotos.count)")
+            Logger.log("Starting to load photo \(index + 1) of \(limitedPhotos.count)", level: .debug, category: "PlaceDetail")
             loadPhoto(at: index, photo: photo, placeID: placeToUse.placeID ?? "")
         }
         
@@ -479,14 +487,14 @@ final class PlaceDetailViewController: UIViewController {
         // Update scroll view content size
         scrollView.contentSize = CGSize(width: scrollView.frame.width, height: totalHeight)
         
-        print("📏 Updated scroll view content size: \(scrollView.contentSize)")
+        Logger.log("Updated scroll view content size: \(scrollView.contentSize)", level: .debug, category: "PlaceDetail")
     }
     
     private func loadPhoto(at index: Int, photo: GMSPlacePhotoMetadata, placeID: String) {
         // Check cache first
         let photoID = "\(placeID)_\(index)"
         if let cachedImage = PlacesCacheManager.shared.getCachedPhoto(for: photoID) {
-            print("📋 Using cached photo \(index + 1)")
+            Logger.log("Using cached photo \(index + 1)", level: .debug, category: "PlaceDetail")
             DispatchQueue.main.async {
                 self.photos[index] = cachedImage
                 self.photoCollectionView.reloadItems(at: [IndexPath(item: index, section: 0)])
@@ -494,19 +502,19 @@ final class PlaceDetailViewController: UIViewController {
             return
         }
         
-        print("🔄 Loading photo \(index + 1) for place: \(placeID)")
-        print("🔄 Photo metadata: \(photo)")
+        Logger.log("Loading photo \(index + 1) for place: \(placeID)", level: .debug, category: "PlaceDetail")
+        Logger.log("Photo metadata: \(photo)", level: .debug, category: "PlaceDetail")
         
         PlacesAPIManager.shared.loadPlacePhoto(photo: photo, placeID: placeID, photoIndex: index) { [weak self] (image: UIImage?) in
             if let image = image {
-                print("✅ Successfully loaded photo \(index + 1)")
-                print("✅ Image size: \(image.size)")
+                Logger.log("Successfully loaded photo \(index + 1)", level: .debug, category: "PlaceDetail")
+                Logger.log("Image size: \(image.size)", level: .debug, category: "PlaceDetail")
                 DispatchQueue.main.async {
                     self?.photos[index] = image
                     self?.photoCollectionView.reloadItems(at: [IndexPath(item: index, section: 0)])
                 }
             } else {
-                print("❌ Failed to load photo \(index + 1)")
+                Logger.log("Failed to load photo \(index + 1)", level: .warn, category: "PlaceDetail")
             }
         }
     }
@@ -515,39 +523,19 @@ final class PlaceDetailViewController: UIViewController {
     @objc private func handleTap(_ gesture: UITapGestureRecognizer) {
         let location = gesture.location(in: view)
         if location.y < containerView.frame.minY {
-            print("PlaceDetailViewController - Dismissing due to tap outside")
+            Logger.log("Dismissing due to tap outside", level: .debug, category: "PlaceDetail")
             dismiss(animated: true)
         }
     }
     
     @objc private func saveButtonTapped() {
-        print("Save button tapped for place: \(place.name ?? "Unknown")")
+        Logger.log("Save button tapped for place: \(place.name ?? "Unknown")", level: .info, category: "PlaceDetail")
         let saveVC = SaveToCollectionViewController(place: place)
         saveVC.delegate = self
         present(saveVC, animated: true)
     }
     
-    private func savePlaceToCollection(_ collection: PlaceCollection) {
-        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
-        let db = Firestore.firestore()
-        
-        // Get references to both collections
-        _ = db.collection("users")
-            .document(currentUserId)
-            .collection("collections")
-            .document(collection.id)
-            
-        _ = db.collection("users")
-            .document(collection.userId)  // This is the owner's ID
-            .collection("collections")
-            .document(collection.id)
-        
-        print("📄 Firestore path: users/\(currentUserId)/collections/\(collection.id)")
-        print("📄 Owner path: users/\(collection.userId)/collections/\(collection.id)")
-        
-        // First get the current collection data
-        // ... existing code ...
-    }
+    // (Removed) Old savePlaceToCollection kept for reference; saving is handled in SaveToCollectionViewController
 }
 
 // MARK: - UIGestureRecognizerDelegate
@@ -615,7 +603,7 @@ extension PlaceDetailViewController: UICollectionViewDelegate, UICollectionViewD
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "PhotoCell", for: indexPath) as! PhotoCell
         let image = photos[indexPath.item]
-        print("🖼️ Configuring cell \(indexPath.item) with image: \(image != nil ? "loaded" : "loading")")
+        Logger.log("Configuring cell \(indexPath.item) with image: \(image != nil ? "loaded" : "loading")", level: .debug, category: "PlaceDetail")
         cell.configure(with: image)
         return cell
     }
@@ -700,7 +688,7 @@ class PhotoCell: UICollectionViewCell {
 // MARK: - SaveToCollectionViewControllerDelegate
 extension PlaceDetailViewController: SaveToCollectionViewControllerDelegate {
     func saveToCollectionViewController(_ controller: SaveToCollectionViewController, didSavePlace place: GMSPlace, toCollection collection: PlaceCollection) {
-        print("Saved place '\(place.name ?? "Unknown")' to collection '\(collection.name)'")
+        Logger.log("Saved place '\(place.name ?? "Unknown")' to collection '\(collection.name)'", level: .info, category: "PlaceDetail")
         // TODO: Implement actual saving to your data source
         // For now, just show a success animation
         UIView.animate(withDuration: 0.2, animations: {

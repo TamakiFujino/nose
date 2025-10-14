@@ -987,7 +987,8 @@
 		};
 		49BE6D882DF30415006D6E16 /* Staging */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = E8780BB7672D195B5EAA5BD5 /* Pods-nose.staging.xcconfig */;
+			baseConfigurationReferenceAnchor = 49E99BF82D3BE432000F3CE5 /* nose */;
+			baseConfigurationReferenceRelativePath = Configs/Staging.xcconfig;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -1022,7 +1023,8 @@
 		};
 		49BE6D892DF30415006D6E16 /* Staging */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = DFCECA97C560C40982DCFDA4 /* Pods-noseTests.staging.xcconfig */;
+			baseConfigurationReferenceAnchor = 49E99BF82D3BE432000F3CE5 /* nose */;
+			baseConfigurationReferenceRelativePath = Configs/Staging.xcconfig;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
@@ -1042,7 +1044,8 @@
 		};
 		49BE6D8A2DF30415006D6E16 /* Staging */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 965570F488B3E805CCC59F04 /* Pods-noseUITests.staging.xcconfig */;
+			baseConfigurationReferenceAnchor = 49E99BF82D3BE432000F3CE5 /* nose */;
+			baseConfigurationReferenceRelativePath = Configs/Staging.xcconfig;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -1060,7 +1063,8 @@
 		};
 		49E99C202D3BE433000F3CE5 /* Development */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = F1BCB3623F34C0020E1D1F3E /* Pods-nose.development.xcconfig */;
+			baseConfigurationReferenceAnchor = 49E99BF82D3BE432000F3CE5 /* nose */;
+			baseConfigurationReferenceRelativePath = Configs/Development.xcconfig;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -1095,7 +1099,8 @@
 		};
 		49E99C212D3BE433000F3CE5 /* Production */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = D4DA86044569CF6E1673F2DE /* Pods-nose.production.xcconfig */;
+			baseConfigurationReferenceAnchor = 49E99BF82D3BE432000F3CE5 /* nose */;
+			baseConfigurationReferenceRelativePath = Configs/Production.xcconfig;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -1252,7 +1257,8 @@
 		};
 		49E99C252D3BE433000F3CE5 /* Development */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 6311D356F595772C8A2D0B95 /* Pods-noseTests.development.xcconfig */;
+			baseConfigurationReferenceAnchor = 49E99BF82D3BE432000F3CE5 /* nose */;
+			baseConfigurationReferenceRelativePath = Configs/Development.xcconfig;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
@@ -1272,7 +1278,8 @@
 		};
 		49E99C262D3BE433000F3CE5 /* Production */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 00E3D4FEC9749AF0761692A9 /* Pods-noseTests.production.xcconfig */;
+			baseConfigurationReferenceAnchor = 49E99BF82D3BE432000F3CE5 /* nose */;
+			baseConfigurationReferenceRelativePath = Configs/Production.xcconfig;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
@@ -1292,7 +1299,8 @@
 		};
 		49E99C282D3BE433000F3CE5 /* Development */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 2B7F922E0F5C4EA04FBCABDB /* Pods-noseUITests.development.xcconfig */;
+			baseConfigurationReferenceAnchor = 49E99BF82D3BE432000F3CE5 /* nose */;
+			baseConfigurationReferenceRelativePath = Configs/Development.xcconfig;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -1310,7 +1318,8 @@
 		};
 		49E99C292D3BE433000F3CE5 /* Production */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 61B56A5F18E714D56FE0DCC0 /* Pods-noseUITests.production.xcconfig */;
+			baseConfigurationReferenceAnchor = 49E99BF82D3BE432000F3CE5 /* nose */;
+			baseConfigurationReferenceRelativePath = Configs/Production.xcconfig;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
