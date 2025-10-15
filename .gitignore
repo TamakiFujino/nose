@@ -39,3 +39,4 @@ node_modules/
 
 # Addressables cache states
 nose-unity/Assets/AddressableAssetsData/*/*.bin
+OpenInNose/Info.plist

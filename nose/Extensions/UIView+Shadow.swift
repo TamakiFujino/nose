@@ -2,7 +2,7 @@ import UIKit
 
 extension UIView {
     func addShadow(
-        color: UIColor = .sixthColor,
+        color: UIColor = .black,
         opacity: Float = 0.1,
         offset: CGSize = CGSize(width: 0, height: 2),
         radius: CGFloat = 8

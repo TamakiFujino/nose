@@ -11,13 +11,13 @@ final class UserManager {
     // MARK: - User Operations
     
     func saveUser(_ user: User, completion: @escaping (Error?) -> Void) {
-        FirestorePaths.userDoc(user.id, db: db).setData(user.toFirestoreData()) { error in
+        db.collection("users").document(user.id).setData(user.toFirestoreData()) { error in
             completion(error)
         }
     }
     
     func getUser(id: String, completion: @escaping (User?, Error?) -> Void) {
-        FirestorePaths.userDoc(id, db: db).getDocument { [weak self] snapshot, error in
+        db.collection("users").document(id).getDocument { [weak self] snapshot, error in
             guard let self = self else { return }
             
             if let error = error {
@@ -41,69 +41,11 @@ final class UserManager {
             }
         }
     }
-
-    // MARK: - Async/Await wrappers
-    func getUser(id: String) async throws -> User? {
-        try await withCheckedThrowingContinuation { continuation in
-            self.getUser(id: id) { user, error in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                } else {
-                    continuation.resume(returning: user)
-                }
-            }
-        }
-    }
-
-    func getCurrentUser() async throws -> User? {
-        try await withCheckedThrowingContinuation { continuation in
-            self.getCurrentUser { user, error in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                } else {
-                    continuation.resume(returning: user)
-                }
-            }
-        }
-    }
-
-    func getFriends(userId: String) async throws -> [User] {
-        try await withCheckedThrowingContinuation { continuation in
-            self.getFriends(userId: userId) { result in
-                switch result {
-                case .success(let users): continuation.resume(returning: users)
-                case .failure(let error): continuation.resume(throwing: error)
-                }
-            }
-        }
-    }
-
-    func getBlockedUsers(userId: String) async throws -> [User] {
-        try await withCheckedThrowingContinuation { continuation in
-            self.getBlockedUsers(userId: userId) { result in
-                switch result {
-                case .success(let users): continuation.resume(returning: users)
-                case .failure(let error): continuation.resume(throwing: error)
-                }
-            }
-        }
-    }
-
-    func updateUserName(userId: String, newName: String) async throws {
-        try await withCheckedThrowingContinuation { continuation in
-            self.updateUserName(userId: userId, newName: newName) { result in
-                switch result {
-                case .success: continuation.resume()
-                case .failure(let error): continuation.resume(throwing: error)
-                }
-            }
-        }
-    }
     
     private func migrateUser(id: String, data: [String: Any], from version: Int, completion: @escaping (User?, Error?) -> Void) {
         let migratedData = User.migrate(data, from: version)
         
-        FirestorePaths.userDoc(id, db: db).setData(migratedData, merge: true) { [weak self] error in
+        db.collection("users").document(id).setData(migratedData, merge: true) { [weak self] error in
             guard let self = self else { return }
             
             if let error = error {
@@ -112,7 +54,7 @@ final class UserManager {
             }
             
             // Fetch the updated document to create the user
-            FirestorePaths.userDoc(id, db: self.db).getDocument { snapshot, error in
+            self.db.collection("users").document(id).getDocument { snapshot, error in
                 if let error = error {
                     completion(nil, error)
                     return
@@ -130,7 +72,7 @@ final class UserManager {
     }
     
     func updateUserPreferences(userId: String, preferences: User.UserPreferences, completion: @escaping (Error?) -> Void) {
-        FirestorePaths.userDoc(userId, db: db).updateData([
+        db.collection("users").document(userId).updateData([
             "preferences": [
                 "language": preferences.language,
                 "theme": preferences.theme,
@@ -151,7 +93,7 @@ final class UserManager {
             return
         }
         
-        FirestorePaths.userDoc(userId, db: db).updateData([
+        db.collection("users").document(userId).updateData([
             "name": newName,
             "lastLoginAt": FieldValue.serverTimestamp(),
             "version": User.currentVersion
@@ -168,7 +110,7 @@ final class UserManager {
         let batch = db.batch()
         
         // 1. Mark user as deleted
-        let userRef = FirestorePaths.userDoc(userId, db: db)
+        let userRef = db.collection("users").document(userId)
         batch.updateData([
             "isDeleted": true,
             "deletedAt": FieldValue.serverTimestamp(),
@@ -176,7 +118,7 @@ final class UserManager {
         ], forDocument: userRef)
         
         // 2. Delete user's friends collection
-        let friendsRef = FirestorePaths.friends(userId: userId, db: db)
+        let friendsRef = userRef.collection("friends")
         friendsRef.getDocuments { [weak self] snapshot, error in
             guard let self = self else { return }
             
@@ -190,7 +132,7 @@ final class UserManager {
             }
             
             // 3. Delete user's blocked collection
-            let blockedRef = FirestorePaths.blocked(userId: userId, db: db)
+            let blockedRef = userRef.collection("blocked")
             blockedRef.getDocuments { [weak self] snapshot, error in
                 guard let self = self else { return }
                 
@@ -204,7 +146,7 @@ final class UserManager {
                 }
                 
                 // 4. Delete user's collections
-                let collectionsRef = FirestorePaths.collections(userId: userId, db: db)
+                let collectionsRef = userRef.collection("collections")
                 collectionsRef.getDocuments { [weak self] snapshot, error in
                     guard self != nil else { return }
                     
@@ -249,7 +191,8 @@ final class UserManager {
     // MARK: - Friend Operations
     
     func getFriends(userId: String, completion: @escaping (Result<[User], Error>) -> Void) {
-        FirestorePaths.friends(userId: userId, db: db).getDocuments { [weak self] snapshot, error in
+        db.collection("users").document(userId)
+            .collection("friends").getDocuments { [weak self] snapshot, error in
                 guard let self = self else { return }
                 
                 if let error = error {
@@ -280,7 +223,8 @@ final class UserManager {
     }
     
     func getBlockedUsers(userId: String, completion: @escaping (Result<[User], Error>) -> Void) {
-        FirestorePaths.blocked(userId: userId, db: db).getDocuments { [weak self] snapshot, error in
+        db.collection("users").document(userId)
+            .collection("blocked").getDocuments { [weak self] snapshot, error in
                 guard let self = self else { return }
                 
                 if let error = error {
@@ -312,7 +256,8 @@ final class UserManager {
     
     func addFriend(currentUserId: String, friendId: String, completion: @escaping (Result<Void, Error>) -> Void) {
         // First check if the user is blocked
-        FirestorePaths.blocked(userId: currentUserId, db: db).document(friendId).getDocument { [weak self] snapshot, error in
+        db.collection("users").document(currentUserId)
+            .collection("blocked").document(friendId).getDocument { [weak self] snapshot, error in
                 guard let self = self else { return }
                 
                 if let error = error {
@@ -326,7 +271,8 @@ final class UserManager {
                 }
                 
                 // Check if the other user has blocked the current user
-                FirestorePaths.blocked(userId: friendId, db: self.db).document(currentUserId).getDocument { [weak self] snapshot, error in
+                self.db.collection("users").document(friendId)
+                    .collection("blocked").document(currentUserId).getDocument { [weak self] snapshot, error in
                         guard let self = self else { return }
                         
                         if let error = error {
@@ -340,7 +286,8 @@ final class UserManager {
                         }
                         
                         // Add friend relationship
-                        FirestorePaths.friends(userId: currentUserId, db: self.db).document(friendId).setData([
+                        self.db.collection("users").document(currentUserId)
+                            .collection("friends").document(friendId).setData([
                                 "addedAt": FieldValue.serverTimestamp()
                             ]) { error in
                                 if let error = error {
@@ -354,35 +301,44 @@ final class UserManager {
     }
     
     func blockUser(currentUserId: String, blockedUserId: String, completion: @escaping (Result<Void, Error>) -> Void) {
-        Logger.log("Block user flow: current=\(currentUserId) blocked=\(blockedUserId)", level: .debug, category: "User")
+        print("🔒 Starting block operation:")
+        print("  - Current user ID: \(currentUserId)")
+        print("  - Blocked user ID: \(blockedUserId)")
         
         // Verify authentication
         guard let authUser = Auth.auth().currentUser else {
-            Logger.log("User not authenticated", level: .error, category: "User")
+            print("❌ User not authenticated")
             completion(.failure(NSError(domain: "UserManager", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])))
             return
         }
         
-        Logger.log("Auth user=\(authUser.uid) matches=\(authUser.uid == currentUserId)", level: .debug, category: "User")
+        print("🔒 Authenticated user ID: \(authUser.uid)")
+        print("🔒 Auth user matches current user: \(authUser.uid == currentUserId)")
         
         // 1. Remove from current user's friends list
-        let userAFriendsRef = FirestorePaths.friends(userId: currentUserId, db: db).document(blockedUserId)
-        Logger.log("Remove friend path: \(userAFriendsRef.path)", level: .debug, category: "User")
+        let userAFriendsRef = db.collection("users")
+            .document(currentUserId)
+            .collection("friends")
+            .document(blockedUserId)
+        print("🔒 Removing friend from path: \(userAFriendsRef.path)")
         
         userAFriendsRef.delete { [weak self] error in
             guard let self = self else { return }
             
             if let error = error {
-                Logger.log("Remove friend error: \(error.localizedDescription)", level: .error, category: "User")
+                print("❌ Error removing friend: \(error.localizedDescription)")
                 completion(.failure(error))
                 return
             }
             
-            Logger.log("Removed friend", level: .info, category: "User")
+            print("✅ Successfully removed friend")
             
             // 2. Add to current user's blocked list
-            let userABlockedRef = FirestorePaths.blocked(userId: currentUserId, db: self.db).document(blockedUserId)
-            Logger.log("Add to blocked path: \(userABlockedRef.path)", level: .debug, category: "User")
+            let userABlockedRef = self.db.collection("users")
+                .document(currentUserId)
+                .collection("blocked")
+                .document(blockedUserId)
+            print("🔒 Adding to blocked list at path: \(userABlockedRef.path)")
             
             userABlockedRef.setData([
                 "blockedAt": FieldValue.serverTimestamp()
@@ -390,17 +346,19 @@ final class UserManager {
                 guard let self = self else { return }
                 
                 if let error = error {
-                    Logger.log("Block add error: \(error.localizedDescription)", level: .error, category: "User")
+                    print("❌ Error adding to blocked list: \(error.localizedDescription)")
                     completion(.failure(error))
                     return
                 }
                 
-                Logger.log("Blocked user added", level: .info, category: "User")
+                print("✅ Successfully added to blocked list")
                 
                 // 3. Remove shared collections from blocked user's collections
-                let userBCollectionsRef = FirestorePaths.collections(userId: blockedUserId, db: self.db)
+                let userBCollectionsRef = self.db.collection("users")
+                    .document(blockedUserId)
+                    .collection("collections")
                 
-                Logger.log("Find shared collections in: \(userBCollectionsRef.path)", level: .debug, category: "User")
+                print("🔒 Searching for shared collections in: \(userBCollectionsRef.path)")
                 
                 userBCollectionsRef.whereField("isOwner", isEqualTo: false)
                     .whereField("sharedBy", isEqualTo: currentUserId)
@@ -408,12 +366,12 @@ final class UserManager {
                         guard let self = self else { return }
                         
                         if let error = error {
-                            Logger.log("Find shared collections error: \(error.localizedDescription)", level: .error, category: "User")
+                            print("❌ Error finding shared collections: \(error.localizedDescription)")
                             completion(.failure(error))
                             return
                         }
                         
-                        Logger.log("Found \(snapshot?.documents.count ?? 0) shared collections to delete", level: .debug, category: "User")
+                        print("🔒 Found \(snapshot?.documents.count ?? 0) shared collections to delete")
                         
                         // Delete each shared collection individually
                         let group = DispatchGroup()
@@ -421,13 +379,13 @@ final class UserManager {
                         
                         snapshot?.documents.forEach { document in
                             group.enter()
-                            Logger.log("Delete shared collection: \(document.reference.path)", level: .debug, category: "User")
+                            print("🔒 Deleting shared collection: \(document.reference.path)")
                             document.reference.delete { error in
                                 if let error = error {
-                                    Logger.log("Delete shared collection error: \(error.localizedDescription)", level: .warn, category: "User")
+                                    print("❌ Error deleting shared collection: \(error.localizedDescription)")
                                     deleteErrors.append(error)
                                 } else {
-                                    Logger.log("Deleted shared collection", level: .info, category: "User")
+                                    print("✅ Successfully deleted shared collection")
                                 }
                                 group.leave()
                             }
@@ -435,15 +393,17 @@ final class UserManager {
                         
                         group.notify(queue: .main) {
                             if !deleteErrors.isEmpty {
-                                Logger.log("Some shared collections failed to delete", level: .warn, category: "User")
+                                print("❌ Some shared collections failed to delete")
                                 completion(.failure(deleteErrors.first!))
                                 return
                             }
                             
                             // 4. Remove collections shared by blocked user from current user's collections
-                            let currentUserCollectionsRef = FirestorePaths.collections(userId: currentUserId, db: self.db)
+                            let currentUserCollectionsRef = self.db.collection("users")
+                                .document(currentUserId)
+                                .collection("collections")
                             
-                            Logger.log("Find collections shared by blocked user in: \(currentUserCollectionsRef.path)", level: .debug, category: "User")
+                            print("🔒 Searching for collections shared by blocked user in: \(currentUserCollectionsRef.path)")
                             
                             currentUserCollectionsRef.whereField("isOwner", isEqualTo: false)
                                 .whereField("sharedBy", isEqualTo: blockedUserId)
@@ -451,12 +411,12 @@ final class UserManager {
                                     guard let self = self else { return }
                                     
                                     if let error = error {
-                                        Logger.log("Find collections shared by blocked user error: \(error.localizedDescription)", level: .error, category: "User")
+                                        print("❌ Error finding collections shared by blocked user: \(error.localizedDescription)")
                                         completion(.failure(error))
                                         return
                                     }
                                     
-                                    Logger.log("Found \(snapshot?.documents.count ?? 0) shared-by-blocked to delete", level: .debug, category: "User")
+                                    print("🔒 Found \(snapshot?.documents.count ?? 0) collections shared by blocked user to delete")
                                     
                                     // Delete each collection shared by blocked user individually
                                     let group2 = DispatchGroup()
@@ -464,13 +424,13 @@ final class UserManager {
                                     
                                     snapshot?.documents.forEach { document in
                                         group2.enter()
-                                        Logger.log("Delete collection shared by blocked user: \(document.reference.path)", level: .debug, category: "User")
+                                        print("🔒 Deleting collection shared by blocked user: \(document.reference.path)")
                                         document.reference.delete { error in
                                             if let error = error {
-                                                Logger.log("Delete collection shared by blocked user error: \(error.localizedDescription)", level: .warn, category: "User")
+                                                print("❌ Error deleting collection shared by blocked user: \(error.localizedDescription)")
                                                 deleteErrors2.append(error)
                                             } else {
-                                                Logger.log("Deleted collection shared by blocked user", level: .info, category: "User")
+                                                print("✅ Successfully deleted collection shared by blocked user")
                                             }
                                             group2.leave()
                                         }
@@ -478,15 +438,17 @@ final class UserManager {
                                     
                                     group2.notify(queue: .main) {
                                         if !deleteErrors2.isEmpty {
-                                            Logger.log("Some shared-by-blocked deletions failed", level: .warn, category: "User")
+                                            print("❌ Some collections shared by blocked user failed to delete")
                                             completion(.failure(deleteErrors2.first!))
                                             return
                                         }
                                         
                                         // 5. Remove blocked user from collections owned by current user
-                                        let currentUserOwnedCollectionsRef = FirestorePaths.collections(userId: currentUserId, db: self.db)
+                                        let currentUserOwnedCollectionsRef = self.db.collection("users")
+                                            .document(currentUserId)
+                                            .collection("collections")
                                         
-                                        Logger.log("Find owned collections to remove blocked user", level: .debug, category: "User")
+                                        print("🔒 Searching for collections owned by current user to remove blocked user from")
                                         
                                         currentUserOwnedCollectionsRef.whereField("isOwner", isEqualTo: true)
                                             .whereField("members", arrayContains: blockedUserId)
@@ -494,12 +456,12 @@ final class UserManager {
                                                 guard let self = self else { return }
                                                 
                                                 if let error = error {
-                                                    Logger.log("Find owned collections error: \(error.localizedDescription)", level: .error, category: "User")
+                                                    print("❌ Error finding collections owned by current user: \(error.localizedDescription)")
                                                     completion(.failure(error))
                                                     return
                                                 }
                                                 
-                                                Logger.log("Found \(snapshot?.documents.count ?? 0) owned collections to update", level: .debug, category: "User")
+                                                print("🔒 Found \(snapshot?.documents.count ?? 0) collections owned by current user to remove blocked user from")
                                                 
                                                 if snapshot?.documents.isEmpty == true {
                                                     // Continue to step 6 even if no collections found
@@ -513,15 +475,15 @@ final class UserManager {
                                                 
                                                 snapshot?.documents.forEach { document in
                                                     group3.enter()
-                                                    Logger.log("Remove blocked from collection: \(document.reference.path)", level: .debug, category: "User")
+                                                    print("🔒 Removing blocked user from collection: \(document.reference.path)")
                                                     document.reference.updateData([
                                                         "members": FieldValue.arrayRemove([blockedUserId])
                                                     ]) { error in
                                                         if let error = error {
-                                                            Logger.log("Remove blocked from collection error: \(error.localizedDescription)", level: .warn, category: "User")
+                                                            print("❌ Error removing blocked user from collection: \(error.localizedDescription)")
                                                             updateErrors.append(error)
                                                         } else {
-                                                            Logger.log("Removed blocked user from collection", level: .info, category: "User")
+                                                            print("✅ Successfully removed blocked user from collection")
                                                         }
                                                         group3.leave()
                                                     }
@@ -529,7 +491,7 @@ final class UserManager {
                                                 
                                                 group3.notify(queue: .main) {
                                                     if !updateErrors.isEmpty {
-                                                        Logger.log("Some removals failed; continuing", level: .warn, category: "User")
+                                                        print("⚠️ Some collection member removals failed, but continuing")
                                                     }
                                                     
                                                     // Continue to step 6
@@ -546,22 +508,29 @@ final class UserManager {
     
     private func continueWithBlockedUserCleanup(blockedUserId: String, currentUserId: String, completion: @escaping (Result<Void, Error>) -> Void) {
         // 6. Remove current user from blocked user's friends list
-        let blockedUserFriendsRef = FirestorePaths.friends(userId: blockedUserId, db: self.db).document(currentUserId)
-        Logger.log("Remove current from blocked user's friends: \(blockedUserFriendsRef.path)", level: .debug, category: "User")
+        let blockedUserFriendsRef = self.db.collection("users")
+            .document(blockedUserId)
+            .collection("friends")
+            .document(currentUserId)
+        print("🔒 Removing current user from blocked user's friends list: \(blockedUserFriendsRef.path)")
         
         blockedUserFriendsRef.delete { [weak self] error in
             guard let self = self else { return }
             
             if let error = error {
-                Logger.log("Remove current from blocked user's friends error: \(error.localizedDescription)", level: .warn, category: "User")
+                print("❌ Error removing current user from blocked user's friends: \(error.localizedDescription)")
+                // Don't fail the entire operation for this
+                print("⚠️ Continuing despite friend removal error")
             } else {
-                Logger.log("Removed current from blocked user's friends", level: .info, category: "User")
+                print("✅ Successfully removed current user from blocked user's friends")
             }
             
             // 7. Remove current user from collections owned by blocked user
-            let blockedUserOwnedCollectionsRef = FirestorePaths.collections(userId: blockedUserId, db: self.db)
+            let blockedUserOwnedCollectionsRef = self.db.collection("users")
+                .document(blockedUserId)
+                .collection("collections")
             
-            Logger.log("Find blocked-owned collections to remove current user", level: .debug, category: "User")
+            print("🔒 Searching for collections owned by blocked user to remove current user from")
             
             blockedUserOwnedCollectionsRef.whereField("isOwner", isEqualTo: true)
                 .whereField("members", arrayContains: currentUserId)
@@ -569,16 +538,18 @@ final class UserManager {
                     guard self != nil else { return }
                     
                     if let error = error {
-                        Logger.log("Find blocked-owned collections error: \(error.localizedDescription)", level: .warn, category: "User")
-                        Logger.log("Blocked user: success (with warnings)", level: .info, category: "User")
+                        print("❌ Error finding collections owned by blocked user: \(error.localizedDescription)")
+                        // Don't fail the entire operation for this
+                        print("⚠️ Continuing despite collection search error")
+                        print("✅ Successfully blocked user")
                         completion(.success(()))
                         return
                     }
                     
-                    Logger.log("Found \(snapshot?.documents.count ?? 0) blocked-owned collections to update", level: .debug, category: "User")
+                    print("🔒 Found \(snapshot?.documents.count ?? 0) collections owned by blocked user to remove current user from")
                     
                     if snapshot?.documents.isEmpty == true {
-                        Logger.log("Blocked user: success", level: .info, category: "User")
+                        print("✅ Successfully blocked user")
                         completion(.success(()))
                         return
                     }
@@ -589,15 +560,15 @@ final class UserManager {
                     
                     snapshot?.documents.forEach { document in
                         group3.enter()
-                        Logger.log("Remove current from blocked-owned collection: \(document.reference.path)", level: .debug, category: "User")
+                        print("🔒 Removing current user from collection: \(document.reference.path)")
                         document.reference.updateData([
                             "members": FieldValue.arrayRemove([currentUserId])
                         ]) { error in
                             if let error = error {
-                                Logger.log("Remove current from blocked-owned error: \(error.localizedDescription)", level: .warn, category: "User")
+                                print("❌ Error removing current user from collection: \(error.localizedDescription)")
                                 updateErrors.append(error)
                             } else {
-                                Logger.log("Removed current from blocked-owned collection", level: .info, category: "User")
+                                print("✅ Successfully removed current user from collection")
                             }
                             group3.leave()
                         }
@@ -605,10 +576,10 @@ final class UserManager {
                     
                     group3.notify(queue: .main) {
                         if !updateErrors.isEmpty {
-                            Logger.log("Some blocked-owned removals failed; continuing", level: .warn, category: "User")
+                            print("⚠️ Some collection member removals failed, but continuing")
                         }
                         
-                        Logger.log("Blocked user: success", level: .info, category: "User")
+                        print("✅ Successfully blocked user")
                         completion(.success(()))
                     }
                 }
@@ -616,7 +587,8 @@ final class UserManager {
     }
     
     func unblockUser(currentUserId: String, blockedUserId: String, completion: @escaping (Result<Void, Error>) -> Void) {
-        FirestorePaths.blocked(userId: currentUserId, db: db).document(blockedUserId).delete { error in
+        db.collection("users").document(currentUserId)
+            .collection("blocked").document(blockedUserId).delete { error in
                 if let error = error {
                     completion(.failure(error))
                 } else {

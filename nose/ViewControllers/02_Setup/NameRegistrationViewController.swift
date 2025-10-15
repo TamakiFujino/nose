@@ -20,7 +20,7 @@ final class NameRegistrationViewController: UIViewController {
         label.text = "What should we call you?"
         label.textAlignment = .center
         label.font = .systemFont(ofSize: 24, weight: .bold)
-        label.textColor = .textPrimary
+        label.textColor = .black
         return label
     }()
     
@@ -42,7 +42,7 @@ final class NameRegistrationViewController: UIViewController {
         label.translatesAutoresizingMaskIntoConstraints = false
         label.textAlignment = .right
         label.font = .systemFont(ofSize: 12)
-        label.textColor = .fifthColor
+        label.textColor = .gray
         label.text = "0/\(Constants.maxNameLength)"
         return label
     }()
@@ -70,7 +70,7 @@ final class NameRegistrationViewController: UIViewController {
     
     // MARK: - Setup
     private func setupUI() {
-        view.backgroundColor = .backgroundPrimary
+        view.backgroundColor = .white
         setupSubviews()
         setupConstraints()
     }
@@ -108,8 +108,8 @@ final class NameRegistrationViewController: UIViewController {
     @objc private func textFieldDidChange(_ textField: UITextField) {
         let count = textField.text?.count ?? 0
         characterCountLabel.text = "\(count)/\(Constants.maxNameLength)"
-        characterCountLabel.textColor = count > Constants.maxNameLength ? .statusError :
-                                      count < Constants.minNameLength ? .statusWarning : .fifthColor
+        characterCountLabel.textColor = count > Constants.maxNameLength ? .systemRed :
+                                      count < Constants.minNameLength ? .systemOrange : .gray
     }
     
     @objc private func continueButtonTapped() {
@@ -129,7 +129,7 @@ final class NameRegistrationViewController: UIViewController {
         }
         
         guard let firebaseUser = Auth.auth().currentUser else {
-            Logger.log("No user is signed in", level: .info, category: "Setup")
+            print("No user is signed in")
             showError(message: "Authentication error. Please try signing in again.")
             return
         }
@@ -151,18 +151,20 @@ final class NameRegistrationViewController: UIViewController {
             self.continueButton.isEnabled = true
             
             if let error = error {
-                Logger.log("Error saving user data: \(error.localizedDescription)", level: .error, category: "Setup")
+                print("Error saving user data: \(error.localizedDescription)")
                 self.showError(message: "Failed to save user data. Please try again.")
                 return
             }
             
-            Logger.log("Successfully saved user data", level: .info, category: "Setup")
+            print("Successfully saved user data")
             self.navigateToHomeScreen()
         }
     }
     
     private func showError(message: String) {
-        AlertManager.present(on: self, title: "Error", message: message, style: .error)
+        let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
     }
     
     private func navigateToHomeScreen() {

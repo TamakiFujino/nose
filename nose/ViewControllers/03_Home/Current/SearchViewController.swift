@@ -62,7 +62,7 @@ final class SearchViewController: UIViewController {
     
     // MARK: - Setup
     private func setupUI() {
-        view.backgroundColor = .firstColor
+        view.backgroundColor = .systemBackground
         
         // Add subviews
         view.addSubview(searchBar)
@@ -72,15 +72,15 @@ final class SearchViewController: UIViewController {
         // Setup constraints
         NSLayoutConstraint.activate([
             // Close button constraints
-            closeButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: DesignTokens.Spacing.sm),
-            closeButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -DesignTokens.Spacing.lg),
+            closeButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
+            closeButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             closeButton.widthAnchor.constraint(equalToConstant: 30),
             closeButton.heightAnchor.constraint(equalToConstant: 30),
             
             // Search bar constraints
             searchBar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            searchBar.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: DesignTokens.Spacing.lg),
-            searchBar.trailingAnchor.constraint(equalTo: closeButton.leadingAnchor, constant: -DesignTokens.Spacing.sm),
+            searchBar.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            searchBar.trailingAnchor.constraint(equalTo: closeButton.leadingAnchor, constant: -8),
             
             // Table view constraints
             tableView.topAnchor.constraint(equalTo: searchBar.bottomAnchor),
@@ -133,15 +133,14 @@ final class SearchViewController: UIViewController {
         EventManager.shared.fetchAllCurrentAndFutureEvents { result in
             switch result {
             case .success(let allEvents):
-                let lowered = query.lowercased()
                 let filtered = allEvents.filter { event in
-                    event.title.lowercased().contains(lowered) ||
-                    event.location.name.lowercased().contains(lowered) ||
-                    event.location.address.lowercased().contains(lowered)
+                    event.title.lowercased().contains(query.lowercased()) ||
+                    event.location.name.lowercased().contains(query.lowercased()) ||
+                    event.location.address.lowercased().contains(query.lowercased())
                 }
                 completion(filtered)
             case .failure(let error):
-                Logger.log("Error searching events: \(error.localizedDescription)", level: .error, category: "Search")
+                print("❌ Error searching events: \(error.localizedDescription)")
                 completion([])
             }
         }
@@ -154,9 +153,12 @@ final class SearchViewController: UIViewController {
             fields: PlacesAPIManager.FieldConfig.search
         ) { [weak self] place in
             if let place = place {
-                Logger.log("Fetched place: \(place.name ?? "Unknown")", level: .info, category: "Search")
-                Logger.log("Place ID: \(place.placeID ?? "nil")", level: .debug, category: "Search")
-                Logger.log("Photos: \(place.photos?.count ?? 0) rating: \(place.rating) phone? \(place.phoneNumber != nil) hours? \(place.openingHours != nil)", level: .debug, category: "Search")
+                print("Successfully fetched place: \(place.name ?? "Unknown")")
+                print("Place ID: \(place.placeID ?? "nil")")
+                print("Has photos: \(place.photos?.count ?? 0)")
+                print("Has rating: \(place.rating)")
+                print("Has phone: \(place.phoneNumber != nil)")
+                print("Has opening hours: \(place.openingHours != nil)")
                 
                 DispatchQueue.main.async {
                     guard let strongSelf = self else { return }
@@ -168,7 +170,7 @@ final class SearchViewController: UIViewController {
                     }
                 }
             } else {
-                Logger.log("Failed to fetch place details for: \(prediction.placeID)", level: .warn, category: "Search")
+                print("Failed to fetch place details for: \(prediction.placeID)")
             }
         }
     }

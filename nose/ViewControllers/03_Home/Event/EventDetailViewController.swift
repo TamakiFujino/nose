@@ -18,7 +18,7 @@ final class EventDetailViewController: UIViewController {
     private lazy var containerView: UIView = {
         let view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
-        view.backgroundColor = .firstColor
+        view.backgroundColor = .systemBackground
         view.layer.cornerRadius = 20
         view.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
         view.clipsToBounds = true
@@ -39,7 +39,7 @@ final class EventDetailViewController: UIViewController {
         imageView.translatesAutoresizingMaskIntoConstraints = false
         imageView.contentMode = .scaleAspectFill
         imageView.clipsToBounds = true
-        imageView.backgroundColor = .thirdColor
+        imageView.backgroundColor = .systemGray6
         return imageView
     }()
     
@@ -57,8 +57,8 @@ final class EventDetailViewController: UIViewController {
     private lazy var titleLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.font = AppFonts.displayMedium(24)
-        label.textColor = .sixthColor
+        label.font = .systemFont(ofSize: 24, weight: .bold)
+        label.textColor = .label
         label.numberOfLines = 0
         return label
     }()
@@ -66,8 +66,8 @@ final class EventDetailViewController: UIViewController {
     private lazy var dateLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.font = AppFonts.body(16)
-        label.textColor = .fourthColor
+        label.font = .systemFont(ofSize: 16)
+        label.textColor = .systemGray
         label.numberOfLines = 0
         return label
     }()
@@ -75,8 +75,8 @@ final class EventDetailViewController: UIViewController {
     private lazy var locationLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.font = AppFonts.body(16)
-        label.textColor = .fourthColor
+        label.font = .systemFont(ofSize: 16)
+        label.textColor = .systemGray
         label.numberOfLines = 0
         return label
     }()
@@ -84,24 +84,23 @@ final class EventDetailViewController: UIViewController {
     private lazy var detailsLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.font = AppFonts.body(16)
-        label.textColor = .sixthColor
+        label.font = .systemFont(ofSize: 16)
+        label.textColor = .label
         label.numberOfLines = 0
         return label
     }()
     
-    private lazy var saveButton: CustomButton = {
-        let button = CustomButton()
+    private lazy var saveButton: UIButton = {
+        let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
-        let symbolConfig = UIImage.SymbolConfiguration(pointSize: 22, weight: .semibold)
-        button.setImage(UIImage(systemName: "bookmark")?.withConfiguration(symbolConfig), for: .normal)
+        button.setImage(UIImage(systemName: "bookmark"), for: .normal)
         button.tintColor = .fourthColor
-        button.style = .secondary
-        button.size = .large
-        button.imageView?.contentMode = .scaleAspectFit
-        button.contentEdgeInsets = .zero
-        button.imageEdgeInsets = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
-        button.clipsToBounds = true
+        button.backgroundColor = .white
+        button.layer.cornerRadius = 25
+        button.layer.shadowColor = UIColor.sixthColor.cgColor
+        button.layer.shadowOffset = CGSize(width: 0, height: 2)
+        button.layer.shadowRadius = 4
+        button.layer.shadowOpacity = 0.2
         button.addTarget(self, action: #selector(saveButtonTapped), for: .touchUpInside)
         return button
     }()
@@ -123,14 +122,6 @@ final class EventDetailViewController: UIViewController {
         setupUI()
         configureContent()
         loadAvatarImage()
-    }
-    
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        Logger.log("Container view height: \(containerView.frame.height)", level: .debug, category: "EventDetail")
-        // Ensure circular save button
-        saveButton.layer.cornerRadius = saveButton.bounds.height / 2
-        saveButton.clipsToBounds = true
     }
     
     // MARK: - Setup
@@ -171,44 +162,44 @@ final class EventDetailViewController: UIViewController {
             scrollView.widthAnchor.constraint(equalTo: containerView.widthAnchor),
             
             // Drag indicator constraints
-            dragIndicator.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: DesignTokens.Spacing.sm),
+            dragIndicator.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 8),
             dragIndicator.centerXAnchor.constraint(equalTo: scrollView.centerXAnchor),
             dragIndicator.widthAnchor.constraint(equalToConstant: 40),
             dragIndicator.heightAnchor.constraint(equalToConstant: 5),
             
             // Event image at top (square, full width)
-            eventImageView.topAnchor.constraint(equalTo: dragIndicator.bottomAnchor, constant: DesignTokens.Spacing.lg),
+            eventImageView.topAnchor.constraint(equalTo: dragIndicator.bottomAnchor, constant: 16),
             eventImageView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
             eventImageView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
             eventImageView.heightAnchor.constraint(equalTo: eventImageView.widthAnchor),
             eventImageView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
             
             // Avatar image on left below event image
-            avatarImageView.topAnchor.constraint(equalTo: eventImageView.bottomAnchor, constant: DesignTokens.Spacing.md),
-            avatarImageView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: DesignTokens.Spacing.lg),
+            avatarImageView.topAnchor.constraint(equalTo: eventImageView.bottomAnchor, constant: 12),
+            avatarImageView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 16),
             avatarImageView.widthAnchor.constraint(equalToConstant: 60),
             avatarImageView.heightAnchor.constraint(equalToConstant: 60),
             
             // Title label constraints (on right of avatar)
-            titleLabel.topAnchor.constraint(equalTo: eventImageView.bottomAnchor, constant: DesignTokens.Spacing.md),
-            titleLabel.leadingAnchor.constraint(equalTo: avatarImageView.trailingAnchor, constant: DesignTokens.Spacing.md),
-            titleLabel.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -DesignTokens.Spacing.lg),
+            titleLabel.topAnchor.constraint(equalTo: eventImageView.bottomAnchor, constant: 12),
+            titleLabel.leadingAnchor.constraint(equalTo: avatarImageView.trailingAnchor, constant: 12),
+            titleLabel.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -16),
             
             // Date label constraints (on right of avatar)
-            dateLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: DesignTokens.Spacing.xs),
-            dateLabel.leadingAnchor.constraint(equalTo: avatarImageView.trailingAnchor, constant: DesignTokens.Spacing.md),
-            dateLabel.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -DesignTokens.Spacing.lg),
+            dateLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 4),
+            dateLabel.leadingAnchor.constraint(equalTo: avatarImageView.trailingAnchor, constant: 12),
+            dateLabel.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -16),
             
             // Location label constraints (on right of avatar)
-            locationLabel.topAnchor.constraint(equalTo: dateLabel.bottomAnchor, constant: DesignTokens.Spacing.xs),
-            locationLabel.leadingAnchor.constraint(equalTo: avatarImageView.trailingAnchor, constant: DesignTokens.Spacing.md),
-            locationLabel.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -DesignTokens.Spacing.lg),
+            locationLabel.topAnchor.constraint(equalTo: dateLabel.bottomAnchor, constant: 4),
+            locationLabel.leadingAnchor.constraint(equalTo: avatarImageView.trailingAnchor, constant: 12),
+            locationLabel.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -16),
             
             // Details label constraints
-            detailsLabel.topAnchor.constraint(equalTo: locationLabel.bottomAnchor, constant: DesignTokens.Spacing.xxl),
-            detailsLabel.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: DesignTokens.Spacing.lg),
-            detailsLabel.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -DesignTokens.Spacing.lg),
-            detailsLabel.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -DesignTokens.Spacing.xxl)
+            detailsLabel.topAnchor.constraint(equalTo: locationLabel.bottomAnchor, constant: 24),
+            detailsLabel.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 16),
+            detailsLabel.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -16),
+            detailsLabel.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -24)
         ])
         
         // Add tap gesture to dismiss
@@ -236,7 +227,7 @@ final class EventDetailViewController: UIViewController {
             detailsLabel.text = event.details
         } else {
             detailsLabel.text = "No additional details"
-            detailsLabel.textColor = .fourthColor
+            detailsLabel.textColor = .systemGray
         }
     }
     
@@ -251,13 +242,13 @@ final class EventDetailViewController: UIViewController {
     private func loadEventImage() {
         // Always prioritize event uploaded image if available
         if !event.images.isEmpty {
-            Logger.log("Using event uploaded image", level: .info, category: "EventDetail")
+            print("🖼️ Using event uploaded image")
             eventImageView.image = event.images[0]
             return
         }
         
         // If no images loaded yet, try to load from Firestore imageURLs
-        Logger.log("Loading event image from Firestore for event: \(event.id)", level: .info, category: "EventDetail")
+        print("🔍 Loading event image from Firestore for event: \(event.id)")
         let db = Firestore.firestore()
         
         db.collection("users")
@@ -266,10 +257,10 @@ final class EventDetailViewController: UIViewController {
             .document(event.id)
             .getDocument { [weak self] snapshot, error in
                 if let error = error {
-                    Logger.log("Error loading event: \(error.localizedDescription)", level: .error, category: "EventDetail")
+                    print("❌ Error loading event: \(error.localizedDescription)")
                     DispatchQueue.main.async {
                         self?.eventImageView.image = UIImage(systemName: "photo")
-                        self?.eventImageView.tintColor = .thirdColor
+                        self?.eventImageView.tintColor = .systemGray3
                     }
                     return
                 }
@@ -279,28 +270,28 @@ final class EventDetailViewController: UIViewController {
                       let firstImageURL = imageURLs.first,
                       !firstImageURL.isEmpty,
                       let url = URL(string: firstImageURL) else {
-                    Logger.log("No event image URL found", level: .warn, category: "EventDetail")
+                    print("⚠️ No event image URL found")
                     DispatchQueue.main.async {
                         self?.eventImageView.image = UIImage(systemName: "photo")
-                        self?.eventImageView.tintColor = .borderSubtle
+                        self?.eventImageView.tintColor = .systemGray3
                     }
                     return
                 }
                 
-                Logger.log("Downloading event image from: \(firstImageURL)", level: .debug, category: "EventDetail")
+                print("📥 Downloading event image from: \(firstImageURL)")
                 
                 // Download the event image
                 URLSession.shared.dataTask(with: url) { data, response, error in
                     if let data = data, let image = UIImage(data: data) {
-                        Logger.log("Successfully loaded event image", level: .info, category: "EventDetail")
+                        print("✅ Successfully loaded event image")
                         DispatchQueue.main.async {
                             self?.eventImageView.image = image
                         }
                     } else {
-                        Logger.log("Failed to load event image", level: .error, category: "EventDetail")
+                        print("❌ Failed to load event image")
                         DispatchQueue.main.async {
                             self?.eventImageView.image = UIImage(systemName: "photo")
-                            self?.eventImageView.tintColor = .thirdColor
+                            self?.eventImageView.tintColor = .systemGray3
                         }
                     }
                 }.resume()
@@ -310,7 +301,7 @@ final class EventDetailViewController: UIViewController {
     private func loadAvatarImageFromFirestore() {
         // Set placeholder while loading
         avatarImageView.image = UIImage(systemName: "person.circle")
-        avatarImageView.tintColor = .thirdColor
+        avatarImageView.tintColor = .systemGray3
         
         let db = Firestore.firestore()
         db.collection("users")
@@ -319,7 +310,7 @@ final class EventDetailViewController: UIViewController {
             .document(event.id)
             .getDocument { [weak self] snapshot, error in
                 if let error = error {
-                    Logger.log("Error loading avatar image: \(error.localizedDescription)", level: .error, category: "EventDetail")
+                    print("❌ Error loading avatar image: \(error.localizedDescription)")
                     return
                 }
                 
@@ -327,7 +318,7 @@ final class EventDetailViewController: UIViewController {
                       let avatarImageURL = data["avatarImageURL"] as? String,
                       !avatarImageURL.isEmpty,
                       let url = URL(string: avatarImageURL) else {
-                    Logger.log("No avatar image URL found for event", level: .warn, category: "EventDetail")
+                    print("⚠️ No avatar image URL found for event")
                     return
                 }
                 
@@ -352,7 +343,7 @@ final class EventDetailViewController: UIViewController {
     }
     
     @objc private func saveButtonTapped() {
-        Logger.log("Save event to collection: \(event.title)", level: .info, category: "EventDetail")
+        print("💾 Save event to collection: \(event.title)")
         let saveVC = SaveToCollectionViewController(event: event)
         saveVC.delegate = self
         present(saveVC, animated: true)
@@ -370,7 +361,7 @@ extension EventDetailViewController: UIGestureRecognizerDelegate {
 // MARK: - SaveToCollectionViewControllerDelegate
 extension EventDetailViewController: SaveToCollectionViewControllerDelegate {
     func saveToCollectionViewController(_ controller: SaveToCollectionViewController, didSaveEvent event: Event, toCollection collection: PlaceCollection) {
-        Logger.log("Saved event '\(event.title)' to collection '\(collection.name)'", level: .info, category: "EventDetail")
+        print("✅ Saved event '\(event.title)' to collection '\(collection.name)'")
         
         // Animate the save button
         UIView.animate(withDuration: 0.2, animations: {

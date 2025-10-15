@@ -37,7 +37,7 @@ class FloatingUIController: UIViewController {
 
     private lazy var bottomPanel: UIView = {
         let view = UIView()
-        view.backgroundColor = UIColor.firstColor.withAlphaComponent(0.5)
+        view.backgroundColor = UIColor.white.withAlphaComponent(0.5)
         view.layer.cornerRadius = 16
         view.translatesAutoresizingMaskIntoConstraints = false
         return view
@@ -48,13 +48,13 @@ class FloatingUIController: UIViewController {
         button.translatesAutoresizingMaskIntoConstraints = false
         if let chevron = UIImage(systemName: "chevron.backward") {
             button.setImage(chevron, for: .normal)
-            button.tintColor = .textPrimary
+            button.tintColor = .black
             button.setTitle("  Back", for: .normal)
         } else {
             button.setTitle("Back", for: .normal)
         }
         button.contentEdgeInsets = UIEdgeInsets(top: 6, left: 10, bottom: 6, right: 12)
-        button.backgroundColor = UIColor.firstColor.withAlphaComponent(0.9)
+        button.backgroundColor = UIColor.white.withAlphaComponent(0.9)
         button.layer.cornerRadius = 16
         button.layer.masksToBounds = true
         button.addTarget(self, action: #selector(didTapBack), for: .touchUpInside)
@@ -65,9 +65,9 @@ class FloatingUIController: UIViewController {
         let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setTitle("Save", for: .normal)
-        button.setTitleColor(.textPrimary, for: .normal)
+        button.setTitleColor(.black, for: .normal)
         button.contentEdgeInsets = UIEdgeInsets(top: 8, left: 14, bottom: 8, right: 14)
-        button.backgroundColor = UIColor.firstColor.withAlphaComponent(0.9)
+        button.backgroundColor = UIColor.white.withAlphaComponent(0.9)
         button.layer.cornerRadius = 16
         button.layer.masksToBounds = true
         button.addTarget(self, action: #selector(didTapSave), for: .touchUpInside)
@@ -251,13 +251,13 @@ class FloatingUIController: UIViewController {
         colorButton.translatesAutoresizingMaskIntoConstraints = false
         if let paintIcon = UIImage(systemName: "paintpalette.fill") {
             colorButton.setImage(paintIcon, for: .normal)
-            colorButton.tintColor = .firstColor
+            colorButton.tintColor = .white
         } else {
             colorButton.setTitle("Color", for: .normal)
         }
-        colorButton.backgroundColor = UIColor.sixthColor.withAlphaComponent(0.5)
+        colorButton.backgroundColor = UIColor.black.withAlphaComponent(0.5)
         colorButton.layer.cornerRadius = 28
-        colorButton.layer.shadowColor = UIColor.sixthColor.cgColor
+        colorButton.layer.shadowColor = UIColor.black.cgColor
         colorButton.layer.shadowOpacity = 0.25
         colorButton.layer.shadowRadius = 6
         colorButton.layer.shadowOffset = CGSize(width: 0, height: 3)
@@ -287,7 +287,7 @@ class FloatingUIController: UIViewController {
         if colorOverlayView != nil { return }
         colorButtons.removeAll()
         let overlay = UIView(frame: view.bounds)
-        overlay.backgroundColor = UIColor.sixthColor.withAlphaComponent(0.2)
+        overlay.backgroundColor = UIColor.black.withAlphaComponent(0.2)
         overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         overlay.alpha = 0
         view.addSubview(overlay)
@@ -295,7 +295,7 @@ class FloatingUIController: UIViewController {
 
         let sheetHeight = view.bounds.height * 0.4
         let sheet = UIView(frame: CGRect(x: 0, y: view.bounds.height, width: view.bounds.width, height: sheetHeight))
-        sheet.backgroundColor = .firstColor
+        sheet.backgroundColor = .white
         sheet.layer.cornerRadius = 16
         sheet.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
         view.addSubview(sheet)
@@ -309,7 +309,7 @@ class FloatingUIController: UIViewController {
 
         let closeBtn = UIButton(type: .system)
         closeBtn.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
-        closeBtn.tintColor = .thirdColor
+        closeBtn.tintColor = .lightGray
         closeBtn.translatesAutoresizingMaskIntoConstraints = false
         closeBtn.addTarget(self, action: #selector(hideColorPicker), for: .touchUpInside)
         sheet.addSubview(closeBtn)
@@ -377,12 +377,12 @@ class FloatingUIController: UIViewController {
 
             let btn = UIButton(type: .system)
             btn.translatesAutoresizingMaskIntoConstraints = false
-            btn.backgroundColor = UIColor(hex: hex) ?? .thirdColor
+            btn.backgroundColor = UIColor(hex: hex) ?? .lightGray
             btn.layer.cornerRadius = buttonSize / 2
             btn.layer.masksToBounds = true
             // Default thin border so light colors (e.g., white) are visible
             btn.layer.borderWidth = 1
-            btn.layer.borderColor = UIColor.sixthColor.withAlphaComponent(0.15).cgColor
+            btn.layer.borderColor = UIColor.black.withAlphaComponent(0.15).cgColor
             btn.tag = i
             btn.accessibilityLabel = hex
             btn.addTarget(self, action: #selector(didSelectColor(_:)), for: .touchUpInside)
@@ -459,7 +459,7 @@ class FloatingUIController: UIViewController {
                 button.layer.borderColor = UIColor.fourthColor.cgColor
                 button.layer.borderWidth = 2
             } else {
-                button.layer.borderColor = UIColor.sixthColor.withAlphaComponent(0.15).cgColor
+                button.layer.borderColor = UIColor.black.withAlphaComponent(0.15).cgColor
                 button.layer.borderWidth = 1
             }
         }
@@ -545,12 +545,12 @@ class FloatingUIController: UIViewController {
             let iconIndex = index % iconNames.count
             if let systemImage = UIImage(systemName: iconNames[iconIndex]) {
                 button.setImage(systemImage, for: .normal)
-                button.tintColor = .textPrimary
+                button.tintColor = .black
             }
         }
         button.imageView?.contentMode = .scaleAspectFill
         button.clipsToBounds = true
-        button.backgroundColor = UIColor.sixthColor.withAlphaComponent(0.05)
+        button.backgroundColor = UIColor.black.withAlphaComponent(0.05)
         button.layer.cornerRadius = 12
         button.layer.borderWidth = 2
         button.layer.borderColor = index == currentTopIndex ? UIColor.thirdColor.cgColor : UIColor.clear.cgColor
@@ -703,7 +703,7 @@ class FloatingUIController: UIViewController {
         button.tag = tag
         button.setTitle(title, for: .normal)
         button.titleLabel?.font = isParent ? .systemFont(ofSize: 14, weight: .medium) : .systemFont(ofSize: 12, weight: .medium)
-        button.setTitleColor(.textPrimary, for: .normal)
+        button.setTitleColor(.black, for: .normal)
         button.backgroundColor = .clear
         button.layer.cornerRadius = isParent ? 16 : 12
         button.layer.borderWidth = 0
@@ -1110,7 +1110,7 @@ class FloatingUIController: UIViewController {
         let placeholder = UIImage(systemName: "photo")
         if button.image(for: .normal) == nil {
             button.setImage(placeholder, for: .normal)
-            button.tintColor = .thirdColor
+            button.tintColor = .lightGray
         }
         // Cache check by first candidate URL key
         if let key = urls.first?.absoluteString as NSString?, let cached = imageCache.object(forKey: key) {

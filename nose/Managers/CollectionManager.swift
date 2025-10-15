@@ -10,30 +10,6 @@ class CollectionManager {
     private let collectionsCollection = "collections"
     
     private init() {}
-
-    // MARK: - Helpers
-    private func userCollectionsRef(for userId: String) -> CollectionReference {
-        return db.collection("users").document(userId).collection(collectionsCollection)
-    }
-    
-    private func collectionDocRef(userId: String, collectionId: String) -> DocumentReference {
-        return userCollectionsRef(for: userId).document(collectionId)
-    }
-    
-    private func buildSharedCollectionData(collection: PlaceCollection, ownerId: String, members: [String]) -> [String: Any] {
-        return [
-            "id": collection.id,
-            "name": collection.name,
-            "places": collection.places.map { $0.dictionary },
-            "userId": ownerId,
-            "createdAt": Timestamp(date: collection.createdAt),
-            "isOwner": false,
-            "status": collection.status.rawValue,
-            "sharedBy": ownerId,
-            "sharedAt": FieldValue.serverTimestamp(),
-            "members": members
-        ]
-    }
     
     private func handleAuthError() -> NSError {
         return NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])
@@ -52,7 +28,10 @@ class CollectionManager {
             "members": [userId]  // Add owner to members list by default
         ]
         
-        let collectionRef = userCollectionsRef(for: userId).document(UUID().uuidString)
+        let collectionRef = db.collection("users")
+            .document(userId)
+            .collection("collections")
+            .document(UUID().uuidString)
         
         collectionRef.setData(collectionData) { error in
             if let error = error {
@@ -77,7 +56,8 @@ class CollectionManager {
     }
     
     func fetchCollections(userId: String, completion: @escaping (Result<[PlaceCollection], Error>) -> Void) {
-        userCollectionsRef(for: userId)
+        db.collection(collectionsCollection)
+            .whereField("userId", isEqualTo: userId)
             .whereField("status", isEqualTo: PlaceCollection.Status.active.rawValue)
             .getDocuments(source: .server) { [weak self] snapshot, error in
                 guard let self = self else { return }
@@ -107,7 +87,7 @@ class CollectionManager {
                             case .success(let collection):
                                 collections.append(collection)
                             case .failure(let error):
-                                Logger.log("Migration failed for \(document.documentID): \(error.localizedDescription)", level: .warn, category: "Collection")
+                                print("Migration failed for collection \(document.documentID): \(error.localizedDescription)")
                                 // Try to use the original collection if migration fails
                                 var data = document.data()
                                 data["id"] = document.documentID
@@ -148,7 +128,7 @@ class CollectionManager {
         collection = collection.migrate()
         
         // Update the document with migrated data
-        document.reference.setData(collection.dictionary, merge: true) { error in
+        db.collection(collectionsCollection).document(collection.id).setData(collection.dictionary, merge: true) { error in
             if let error = error {
                 completion(.failure(error))
             } else {
@@ -185,7 +165,10 @@ class CollectionManager {
             "createdAt": Timestamp(date: Date())
         ]
         
-        let collectionRef = collectionDocRef(userId: userId, collectionId: collectionId)
+        let collectionRef = db.collection("users")
+            .document(userId)
+            .collection("collections")
+            .document(collectionId)
         
         collectionRef.updateData([
             "places": FieldValue.arrayUnion([placeData]),
@@ -205,32 +188,34 @@ class CollectionManager {
             return
         }
         
-        Logger.log("Remove place \(placeId) from \(collectionId)", level: .debug, category: "Collection")
+        print("🗑 Removing place \(placeId) from collection \(collectionId)...")
         
-        collectionDocRef(userId: userId, collectionId: collectionId).getDocument { snapshot, error in
+        db.collection("users").document(userId).collection("collections").document(collectionId).getDocument { snapshot, error in
             if let error = error {
-                Logger.log("Get collection error: \(error.localizedDescription)", level: .error, category: "Collection")
+                print("❌ Error getting collection: \(error.localizedDescription)")
                 completion(.failure(error))
                 return
             }
             
             guard let data = snapshot?.data(),
                   var collection = PlaceCollection(dictionary: data) else {
-                Logger.log("Collection not found/invalid", level: .warn, category: "Collection")
+                print("❌ Collection not found or invalid data")
                 completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Collection not found"])))
                 return
             }
             
+            print("📄 Current places in collection: \(collection.places.count)")
             collection.places.removeAll { $0.placeId == placeId }
+            print("📄 Places after removal: \(collection.places.count)")
             
-            self.collectionDocRef(userId: userId, collectionId: collectionId).updateData([
+            self.db.collection("users").document(userId).collection("collections").document(collectionId).updateData([
                 "places": collection.places.map { $0.dictionary }
             ]) { error in
                 if let error = error {
-                    Logger.log("Remove place error: \(error.localizedDescription)", level: .error, category: "Collection")
+                    print("❌ Error removing place: \(error.localizedDescription)")
                     completion(.failure(error))
                 } else {
-                    Logger.log("Removed place from collection", level: .info, category: "Collection")
+                    print("✅ Successfully removed place from collection")
                     completion(.success(()))
                 }
             }
@@ -244,14 +229,15 @@ class CollectionManager {
             return
         }
         
-        Logger.log("Delete collection \(collectionId)", level: .debug, category: "Collection")
+        print("🗑 Deleting collection \(collectionId)...")
+        print("🗑 Using path: users/\(userId)/collections/\(collectionId)")
         
         // First, delete any shared collections
         db.collection("users")
             .whereField("sharedCollections.\(collectionId).sharedBy", isEqualTo: userId)
             .getDocuments { [weak self] snapshot, error in
                 if let error = error {
-                    Logger.log("Find shared collections error: \(error.localizedDescription)", level: .error, category: "Collection")
+                    print("❌ Error finding shared collections: \(error.localizedDescription)")
                     completion(.failure(error))
                     return
                 }
@@ -266,19 +252,23 @@ class CollectionManager {
                         .document(collectionId)
                         .delete { error in
                             if let error = error {
-                                Logger.log("Delete shared collection error: \(error.localizedDescription)", level: .warn, category: "Collection")
+                                print("❌ Error deleting shared collection: \(error.localizedDescription)")
                             }
                             group.leave()
                         }
                 }
                 
                 group.notify(queue: .main) {
-                    self?.collectionDocRef(userId: userId, collectionId: collectionId).delete { error in
+                    self?.db.collection("users")
+                        .document(userId)
+                        .collection("collections")
+                        .document(collectionId)
+                        .delete { error in
                             if let error = error {
-                                Logger.log("Delete collection error: \(error.localizedDescription)", level: .error, category: "Collection")
+                                print("❌ Error deleting collection: \(error.localizedDescription)")
                                 completion(.failure(error))
                             } else {
-                                Logger.log("Deleted collection", level: .info, category: "Collection")
+                                print("✅ Successfully deleted collection")
                                 completion(.success(()))
                             }
                         }
@@ -292,14 +282,18 @@ class CollectionManager {
             return
         }
         
-        Logger.log("Complete collection: \(collection.name)", level: .debug, category: "Collection")
+        print("✅ Marking collection '\(collection.name)' as completed...")
         
-        collectionDocRef(userId: userId, collectionId: collection.id).updateData(["isCompleted": true]) { error in
+        db.collection("users")
+            .document(userId)
+            .collection("collections")
+            .document(collection.id)
+            .updateData(["isCompleted": true]) { error in
                 if let error = error {
-                    Logger.log("Complete error: \(error.localizedDescription)", level: .error, category: "Collection")
+                    print("❌ Error completing collection: \(error.localizedDescription)")
                     completion(.failure(error))
                 } else {
-                    Logger.log("Completed collection", level: .info, category: "Collection")
+                    print("✅ Successfully marked collection as completed")
                     completion(.success(()))
                 }
             }
@@ -311,13 +305,17 @@ class CollectionManager {
             return
         }
         
-        Logger.log("Share collection '\(collection.name)' with \(friends.count)", level: .debug, category: "Collection")
+        print("📤 Sharing collection '\(collection.name)' with \(friends.count) friends...")
+        print("📤 Current user ID: \(userId)")
         
         // Create a batch write
         let batch = db.batch()
         
         // Update owner's collection with members field
-        let ownerCollectionRef = collectionDocRef(userId: userId, collectionId: collection.id)
+        let ownerCollectionRef = db.collection("users")
+            .document(userId)
+            .collection("collections")
+            .document(collection.id)
         
         // Include owner in members list
         let allMembers = [userId] + friends.map { $0.id }
@@ -329,12 +327,28 @@ class CollectionManager {
         
         // Create shared collection in each friend's collections
         for friend in friends {
-            Logger.log("Share with friend: \(friend.id)", level: .debug, category: "Collection")
+            print("📤 Sharing with friend ID: \(friend.id)")
             
-            let sharedCollectionRef = self.userCollectionsRef(for: friend.id).document(collection.id)
-            let sharedCollectionData = self.buildSharedCollectionData(collection: collection, ownerId: userId, members: allMembers)
+            let sharedCollectionRef = db.collection("users")
+                .document(friend.id)
+                .collection("collections")
+                .document(collection.id)
             
-            Logger.log("Create shared at users/\(friend.id)/collections/\(collection.id)", level: .debug, category: "Collection")
+            let sharedCollectionData: [String: Any] = [
+                "id": collection.id,
+                "name": collection.name,
+                "places": collection.places.map { $0.dictionary },
+                "userId": userId,  // This is the owner's ID
+                "createdAt": Timestamp(date: collection.createdAt),
+                "isOwner": false,
+                "status": collection.status.rawValue,
+                "sharedBy": userId,  // This is the owner's ID
+                "sharedAt": FieldValue.serverTimestamp(),
+                "members": allMembers  // Include all members in shared copy
+            ]
+            
+            print("📤 Creating shared collection in path: users/\(friend.id)/collections/\(collection.id)")
+            print("📤 Shared collection data: \(sharedCollectionData)")
             
             batch.setData(sharedCollectionData, forDocument: sharedCollectionRef)
         }
@@ -342,10 +356,10 @@ class CollectionManager {
         // Commit the batch
         batch.commit { error in
             if let error = error {
-                Logger.log("Share error: \(error.localizedDescription)", level: .error, category: "Collection")
+                print("❌ Error sharing collection: \(error.localizedDescription)")
                 completion(.failure(error))
             } else {
-                Logger.log("Shared with \(friends.count) friends", level: .info, category: "Collection")
+                print("✅ Successfully shared collection with \(friends.count) friends")
                 completion(.success(()))
             }
         }
@@ -357,105 +371,20 @@ class CollectionManager {
             return
         }
         
-        Logger.log("Update avatar data for: \(collection.name)", level: .debug, category: "Collection")
+        print("🔄 Updating avatar data for collection '\(collection.name)'...")
         
-        collectionDocRef(userId: userId, collectionId: collection.id).updateData(["avatarData": avatarData.toFirestoreDict()]) { error in
+        db.collection("users")
+            .document(userId)
+            .collection("collections")
+            .document(collection.id)
+            .updateData(["avatarData": avatarData.toFirestoreDict()]) { error in
                 if let error = error {
-                    Logger.log("Update avatar error: \(error.localizedDescription)", level: .error, category: "Collection")
+                    print("❌ Error updating avatar data: \(error.localizedDescription)")
                     completion(.failure(error))
                 } else {
-                    Logger.log("Updated avatar data", level: .info, category: "Collection")
+                    print("✅ Successfully updated avatar data")
                     completion(.success(()))
                 }
             }
-    }
-
-    // MARK: - Async/Await wrappers
-    func createCollection(name: String, userId: String) async throws -> PlaceCollection {
-        try await withCheckedThrowingContinuation { continuation in
-            self.createCollection(name: name, userId: userId) { result in
-                switch result {
-                case .success(let collection): continuation.resume(returning: collection)
-                case .failure(let error): continuation.resume(throwing: error)
-                }
-            }
-        }
-    }
-
-    func fetchCollections(userId: String) async throws -> [PlaceCollection] {
-        try await withCheckedThrowingContinuation { continuation in
-            self.fetchCollections(userId: userId) { result in
-                switch result {
-                case .success(let collections): continuation.resume(returning: collections)
-                case .failure(let error): continuation.resume(throwing: error)
-                }
-            }
-        }
-    }
-
-    func addPlaceToCollection(collectionId: String, place: GMSPlace) async throws {
-        try await withCheckedThrowingContinuation { continuation in
-            self.addPlaceToCollection(collectionId: collectionId, place: place) { result in
-                switch result {
-                case .success: continuation.resume()
-                case .failure(let error): continuation.resume(throwing: error)
-                }
-            }
-        }
-    }
-
-    func removePlaceFromCollection(placeId: String, collectionId: String) async throws {
-        try await withCheckedThrowingContinuation { continuation in
-            self.removePlaceFromCollection(placeId: placeId, collectionId: collectionId) { result in
-                switch result {
-                case .success: continuation.resume()
-                case .failure(let error): continuation.resume(throwing: error)
-                }
-            }
-        }
-    }
-
-    func deleteCollection(_ collectionId: String) async throws {
-        try await withCheckedThrowingContinuation { continuation in
-            self.deleteCollection(collectionId) { result in
-                switch result {
-                case .success: continuation.resume()
-                case .failure(let error): continuation.resume(throwing: error)
-                }
-            }
-        }
-    }
-
-    func completeCollection(_ collection: PlaceCollection) async throws {
-        try await withCheckedThrowingContinuation { continuation in
-            self.completeCollection(collection) { result in
-                switch result {
-                case .success: continuation.resume()
-                case .failure(let error): continuation.resume(throwing: error)
-                }
-            }
-        }
-    }
-
-    func shareCollection(_ collection: PlaceCollection, with friends: [User]) async throws {
-        try await withCheckedThrowingContinuation { continuation in
-            self.shareCollection(collection, with: friends) { result in
-                switch result {
-                case .success: continuation.resume()
-                case .failure(let error): continuation.resume(throwing: error)
-                }
-            }
-        }
-    }
-
-    func updateAvatarData(_ avatarData: CollectionAvatar.AvatarData, for collection: PlaceCollection) async throws {
-        try await withCheckedThrowingContinuation { continuation in
-            self.updateAvatarData(avatarData, for: collection) { result in
-                switch result {
-                case .success: continuation.resume()
-                case .failure(let error): continuation.resume(throwing: error)
-                }
-            }
-        }
     }
 }

@@ -25,7 +25,12 @@ final class HomeViewController: UIViewController {
     private var events: [Event] = []
     private let locationManager = CLLocationManager()
     
-    // (Removed) Previously used to track dot slider views; managed by TimelineSliderView now
+    // Add properties to track dots and line
+    private var leftDot: UIView?
+    private var middleDot: UIView?
+    private var rightDot: UIView?
+    private var dotLine: UIView?
+    private var containerView: UIView?
     
     var mapManager: GoogleMapManager?
     private var searchManager: SearchManager?
@@ -131,11 +136,11 @@ final class HomeViewController: UIViewController {
     private lazy var messageView: UIView = {
         let view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
-        view.backgroundColor = UIColor.firstColor.withAlphaComponent(0.95)
+        view.backgroundColor = UIColor.white.withAlphaComponent(0.95)
         view.layer.cornerRadius = 12
         view.alpha = 0
         // Add shadow
-        view.layer.shadowColor = UIColor.sixthColor.cgColor
+        view.layer.shadowColor = UIColor.black.cgColor
         view.layer.shadowOffset = CGSize(width: 0, height: 2)
         view.layer.shadowRadius = 8
         view.layer.shadowOpacity = 0.1
@@ -145,7 +150,7 @@ final class HomeViewController: UIViewController {
     private lazy var titleLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.textColor = .sixthColor
+        label.textColor = .black
         label.font = .systemFont(ofSize: 24, weight: .bold)
         label.textAlignment = .center
         return label
@@ -154,7 +159,7 @@ final class HomeViewController: UIViewController {
     private lazy var subtitleLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.textColor = UIColor.sixthColor.withAlphaComponent(0.7)
+        label.textColor = .black.withAlphaComponent(0.7)
         label.font = .systemFont(ofSize: 16, weight: .regular)
         label.textAlignment = .center
         return label
@@ -183,7 +188,7 @@ final class HomeViewController: UIViewController {
     
     // MARK: - Setup
     private func setupUI() {
-        view.backgroundColor = .firstColor
+        view.backgroundColor = .white
         setupSubviews()
         setupConstraints()
         
@@ -418,18 +423,17 @@ final class HomeViewController: UIViewController {
     }
     
     private func loadEvents() {
-        Task { [weak self] in
-            guard let self = self else { return }
-            Logger.log("Loading current and future events for map...", level: .info, category: "Home")
-            do {
-                let events = try await EventManager.shared.fetchAllCurrentAndFutureEvents()
-                Logger.log("Loaded \(events.count) events", level: .info, category: "Home")
-                self.events = events
-                await MainActor.run {
-                    self.mapManager?.showEventsOnMap(events)
+        print("📍 Loading current and future events for map...")
+        EventManager.shared.fetchAllCurrentAndFutureEvents { [weak self] result in
+            switch result {
+            case .success(let events):
+                print("✅ Loaded \(events.count) events")
+                self?.events = events
+                DispatchQueue.main.async {
+                    self?.mapManager?.showEventsOnMap(events)
                 }
-            } catch {
-                Logger.log("Failed to load events: \(error.localizedDescription)", level: .error, category: "Home")
+            case .failure(let error):
+                print("❌ Failed to load events: \(error.localizedDescription)")
             }
         }
     }

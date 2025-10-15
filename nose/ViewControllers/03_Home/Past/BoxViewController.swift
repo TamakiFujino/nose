@@ -10,6 +10,10 @@ class BoxViewController: UIViewController {
     private var selectedCollection: PlaceCollection?
     private var currentTab: CollectionTab = .personal
     
+    private enum CollectionTab {
+        case personal
+        case shared
+    }
     
     // MARK: - UI Components
     private lazy var titleLabel: UILabel = {
@@ -36,7 +40,7 @@ class BoxViewController: UIViewController {
         tableView.delegate = self
         tableView.dataSource = self
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "CollectionCell")
-        tableView.backgroundColor = .backgroundPrimary
+        tableView.backgroundColor = .systemBackground
         return tableView
     }()
     
@@ -49,21 +53,21 @@ class BoxViewController: UIViewController {
     
     // MARK: - Setup
     private func setupUI() {
-        view.backgroundColor = .backgroundPrimary
+        view.backgroundColor = .systemBackground
         view.addSubview(titleLabel)
         view.addSubview(segmentedControl)
         view.addSubview(tableView)
         
         NSLayoutConstraint.activate([
-            titleLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: DesignTokens.Spacing.lg),
-            titleLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: DesignTokens.Spacing.lg),
-            titleLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -DesignTokens.Spacing.lg),
+            titleLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
+            titleLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            titleLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             
-            segmentedControl.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: DesignTokens.Spacing.lg),
-            segmentedControl.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: DesignTokens.Spacing.lg),
-            segmentedControl.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -DesignTokens.Spacing.lg),
+            segmentedControl.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 16),
+            segmentedControl.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            segmentedControl.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             
-            tableView.topAnchor.constraint(equalTo: segmentedControl.bottomAnchor, constant: DesignTokens.Spacing.lg),
+            tableView.topAnchor.constraint(equalTo: segmentedControl.bottomAnchor, constant: 16),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
@@ -80,87 +84,87 @@ class BoxViewController: UIViewController {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         let db = Firestore.firestore()
         
-        Task { [weak self] in
-            guard let self = self else { return }
-            do {
-                // Owned completed
-                let ownedQuery = db.collection("users")
-                    .document(currentUserId)
-                    .collection("collections")
-                    .whereField("isOwner", isEqualTo: true)
-                    .whereField("status", isEqualTo: PlaceCollection.Status.completed.rawValue)
-                let ownedSnap = try await getDocumentsAsync(ownedQuery)
-                self.ownedCompletedCollections = ownedSnap.documents.compactMap { doc in
-                    var data = doc.data()
-                    data["id"] = doc.documentID
+        // Load owned completed collections
+        db.collection("users")
+            .document(currentUserId)
+            .collection("collections")
+            .whereField("isOwner", isEqualTo: true)
+            .whereField("status", isEqualTo: PlaceCollection.Status.completed.rawValue)
+            .getDocuments { [weak self] snapshot, error in
+                if let error = error {
+                    print("Error loading owned completed collections: \(error.localizedDescription)")
+                    return
+                }
+                
+                self?.ownedCompletedCollections = snapshot?.documents.compactMap { document in
+                    var data = document.data()
+                    data["id"] = document.documentID
                     data["isOwner"] = true
                     return PlaceCollection(dictionary: data)
+                } ?? []
+                
+                DispatchQueue.main.async {
+                    self?.tableView.reloadData()
                 }
-                self.tableView.reloadData()
-            } catch {
-                Logger.log("Error loading owned completed collections: \(error.localizedDescription)", level: .error, category: "Box")
             }
-            do {
-                // Shared completed (resolve to owner originals)
-                let sharedQuery = db.collection("users")
-                    .document(currentUserId)
-                    .collection("collections")
-                    .whereField("isOwner", isEqualTo: false)
-                    .whereField("status", isEqualTo: PlaceCollection.Status.completed.rawValue)
-                let sharedSnap = try await getDocumentsAsync(sharedQuery)
-                var loaded: [PlaceCollection] = []
-                for doc in sharedSnap.documents {
-                    let data = doc.data()
-                    guard let ownerId = data["userId"] as? String,
-                          let collectionId = data["id"] as? String else { continue }
-                    let ownerRef = db.collection("users").document(ownerId).collection("collections").document(collectionId)
-                    let ownerSnap = try await getDocumentAsync(ownerRef)
-                    if let original = ownerSnap.data() {
-                        var cdata = original
-                        cdata["id"] = collectionId
-                        cdata["isOwner"] = false
-                        if let c = PlaceCollection(dictionary: cdata) { loaded.append(c) }
+            
+        // Load shared completed collections
+        db.collection("users")
+            .document(currentUserId)
+            .collection("collections")
+            .whereField("isOwner", isEqualTo: false)
+            .whereField("status", isEqualTo: PlaceCollection.Status.completed.rawValue)
+            .getDocuments { [weak self] snapshot, error in
+                if let error = error {
+                    print("Error loading shared completed collections: \(error.localizedDescription)")
+                    return
+                }
+                
+                let group = DispatchGroup()
+                var loadedCollections: [PlaceCollection] = []
+                
+                snapshot?.documents.forEach { document in
+                    group.enter()
+                    let data = document.data()
+                    
+                    if let ownerId = data["userId"] as? String,
+                       let collectionId = data["id"] as? String {
+                        db.collection("users")
+                            .document(ownerId)
+                            .collection("collections")
+                            .document(collectionId)
+                            .getDocument { snapshot, error in
+                                defer { group.leave() }
+                                
+                                if let error = error {
+                                    print("Error loading original collection: \(error.localizedDescription)")
+                                    return
+                                }
+                                
+                                if let originalData = snapshot?.data() {
+                                    var collectionData = originalData
+                                    collectionData["id"] = collectionId
+                                    collectionData["isOwner"] = false
+                                    
+                                    if let collection = PlaceCollection(dictionary: collectionData) {
+                                        loadedCollections.append(collection)
+                                    }
+                                }
+                            }
+                    } else {
+                        group.leave()
                     }
                 }
-                self.sharedCompletedCollections = loaded
-                self.tableView.reloadData()
-            } catch {
-                Logger.log("Error loading shared completed collections: \(error.localizedDescription)", level: .error, category: "Box")
-            }
-        }
-    }
-    
-    // MARK: - Async Firestore helpers
-    private func getDocumentsAsync(_ query: Query) async throws -> QuerySnapshot {
-        try await withCheckedThrowingContinuation { continuation in
-            query.getDocuments { snapshot, error in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                } else if let snapshot = snapshot {
-                    continuation.resume(returning: snapshot)
-                } else {
-                    continuation.resume(throwing: NSError(domain: "Firestore", code: -1, userInfo: [NSLocalizedDescriptionKey: "No snapshot"]))
+                
+                group.notify(queue: .main) {
+                    self?.sharedCompletedCollections = loadedCollections
+                    self?.tableView.reloadData()
                 }
             }
-        }
-    }
-    
-    private func getDocumentAsync(_ ref: DocumentReference) async throws -> DocumentSnapshot {
-        try await withCheckedThrowingContinuation { continuation in
-            ref.getDocument { snapshot, error in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                } else if let snapshot = snapshot {
-                    continuation.resume(returning: snapshot)
-                } else {
-                    continuation.resume(throwing: NSError(domain: "Firestore", code: -1, userInfo: [NSLocalizedDescriptionKey: "No snapshot"]))
-                }
-            }
-        }
     }
     
     private func showLoadingAlert(title: String) {
-        LoadingView.shared.showOverlayLoading(on: self.view, message: title)
+        LoadingView.shared.showAlertLoading(title: title, on: self)
     }
 }
 
@@ -177,12 +181,7 @@ extension BoxViewController: UITableViewDelegate, UITableViewDataSource {
         
         var content = cell.defaultContentConfiguration()
         content.text = collection.name
-        content.secondaryAttributedText = AttributedIconText.iconWithText(
-            systemName: "bookmark.fill",
-            tintColor: .fourthColor,
-            text: "\(collection.places.count)",
-            textColor: .fourthColor
-        )
+        content.secondaryText = "\(collection.places.count) places"
         cell.contentConfiguration = content
         
         return cell

@@ -29,13 +29,13 @@ class ToSViewController: UIViewController, WKNavigationDelegate {
     private func setupLoadingView() {
         loadingView = UIView()
         loadingView.translatesAutoresizingMaskIntoConstraints = false
-        loadingView.backgroundColor = UIColor.sixthColor.withAlphaComponent(0.5)
+        loadingView.backgroundColor = UIColor.black.withAlphaComponent(0.5)
         loadingView.isHidden = true
         view.addSubview(loadingView)
         
         activityIndicator = UIActivityIndicatorView(style: .large)
         activityIndicator.translatesAutoresizingMaskIntoConstraints = false
-        activityIndicator.color = .firstColor
+        activityIndicator.color = .white
         loadingView.addSubview(activityIndicator)
         
         NSLayoutConstraint.activate([
@@ -65,6 +65,8 @@ class ToSViewController: UIViewController, WKNavigationDelegate {
         loadingView.isHidden = true
         activityIndicator.stopAnimating()
         // Show error alert
-        AlertManager.present(on: self, title: "Error", message: "Failed to load content. Please try again.", style: .error)
+        let alert = UIAlertController(title: "Error", message: "Failed to load content. Please try again.", preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
     }
 }

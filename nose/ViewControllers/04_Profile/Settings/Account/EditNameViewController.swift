@@ -33,7 +33,7 @@ final class EditNameViewController: UIViewController {
         label.translatesAutoresizingMaskIntoConstraints = false
         label.textAlignment = .right
         label.font = .systemFont(ofSize: 12)
-        label.textColor = .fifthColor
+        label.textColor = .gray
         label.text = "0/\(Constants.maxNameLength)"
         return label
     }()
@@ -57,7 +57,7 @@ final class EditNameViewController: UIViewController {
     private func setupUI() {
         view.backgroundColor = .firstColor
         title = "Edit Name"
-        navigationController?.navigationBar.tintColor = .sixthColor
+        navigationController?.navigationBar.tintColor = .label
         navigationItem.largeTitleDisplayMode = .never
         
         setupSubviews()
@@ -117,11 +117,11 @@ final class EditNameViewController: UIViewController {
         
         // Update label color based on character count
         if count > Constants.maxNameLength {
-            characterCountLabel.textColor = .statusError
+            characterCountLabel.textColor = .systemRed
         } else if count < Constants.minNameLength {
-            characterCountLabel.textColor = .statusWarning
+            characterCountLabel.textColor = .systemOrange
         } else {
-            characterCountLabel.textColor = .fifthColor
+            characterCountLabel.textColor = .gray
         }
     }
     
@@ -163,8 +163,9 @@ final class EditNameViewController: UIViewController {
     
     // MARK: - Helper Methods
     private func showAlert(title: String, message: String, completion: ((UIAlertAction) -> Void)? = nil) {
-        let ok = UIAlertAction(title: "OK", style: .default, handler: completion)
-        AlertManager.present(on: self, title: title, message: message, style: .info, preferredStyle: .alert, actions: [ok])
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: completion))
+        present(alert, animated: true)
     }
 }
 

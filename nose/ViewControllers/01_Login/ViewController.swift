@@ -22,9 +22,10 @@ final class ViewController: UIViewController {
         label.translatesAutoresizingMaskIntoConstraints = false
         label.text = "Map your journey\nStyle your future"
         label.textAlignment = .center
-        // centralized typography
-        label.font = AppFonts.displayLarge(32)
-        label.textColor = .firstColor
+        // set font to gotham
+        let font = UIFont(name: "Gotham-Bold", size: 32) ?? UIFont.systemFont(ofSize: 32, weight: .bold)
+        label.font = font
+        label.textColor = .white
         label.numberOfLines = 0
         label.alpha = 0 // Initially invisible
         return label
@@ -48,7 +49,25 @@ final class ViewController: UIViewController {
         return button
     }()
     
-    // Loading handled by LoadingView
+    private lazy var loadingView: UIView = {
+        let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.backgroundColor = UIColor.black.withAlphaComponent(0.5)
+        view.isHidden = true
+        
+        let activityIndicator = UIActivityIndicatorView(style: .large)
+        activityIndicator.translatesAutoresizingMaskIntoConstraints = false
+        activityIndicator.color = .white
+        activityIndicator.startAnimating()
+        
+        view.addSubview(activityIndicator)
+        NSLayoutConstraint.activate([
+            activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+        ])
+        
+        return view
+    }()
     
     // MARK: - Properties
     private var currentNonce: String?
@@ -72,7 +91,7 @@ final class ViewController: UIViewController {
     // MARK: - Setup
     private func setupLaunchStyle() {
         // Start with launch screen style (white background + logo)
-        view.backgroundColor = .firstColor
+        view.backgroundColor = .white
         view.addSubview(launchLogoImageView)
         
         // Setup launch logo constraints
@@ -97,7 +116,7 @@ final class ViewController: UIViewController {
         
         if backgroundImage.image == nil {
             // Set a fallback background color
-            view.backgroundColor = .blueColor
+            view.backgroundColor = .systemBlue
         }
         
         backgroundImage.contentMode = .scaleAspectFill
@@ -106,7 +125,7 @@ final class ViewController: UIViewController {
         view.sendSubviewToBack(backgroundImage)
         
         // Add login UI elements
-        [sloganLabel, appleButton, googleButton].forEach {
+        [sloganLabel, appleButton, googleButton, loadingView].forEach {
             view.addSubview($0)
         }
         
@@ -114,18 +133,23 @@ final class ViewController: UIViewController {
         NSLayoutConstraint.activate([
             sloganLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             sloganLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            sloganLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: DesignTokens.Spacing.xl),
-            sloganLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -DesignTokens.Spacing.xl),
+            sloganLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            sloganLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
             
-            appleButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: DesignTokens.Spacing.xl),
-            appleButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -DesignTokens.Spacing.xl),
+            appleButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            appleButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
             appleButton.heightAnchor.constraint(equalToConstant: 50),
-            appleButton.bottomAnchor.constraint(equalTo: googleButton.topAnchor, constant: -DesignTokens.Spacing.lg),
+            appleButton.bottomAnchor.constraint(equalTo: googleButton.topAnchor, constant: -16),
             
-            googleButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: DesignTokens.Spacing.xl),
-            googleButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -DesignTokens.Spacing.xl),
+            googleButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            googleButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
             googleButton.heightAnchor.constraint(equalToConstant: 50),
-            googleButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -DesignTokens.Spacing.xl)
+            googleButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
+            
+            loadingView.topAnchor.constraint(equalTo: view.topAnchor),
+            loadingView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            loadingView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            loadingView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
         
         // Show login UI with animation
@@ -181,7 +205,7 @@ final class ViewController: UIViewController {
         let titleLabel = UILabel()
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         titleLabel.text = title
-        titleLabel.font = AppFonts.bodyBold(18)
+        titleLabel.font = .systemFont(ofSize: 18, weight: .bold)
         titleLabel.textColor = .firstColor
         
         containerView.addSubview(iconImageView)
@@ -226,18 +250,18 @@ final class ViewController: UIViewController {
     }
     
     private func showLoading() {
-        LoadingView.shared.showOverlayLoading(on: self.view, message: "Signing in...")
+        loadingView.isHidden = false
         [appleButton, googleButton].forEach { $0.isEnabled = false }
     }
     
     private func hideLoading() {
-        LoadingView.shared.hideOverlayLoading()
+        loadingView.isHidden = true
         [appleButton, googleButton].forEach { $0.isEnabled = true }
     }
     
     private func checkExistingUserAndNavigate() {
         guard let firebaseUser = Auth.auth().currentUser else {
-            Logger.log("No user is signed in", level: .info, category: "Login")
+            print("No user is signed in")
             hideLoading()
             return
         }
@@ -247,19 +271,19 @@ final class ViewController: UIViewController {
             self.hideLoading()
             
             if let error = error {
-                Logger.log("Error checking user: \(error.localizedDescription)", level: .error, category: "Login")
+                print("Error checking user: \(error.localizedDescription)")
                 self.showError(message: "Failed to check user status. Please try again.")
                 return
             }
             
             if user != nil {
-                Logger.log("User already exists, navigating to home screen", level: .info, category: "Login")
+                print("User already exists, navigating to home screen")
                 let homeViewController = HomeViewController()
                 let navigationController = UINavigationController(rootViewController: homeViewController)
                 navigationController.modalPresentationStyle = .fullScreen
                 self.present(navigationController, animated: true)
             } else {
-                Logger.log("New user, navigating to name registration", level: .info, category: "Login")
+                print("New user, navigating to name registration")
                 let nameRegistrationVC = NameRegistrationViewController()
                 nameRegistrationVC.modalPresentationStyle = .fullScreen
                 self.present(nameRegistrationVC, animated: true)
@@ -268,14 +292,15 @@ final class ViewController: UIViewController {
     }
     
     private func showError(message: String) {
-        AlertManager.present(on: self, title: "Error", message: message, style: .error)
+        let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
     }
     
     // MARK: - Actions
     @objc private func googleButtonTapped() {
         showLoading()
         guard let clientID = FirebaseApp.app()?.options.clientID else {
-            Logger.log("Missing Firebase clientID. Check GoogleService-Info.plist is in the bundle.", level: .error, category: "Login")
             hideLoading()
             return
         }
@@ -287,14 +312,14 @@ final class ViewController: UIViewController {
             guard let self = self else { return }
             
             if let error = error {
-                Logger.log("Google Sign In error: \(error.localizedDescription)", level: .error, category: "Login")
+                print("Google Sign In error: \(error.localizedDescription)")
                 self.hideLoading()
                 return
             }
             
             guard let authentication = result?.user,
                   let idToken = authentication.idToken?.tokenString else {
-                Logger.log("Failed to get Google credentials", level: .error, category: "Login")
+                print("Failed to get Google credentials")
                 self.hideLoading()
                 return
             }
@@ -308,12 +333,12 @@ final class ViewController: UIViewController {
                 guard let self = self else { return }
                 
                 if let error = error {
-                    Logger.log("Firebase Sign In error: \(error.localizedDescription)", level: .error, category: "Login")
+                    print("Firebase Sign In error: \(error.localizedDescription)")
                     self.hideLoading()
                     return
                 }
                 
-                Logger.log("Successfully signed in with Google", level: .info, category: "Login")
+                print("Successfully signed in with Google")
                 self.checkExistingUserAndNavigate()
             }
         }
@@ -345,7 +370,7 @@ extension ViewController: ASAuthorizationControllerDelegate {
             }
             guard let appleIDToken = appleIDCredential.identityToken,
                   let idTokenString = String(data: appleIDToken, encoding: .utf8) else {
-                Logger.log("Unable to fetch identity token", level: .error, category: "Login")
+                print("Unable to fetch identity token")
                 hideLoading()
                 return
             }
@@ -360,19 +385,19 @@ extension ViewController: ASAuthorizationControllerDelegate {
                 guard let self = self else { return }
                 
                 if let error = error {
-                    Logger.log("Firebase Sign In error: \(error.localizedDescription)", level: .error, category: "Login")
+                    print("Firebase Sign In error: \(error.localizedDescription)")
                     self.hideLoading()
                     return
                 }
                 
-                Logger.log("Successfully signed in with Apple", level: .info, category: "Login")
+                print("Successfully signed in with Apple")
                 self.checkExistingUserAndNavigate()
             }
         }
     }
     
     func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
-        Logger.log("Apple Sign In error: \(error.localizedDescription)", level: .error, category: "Login")
+        print("Apple Sign In error: \(error.localizedDescription)")
         hideLoading()
     }
 }

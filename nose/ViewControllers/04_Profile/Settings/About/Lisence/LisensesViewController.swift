@@ -11,7 +11,7 @@ class LicensesViewController: UIViewController, UITableViewDelegate, UITableView
         let backButton = UIBarButtonItem()
         backButton.title = ""  // Hide the "Back" text
         self.navigationItem.backBarButtonItem = backButton
-        self.navigationController?.navigationBar.tintColor = .sixthColor
+        self.navigationController?.navigationBar.tintColor = .black
 
         view.backgroundColor = .firstColor
 
@@ -24,7 +24,7 @@ class LicensesViewController: UIViewController, UITableViewDelegate, UITableView
 
     private func setupNavigationBar() {
         navigationItem.title = "Licenses"
-        self.navigationController?.navigationBar.tintColor = .sixthColor
+        self.navigationController?.navigationBar.tintColor = .black
     }
 
     func setupTableView() {

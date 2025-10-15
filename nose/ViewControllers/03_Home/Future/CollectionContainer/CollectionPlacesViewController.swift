@@ -23,7 +23,7 @@ class CollectionPlacesViewController: UIViewController {
     private lazy var headerView: UIView = {
         let view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
-        view.backgroundColor = .firstColor
+        view.backgroundColor = .systemBackground
         return view
     }()
 
@@ -45,7 +45,7 @@ class CollectionPlacesViewController: UIViewController {
         tableView.delegate = self
         tableView.dataSource = self
         tableView.register(PlaceTableViewCell.self, forCellReuseIdentifier: "PlaceCell")
-        tableView.backgroundColor = .backgroundPrimary
+        tableView.backgroundColor = .systemBackground
         tableView.rowHeight = 100
         return tableView
     }()
@@ -55,7 +55,7 @@ class CollectionPlacesViewController: UIViewController {
         label.translatesAutoresizingMaskIntoConstraints = false
         label.text = collection.name
         label.font = .systemFont(ofSize: 20, weight: .bold)
-        label.textColor = .sixthColor
+        label.textColor = .label
         return label
     }()
 
@@ -63,14 +63,19 @@ class CollectionPlacesViewController: UIViewController {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = .systemFont(ofSize: 14)
-        label.textColor = .fourthColor
+        label.textColor = .secondaryLabel
         
-        label.attributedText = AttributedIconText.iconWithText(
-            systemName: "person.2.fill",
-            tintColor: .fourthColor,
-            text: "0",
-            textColor: .fourthColor
-        )
+        // Create attributed string with icon
+        let imageAttachment = NSTextAttachment()
+        imageAttachment.image = UIImage(systemName: "person.2.fill")?.withTintColor(.secondaryLabel)
+        let imageString = NSAttributedString(attachment: imageAttachment)
+        
+        let textString = NSAttributedString(string: " 0")
+        let attributedText = NSMutableAttributedString()
+        attributedText.append(imageString)
+        attributedText.append(textString)
+        
+        label.attributedText = attributedText
         label.accessibilityLabel = "Number of shared friends"
         label.accessibilityValue = "0"
         label.accessibilityIdentifier = "shared_friends_count_label"
@@ -81,14 +86,19 @@ class CollectionPlacesViewController: UIViewController {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = .systemFont(ofSize: 14)
-        label.textColor = .fourthColor
+        label.textColor = .secondaryLabel
         
-        label.attributedText = AttributedIconText.iconWithText(
-            systemName: "mappin.circle.fill",
-            tintColor: .fourthColor,
-            text: "0",
-            textColor: .fourthColor
-        )
+        // Create attributed string with icon
+        let imageAttachment = NSTextAttachment()
+        imageAttachment.image = UIImage(systemName: "mappin.circle.fill")?.withTintColor(.secondaryLabel)
+        let imageString = NSAttributedString(attachment: imageAttachment)
+        
+        let textString = NSAttributedString(string: " 0")
+        let attributedText = NSMutableAttributedString()
+        attributedText.append(imageString)
+        attributedText.append(textString)
+        
+        label.attributedText = attributedText
         label.accessibilityLabel = "Number of places saved"
         label.accessibilityValue = "0"
         label.accessibilityIdentifier = "places_count_label"
@@ -115,12 +125,14 @@ class CollectionPlacesViewController: UIViewController {
         return stack
     }()
 
-    private lazy var customizeButton: CustomButton = {
-        let button = CustomButton()
+    private lazy var customizeButton: UIButton = {
+        let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setTitle("Customize avatar", for: .normal)
-        button.size = .large
-        button.style = .primary
+        button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
+        button.backgroundColor = .fourthColor
+        button.setTitleColor(.white, for: .normal)
+        button.layer.cornerRadius = 24 // rounded here only
         button.clipsToBounds = true
         button.contentEdgeInsets = UIEdgeInsets(top: 12, left: 20, bottom: 12, right: 20)
         button.addTarget(self, action: #selector(customizeAvatarTapped), for: .touchUpInside)
@@ -155,7 +167,7 @@ class CollectionPlacesViewController: UIViewController {
     }
 
     private func setupUI() {
-        view.backgroundColor = .backgroundPrimary
+        view.backgroundColor = .systemBackground
         view.addSubview(headerView)
         headerView.addSubview(titleLabel)
         headerView.addSubview(menuButton)
@@ -173,33 +185,33 @@ class CollectionPlacesViewController: UIViewController {
             headerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             headerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
 
-            titleLabel.topAnchor.constraint(equalTo: headerView.topAnchor, constant: DesignTokens.Spacing.lg),
-            titleLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: DesignTokens.Spacing.lg),
-            titleLabel.trailingAnchor.constraint(equalTo: menuButton.leadingAnchor, constant: -DesignTokens.Spacing.lg),
+            titleLabel.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 16),
+            titleLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+            titleLabel.trailingAnchor.constraint(equalTo: menuButton.leadingAnchor, constant: -16),
 
-            menuButton.topAnchor.constraint(equalTo: headerView.topAnchor, constant: DesignTokens.Spacing.lg),
-            menuButton.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -DesignTokens.Spacing.lg),
+            menuButton.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 16),
+            menuButton.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
             menuButton.widthAnchor.constraint(equalToConstant: 44),
             menuButton.heightAnchor.constraint(equalToConstant: 44),
 
-            sharedFriendsLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: DesignTokens.Spacing.sm),
-            sharedFriendsLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: DesignTokens.Spacing.lg),
+            sharedFriendsLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
+            sharedFriendsLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
             
-            placesCountLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: DesignTokens.Spacing.sm),
-            placesCountLabel.leadingAnchor.constraint(equalTo: sharedFriendsLabel.trailingAnchor, constant: DesignTokens.Spacing.lg),
+            placesCountLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
+            placesCountLabel.leadingAnchor.constraint(equalTo: sharedFriendsLabel.trailingAnchor, constant: 16),
 
-            avatarsStackView.topAnchor.constraint(equalTo: sharedFriendsLabel.bottomAnchor, constant: DesignTokens.Spacing.sm),
+            avatarsStackView.topAnchor.constraint(equalTo: sharedFriendsLabel.bottomAnchor, constant: 8),
             avatarsStackView.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 0),
             avatarsStackView.heightAnchor.constraint(equalToConstant: 216),
 
-            customizeButton.topAnchor.constraint(equalTo: avatarsStackView.bottomAnchor, constant: DesignTokens.Spacing.sm),
-            customizeButton.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: DesignTokens.Spacing.lg),
-            customizeButton.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -DesignTokens.Spacing.lg),
+            customizeButton.topAnchor.constraint(equalTo: avatarsStackView.bottomAnchor, constant: 6),
+            customizeButton.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+            customizeButton.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
             customizeButton.heightAnchor.constraint(equalToConstant: 48),
 
             headerView.bottomAnchor.constraint(equalTo: customizeButton.bottomAnchor),
 
-            tableView.topAnchor.constraint(equalTo: headerView.bottomAnchor, constant: DesignTokens.Spacing.sm),
+            tableView.topAnchor.constraint(equalTo: headerView.bottomAnchor, constant: 8),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
@@ -271,9 +283,7 @@ class CollectionPlacesViewController: UIViewController {
         if let nav = navigationController {
             nav.pushViewController(vc, animated: true)
         } else {
-            let navController = UINavigationController(rootViewController: vc)
-            navController.modalPresentationStyle = .fullScreen
-            present(navController, animated: true)
+            present(vc, animated: true)
         }
     }
     
@@ -282,9 +292,7 @@ class CollectionPlacesViewController: UIViewController {
         if let nav = navigationController {
             nav.pushViewController(vc, animated: true)
         } else {
-            let navController = UINavigationController(rootViewController: vc)
-            navController.modalPresentationStyle = .fullScreen
-            present(navController, animated: true)
+            present(vc, animated: true)
         }
     }
     
@@ -296,57 +304,79 @@ class CollectionPlacesViewController: UIViewController {
     }
     
     private func completeCollection() {
+        let alertController = UIAlertController(
+            title: "Complete Collection",
+            message: "Are you sure you want to mark '\(collection.name)' as completed?",
+            preferredStyle: .alert
+        )
+        
         let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
         let completeAction = UIAlertAction(title: "Complete", style: .default) { [weak self] _ in
             self?.markCollectionAsCompleted()
         }
-        AlertManager.present(on: self, title: "Complete Collection", message: "Are you sure you want to mark '\(collection.name)' as completed?", style: .info, preferredStyle: .alert, actions: [cancelAction, completeAction])
+        
+        alertController.addAction(cancelAction)
+        alertController.addAction(completeAction)
+        
+        present(alertController, animated: true)
     }
     
     private func markCollectionAsCompleted() {
         showLoadingAlert(title: "Completing Collection")
         
         CollectionContainerManager.shared.completeCollection(collection) { [weak self] error in
-            LoadingView.shared.hideOverlayLoading()
+            self?.dismiss(animated: true) {
                 if error != nil {
                     ToastManager.showToast(message: "Failed to complete collection", type: .error)
                 } else {
                     ToastManager.showToast(message: "Collection completed", type: .success)
-                    // Post notification so lists refresh
-                    NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
-                    // Return to the parent (Collections or Box)
-                    if let nav = self?.navigationController {
-                        if nav.presentingViewController != nil && nav.viewControllers.first === self {
-                            nav.dismiss(animated: true)
-                        } else {
-                            nav.popViewController(animated: true)
-                        }
-                    } else {
-                        self?.dismiss(animated: true)
+                    // Dismiss the view controller and post notification
+                    self?.dismiss(animated: true) {
+                        NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
                     }
                 }
+            }
         }
     }
     
     private func confirmDeleteCollection() {
+        // Create a custom alert controller with a more prominent warning
+        let alertController = UIAlertController(
+            title: "Delete Collection",
+            message: "Are you sure you want to delete '\(collection.name)'? This action cannot be undone.",
+            preferredStyle: .alert
+        )
+        
+        // Add a destructive delete action
         let deleteAction = UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
             self?.deleteCollection()
         }
+        
+        // Add a cancel action
         let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
-        AlertManager.present(on: self, title: "Delete Collection", message: "Are you sure you want to delete '\(collection.name)'? This action cannot be undone.", style: .error, preferredStyle: .alert, actions: [cancelAction, deleteAction])
+        
+        // Add actions to the alert controller
+        alertController.addAction(deleteAction)
+        alertController.addAction(cancelAction)
+        
+        // Present the alert controller
+        present(alertController, animated: true)
     }
     
     private func deleteCollection() {
         showLoadingAlert(title: "Deleting Collection")
         
         CollectionContainerManager.shared.deleteCollection(collection) { [weak self] error in
-            LoadingView.shared.hideOverlayLoading()
+            self?.dismiss(animated: true) {
                 if error != nil {
                     ToastManager.showToast(message: "Failed to delete collection", type: .error)
                 } else {
                     ToastManager.showToast(message: "Collection deleted", type: .success)
-                    NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
+                    self?.dismiss(animated: true) {
+                        NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
+                    }
                 }
+            }
         }
     }
 
@@ -354,23 +384,16 @@ class CollectionPlacesViewController: UIViewController {
         showLoadingAlert(title: "Putting back collection")
         
         CollectionContainerManager.shared.putBackCollection(collection) { [weak self] error in
-            LoadingView.shared.hideOverlayLoading()
+            self?.dismiss(animated: true) {
                 if error != nil {
                     ToastManager.showToast(message: "Failed to put back collection", type: .error)
                 } else {
                     ToastManager.showToast(message: "Collection put back", type: .success)
-                    NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
-                    // Return to parent (Box or Collections)
-                    if let nav = self?.navigationController {
-                        if nav.presentingViewController != nil && nav.viewControllers.first === self {
-                            nav.dismiss(animated: true)
-                        } else {
-                            nav.popViewController(animated: true)
-                        }
-                    } else {
-                        self?.dismiss(animated: true)
+                    self?.dismiss(animated: true) {
+                        NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
                     }
                 }
+            }
         }
     }
 
@@ -605,28 +628,38 @@ class CollectionPlacesViewController: UIViewController {
     }
 
     private func updateSharedFriendsLabel() {
-        sharedFriendsLabel.attributedText = AttributedIconText.iconWithText(
-            systemName: "person.2.fill",
-            tintColor: .fourthColor,
-            text: "\(sharedFriendsCount)",
-            textColor: .fourthColor
-        )
+        let imageAttachment = NSTextAttachment()
+        imageAttachment.image = UIImage(systemName: "person.2.fill")?.withTintColor(.secondaryLabel)
+        let imageString = NSAttributedString(attachment: imageAttachment)
+        
+        let textString = NSAttributedString(string: " \(sharedFriendsCount)")
+        
+        let attributedText = NSMutableAttributedString()
+        attributedText.append(imageString)
+        attributedText.append(textString)
+        
+        sharedFriendsLabel.attributedText = attributedText
         sharedFriendsLabel.accessibilityValue = "\(sharedFriendsCount)"
     }
 
     private func updatePlacesCountLabel() {
+        let imageAttachment = NSTextAttachment()
+        imageAttachment.image = UIImage(systemName: "bookmark.fill")?.withTintColor(.secondaryLabel)
+        let imageString = NSAttributedString(attachment: imageAttachment)
+        
         let totalItems = places.count + events.count
-        placesCountLabel.attributedText = AttributedIconText.iconWithText(
-            systemName: "bookmark.fill",
-            tintColor: .fourthColor,
-            text: "\(totalItems)",
-            textColor: .fourthColor
-        )
+        let textString = NSAttributedString(string: " \(totalItems)")
+        
+        let attributedText = NSMutableAttributedString()
+        attributedText.append(imageString)
+        attributedText.append(textString)
+        
+        placesCountLabel.attributedText = attributedText
         placesCountLabel.accessibilityValue = "\(totalItems)"
     }
     
     private func showLoadingAlert(title: String) {
-        LoadingView.shared.showOverlayLoading(on: self.view, message: title)
+        LoadingView.shared.showAlertLoading(title: title, on: self)
     }
 
     private func checkIfCompleted() {
@@ -890,9 +923,10 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         func addAvatar(image: UIImage?) {
             // Ignore stale completions
             if currentGen != avatarsLoadGeneration { return }
-            let placeholder = UIImage(named: "AvatarPlaceholder")
-            let rendered = renderSquare(image: image) ?? renderSquare(image: placeholder) ?? placeholder
-            let iv = UIImageView(image: rendered)
+            // Always render to a square canvas so default and remote look identical in size
+            let source = image ?? UIImage(named: "AvatarPlaceholder")
+            let processed = renderSquare(image: source)
+            let iv = UIImageView(image: processed)
             iv.translatesAutoresizingMaskIntoConstraints = false
             iv.contentMode = .scaleAspectFill
             iv.clipsToBounds = true
@@ -956,29 +990,40 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
     private func openPlaceInMapsByName(_ name: String) {
         let encoded = name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? name
 
-        var actions: [UIAlertAction] = []
+        let sheet = UIAlertController(title: "Open in Maps", message: name, preferredStyle: .actionSheet)
+
+        // Apple Maps (app) using maps:// scheme
         if let appleURL = URL(string: "maps://?q=\(encoded)") {
-            let a = UIAlertAction(title: "Apple Maps", style: .default) { _ in
+            sheet.addAction(UIAlertAction(title: "Apple Maps", style: .default, handler: { _ in
                 UIApplication.shared.open(appleURL, options: [:]) { success in
                     if !success, let webURL = URL(string: "http://maps.apple.com/?q=\(encoded)") {
                         UIApplication.shared.open(webURL, options: [:], completionHandler: nil)
                     }
                 }
-            }
-            actions.append(a)
+            }))
         }
+
+        // Google Maps, if installed
         if let gmapsURL = URL(string: "comgooglemaps://?q=\(encoded)&zoom=16"), UIApplication.shared.canOpenURL(gmapsURL) {
-            actions.append(UIAlertAction(title: "Google Maps", style: .default) { _ in
+            sheet.addAction(UIAlertAction(title: "Google Maps", style: .default, handler: { _ in
                 UIApplication.shared.open(gmapsURL, options: [:], completionHandler: nil)
-            })
+            }))
         }
+
+        // Waze, if installed
         if let wazeURL = URL(string: "waze://?q=\(encoded)&navigate=yes"), UIApplication.shared.canOpenURL(wazeURL) {
-            actions.append(UIAlertAction(title: "Waze", style: .default) { _ in
+            sheet.addAction(UIAlertAction(title: "Waze", style: .default, handler: { _ in
                 UIApplication.shared.open(wazeURL, options: [:], completionHandler: nil)
-            })
+            }))
         }
-        actions.append(UIAlertAction(title: "Cancel", style: .cancel))
-        AlertManager.present(on: self, title: "Open in Maps", message: name, style: .info, preferredStyle: .actionSheet, actions: actions)
+
+        sheet.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+
+        if let pop = sheet.popoverPresentationController {
+            pop.sourceView = self.view
+            pop.sourceRect = CGRect(x: self.view.bounds.midX, y: self.view.bounds.midY, width: 1, height: 1)
+        }
+        present(sheet, animated: true)
     }
 
     // MARK: - Accessory actions
@@ -1025,7 +1070,7 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
             self?.openPlaceInMapsByName(place.name)
             completion(true)
         }
-        mapAction.backgroundColor = .statusSuccess
+        mapAction.backgroundColor = .systemGreen
         mapAction.image = UIImage(systemName: "map")
 
         // Visited action
@@ -1050,22 +1095,42 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
     private func confirmDeleteEvent(at indexPath: IndexPath) {
         guard indexPath.row < events.count else { return }
         let event = events[indexPath.row]
+        let alertController = UIAlertController(
+            title: "Remove Event",
+            message: "Are you sure you want to remove '\(event.title)' from this collection?",
+            preferredStyle: .alert
+        )
+        
         let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
         let deleteAction = UIAlertAction(title: "Remove", style: .destructive) { [weak self] _ in
             self?.deleteEvent(at: indexPath)
         }
-        AlertManager.present(on: self, title: "Remove Event", message: "Are you sure you want to remove '\(event.title)' from this collection?", style: .error, preferredStyle: .alert, actions: [cancelAction, deleteAction])
+        
+        alertController.addAction(cancelAction)
+        alertController.addAction(deleteAction)
+        
+        present(alertController, animated: true)
     }
     
     private func confirmDeletePlace(at indexPath: IndexPath) {
         // Safety check to prevent crash
         guard indexPath.row < places.count else { return }
         let place = places[indexPath.row]
+        let alertController = UIAlertController(
+            title: "Delete Place",
+            message: "Are you sure you want to remove '\(place.name)' from this collection?",
+            preferredStyle: .alert
+        )
+        
         let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
         let deleteAction = UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
             self?.deletePlace(at: indexPath)
         }
-        AlertManager.present(on: self, title: "Delete Place", message: "Are you sure you want to remove '\(place.name)' from this collection?", style: .error, preferredStyle: .alert, actions: [cancelAction, deleteAction])
+        
+        alertController.addAction(cancelAction)
+        alertController.addAction(deleteAction)
+        
+        present(alertController, animated: true)
     }
     
     private func deleteEvent(at indexPath: IndexPath) {
@@ -1091,16 +1156,18 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         userCollectionRef.getDocument { [weak self] snapshot, error in
             if let error = error {
                 print("❌ Error getting collection: \(error.localizedDescription)")
-                LoadingView.shared.hideOverlayLoading()
-                ToastManager.showToast(message: "Failed to remove event", type: .error)
+                self?.dismiss(animated: true) {
+                    ToastManager.showToast(message: "Failed to remove event", type: .error)
+                }
                 return
             }
             
             guard let data = snapshot?.data(),
                   var eventsArray = data["events"] as? [[String: Any]] else {
                 print("❌ No events array found in collection")
-                LoadingView.shared.hideOverlayLoading()
-                ToastManager.showToast(message: "Failed to remove event", type: .error)
+                self?.dismiss(animated: true) {
+                    ToastManager.showToast(message: "Failed to remove event", type: .error)
+                }
                 return
             }
             
@@ -1117,17 +1184,18 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
             
             // Commit the batch
             batch.commit { error in
-                LoadingView.shared.hideOverlayLoading()
-                if let error = error {
-                    print("❌ Error removing event: \(error.localizedDescription)")
-                    ToastManager.showToast(message: "Failed to remove event", type: .error)
-                } else {
-                    // Update local data
-                    self?.events.remove(at: indexPath.row)
-                    self?.tableView.deleteRows(at: [indexPath], with: .automatic)
-                    self?.updatePlacesCountLabel()
-                    ToastManager.showToast(message: "Event removed", type: .success)
-                    NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
+                self?.dismiss(animated: true) {
+                    if let error = error {
+                        print("❌ Error removing event: \(error.localizedDescription)")
+                        ToastManager.showToast(message: "Failed to remove event", type: .error)
+                    } else {
+                        // Update local data
+                        self?.events.remove(at: indexPath.row)
+                        self?.tableView.deleteRows(at: [indexPath], with: .automatic)
+                        self?.updatePlacesCountLabel()
+                        ToastManager.showToast(message: "Event removed", type: .success)
+                        NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
+                    }
                 }
             }
         }
@@ -1162,15 +1230,17 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         userCollectionRef.getDocument { [weak self] snapshot, error in
             if let error = error {
                 print("Error getting collection: \(error.localizedDescription)")
-                LoadingView.shared.hideOverlayLoading()
-                ToastManager.showToast(message: "Failed to update place status", type: .error)
+                self?.dismiss(animated: true) {
+                    ToastManager.showToast(message: "Failed to update place status", type: .error)
+                }
                 return
             }
             
             guard let data = snapshot?.data() else {
                 print("No data found in collection document")
-                LoadingView.shared.hideOverlayLoading()
-                ToastManager.showToast(message: "Failed to update place status", type: .error)
+                self?.dismiss(animated: true) {
+                    ToastManager.showToast(message: "Failed to update place status", type: .error)
+                }
                 return
             }
             
@@ -1197,27 +1267,30 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
                     
                     // Commit the batch
                     batch.commit { error in
-                        LoadingView.shared.hideOverlayLoading()
-                        if let error = error {
-                            print("Error updating place status: \(error.localizedDescription)")
-                            ToastManager.showToast(message: "Failed to update place status", type: .error)
-                        } else {
-                            // Update local data
-                            self?.places[indexPath.row].visited = newVisitedStatus
-                            self?.tableView.reloadRows(at: [indexPath], with: .automatic)
-                            ToastManager.showToast(message: newVisitedStatus ? "Marked as visited" : "Marked as unvisited", type: .success)
-                            NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
+                        self?.dismiss(animated: true) {
+                            if let error = error {
+                                print("Error updating place status: \(error.localizedDescription)")
+                                ToastManager.showToast(message: "Failed to update place status", type: .error)
+                            } else {
+                                // Update local data
+                                self?.places[indexPath.row].visited = newVisitedStatus
+                                self?.tableView.reloadRows(at: [indexPath], with: .automatic)
+                                ToastManager.showToast(message: newVisitedStatus ? "Marked as visited" : "Marked as unvisited", type: .success)
+                                NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
+                            }
                         }
                     }
                 } else {
                     print("Place not found in collection data")
-                    LoadingView.shared.hideOverlayLoading()
-                    ToastManager.showToast(message: "Failed to update place status", type: .error)
+                    self?.dismiss(animated: true) {
+                        ToastManager.showToast(message: "Failed to update place status", type: .error)
+                    }
                 }
             } else {
                 print("No places array found in collection data")
-                LoadingView.shared.hideOverlayLoading()
-                ToastManager.showToast(message: "Failed to update place status", type: .error)
+                self?.dismiss(animated: true) {
+                    ToastManager.showToast(message: "Failed to update place status", type: .error)
+                }
             }
         }
     }
@@ -1249,15 +1322,17 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         userCollectionRef.getDocument { [weak self] snapshot, error in
             if let error = error {
                 print("Error getting collection: \(error.localizedDescription)")
-                LoadingView.shared.hideOverlayLoading()
-                ToastManager.showToast(message: "Failed to remove place", type: .error)
+                self?.dismiss(animated: true) {
+                    ToastManager.showToast(message: "Failed to remove place", type: .error)
+                }
                 return
             }
             
             guard let data = snapshot?.data() else {
                 print("No data found in collection document")
-                LoadingView.shared.hideOverlayLoading()
-                ToastManager.showToast(message: "Failed to remove place", type: .error)
+                self?.dismiss(animated: true) {
+                    ToastManager.showToast(message: "Failed to remove place", type: .error)
+                }
                 return
             }
             
@@ -1288,23 +1363,25 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
                 
                 // Commit the batch
                 batch.commit { error in
-                    LoadingView.shared.hideOverlayLoading()
-                    if let error = error {
-                        print("Error removing place: \(error.localizedDescription)")
-                        ToastManager.showToast(message: "Failed to remove place", type: .error)
-                    } else {
-                        // Update local data
-                        self?.places.remove(at: indexPath.row)
-                        self?.tableView.deleteRows(at: [indexPath], with: .automatic)
-                        self?.updatePlacesCountLabel()
-                        ToastManager.showToast(message: "Place removed", type: .success)
-                        NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
+                    self?.dismiss(animated: true) {
+                        if let error = error {
+                            print("Error removing place: \(error.localizedDescription)")
+                            ToastManager.showToast(message: "Failed to remove place", type: .error)
+                        } else {
+                            // Update local data
+                            self?.places.remove(at: indexPath.row)
+                            self?.tableView.deleteRows(at: [indexPath], with: .automatic)
+                            self?.updatePlacesCountLabel()
+                            ToastManager.showToast(message: "Place removed", type: .success)
+                            NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
+                        }
                     }
                 }
             } else {
                 print("No places array found in collection data")
-                LoadingView.shared.hideOverlayLoading()
-                ToastManager.showToast(message: "Failed to remove place", type: .error)
+                self?.dismiss(animated: true) {
+                    ToastManager.showToast(message: "Failed to remove place", type: .error)
+                }
             }
         }
     }

@@ -20,7 +20,7 @@ final class ShareCollectionViewController: UIViewController {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = .systemFont(ofSize: 14)
-        label.textColor = .fourthColor
+        label.textColor = .secondaryLabel
         label.numberOfLines = 0
         label.text = "Shared users can save spots to this collection, but cannot add friends, delete, or complete the collection."
         return label
@@ -36,12 +36,14 @@ final class ShareCollectionViewController: UIViewController {
         return tableView
     }()
     
-    private lazy var shareButton: CustomButton = {
-        let button = CustomButton()
+    private lazy var shareButton: UIButton = {
+        let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setTitle("Update Sharing", for: .normal)
-        button.size = .large
-        button.style = .primary
+        button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
+        button.backgroundColor = .fourthColor
+        button.setTitleColor(.white, for: .normal)
+        button.layer.cornerRadius = 8
         button.addTarget(self, action: #selector(shareButtonTapped), for: .touchUpInside)
         return button
     }()
@@ -65,7 +67,7 @@ final class ShareCollectionViewController: UIViewController {
     
     // MARK: - Setup
     private func setupUI() {
-        view.backgroundColor = .firstColor
+        view.backgroundColor = .systemBackground
         title = "Share Collection"
         
         // Add close button
@@ -74,7 +76,7 @@ final class ShareCollectionViewController: UIViewController {
             target: self,
             action: #selector(closeButtonTapped)
         )
-        closeButton.tintColor = .sixthColor
+        closeButton.tintColor = .black
         navigationItem.leftBarButtonItem = closeButton
         
         // Add subviews
@@ -274,7 +276,7 @@ final class FriendSelectionCell: UITableViewCell {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = .systemFont(ofSize: 12)
-        label.textColor = .fourthColor
+        label.textColor = .secondaryLabel
         return label
     }()
     
@@ -315,15 +317,15 @@ final class FriendSelectionCell: UITableViewCell {
         
         if wasPreviouslyShared && !isSelected {
             statusLabel.text = "Will be removed"
-            statusLabel.textColor = .statusError
+            statusLabel.textColor = .systemRed
             print("🎨 Status: Will be removed")
         } else if !wasPreviouslyShared && isSelected {
             statusLabel.text = "Will be added"
-            statusLabel.textColor = .statusSuccess
+            statusLabel.textColor = .systemGreen
             print("🎨 Status: Will be added")
         } else {
             statusLabel.text = wasPreviouslyShared ? "Currently shared" : "Not shared"
-            statusLabel.textColor = .fourthColor
+            statusLabel.textColor = .secondaryLabel
             print("🎨 Status: \(wasPreviouslyShared ? "Currently shared" : "Not shared")")
         }
     }

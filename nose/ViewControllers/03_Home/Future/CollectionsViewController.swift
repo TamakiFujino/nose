@@ -10,6 +10,10 @@ class CollectionsViewController: UIViewController {
     private var collectionEventCounts: [String: Int] = [:] // collectionId -> event count
     private var currentTab: CollectionTab = .personal
     
+    private enum CollectionTab {
+        case personal
+        case shared
+    }
     
     // MARK: - UI Components
     private lazy var segmentedControl: UISegmentedControl = {
@@ -27,7 +31,7 @@ class CollectionsViewController: UIViewController {
         tableView.delegate = self
         tableView.dataSource = self
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "CollectionCell")
-        tableView.backgroundColor = .firstColor
+        tableView.backgroundColor = .systemBackground
         return tableView
     }()
     
@@ -59,7 +63,7 @@ class CollectionsViewController: UIViewController {
     
     // MARK: - Setup
     private func setupUI() {
-        view.backgroundColor = .firstColor
+        view.backgroundColor = .systemBackground
         
         // Add subviews
         view.addSubview(titleLabel)
@@ -68,15 +72,15 @@ class CollectionsViewController: UIViewController {
         
         // Setup constraints
         NSLayoutConstraint.activate([
-            titleLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: DesignTokens.Spacing.lg),
-            titleLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: DesignTokens.Spacing.lg),
-            titleLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -DesignTokens.Spacing.lg),
+            titleLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
+            titleLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            titleLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             
-            segmentedControl.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: DesignTokens.Spacing.lg),
-            segmentedControl.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: DesignTokens.Spacing.lg),
-            segmentedControl.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -DesignTokens.Spacing.lg),
+            segmentedControl.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 16),
+            segmentedControl.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            segmentedControl.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             
-            tableView.topAnchor.constraint(equalTo: segmentedControl.bottomAnchor, constant: DesignTokens.Spacing.lg),
+            tableView.topAnchor.constraint(equalTo: segmentedControl.bottomAnchor, constant: 16),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
@@ -102,7 +106,7 @@ class CollectionsViewController: UIViewController {
     }
     
     private func showLoadingAlert(title: String) {
-        LoadingView.shared.showOverlayLoading(on: self.view, message: title)
+        LoadingView.shared.showAlertLoading(title: title, on: self)
     }
     
     // MARK: - Data Loading
@@ -110,87 +114,133 @@ class CollectionsViewController: UIViewController {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         let db = Firestore.firestore()
         
-        Logger.log("Loading collections for user: \(currentUserId)", level: .info, category: "Collections")
+        print("🔍 Loading collections for user: \(currentUserId)")
         
-        // Load using async/await via CollectionManager
-        Task { [weak self] in
-            guard let self = self else { return }
-            do {
-                let owned = try await CollectionManager.shared.fetchCollections(userId: currentUserId)
-                self.personalCollections = owned.filter { $0.isOwner && $0.status == .active }
-                // Precompute event counts from existing events arrays if present
-                for collection in owned {
-                    self.collectionEventCounts[collection.id] = 0
-                }
-                self.tableView.reloadData()
-            } catch {
-                Logger.log("Failed to load owned collections: \(error.localizedDescription)", level: .error, category: "Collections")
+        // Load owned collections
+        let ownedCollectionsRef = db.collection("users")
+            .document(currentUserId)
+            .collection("collections")
+        
+        print("📂 Loading owned collections from path: \(ownedCollectionsRef.path)")
+        
+        ownedCollectionsRef.whereField("isOwner", isEqualTo: true).getDocuments { [weak self] snapshot, error in
+            if let error = error {
+                print("❌ Error loading owned collections: \(error.localizedDescription)")
+                return
             }
-            // Shared collections: read user's shared list and resolve to owner originals
-            do {
-                let sharedQuery = db.collection("users")
-                    .document(currentUserId)
-                    .collection("collections")
-                    .whereField("isOwner", isEqualTo: false)
-
-                let sharedSnapshot = try await getDocumentsAsync(sharedQuery)
-                var loadedShared: [PlaceCollection] = []
-                for document in sharedSnapshot.documents {
-                    let data = document.data()
-                    guard let ownerId = data["userId"] as? String,
-                          let collectionId = data["id"] as? String else { continue }
-                    let ownerDoc = db.collection("users").document(ownerId).collection("collections").document(collectionId)
-                    let ownerSnapshot = try await getDocumentAsync(ownerDoc)
-                    if let originalData = ownerSnapshot.data() {
-                        var collectionData = originalData
-                        collectionData["id"] = collectionId
-                        collectionData["isOwner"] = false
-                        if collectionData["status"] == nil {
-                            collectionData["status"] = PlaceCollection.Status.active.rawValue
-                        }
-                        if let eventsArray = originalData["events"] as? [[String: Any]] {
-                            self.collectionEventCounts[collectionId] = eventsArray.count
-                        } else {
-                            self.collectionEventCounts[collectionId] = 0
-                        }
-                        if let collection = PlaceCollection(dictionary: collectionData) {
-                            loadedShared.append(collection)
-                        }
-                    }
+            
+            print("📄 Found \(snapshot?.documents.count ?? 0) owned collections")
+            
+            self?.personalCollections = snapshot?.documents.compactMap { document in
+                var data = document.data()
+                data["id"] = document.documentID
+                data["isOwner"] = true
+                
+                // If status is missing, treat it as active
+                if data["status"] == nil {
+                    data["status"] = PlaceCollection.Status.active.rawValue
                 }
-                self.sharedCollections = loadedShared.filter { $0.status == .active }
-                self.tableView.reloadData()
-            } catch {
-                Logger.log("Failed to load shared collections: \(error.localizedDescription)", level: .error, category: "Collections")
+                
+                // Store events count for this collection
+                if let eventsArray = data["events"] as? [[String: Any]] {
+                    self?.collectionEventCounts[document.documentID] = eventsArray.count
+                } else {
+                    self?.collectionEventCounts[document.documentID] = 0
+                }
+                
+                if let collection = PlaceCollection(dictionary: data) {
+                    print("✅ Loaded owned collection: '\(collection.name)' (ID: \(collection.id))")
+                    return collection
+                }
+                print("❌ Failed to parse owned collection: \(document.documentID)")
+                return nil
+            } ?? []
+            
+            // Filter to only show active collections
+            self?.personalCollections = self?.personalCollections.filter { $0.status == .active } ?? []
+            print("🎯 Active owned collections: \(self?.personalCollections.count ?? 0)")
+            
+            DispatchQueue.main.async {
+                self?.tableView.reloadData()
             }
         }
-    }
-    
-    // MARK: - Async Firestore helpers
-    private func getDocumentsAsync(_ query: Query) async throws -> QuerySnapshot {
-        try await withCheckedThrowingContinuation { continuation in
-            query.getDocuments { snapshot, error in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                } else if let snapshot = snapshot {
-                    continuation.resume(returning: snapshot)
+        
+        // Load shared collections
+        let sharedCollectionsRef = db.collection("users")
+            .document(currentUserId)
+            .collection("collections")
+        
+        print("📂 Loading shared collections from path: \(sharedCollectionsRef.path)")
+        
+        sharedCollectionsRef.whereField("isOwner", isEqualTo: false).getDocuments { [weak self] snapshot, error in
+            if let error = error {
+                print("❌ Error loading shared collections: \(error.localizedDescription)")
+                return
+            }
+            
+            print("📄 Found \(snapshot?.documents.count ?? 0) shared collections")
+            
+            let group = DispatchGroup()
+            var loadedCollections: [PlaceCollection] = []
+            
+            snapshot?.documents.forEach { document in
+                group.enter()
+                let data = document.data()
+                
+                // Get the original collection data from the owner's collections
+                if let ownerId = data["userId"] as? String,
+                   let collectionId = data["id"] as? String {
+                    print("🔍 Loading original collection from owner: \(ownerId), collection: \(collectionId)")
+                    
+                    db.collection("users")
+                        .document(ownerId)
+                        .collection("collections")
+                        .document(collectionId)
+                        .getDocument { snapshot, error in
+                            defer { group.leave() }
+                            
+                            if let error = error {
+                                print("❌ Error loading original collection: \(error.localizedDescription)")
+                                return
+                            }
+                            
+                            if let originalData = snapshot?.data() {
+                                var collectionData = originalData
+                                collectionData["id"] = collectionId
+                                collectionData["isOwner"] = false
+                                
+                                // If status is missing, treat it as active
+                                if collectionData["status"] == nil {
+                                    collectionData["status"] = PlaceCollection.Status.active.rawValue
+                                }
+                                
+                                // Store events count for this collection
+                                if let eventsArray = originalData["events"] as? [[String: Any]] {
+                                    self?.collectionEventCounts[collectionId] = eventsArray.count
+                                } else {
+                                    self?.collectionEventCounts[collectionId] = 0
+                                }
+                                
+                                if let collection = PlaceCollection(dictionary: collectionData) {
+                                    print("✅ Loaded shared collection: '\(collection.name)' (ID: \(collection.id))")
+                                    loadedCollections.append(collection)
+                                } else {
+                                    print("❌ Failed to parse shared collection: \(collectionId)")
+                                }
+                            } else {
+                                print("❌ No data found for shared collection: \(collectionId)")
+                            }
+                        }
                 } else {
-                    continuation.resume(throwing: NSError(domain: "Firestore", code: -1, userInfo: [NSLocalizedDescriptionKey: "No snapshot"]))
+                    print("❌ Invalid shared collection data: \(data)")
+                    group.leave()
                 }
             }
-        }
-    }
-    
-    private func getDocumentAsync(_ ref: DocumentReference) async throws -> DocumentSnapshot {
-        try await withCheckedThrowingContinuation { continuation in
-            ref.getDocument { snapshot, error in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                } else if let snapshot = snapshot {
-                    continuation.resume(returning: snapshot)
-                } else {
-                    continuation.resume(throwing: NSError(domain: "Firestore", code: -1, userInfo: [NSLocalizedDescriptionKey: "No snapshot"]))
-                }
+            
+            group.notify(queue: .main) {
+                self?.sharedCollections = loadedCollections.filter { $0.status == .active }
+                print("🎯 Active shared collections: \(self?.sharedCollections.count ?? 0)")
+                self?.tableView.reloadData()
             }
         }
     }
@@ -216,12 +266,20 @@ extension CollectionsViewController: UITableViewDelegate, UITableViewDataSource 
         let totalCount = placesCount + eventsCount
         
         // Create attributed string with bookmark icon
-        content.secondaryAttributedText = AttributedIconText.iconWithText(
-            systemName: "bookmark.fill",
-            tintColor: .fourthColor,
-            text: "\(totalCount)",
-            textColor: .fourthColor
-        )
+        let imageAttachment = NSTextAttachment()
+        imageAttachment.image = UIImage(systemName: "bookmark.fill")?.withTintColor(.secondaryLabel)
+        let imageString = NSAttributedString(attachment: imageAttachment)
+        
+        let textString = NSAttributedString(string: " \(totalCount)", attributes: [
+            .foregroundColor: UIColor.secondaryLabel,
+            .font: UIFont.systemFont(ofSize: 14)
+        ])
+        
+        let attributedText = NSMutableAttributedString()
+        attributedText.append(imageString)
+        attributedText.append(textString)
+        
+        content.secondaryAttributedText = attributedText
         
         cell.contentConfiguration = content
         

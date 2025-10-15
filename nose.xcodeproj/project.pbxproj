@@ -12,8 +12,8 @@
 		4915172C2E9A01C800D5C35F /* GoogleService-Info-Staging.plist in Resources */ = {isa = PBXBuildFile; fileRef = 491517292E9A01C800D5C35F /* GoogleService-Info-Staging.plist */; };
 		4915172D2E9A01C800D5C35F /* GoogleService-Info-Production.plist in Resources */ = {isa = PBXBuildFile; fileRef = 491517282E9A01C800D5C35F /* GoogleService-Info-Production.plist */; };
 		4915172F2E9A026F00D5C35F /* Config.plist in Resources */ = {isa = PBXBuildFile; fileRef = 4915172E2E9A026F00D5C35F /* Config.plist */; };
-		49731FFA2E8AB28C002D3C85 /* OpenInNose.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 49731FF02E8AB28C002D3C85 /* OpenInNose.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		49A0F1A32EA9B00100F1A2B4 /* nose/Bridging/UnityBridgeShim.m in Sources */ = {isa = PBXBuildFile; fileRef = 49A0F1A22EA9B00100F1A2B3 /* nose/Bridging/UnityBridgeShim.m */; };
+		49DCFB452EA06160007B51F7 /* OpenInNose.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 49731FF02E8AB28C002D3C85 /* OpenInNose.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		49F7C2162E49E258003A3D50 /* UnityLauncher.mm in Sources */ = {isa = PBXBuildFile; fileRef = 49F7C2152E49E258003A3D50 /* UnityLauncher.mm */; };
 		49F87F4D2E64769D00C129C4 /* UnityFramework.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 49F87F4A2E64768400C129C4 /* UnityFramework.framework */; };
 		49F87F522E6476DD00C129C4 /* Data in Resources */ = {isa = PBXBuildFile; fileRef = 49F87F512E6476DD00C129C4 /* Data */; };
@@ -69,7 +69,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				49731FFA2E8AB28C002D3C85 /* OpenInNose.appex in Embed Foundation Extensions */,
+				49DCFB452EA06160007B51F7 /* OpenInNose.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 1;
@@ -119,13 +119,6 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		49731FFF2E8AB28C002D3C85 /* Exceptions for "OpenInNose" folder in "OpenInNose" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = 49731FEF2E8AB28C002D3C85 /* OpenInNose */;
-		};
 		49B964BC2E1009AB004F2DCD /* Exceptions for "InfoPlist" folder in "nose" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -133,13 +126,41 @@
 			);
 			target = 49E99BF52D3BE432000F3CE5 /* nose */;
 		};
+		49DCFB422EA05FE5007B51F7 /* Exceptions for "nose" folder in "nose" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Components/AppColors.swift,
+				Components/CustomButton.swift,
+				Components/CustomGlassButton.swift,
+				Components/CustomTab.swift,
+				Components/LoadingView.swift,
+				Components/MapLocationButton.swift,
+				Components/ToastManager.swift,
+				Managers/MarkerFactory.swift,
+				Managers/PlacesAPIManager.swift,
+				Managers/PlacesCacheManager.swift,
+				Managers/Services/Avatar/AvatarResourceManager.swift,
+				Managers/Services/Avatar/DynamicCategoryManager.swift,
+				ViewControllers/03_Home/Current/SearchManager.swift,
+				ViewControllers/03_Home/Current/SearchViewController.swift,
+				ViewControllers/03_Home/GoogleMapManager.swift,
+			);
+			target = 49E99BF52D3BE432000F3CE5 /* nose */;
+		};
+		49DCFB462EA062AB007B51F7 /* Exceptions for "OpenInNose" folder in "OpenInNose" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 49731FEF2E8AB28C002D3C85 /* OpenInNose */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		49731FF12E8AB28C002D3C85 /* OpenInNose */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				49731FFF2E8AB28C002D3C85 /* Exceptions for "OpenInNose" folder in "OpenInNose" target */,
+				49DCFB462EA062AB007B51F7 /* Exceptions for "OpenInNose" folder in "OpenInNose" target */,
 			);
 			path = OpenInNose;
 			sourceTree = "<group>";
@@ -151,6 +172,9 @@
 		};
 		49E99BF82D3BE432000F3CE5 /* nose */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				49DCFB422EA05FE5007B51F7 /* Exceptions for "nose" folder in "nose" target */,
+			);
 			path = nose;
 			sourceTree = "<group>";
 		};
@@ -734,7 +758,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = OpenInNose/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = OpenInNose;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -813,7 +837,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = OpenInNose/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = OpenInNose;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -891,7 +915,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = OpenInNose/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = OpenInNose;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";

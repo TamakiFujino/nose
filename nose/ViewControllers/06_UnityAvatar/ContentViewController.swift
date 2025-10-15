@@ -22,7 +22,7 @@ class ContentViewController: UIViewController, ContentViewControllerDelegate {
         super.viewDidLoad()
         
         // Set a proper background color to avoid black screen
-        view.backgroundColor = .backgroundPrimary
+        view.backgroundColor = .systemBackground
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { self.launchUnity() }
     }
@@ -99,11 +99,6 @@ class ContentViewController: UIViewController, ContentViewControllerDelegate {
     }
 
     private func fetchExistingSelections(completion: @escaping ([String: [String: String]]?) -> Void) {
-        // In temporary event avatar mode, we never read/write Firestore for selections
-        if collection.id == "temp_event_avatar" {
-            completion(nil)
-            return
-        }
         guard let userId = Auth.auth().currentUser?.uid else { completion(nil); return }
         let db = Firestore.firestore()
         db.collection("users")
@@ -135,8 +130,6 @@ protocol ContentViewControllerDelegate: AnyObject {
 extension ContentViewController {
     func didRequestClose() {
         print("[ContentViewController] didRequestClose() called")
-        // Ensure any overlays are dismissed
-        LoadingView.shared.hideOverlayLoading()
         // Remove floating UI and go back
         floatingWindow?.isHidden = true
         floatingWindow?.rootViewController = nil
@@ -157,14 +150,8 @@ extension ContentViewController {
             print("[ContentViewController] No UIWindowScene available")
         }
         if let nav = navigationController {
-            if nav.presentingViewController != nil && nav.viewControllers.first === self {
-                // We are the root of a presented navigation controller; dismiss it
-                print("[ContentViewController] Dismissing presented navigation controller")
-                nav.dismiss(animated: true)
-            } else {
-                print("[ContentViewController] Popping view controller")
-                nav.popViewController(animated: true)
-            }
+            print("[ContentViewController] Popping view controller")
+            nav.popViewController(animated: true)
         } else {
             print("[ContentViewController] Dismissing view controller")
             dismiss(animated: true)
@@ -173,7 +160,7 @@ extension ContentViewController {
 
     func didRequestSave(selections: [String : [String : String]]) {
         print("[ContentViewController] didRequestSave() called with \(selections.count) entries")
-        LoadingView.shared.showOverlayLoading(on: self.view, message: "Saving...")
+        LoadingView.shared.showAlertLoading(title: "Saving", on: self)
         let sanitized = sanitizeSelectionsForSave(selections)
         let avatarData = CollectionAvatar.AvatarData(
             selections: sanitized,
@@ -192,7 +179,7 @@ extension ContentViewController {
         if collection.id == "temp_event_avatar" {
             // For temporary collections, capture the avatar image and post notification
             captureTemporaryAvatarImage { [weak self] result in
-                LoadingView.shared.hideOverlayLoading()
+                LoadingView.shared.hideAlertLoading()
                 switch result {
                 case .success:
                     print("✅ Avatar image captured and data posted via notification for temporary collection")
@@ -208,7 +195,7 @@ extension ContentViewController {
             switch result {
             case .success:
                 self.captureAndUploadThumbnail { uploadResult in
-                    LoadingView.shared.hideOverlayLoading()
+                    LoadingView.shared.hideAlertLoading()
                     switch uploadResult {
                     case .success:
                         self.applyLatestSelectionsIfVisible()
@@ -217,7 +204,7 @@ extension ContentViewController {
                     }
                 }
             case .failure(let error):
-                LoadingView.shared.hideOverlayLoading()
+                LoadingView.shared.hideAlertLoading()
                 print("[ContentViewController] Save error: \(error.localizedDescription)")
             }
         }

@@ -41,7 +41,7 @@ class ManageEventViewController: UIViewController {
         tableView.delegate = self
         tableView.dataSource = self
         tableView.register(EventTableViewCell.self, forCellReuseIdentifier: "EventCell")
-        tableView.backgroundColor = .backgroundPrimary
+        tableView.backgroundColor = .systemBackground
         tableView.separatorStyle = .singleLine
         tableView.rowHeight = UITableView.automaticDimension
         tableView.estimatedRowHeight = 120
@@ -121,7 +121,7 @@ class ManageEventViewController: UIViewController {
     // MARK: - Setup
     
     private func setupUI() {
-        view.backgroundColor = .backgroundPrimary
+        view.backgroundColor = .systemBackground
         title = "My Events"
         
         // Add navigation bar buttons
@@ -184,7 +184,7 @@ class ManageEventViewController: UIViewController {
     private func loadEvents() {
         guard !isLoading else { return }
         guard let userId = Auth.auth().currentUser?.uid else {
-            AlertManager.present(on: self, title: "Error", message: "User not authenticated", style: .error)
+            showAlert(title: "Error", message: "User not authenticated")
             return
         }
         
@@ -203,10 +203,8 @@ class ManageEventViewController: UIViewController {
                     self?.applyFilter()
                     self?.updateUI()
                 case .failure(let error):
-                    Logger.log("Failed to load events: \(error.localizedDescription)", level: .error, category: "Events")
-                    if let presenter = self {
-                        AlertManager.present(on: presenter, title: "Error", message: "Failed to load events. Please try again.", style: .error)
-                    }
+                    print("❌ Failed to load events: \(error.localizedDescription)")
+                    self?.showAlert(title: "Error", message: "Failed to load events. Please try again.")
                     self?.updateUI()
                 }
             }
@@ -253,32 +251,22 @@ class ManageEventViewController: UIViewController {
     }
     
     @objc private func createEventTapped() {
-        guard let userId = Auth.auth().currentUser?.uid else { return }
-        // Enforce a limit of 2 active/future events per user
-        Task { [weak self] in
-            guard let self = self else { return }
-            do {
-                let count = try await EventManager.shared.countActiveAndFutureEvents(userId: userId)
-                if count >= 2 {
-                    AlertManager.present(on: self, title: "Limit Reached", message: "You can create up to 2 upcoming/current events.", style: .info)
-                    return
-                }
-                let createEventVC = CreateEventViewController()
-                createEventVC.delegate = self
-                let navController = UINavigationController(rootViewController: createEventVC)
-                navController.modalPresentationStyle = .fullScreen
-                self.present(navController, animated: true)
-            } catch {
-                AlertManager.present(on: self, title: "Error", message: "Couldn't verify event quota. Please try again.", style: .error)
-            }
-        }
+        let createEventVC = CreateEventViewController()
+        createEventVC.delegate = self
+        let navController = UINavigationController(rootViewController: createEventVC)
+        navController.modalPresentationStyle = .fullScreen
+        present(navController, animated: true)
     }
     
     @objc private func handleEventUpdated() {
         loadEvents()
     }
     
-    // Removed local showAlert in favor of AlertManager.present
+    private func showAlert(title: String, message: String) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
+    }
 }
 
 // MARK: - UITableViewDelegate & UITableViewDataSource
@@ -314,7 +302,7 @@ extension ManageEventViewController: UITableViewDelegate, UITableViewDataSource 
             self?.confirmDeleteEvent(at: indexPath)
             completion(true)
         }
-        deleteAction.backgroundColor = .statusError
+        deleteAction.backgroundColor = .systemRed
         deleteAction.image = UIImage(systemName: "trash")
         
         return UISwipeActionsConfiguration(actions: [deleteAction])
@@ -322,18 +310,19 @@ extension ManageEventViewController: UITableViewDelegate, UITableViewDataSource 
     
     private func confirmDeleteEvent(at indexPath: IndexPath) {
         let event = filteredEvents[indexPath.row]
-        let cancel = UIAlertAction(title: "Cancel", style: .cancel)
-        let delete = UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
-            self?.deleteEvent(at: indexPath)
-        }
-        AlertManager.present(
-            on: self,
+        
+        let alert = UIAlertController(
             title: "Delete Event",
             message: "Are you sure you want to delete '\(event.title)'? This action cannot be undone.",
-            style: .error,
-            preferredStyle: .alert,
-            actions: [cancel, delete]
+            preferredStyle: .alert
         )
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
+            self?.deleteEvent(at: indexPath)
+        })
+        
+        present(alert, animated: true)
     }
     
     private func deleteEvent(at indexPath: IndexPath) {
@@ -356,10 +345,8 @@ extension ManageEventViewController: UITableViewDelegate, UITableViewDataSource 
                     self?.updateUI()
                     ToastManager.showToast(message: "Event deleted", type: .success)
                 case .failure(let error):
-                    Logger.log("Failed to delete event: \(error.localizedDescription)", level: .error, category: "Events")
-                    if let presenter = self {
-                        AlertManager.present(on: presenter, title: "Error", message: "Failed to delete event. Please try again.", style: .error)
-                    }
+                    print("❌ Failed to delete event: \(error.localizedDescription)")
+                    self?.showAlert(title: "Error", message: "Failed to delete event. Please try again.")
                 }
             }
         }
@@ -371,7 +358,7 @@ extension ManageEventViewController: UITableViewDelegate, UITableViewDataSource 
 
 extension ManageEventViewController: CreateEventViewControllerDelegate {
     func createEventViewController(_ controller: CreateEventViewController, didCreateEvent event: Event) {
-        Logger.log("Event created: \(event.title)", level: .info, category: "Events")
+        print("Event created: \(event.title)")
         loadEvents()
     }
 }
@@ -386,7 +373,7 @@ class EventTableViewCell: UITableViewCell {
         imageView.translatesAutoresizingMaskIntoConstraints = false
         imageView.contentMode = .scaleAspectFill
         imageView.clipsToBounds = true
-        imageView.backgroundColor = .backgroundSecondary
+        imageView.backgroundColor = .systemGray6
         return imageView
     }()
     
@@ -502,21 +489,21 @@ class EventTableViewCell: UITableViewCell {
     private func loadEventImage(for event: Event) {
         // Use already loaded image if available
         if !event.images.isEmpty {
-            Logger.log("Using event uploaded image for: \(event.title)", level: .debug, category: "Events")
+            print("🖼️ Using event uploaded image for: \(event.title)")
             eventImageView.image = event.images[0]
             return
         }
         
         // Show placeholder
         eventImageView.image = UIImage(systemName: "photo")
-        eventImageView.tintColor = .borderSubtle
+        eventImageView.tintColor = .systemGray3
         eventImageView.contentMode = .scaleAspectFit
     }
     
     private func loadAvatarImage(for event: Event) {
         // Set placeholder while loading
         avatarImageView.image = UIImage(systemName: "person.circle")
-        avatarImageView.tintColor = .borderSubtle
+        avatarImageView.tintColor = .systemGray3
         
         let db = Firestore.firestore()
         db.collection("users")
@@ -525,7 +512,7 @@ class EventTableViewCell: UITableViewCell {
             .document(event.id)
             .getDocument { [weak self] snapshot, error in
                 if let error = error {
-                    Logger.log("Error loading avatar image: \(error.localizedDescription)", level: .error, category: "Events")
+                    print("❌ Error loading avatar image: \(error.localizedDescription)")
                     return
                 }
                 
@@ -533,7 +520,7 @@ class EventTableViewCell: UITableViewCell {
                       let avatarImageURL = data["avatarImageURL"] as? String,
                       !avatarImageURL.isEmpty,
                       let url = URL(string: avatarImageURL) else {
-                    Logger.log("No avatar image URL found for event: \(event.title)", level: .debug, category: "Events")
+                    print("⚠️ No avatar image URL found for event: \(event.title)")
                     return
                 }
                 
