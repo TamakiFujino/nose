@@ -7,49 +7,13 @@ protocol CreateEventViewControllerDelegate: AnyObject {
     func createEventViewController(_ controller: CreateEventViewController, didCreateEvent event: Event)
 }
 
-struct Event {
-    let id: String
-    let title: String
-    let dateTime: EventDateTime
-    let location: EventLocation
-    let details: String
-    let images: [UIImage]
-    let createdAt: Date
-    let userId: String
-}
-
-struct EventDateTime {
-    let startDate: Date
-    let endDate: Date
-    
-    var duration: TimeInterval {
-        return endDate.timeIntervalSince(startDate)
-    }
-    
-    var formattedDuration: String {
-        let hours = Int(duration / 3600)
-        let minutes = Int((duration.truncatingRemainder(dividingBy: 3600)) / 60)
-        
-        if hours > 0 && minutes > 0 {
-            return "\(hours)h \(minutes)m"
-        } else if hours > 0 {
-            return "\(hours)h"
-        } else {
-            return "\(minutes)m"
-        }
-    }
-}
-
-struct EventLocation {
-    let name: String
-    let address: String
-    let coordinates: CLLocationCoordinate2D?
-}
+// Event models moved to Models/Event.swift
 
 final class CreateEventViewController: UIViewController {
     
     // MARK: - Properties
     weak var delegate: CreateEventViewControllerDelegate?
+    private let eventRepository: EventRepository = FirebaseEventRepository()
     private var selectedLocation: EventLocation?
     private var selectedImages: [UIImage] = []
     private var sessionToken: GMSAutocompleteSessionToken?
@@ -97,14 +61,12 @@ final class CreateEventViewController: UIViewController {
         return imageView
     }()
     
-    private lazy var customizeAvatarButton: UIButton = {
-        let button = UIButton(type: .system)
+    private lazy var customizeAvatarButton: CustomButton = {
+        let button = CustomButton()
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setTitle("Customize avatar", for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
-        button.backgroundColor = .fourthColor
-        button.setTitleColor(.white, for: .normal)
-        button.layer.cornerRadius = 24
+        button.size = .large
+        button.style = .primary
         button.clipsToBounds = true
         button.contentEdgeInsets = UIEdgeInsets(top: 12, left: 20, bottom: 12, right: 20)
         button.addTarget(self, action: #selector(customizeAvatarTapped), for: .touchUpInside)
@@ -163,10 +125,10 @@ final class CreateEventViewController: UIViewController {
     private lazy var startDateButton: UIButton = {
         let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.backgroundColor = .systemBackground
+        button.backgroundColor = .backgroundPrimary
         button.layer.cornerRadius = 5 // UITextField roundedRect uses 5pt radius
         button.layer.borderWidth = 0.5 // UITextField roundedRect uses 0.5pt border
-        button.layer.borderColor = UIColor.systemGray3.cgColor // UITextField roundedRect uses systemGray3
+        button.layer.borderColor = UIColor.borderSubtle.cgColor // UITextField roundedRect uses systemGray3
         button.contentHorizontalAlignment = .left
         button.titleEdgeInsets = UIEdgeInsets(top: 0, left: 8, bottom: 0, right: 8) // UITextField roundedRect uses 8pt padding
         button.setTitleColor(.label, for: .normal)
@@ -187,10 +149,10 @@ final class CreateEventViewController: UIViewController {
     private lazy var endDateButton: UIButton = {
         let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.backgroundColor = .systemBackground
+        button.backgroundColor = .backgroundPrimary
         button.layer.cornerRadius = 5 // UITextField roundedRect uses 5pt radius
         button.layer.borderWidth = 0.5 // UITextField roundedRect uses 0.5pt border
-        button.layer.borderColor = UIColor.systemGray3.cgColor // UITextField roundedRect uses systemGray3
+        button.layer.borderColor = UIColor.borderSubtle.cgColor // UITextField roundedRect uses systemGray3
         button.contentHorizontalAlignment = .left
         button.titleEdgeInsets = UIEdgeInsets(top: 0, left: 8, bottom: 0, right: 8) // UITextField roundedRect uses 8pt padding
         button.setTitleColor(.label, for: .normal)
@@ -240,8 +202,8 @@ final class CreateEventViewController: UIViewController {
         tableView.isHidden = true
         tableView.layer.cornerRadius = 8
         tableView.layer.borderWidth = 1
-        tableView.layer.borderColor = UIColor.systemGray4.cgColor
-        tableView.backgroundColor = .systemBackground
+        tableView.layer.borderColor = UIColor.borderSubtle.cgColor
+        tableView.backgroundColor = .backgroundPrimary
         // Ensure it appears above other elements
         tableView.layer.zPosition = 1000
         return tableView
@@ -261,7 +223,7 @@ final class CreateEventViewController: UIViewController {
         let textView = UITextView()
         textView.translatesAutoresizingMaskIntoConstraints = false
         textView.font = .systemFont(ofSize: 16)
-        textView.layer.borderColor = UIColor.systemGray3.cgColor // Match other fields
+        textView.layer.borderColor = UIColor.borderSubtle.cgColor // Match other fields
         textView.layer.borderWidth = 0.5 // Match other fields
         textView.layer.cornerRadius = 5 // Match other fields
         textView.textContainerInset = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
@@ -324,27 +286,22 @@ final class CreateEventViewController: UIViewController {
     }()
     
     // Buttons
-    private lazy var cancelButton: UIButton = {
-        let button = UIButton(type: .system)
+    private lazy var cancelButton: CustomButton = {
+        let button = CustomButton()
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setTitle("Cancel", for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
-        button.setTitleColor(.systemRed, for: .normal)
-        button.layer.borderWidth = 1
-        button.layer.borderColor = UIColor.systemRed.cgColor
-        button.layer.cornerRadius = 12
+        button.size = .large
+        button.style = .destructive
         button.addTarget(self, action: #selector(cancelButtonTapped), for: .touchUpInside)
         return button
     }()
     
-    private lazy var createButton: UIButton = {
-        let button = UIButton(type: .system)
+    private lazy var createButton: CustomButton = {
+        let button = CustomButton()
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setTitle(isEditMode ? "Update Event" : "Create Event", for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 16, weight: .semibold)
-        button.setTitleColor(.white, for: .normal)
-        button.backgroundColor = .fourthColor
-        button.layer.cornerRadius = 12
+        button.size = .large
+        button.style = .primary
         button.addTarget(self, action: #selector(createButtonTapped), for: .touchUpInside)
         return button
     }()
@@ -370,7 +327,7 @@ final class CreateEventViewController: UIViewController {
     
     // MARK: - Setup
     private func setupUI() {
-        view.backgroundColor = .systemBackground
+        view.backgroundColor = .backgroundPrimary
         title = isEditMode ? "Edit Event" : "Create Event"
         
         // Add navigation bar close button
@@ -588,7 +545,7 @@ final class CreateEventViewController: UIViewController {
                 if let data = snapshot?.data() {
                     // Load avatar customization data if available
                     if let avatarDataDict = data["avatarData"] as? [String: Any] {
-                        print("🎨 Loading saved avatar data for editing")
+                        Logger.log("Loading saved avatar data for editing", level: .info, category: "Events")
                         self?.avatarData = CollectionAvatar.AvatarData.fromFirestoreDict(avatarDataDict, version: .v1)
                         
                         // Save avatar data locally for ContentViewController
@@ -642,8 +599,8 @@ final class CreateEventViewController: UIViewController {
             return
         }
         
-        // Show loading indicator
-        showLoadingAlert(title: "Creating Event")
+        // Show non-blocking overlay loading
+        LoadingView.shared.showOverlayLoading(on: self.view, message: "Creating Event")
         
         let eventDateTime = EventDateTime(startDate: selectedStartDate, endDate: selectedEndDate)
         let event = Event(
@@ -659,24 +616,23 @@ final class CreateEventViewController: UIViewController {
         
         // Debug: Log avatar data if present
         if let avatarData = avatarData {
-            print("🎭 Saving event with avatar data: \(avatarData.selections.count) categories")
+            Logger.log("Saving event with avatar data: \(avatarData.selections.count) categories", level: .info, category: "Events")
         } else {
-            print("🎭 Saving event without avatar data")
+            Logger.log("Saving event without avatar data", level: .info, category: "Events")
         }
         
         // Save event to Firebase
-        EventManager.shared.createEvent(event, avatarData: avatarData) { [weak self] result in
+        eventRepository.createEvent(event, avatarData: avatarData) { [weak self] result in
             DispatchQueue.main.async {
+                LoadingView.shared.hideOverlayLoading()
                 switch result {
                 case .success(let eventId):
-                    print("✅ Event created successfully with ID: \(eventId)")
+                    Logger.log("Event created successfully with ID: \(eventId)", level: .info, category: "Events")
                     self?.delegate?.createEventViewController(self!, didCreateEvent: event)
                     self?.dismiss(animated: true)
                 case .failure(let error):
-                    print("❌ Failed to create event: \(error.localizedDescription)")
-                    self?.dismiss(animated: true) {
-                        self?.showAlert(title: "Error", message: "Failed to create event. Please try again.")
-                    }
+                    Logger.log("Failed to create event: \(error.localizedDescription)", level: .error, category: "Events")
+                    self?.showAlert(title: "Error", message: "Failed to create event. Please try again.")
                 }
             }
         }
@@ -685,8 +641,8 @@ final class CreateEventViewController: UIViewController {
     private func updateEvent() {
         guard let eventToEdit = eventToEdit else { return }
         
-        // Show loading indicator
-        showLoadingAlert(title: "Updating Event")
+        // Show non-blocking overlay loading
+        LoadingView.shared.showOverlayLoading(on: self.view, message: "Updating Event")
         
         let eventDateTime = EventDateTime(startDate: selectedStartDate, endDate: selectedEndDate)
         let updatedEvent = Event(
@@ -701,18 +657,17 @@ final class CreateEventViewController: UIViewController {
         )
         
         // Update event in Firebase
-        EventManager.shared.updateEvent(updatedEvent, avatarData: avatarData) { [weak self] result in
+        eventRepository.updateEvent(updatedEvent, avatarData: avatarData) { [weak self] result in
             DispatchQueue.main.async {
+                LoadingView.shared.hideOverlayLoading()
                 switch result {
                 case .success:
-                    print("✅ Event updated successfully")
+                    Logger.log("Event updated successfully", level: .info, category: "Events")
                     self?.delegate?.createEventViewController(self!, didCreateEvent: updatedEvent)
                     self?.dismiss(animated: true)
                 case .failure(let error):
-                    print("❌ Failed to update event: \(error.localizedDescription)")
-                    self?.dismiss(animated: true) {
-                        self?.showAlert(title: "Error", message: "Failed to update event. Please try again.")
-                    }
+                    Logger.log("Failed to update event: \(error.localizedDescription)", level: .error, category: "Events")
+                    self?.showAlert(title: "Error", message: "Failed to update event. Please try again.")
                 }
             }
         }
@@ -729,8 +684,7 @@ final class CreateEventViewController: UIViewController {
     @objc private func customizeAvatarTapped() {
         guard let userId = Auth.auth().currentUser?.uid else { return }
         
-        // Create a temporary collection for avatar customization
-        // We'll use a consistent ID so we can retrieve the avatar data later
+        // Create a temporary collection model for avatar customization (no Firestore write)
         let tempCollectionId = "temp_event_avatar"
         let tempCollection = PlaceCollection(
             id: tempCollectionId,
@@ -741,46 +695,17 @@ final class CreateEventViewController: UIViewController {
             isOwner: true
         )
         
-        // If we have existing avatar data (edit mode), save it to the temp collection first
+        // If we have existing avatar data (edit mode), persist locally so ContentViewController can load it
         if let existingAvatarData = avatarData {
-            let db = Firestore.firestore()
-            db.collection("users")
-                .document(userId)
-                .collection("collections")
-                .document(tempCollectionId)
-                .setData([
-                    "id": tempCollectionId,
-                    "name": "Event Avatar",
-                    "places": [],
-                    "userId": userId,
-                    "status": "active",
-                    "createdAt": Timestamp(date: Date()),
-                    "isOwner": true,
-                    "version": 1,
-                    "avatarData": existingAvatarData.toFirestoreDict()
-                ], merge: true) { [weak self] error in
-                    if let error = error {
-                        print("❌ Error saving avatar data to temp collection: \(error.localizedDescription)")
-                    } else {
-                        print("✅ Saved existing avatar data to temp collection")
-                    }
-                    
-                    // Navigate to ContentViewController
-                    let vc = ContentViewController(collection: tempCollection)
-                    if let nav = self?.navigationController {
-                        nav.pushViewController(vc, animated: true)
-                    } else {
-                        self?.present(vc, animated: true)
-                    }
-                }
+            saveAvatarDataLocally(existingAvatarData)
+        }
+        
+        // Navigate to ContentViewController
+        let vc = ContentViewController(collection: tempCollection)
+        if let nav = navigationController {
+            nav.pushViewController(vc, animated: true)
         } else {
-            // No existing avatar data, just navigate
-            let vc = ContentViewController(collection: tempCollection)
-            if let nav = navigationController {
-                nav.pushViewController(vc, animated: true)
-            } else {
-                present(vc, animated: true)
-            }
+            present(vc, animated: true)
         }
     }
     
@@ -881,7 +806,7 @@ final class CreateEventViewController: UIViewController {
         ) { [weak self] predictions, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    print("Error searching locations: \(error.localizedDescription)")
+                    Logger.log("Error searching locations: \(error.localizedDescription)", level: .error, category: "Events")
                     return
                 }
                 
@@ -949,30 +874,17 @@ extension CreateEventViewController {
     }
     
     private func showAlert(title: String, message: String) {
-        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
-        present(alert, animated: true)
+        AlertManager.present(on: self, title: title, message: message, style: .info)
     }
     
     private func showLoadingAlert(title: String) {
-        let alert = UIAlertController(title: title, message: nil, preferredStyle: .alert)
-        let loadingIndicator = UIActivityIndicatorView(style: .large)
-        loadingIndicator.translatesAutoresizingMaskIntoConstraints = false
-        loadingIndicator.startAnimating()
-        
-        alert.view.addSubview(loadingIndicator)
-        NSLayoutConstraint.activate([
-            loadingIndicator.centerXAnchor.constraint(equalTo: alert.view.centerXAnchor),
-            loadingIndicator.centerYAnchor.constraint(equalTo: alert.view.centerYAnchor, constant: 20)
-        ])
-        
-        present(alert, animated: true)
+        LoadingView.shared.showOverlayLoading(on: self.view, message: title)
     }
     
     // MARK: - Avatar Data Handling
     func updateAvatarData(_ avatarData: CollectionAvatar.AvatarData) {
         self.avatarData = avatarData
-        print("✅ Avatar data updated for event creation: \(avatarData.selections.count) selections")
+        Logger.log("Avatar data updated for event creation: \(avatarData.selections.count) selections", level: .info, category: "Events")
     }
     
     private func updateAvatarImageView() {
@@ -983,7 +895,7 @@ extension CreateEventViewController {
             // Load and display the temporary avatar image
             self.loadTemporaryAvatarImage()
             
-            print("🎨 Avatar image view updated with actual avatar")
+            Logger.log("Avatar image view updated with actual avatar", level: .debug, category: "Events")
         }
     }
     
@@ -998,7 +910,7 @@ extension CreateEventViewController: UITextFieldDelegate {
             
             if newText.count <= 25 {
                 titleCharCountLabel.text = "\(newText.count)/25"
-                titleCharCountLabel.textColor = newText.count > 20 ? .systemRed : .secondaryLabel
+                titleCharCountLabel.textColor = newText.count > 20 ? .statusError : .textSecondary
                 return true
             }
             return false
@@ -1045,7 +957,7 @@ extension CreateEventViewController: UITextViewDelegate {
         
         let count = textView.text.count
         detailsCharCountLabel.text = "\(count)/1000"
-        detailsCharCountLabel.textColor = count > 900 ? .systemRed : .secondaryLabel
+        detailsCharCountLabel.textColor = count > 900 ? .statusError : .textSecondary
         
         if count > 1000 {
             textView.text = String(textView.text.prefix(1000))
@@ -1202,7 +1114,7 @@ class ImageCollectionViewCell: UICollectionViewCell {
         imageView.contentMode = .scaleAspectFill
         imageView.clipsToBounds = true
         imageView.layer.cornerRadius = 8
-        imageView.backgroundColor = .systemGray6
+        imageView.backgroundColor = .backgroundSecondary
         return imageView
     }()
     
@@ -1211,7 +1123,7 @@ class ImageCollectionViewCell: UICollectionViewCell {
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setImage(UIImage(systemName: "plus"), for: .normal)
         button.tintColor = .fourthColor
-        button.backgroundColor = .systemGray6
+        button.backgroundColor = .backgroundSecondary
         button.layer.cornerRadius = 8
         return button
     }()
@@ -1311,9 +1223,9 @@ extension CreateEventViewController {
                 self?.loadTemporaryAvatarImage()
             }
             
-            print("✅ Retrieved saved avatar data for event: \(avatarData.selections.count) categories")
+            Logger.log("Retrieved saved avatar data for event: \(avatarData.selections.count) categories", level: .info, category: "Events")
         } else {
-            print("📝 No saved avatar data found - user can customize avatar")
+            Logger.log("No saved avatar data found - user can customize avatar", level: .debug, category: "Events")
         }
     }
     
@@ -1321,7 +1233,7 @@ extension CreateEventViewController {
         // Save avatar data locally so it persists across app sessions
         if let data = try? JSONEncoder().encode(avatarData) {
             UserDefaults.standard.set(data, forKey: "temp_event_avatar_data")
-            print("💾 Saved avatar data locally")
+            Logger.log("Saved avatar data locally", level: .debug, category: "Events")
         }
     }
     
@@ -1336,11 +1248,11 @@ extension CreateEventViewController {
             // Display the temporary avatar image
             avatarImageView.image = image
             avatarImageView.contentMode = .scaleAspectFit
-            print("🖼️ Loaded temporary avatar image from local storage")
+            Logger.log("Loaded temporary avatar image from local storage", level: .debug, category: "Events")
         } else {
             // Fallback to default avatar if no temporary image exists
             avatarImageView.image = UIImage(named: "avatar") ?? UIImage(systemName: "person.crop.circle")
-            print("🖼️ No temporary avatar image found, using default")
+            Logger.log("No temporary avatar image found, using default", level: .debug, category: "Events")
         }
     }
     
@@ -1356,9 +1268,9 @@ extension CreateEventViewController {
         if let imageData = image.pngData() {
             do {
                 try imageData.write(to: tempImagePath)
-                print("💾 Saved temporary avatar image to: \(tempImagePath.path)")
+                Logger.log("Saved temporary avatar image to: \(tempImagePath.path)", level: .debug, category: "Events")
             } catch {
-                print("❌ Failed to save temporary avatar image: \(error.localizedDescription)")
+                Logger.log("Failed to save temporary avatar image: \(error.localizedDescription)", level: .error, category: "Events")
             }
         }
     }
@@ -1373,7 +1285,7 @@ extension CreateEventViewController {
         // Delete the temporary avatar image file
         let tempImagePath = getTemporaryAvatarImagePath()
         try? FileManager.default.removeItem(at: tempImagePath)
-        print("🗑️ Deleted temporary avatar image")
+        Logger.log("Deleted temporary avatar image", level: .debug, category: "Events")
     }
     
     private func setupNotifications() {
@@ -1406,6 +1318,6 @@ extension CreateEventViewController {
         // Update the avatar image view to reflect the new avatar
         updateAvatarImageView()
         
-        print("✅ Avatar data updated via notification: \(selections.count) categories")
+        Logger.log("Avatar data updated via notification: \(selections.count) categories", level: .info, category: "Events")
     }
 }

@@ -59,7 +59,7 @@ final class AccountViewController: UIViewController {
     private func setupUI() {
         view.backgroundColor = .firstColor
         title = "Account"
-        navigationController?.navigationBar.tintColor = .label
+        navigationController?.navigationBar.tintColor = .sixthColor
         navigationItem.largeTitleDisplayMode = .never
         
         // Hide back button text
@@ -92,14 +92,8 @@ final class AccountViewController: UIViewController {
     }
     
     private func deleteAccount() {
-        let alert = UIAlertController(
-            title: "Delete Account",
-            message: "Are you sure you want to delete your account? This action cannot be undone.",
-            preferredStyle: .alert
-        )
-        
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        alert.addAction(UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
+        let cancel = UIAlertAction(title: "Cancel", style: .cancel)
+        let confirm = UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
             guard let self = self,
                   let currentUserId = Auth.auth().currentUser?.uid else { return }
             
@@ -117,9 +111,8 @@ final class AccountViewController: UIViewController {
                     }
                 }
             }
-        })
-        
-        present(alert, animated: true)
+        }
+        AlertManager.present(on: self, title: "Delete Account", message: "Are you sure you want to delete your account? This action cannot be undone.", style: .error, preferredStyle: .alert, actions: [cancel, confirm])
     }
     
     // MARK: - Navigation
@@ -131,29 +124,21 @@ final class AccountViewController: UIViewController {
     
     // MARK: - Alerts
     private func showConfirmationAlert(for item: SettingsItem) {
-        let alert = UIAlertController(
-            title: item.alertTitle,
-            message: item.alertMessage,
-            preferredStyle: .alert
-        )
-        
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        alert.addAction(UIAlertAction(title: "Confirm", style: item.isDestructive ? .destructive : .default) { [weak self] _ in
+        let cancel = UIAlertAction(title: "Cancel", style: .cancel)
+        let confirm = UIAlertAction(title: "Confirm", style: item.isDestructive ? .destructive : .default) { [weak self] _ in
             switch item {
             case .logout:
                 self?.handleLogout()
             case .deleteAccount:
                 self?.deleteAccount()
             }
-        })
-        
-        present(alert, animated: true)
+        }
+        AlertManager.present(on: self, title: item.alertTitle, message: item.alertMessage, style: item.isDestructive ? .error : .info, preferredStyle: .alert, actions: [cancel, confirm])
     }
     
     private func showAlert(title: String, message: String, completion: (() -> Void)? = nil) {
-        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in completion?() })
-        present(alert, animated: true)
+        let ok = UIAlertAction(title: "OK", style: .default) { _ in completion?() }
+        AlertManager.present(on: self, title: title, message: message, style: .info, preferredStyle: .alert, actions: [ok])
     }
 }
 
@@ -169,7 +154,7 @@ extension AccountViewController: UITableViewDelegate, UITableViewDataSource {
         
         var content = cell.defaultContentConfiguration()
         content.text = item.rawValue
-        content.textProperties.color = item.isDestructive ? .systemRed : .label
+        content.textProperties.color = item.isDestructive ? .statusError : .sixthColor
         cell.contentConfiguration = content
         
         cell.backgroundColor = .clear

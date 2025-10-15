@@ -33,7 +33,7 @@ final class EditNameViewController: UIViewController {
         label.translatesAutoresizingMaskIntoConstraints = false
         label.textAlignment = .right
         label.font = .systemFont(ofSize: 12)
-        label.textColor = .gray
+        label.textColor = .fifthColor
         label.text = "0/\(Constants.maxNameLength)"
         return label
     }()
@@ -57,7 +57,7 @@ final class EditNameViewController: UIViewController {
     private func setupUI() {
         view.backgroundColor = .firstColor
         title = "Edit Name"
-        navigationController?.navigationBar.tintColor = .label
+        navigationController?.navigationBar.tintColor = .sixthColor
         navigationItem.largeTitleDisplayMode = .never
         
         setupSubviews()
@@ -117,11 +117,11 @@ final class EditNameViewController: UIViewController {
         
         // Update label color based on character count
         if count > Constants.maxNameLength {
-            characterCountLabel.textColor = .systemRed
+            characterCountLabel.textColor = .statusError
         } else if count < Constants.minNameLength {
-            characterCountLabel.textColor = .systemOrange
+            characterCountLabel.textColor = .statusWarning
         } else {
-            characterCountLabel.textColor = .gray
+            characterCountLabel.textColor = .fifthColor
         }
     }
     
@@ -163,9 +163,8 @@ final class EditNameViewController: UIViewController {
     
     // MARK: - Helper Methods
     private func showAlert(title: String, message: String, completion: ((UIAlertAction) -> Void)? = nil) {
-        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: completion))
-        present(alert, animated: true)
+        let ok = UIAlertAction(title: "OK", style: .default, handler: completion)
+        AlertManager.present(on: self, title: title, message: message, style: .info, preferredStyle: .alert, actions: [ok])
     }
 }
 
