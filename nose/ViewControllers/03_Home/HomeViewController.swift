@@ -304,16 +304,137 @@ final class HomeViewController: UIViewController {
     }
     
     private func loadCollections() {
-        guard let userId = Auth.auth().currentUser?.uid else { return }
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        let db = Firestore.firestore()
         
-        CollectionManager.shared.fetchCollections(userId: userId) { [weak self] result in
-            switch result {
-            case .success(let collections):
-                self?.collections = collections
-                print("✅ Loaded \(collections.count) collections")
-            case .failure(let error):
-                print("❌ Failed to load collections: \(error.localizedDescription)")
-                self?.showMessage(title: "Error", subtitle: "Failed to load collections")
+        print("🔍 Loading collections for map: \(currentUserId)")
+        
+        var personalCollections: [PlaceCollection] = []
+        var sharedCollections: [PlaceCollection] = []
+        let group = DispatchGroup()
+        
+        // Load owned collections
+        group.enter()
+        let ownedCollectionsRef = db.collection("users")
+            .document(currentUserId)
+            .collection("collections")
+        
+        ownedCollectionsRef.whereField("isOwner", isEqualTo: true).getDocuments { snapshot, error in
+            defer { group.leave() }
+            
+            if let error = error {
+                print("❌ Error loading owned collections: \(error.localizedDescription)")
+                return
+            }
+            
+            print("📄 Found \(snapshot?.documents.count ?? 0) owned collections")
+            
+            let collections: [PlaceCollection] = snapshot?.documents.compactMap { document in
+                var data = document.data()
+                data["id"] = document.documentID
+                data["isOwner"] = true
+                
+                // If status is missing, treat it as active
+                if data["status"] == nil {
+                    data["status"] = PlaceCollection.Status.active.rawValue
+                }
+                
+                if let collection = PlaceCollection(dictionary: data) {
+                    return collection
+                }
+                return nil
+            } ?? []
+            
+            // Filter to only show active collections
+            personalCollections = collections.filter { $0.status == .active }
+            print("🎯 Active owned collections: \(personalCollections.count)")
+        }
+        
+        // Load shared collections
+        group.enter()
+        let sharedCollectionsRef = db.collection("users")
+            .document(currentUserId)
+            .collection("collections")
+        
+        let sharedGroup = DispatchGroup()
+        var sharedLoadedCollections: [PlaceCollection] = []
+        
+        sharedCollectionsRef.whereField("isOwner", isEqualTo: false).getDocuments { snapshot, error in
+            defer { group.leave() }
+            
+            if let error = error {
+                print("❌ Error loading shared collections: \(error.localizedDescription)")
+                return
+            }
+            
+            print("📄 Found \(snapshot?.documents.count ?? 0) shared collections")
+            
+            guard let documents = snapshot?.documents, !documents.isEmpty else {
+                print("🎯 Active shared collections: 0")
+                // No documents means sharedGroup has no enters, so notify immediately
+                sharedGroup.notify(queue: .main) {
+                    sharedCollections = []
+                }
+                return
+            }
+            
+            documents.forEach { document in
+                sharedGroup.enter()
+                let data = document.data()
+                
+                // Get the original collection data from the owner's collections
+                if let ownerId = data["userId"] as? String,
+                   let collectionId = data["id"] as? String {
+                    
+                    db.collection("users")
+                        .document(ownerId)
+                        .collection("collections")
+                        .document(collectionId)
+                        .getDocument { snapshot, error in
+                            defer { sharedGroup.leave() }
+                            
+                            if let error = error {
+                                print("❌ Error loading original collection: \(error.localizedDescription)")
+                                return
+                            }
+                            
+                            if let originalData = snapshot?.data() {
+                                var collectionData = originalData
+                                collectionData["id"] = collectionId
+                                collectionData["isOwner"] = false
+                                
+                                // If status is missing, treat it as active
+                                if collectionData["status"] == nil {
+                                    collectionData["status"] = PlaceCollection.Status.active.rawValue
+                                }
+                                
+                                if let collection = PlaceCollection(dictionary: collectionData) {
+                                    sharedLoadedCollections.append(collection)
+                                }
+                            }
+                        }
+                } else {
+                    sharedGroup.leave()
+                }
+            }
+        }
+        
+        // When both personal and shared collections queries complete, wait for shared collections details to load
+        group.notify(queue: .main) { [weak self] in
+            guard let self = self else { return }
+            
+            // Wait for shared collections to finish loading, then update map
+            sharedGroup.notify(queue: .main) {
+                // Update sharedCollections with loaded data
+                sharedCollections = sharedLoadedCollections.filter { $0.status == .active }
+                print("🎯 Active shared collections: \(sharedCollections.count)")
+                
+                // Combine all collections
+                self.collections = personalCollections + sharedCollections
+                print("✅ Loaded \(self.collections.count) total active collections for map")
+                
+                // Show all collection places on the map
+                self.mapManager?.showCollectionPlacesOnMap(self.collections)
             }
         }
     }
@@ -380,19 +501,12 @@ final class HomeViewController: UIViewController {
     
     @objc private func sparkButtonTapped() {
         let collectionsVC = CollectionsViewController()
-        if let sheet = collectionsVC.sheetPresentationController {
-            sheet.detents = [.medium()]
-            sheet.prefersGrabberVisible = true
-        }
+        collectionsVC.mapManager = mapManager
         present(collectionsVC, animated: true)
     }
     
     @objc private func boxButtonTapped() {
         let boxVC = BoxViewController()
-        if let sheet = boxVC.sheetPresentationController {
-            sheet.detents = [.medium()]
-            sheet.prefersGrabberVisible = true
-        }
         present(boxVC, animated: true)
     }
     
@@ -519,6 +633,27 @@ extension HomeViewController: SearchViewControllerDelegate {
 // MARK: - TimelineSliderViewDelegate
 extension HomeViewController: TimelineSliderViewDelegate {
     func timelineSliderView(_ view: TimelineSliderView, didSelectDotAt index: Int) {
+        // Check if a modal is minimized and should be dismissed
+        if let presentedVC = presentedViewController {
+            // Check if it's a sheet presentation controller
+            if let sheet = presentedVC.sheetPresentationController {
+                // Check if modal is minimized (at small detent, not large)
+                let smallDetentIdentifier = UISheetPresentationController.Detent.Identifier("small")
+                let isMinimized = sheet.selectedDetentIdentifier == smallDetentIdentifier
+                
+                if isMinimized {
+                    // Check which dot corresponds to which modal
+                    let isCollectionsModal = presentedVC is CollectionsViewController && index != 2
+                    let isBoxModal = presentedVC is BoxViewController && index != 0
+                    
+                    // If the new dot selection doesn't match the current modal, dismiss it
+                    if isCollectionsModal || isBoxModal {
+                        presentedVC.dismiss(animated: true, completion: nil)
+                    }
+                }
+            }
+        }
+        
         currentDotIndex = index
         
         // Always show the map view
@@ -601,7 +736,38 @@ extension HomeViewController: CreateEventViewControllerDelegate {
 // MARK: - GoogleMapManagerDelegate
 extension HomeViewController: GoogleMapManagerDelegate {
     func googleMapManager(_ manager: GoogleMapManager, didFailWithError error: Error) {
-        print("❌ Map error: \(error.localizedDescription)")
+        // Only log errors that are not common/expected (like permission denied, network issues)
+        let nsError = error as NSError
+        if nsError.domain == "kCLErrorDomain" || (error as? CLError) != nil {
+            // CoreLocation errors - only log if not a common permission/network error
+            if let cleError = error as? CLError {
+                switch cleError.code {
+                case .locationUnknown:
+                    // Common when location services are disabled or unavailable
+                    // Don't show error to user - map can still function
+                    print("⚠️ Location unavailable: \(error.localizedDescription)")
+                case .denied, .network:
+                    // Permission denied or network error - user can still use map
+                    print("⚠️ Location access: \(error.localizedDescription)")
+                default:
+                    print("❌ Map error: \(error.localizedDescription)")
+                }
+            } else {
+                // Check numeric codes as fallback
+                switch nsError.code {
+                case 0: // kCLErrorLocationUnknown
+                    print("⚠️ Location unavailable: \(error.localizedDescription)")
+                case 1: // kCLErrorDenied
+                    print("⚠️ Location access denied: \(error.localizedDescription)")
+                case 2: // kCLErrorNetwork
+                    print("⚠️ Location network error: \(error.localizedDescription)")
+                default:
+                    print("❌ Map error: \(error.localizedDescription)")
+                }
+            }
+        } else {
+            print("❌ Map error: \(error.localizedDescription)")
+        }
     }
     
     func googleMapManager(_ manager: GoogleMapManager, didTapEventMarker event: Event) {

@@ -359,6 +359,7 @@ extension ManageEventViewController: UITableViewDelegate, UITableViewDataSource 
 extension ManageEventViewController: CreateEventViewControllerDelegate {
     func createEventViewController(_ controller: CreateEventViewController, didCreateEvent event: Event) {
         print("Event created: \(event.title)")
+        controller.navigationController?.dismiss(animated: true)
         loadEvents()
     }
 }

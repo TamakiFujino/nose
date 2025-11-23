@@ -72,6 +72,7 @@ final class ViewController: UIViewController {
     // MARK: - Properties
     private var currentNonce: String?
     private var isLoginMode = false
+    weak var sceneDelegate: SceneDelegate?
     
     // MARK: - Lifecycle
     override func viewDidLoad() {
@@ -166,15 +167,13 @@ final class ViewController: UIViewController {
             // User is logged in, check if they have a profile
             UserManager.shared.getUser(id: currentUser.uid) { [weak self] user, error in
                 DispatchQueue.main.async {
+                    guard let self = self else { return }
                     if user != nil {
-                        // User exists, navigate to home screen
-                        let homeViewController = HomeViewController()
-                        let navigationController = UINavigationController(rootViewController: homeViewController)
-                        navigationController.modalPresentationStyle = .fullScreen
-                        self?.present(navigationController, animated: true)
+                        // User exists, replace root with home screen
+                        self.transitionToHome()
                     } else {
                         // User doesn't have a profile yet, show login UI
-                        self?.setupLoginStyle()
+                        self.setupLoginStyle()
                     }
                 }
             }
@@ -278,16 +277,25 @@ final class ViewController: UIViewController {
             
             if user != nil {
                 print("User already exists, navigating to home screen")
-                let homeViewController = HomeViewController()
-                let navigationController = UINavigationController(rootViewController: homeViewController)
-                navigationController.modalPresentationStyle = .fullScreen
-                self.present(navigationController, animated: true)
+                self.transitionToHome()
             } else {
                 print("New user, navigating to name registration")
                 let nameRegistrationVC = NameRegistrationViewController()
                 nameRegistrationVC.modalPresentationStyle = .fullScreen
                 self.present(nameRegistrationVC, animated: true)
             }
+        }
+    }
+    
+    private func transitionToHome() {
+        guard let window = view.window else { return }
+        let homeViewController = HomeViewController()
+        let navigationController = UINavigationController(rootViewController: homeViewController)
+        
+        UIView.transition(with: window, duration: 0.3, options: .transitionCrossDissolve) {
+            window.rootViewController = navigationController
+        } completion: { _ in
+            self.sceneDelegate?.didFinishAuthentication()
         }
     }
     

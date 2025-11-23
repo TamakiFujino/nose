@@ -57,6 +57,8 @@ final class CreateEventViewController: UIViewController {
     private var selectedEndDate: Date = Calendar.current.date(byAdding: .hour, value: 1, to: Date()) ?? Date()
     private var locationPredictions: [GMSAutocompletePrediction] = []
     private var avatarData: CollectionAvatar.AvatarData?
+    private let tempAvatarCollectionId = "temp_event_avatar"
+    private let tempAvatarDataKey = "temp_event_avatar_data"
     
     // Editing mode
     private var eventToEdit: Event?
@@ -621,8 +623,8 @@ final class CreateEventViewController: UIViewController {
     
     // MARK: - Actions
     @objc private func cancelButtonTapped() {
-        // Clean up temporary avatar image before dismissing
-        deleteTemporaryAvatarImage()
+        // Clean up temporary avatar state before dismissing
+        clearTemporaryAvatarState()
         dismiss(animated: true)
     }
     
@@ -670,8 +672,11 @@ final class CreateEventViewController: UIViewController {
                 switch result {
                 case .success(let eventId):
                     print("✅ Event created successfully with ID: \(eventId)")
-                    self?.delegate?.createEventViewController(self!, didCreateEvent: event)
-                    self?.dismiss(animated: true)
+                    self?.clearTemporaryAvatarState()
+                    if let self = self {
+                        self.delegate?.createEventViewController(self, didCreateEvent: event)
+                        self.dismissSelf()
+                    }
                 case .failure(let error):
                     print("❌ Failed to create event: \(error.localizedDescription)")
                     self?.dismiss(animated: true) {
@@ -706,8 +711,11 @@ final class CreateEventViewController: UIViewController {
                 switch result {
                 case .success:
                     print("✅ Event updated successfully")
-                    self?.delegate?.createEventViewController(self!, didCreateEvent: updatedEvent)
-                    self?.dismiss(animated: true)
+                    self?.clearTemporaryAvatarState()
+                    if let self = self {
+                        self.delegate?.createEventViewController(self, didCreateEvent: updatedEvent)
+                        self.dismissSelf()
+                    }
                 case .failure(let error):
                     print("❌ Failed to update event: \(error.localizedDescription)")
                     self?.dismiss(animated: true) {
@@ -731,9 +739,8 @@ final class CreateEventViewController: UIViewController {
         
         // Create a temporary collection for avatar customization
         // We'll use a consistent ID so we can retrieve the avatar data later
-        let tempCollectionId = "temp_event_avatar"
         let tempCollection = PlaceCollection(
-            id: tempCollectionId,
+            id: tempAvatarCollectionId,
             name: "Event Avatar",
             places: [],
             userId: userId,
@@ -747,9 +754,9 @@ final class CreateEventViewController: UIViewController {
             db.collection("users")
                 .document(userId)
                 .collection("collections")
-                .document(tempCollectionId)
+                .document(tempAvatarCollectionId)
                 .setData([
-                    "id": tempCollectionId,
+                    "id": tempAvatarCollectionId,
                     "name": "Event Avatar",
                     "places": [],
                     "userId": userId,
@@ -1302,7 +1309,7 @@ extension CreateEventViewController {
     
     private func checkForAvatarData() {
         // Check if we have avatar data stored locally from a previous customization session
-        if let savedData = UserDefaults.standard.data(forKey: "temp_event_avatar_data"),
+        if let savedData = UserDefaults.standard.data(forKey: tempAvatarDataKey),
            let avatarData = try? JSONDecoder().decode(CollectionAvatar.AvatarData.self, from: savedData) {
             self.avatarData = avatarData
             
@@ -1320,7 +1327,7 @@ extension CreateEventViewController {
     private func saveAvatarDataLocally(_ avatarData: CollectionAvatar.AvatarData) {
         // Save avatar data locally so it persists across app sessions
         if let data = try? JSONEncoder().encode(avatarData) {
-            UserDefaults.standard.set(data, forKey: "temp_event_avatar_data")
+            UserDefaults.standard.set(data, forKey: tempAvatarDataKey)
             print("💾 Saved avatar data locally")
         }
     }
@@ -1374,6 +1381,41 @@ extension CreateEventViewController {
         let tempImagePath = getTemporaryAvatarImagePath()
         try? FileManager.default.removeItem(at: tempImagePath)
         print("🗑️ Deleted temporary avatar image")
+    }
+
+    private func clearTemporaryAvatarState() {
+        // Reset in-memory avatar
+        avatarData = nil
+        
+        // Remove any locally saved avatar data
+        UserDefaults.standard.removeObject(forKey: tempAvatarDataKey)
+        print("🗑️ Cleared saved temporary avatar data")
+        
+        // Delete the temporary avatar image file
+        deleteTemporaryAvatarImage()
+        
+        // Remove the temporary collection document from Firestore
+        guard let userId = Auth.auth().currentUser?.uid else { return }
+        Firestore.firestore()
+            .collection("users")
+            .document(userId)
+            .collection("collections")
+            .document(tempAvatarCollectionId)
+            .delete { error in
+                if let error = error {
+                    print("⚠️ Failed to delete temporary avatar document: \(error.localizedDescription)")
+                } else {
+                    print("🗑️ Deleted temporary avatar document from Firestore")
+                }
+            }
+    }
+
+    private func dismissSelf() {
+        if let nav = navigationController {
+            nav.dismiss(animated: true)
+        } else {
+            dismiss(animated: true)
+        }
     }
     
     private func setupNotifications() {

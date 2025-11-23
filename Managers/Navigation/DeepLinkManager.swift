@@ -81,6 +81,7 @@ final class DeepLinkManager {
         defaults.synchronize()
         
         var processedCount = 0
+        let total = inbox.count
         
         for item in inbox {
             guard let urlString = item["url"] as? String,
@@ -95,7 +96,12 @@ final class DeepLinkManager {
                 if success {
                     processedCount += 1
                 }
+                
+                // If this was the last one (or close to it), show summary
+                // Note: exact synchronization is less critical here than UX
                 if processedCount > 0 {
+                    // Toast or Banner? For now, simple log or alert if needed.
+                    // We generally don't want to interrupt the user too much on launch
                     Logger.log("✅ Successfully processed share item for collection: \(collectionName)", level: .info, category: "DeepLink")
                 }
             }
@@ -116,8 +122,8 @@ final class DeepLinkManager {
                 } else {
                     self.fetchPlaceAndAdd(placeId: pid, collectionId: collectionId, collectionName: collectionName, completion: completion)
                 }
-            } else if let comps = URLComponents(url: resolvedURL, resolvingAgainstBaseURL: false),
-                      let rawQuery = comps.queryItems?.first(where: { $0.name == "q" })?.value {
+            } else if letcomps = URLComponents(url: resolvedURL, resolvingAgainstBaseURL: false),
+                      let rawQuery = letcomps.queryItems?.first(where: { $0.name == "q" })?.value {
                 // 2. Search by Query
                 let query = rawQuery.replacingOccurrences(of: "+", with: " ")
                 self.searchPlaceAndAdd(query: query, collectionId: collectionId, collectionName: collectionName, completion: completion)
@@ -197,7 +203,7 @@ final class DeepLinkManager {
             "formattedAddress": place.formattedAddress ?? "",
             "rating": place.rating,
             "phoneNumber": place.phoneNumber ?? "",
-            "addedAt": Timestamp(date: Date()),
+            "addedAt": FieldValue.serverTimestamp(),
             "visited": false
         ]
         
@@ -209,6 +215,8 @@ final class DeepLinkManager {
                 completion(false)
             } else {
                 Logger.log("Successfully added \(place.name ?? "") to \(collectionName)", level: .info, category: "DeepLink")
+                // Optional: Show Toast
+                ToastManager.shared.showToast(message: "Saved \(place.name ?? "Place") to \(collectionName)")
                 // Notify collection list to refresh
                 NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
                 completion(true)
@@ -495,3 +503,4 @@ final class DeepLinkManager {
         }
     }
 }
+

@@ -12,8 +12,8 @@
 		4915172C2E9A01C800D5C35F /* GoogleService-Info-Staging.plist in Resources */ = {isa = PBXBuildFile; fileRef = 491517292E9A01C800D5C35F /* GoogleService-Info-Staging.plist */; };
 		4915172D2E9A01C800D5C35F /* GoogleService-Info-Production.plist in Resources */ = {isa = PBXBuildFile; fileRef = 491517282E9A01C800D5C35F /* GoogleService-Info-Production.plist */; };
 		4915172F2E9A026F00D5C35F /* Config.plist in Resources */ = {isa = PBXBuildFile; fileRef = 4915172E2E9A026F00D5C35F /* Config.plist */; };
+		491FD1FE2ECA18C30085D3BA /* ShareWithNose.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 491FD1F42ECA18C30085D3BA /* ShareWithNose.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		49A0F1A32EA9B00100F1A2B4 /* nose/Bridging/UnityBridgeShim.m in Sources */ = {isa = PBXBuildFile; fileRef = 49A0F1A22EA9B00100F1A2B3 /* nose/Bridging/UnityBridgeShim.m */; };
-		49DCFB452EA06160007B51F7 /* OpenInNose.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 49731FF02E8AB28C002D3C85 /* OpenInNose.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		49F7C2162E49E258003A3D50 /* UnityLauncher.mm in Sources */ = {isa = PBXBuildFile; fileRef = 49F7C2152E49E258003A3D50 /* UnityLauncher.mm */; };
 		49F87F4D2E64769D00C129C4 /* UnityFramework.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 49F87F4A2E64768400C129C4 /* UnityFramework.framework */; };
 		49F87F522E6476DD00C129C4 /* Data in Resources */ = {isa = PBXBuildFile; fileRef = 49F87F512E6476DD00C129C4 /* Data */; };
@@ -25,12 +25,12 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		49731FF82E8AB28C002D3C85 /* PBXContainerItemProxy */ = {
+		491FD1FC2ECA18C30085D3BA /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 49E99BEE2D3BE432000F3CE5 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 49731FEF2E8AB28C002D3C85;
-			remoteInfo = OpenInNose;
+			remoteGlobalIDString = 491FD1F32ECA18C30085D3BA;
+			remoteInfo = ShareWithNose;
 		};
 		49E99C0D2D3BE433000F3CE5 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -63,13 +63,23 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		497320002E8AB28C002D3C85 /* Embed Foundation Extensions */ = {
+		491FD2042ECA18C30085D3BA /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 8;
+			buildActionMask = 2147483647;
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				49DCFB452EA06160007B51F7 /* OpenInNose.appex in Embed Foundation Extensions */,
+				491FD1FE2ECA18C30085D3BA /* ShareWithNose.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		497320002E8AB28C002D3C85 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 16;
+			files = (
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 1;
@@ -96,7 +106,7 @@
 		491517282E9A01C800D5C35F /* GoogleService-Info-Production.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info-Production.plist"; sourceTree = "<group>"; };
 		491517292E9A01C800D5C35F /* GoogleService-Info-Staging.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info-Staging.plist"; sourceTree = "<group>"; };
 		4915172E2E9A026F00D5C35F /* Config.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Config.plist; sourceTree = "<group>"; };
-		49731FF02E8AB28C002D3C85 /* OpenInNose.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = OpenInNose.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		491FD1F42ECA18C30085D3BA /* ShareWithNose.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShareWithNose.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		49A0F1A22EA9B00100F1A2B3 /* nose/Bridging/UnityBridgeShim.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = nose/Bridging/UnityBridgeShim.m; sourceTree = "<group>"; };
 		49E99BF62D3BE432000F3CE5 /* nose.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = nose.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		49E99C0C2D3BE433000F3CE5 /* noseTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = noseTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -119,6 +129,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		491FD2032ECA18C30085D3BA /* Exceptions for "ShareWithNose" folder in "ShareWithNose" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 491FD1F32ECA18C30085D3BA /* ShareWithNose */;
+		};
 		49B964BC2E1009AB004F2DCD /* Exceptions for "InfoPlist" folder in "nose" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -129,13 +146,6 @@
 		49DCFB422EA05FE5007B51F7 /* Exceptions for "nose" folder in "nose" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Components/AppColors.swift,
-				Components/CustomButton.swift,
-				Components/CustomGlassButton.swift,
-				Components/CustomTab.swift,
-				Components/LoadingView.swift,
-				Components/MapLocationButton.swift,
-				Components/ToastManager.swift,
 				Managers/MarkerFactory.swift,
 				Managers/PlacesAPIManager.swift,
 				Managers/PlacesCacheManager.swift,
@@ -147,22 +157,15 @@
 			);
 			target = 49E99BF52D3BE432000F3CE5 /* nose */;
 		};
-		49DCFB462EA062AB007B51F7 /* Exceptions for "OpenInNose" folder in "OpenInNose" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = 49731FEF2E8AB28C002D3C85 /* OpenInNose */;
-		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		49731FF12E8AB28C002D3C85 /* OpenInNose */ = {
+		491FD1F52ECA18C30085D3BA /* ShareWithNose */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				49DCFB462EA062AB007B51F7 /* Exceptions for "OpenInNose" folder in "OpenInNose" target */,
+				491FD2032ECA18C30085D3BA /* Exceptions for "ShareWithNose" folder in "ShareWithNose" target */,
 			);
-			path = OpenInNose;
+			path = ShareWithNose;
 			sourceTree = "<group>";
 		};
 		49B95D8D2E0CE4B8004F2DCD /* .github */ = {
@@ -199,7 +202,7 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		49731FED2E8AB28C002D3C85 /* Frameworks */ = {
+		491FD1F12ECA18C30085D3BA /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -257,7 +260,7 @@
 				49E99BF82D3BE432000F3CE5 /* nose */,
 				49E99C0F2D3BE433000F3CE5 /* noseTests */,
 				49E99C192D3BE433000F3CE5 /* noseUITests */,
-				49731FF12E8AB28C002D3C85 /* OpenInNose */,
+				491FD1F52ECA18C30085D3BA /* ShareWithNose */,
 				49E99BF72D3BE432000F3CE5 /* Products */,
 				50579441D3777C7C7B70948F /* Pods */,
 				8FBDA29887B8DBD5028A9EBC /* Frameworks */,
@@ -273,7 +276,7 @@
 				49E99BF62D3BE432000F3CE5 /* nose.app */,
 				49E99C0C2D3BE433000F3CE5 /* noseTests.xctest */,
 				49E99C162D3BE433000F3CE5 /* noseUITests.xctest */,
-				49731FF02E8AB28C002D3C85 /* OpenInNose.appex */,
+				491FD1F42ECA18C30085D3BA /* ShareWithNose.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -317,24 +320,26 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		49731FEF2E8AB28C002D3C85 /* OpenInNose */ = {
+		491FD1F32ECA18C30085D3BA /* ShareWithNose */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 49731FFB2E8AB28C002D3C85 /* Build configuration list for PBXNativeTarget "OpenInNose" */;
+			buildConfigurationList = 491FD1FF2ECA18C30085D3BA /* Build configuration list for PBXNativeTarget "ShareWithNose" */;
 			buildPhases = (
-				49731FEC2E8AB28C002D3C85 /* Sources */,
-				49731FED2E8AB28C002D3C85 /* Frameworks */,
-				49731FEE2E8AB28C002D3C85 /* Resources */,
+				491FD1F02ECA18C30085D3BA /* Sources */,
+				491FD1F12ECA18C30085D3BA /* Frameworks */,
+				491FD1F22ECA18C30085D3BA /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				49731FF12E8AB28C002D3C85 /* OpenInNose */,
+				491FD1F52ECA18C30085D3BA /* ShareWithNose */,
 			);
-			name = OpenInNose;
-			productName = OpenInNose;
-			productReference = 49731FF02E8AB28C002D3C85 /* OpenInNose.appex */;
+			name = ShareWithNose;
+			packageProductDependencies = (
+			);
+			productName = ShareWithNose;
+			productReference = 491FD1F42ECA18C30085D3BA /* ShareWithNose.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 		49E99BF52D3BE432000F3CE5 /* nose */ = {
@@ -350,12 +355,13 @@
 				B3178C5D05511F7854D09D86 /* [CP] Copy Pods Resources */,
 				49F87F122E646AC700C129C4 /* Embed Frameworks */,
 				497320002E8AB28C002D3C85 /* Embed Foundation Extensions */,
+				491FD2042ECA18C30085D3BA /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				49F87F502E6476AB00C129C4 /* PBXTargetDependency */,
-				49731FF92E8AB28C002D3C85 /* PBXTargetDependency */,
+				491FD1FD2ECA18C30085D3BA /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				49B95D8D2E0CE4B8004F2DCD /* .github */,
@@ -421,7 +427,7 @@
 				LastSwiftUpdateCheck = 2600;
 				LastUpgradeCheck = 1630;
 				TargetAttributes = {
-					49731FEF2E8AB28C002D3C85 = {
+					491FD1F32ECA18C30085D3BA = {
 						CreatedOnToolsVersion = 26.0.1;
 					};
 					49E99BF52D3BE432000F3CE5 = {
@@ -462,7 +468,7 @@
 				49E99BF52D3BE432000F3CE5 /* nose */,
 				49E99C0B2D3BE433000F3CE5 /* noseTests */,
 				49E99C152D3BE433000F3CE5 /* noseUITests */,
-				49731FEF2E8AB28C002D3C85 /* OpenInNose */,
+				491FD1F32ECA18C30085D3BA /* ShareWithNose */,
 			);
 		};
 /* End PBXProject section */
@@ -478,7 +484,7 @@
 /* End PBXReferenceProxy section */
 
 /* Begin PBXResourcesBuildPhase section */
-		49731FEE2E8AB28C002D3C85 /* Resources */ = {
+		491FD1F22ECA18C30085D3BA /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -647,7 +653,7 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		49731FEC2E8AB28C002D3C85 /* Sources */ = {
+		491FD1F02ECA18C30085D3BA /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -680,10 +686,10 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		49731FF92E8AB28C002D3C85 /* PBXTargetDependency */ = {
+		491FD1FD2ECA18C30085D3BA /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 49731FEF2E8AB28C002D3C85 /* OpenInNose */;
-			targetProxy = 49731FF82E8AB28C002D3C85 /* PBXContainerItemProxy */;
+			target = 491FD1F32ECA18C30085D3BA /* ShareWithNose */;
+			targetProxy = 491FD1FC2ECA18C30085D3BA /* PBXContainerItemProxy */;
 		};
 		49E99C0E2D3BE433000F3CE5 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -703,7 +709,7 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		49731FFC2E8AB28C002D3C85 /* Development */ = {
+		491FD2002ECA18C30085D3BA /* Development */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -736,6 +742,7 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_ENTITLEMENTS = ShareWithNose/ShareWithNose.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
@@ -758,9 +765,9 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = OpenInNose/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = OpenInNose;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ShareWithNose/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = ShareWithNose;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -773,7 +780,7 @@
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.tamakifujino.nose.OpenInNose;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tamakifujino.nose.ShareWithNose;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -788,7 +795,7 @@
 			};
 			name = Development;
 		};
-		49731FFD2E8AB28C002D3C85 /* Staging */ = {
+		491FD2012ECA18C30085D3BA /* Staging */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -821,6 +828,7 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_ENTITLEMENTS = ShareWithNose/ShareWithNose.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
@@ -837,9 +845,9 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = OpenInNose/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = OpenInNose;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ShareWithNose/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = ShareWithNose;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -851,7 +859,7 @@
 				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.tamakifujino.nose.OpenInNose;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tamakifujino.nose.ShareWithNose;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -866,7 +874,7 @@
 			};
 			name = Staging;
 		};
-		49731FFE2E8AB28C002D3C85 /* Production */ = {
+		491FD2022ECA18C30085D3BA /* Production */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -899,6 +907,7 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_ENTITLEMENTS = ShareWithNose/ShareWithNose.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
@@ -915,9 +924,9 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = OpenInNose/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = OpenInNose;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ShareWithNose/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = ShareWithNose;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -929,7 +938,7 @@
 				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.tamakifujino.nose.OpenInNose;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tamakifujino.nose.ShareWithNose;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -1362,12 +1371,12 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		49731FFB2E8AB28C002D3C85 /* Build configuration list for PBXNativeTarget "OpenInNose" */ = {
+		491FD1FF2ECA18C30085D3BA /* Build configuration list for PBXNativeTarget "ShareWithNose" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				49731FFC2E8AB28C002D3C85 /* Development */,
-				49731FFD2E8AB28C002D3C85 /* Staging */,
-				49731FFE2E8AB28C002D3C85 /* Production */,
+				491FD2002ECA18C30085D3BA /* Development */,
+				491FD2012ECA18C30085D3BA /* Staging */,
+				491FD2022ECA18C30085D3BA /* Production */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Production;

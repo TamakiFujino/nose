@@ -1,3 +1,4 @@
+// This button is only used for the login screen
 import UIKit
 
 class CustomGlassButton: UIButton {

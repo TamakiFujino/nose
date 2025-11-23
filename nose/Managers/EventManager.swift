@@ -418,8 +418,11 @@ class EventManager {
                 continue
             }
             
-            // Upload image
-            let uploadTask = imageRef.putData(imageData, metadata: nil) { metadata, error in
+            // Upload image with content type metadata
+            let metadata = StorageMetadata()
+            metadata.contentType = "image/jpeg"
+            
+            let uploadTask = imageRef.putData(imageData, metadata: metadata) { metadata, error in
                 if let error = error {
                     print("❌ Error uploading image \(index): \(error.localizedDescription)")
                     uploadErrors.append(error)
@@ -517,7 +520,10 @@ class EventManager {
         print("   Storage path: event_images/\(userId)/\(fileName)")
         print("   Full storage URL: gs://nose-a2309.firebasestorage.app/event_images/\(userId)/\(fileName)")
         
-        let uploadTask = imageRef.putData(imageData, metadata: nil) { metadata, error in
+        let metadata = StorageMetadata()
+        metadata.contentType = "image/png"
+        
+        let uploadTask = imageRef.putData(imageData, metadata: metadata) { metadata, error in
             if let error = error {
                 print("❌ Error uploading temporary avatar image: \(error.localizedDescription)")
                 print("   Error code: \(error._code)")

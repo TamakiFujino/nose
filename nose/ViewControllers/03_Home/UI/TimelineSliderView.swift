@@ -108,18 +108,18 @@ final class TimelineSliderView: UIView {
             // Dot constraints
             leftDot!.centerYAnchor.constraint(equalTo: container.centerYAnchor),
             leftDot!.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 16),
-            leftDot!.widthAnchor.constraint(equalToConstant: 20),
-            leftDot!.heightAnchor.constraint(equalToConstant: 20),
+            leftDot!.widthAnchor.constraint(equalToConstant: 30),
+            leftDot!.heightAnchor.constraint(equalToConstant: 30),
             
             middleDot!.centerYAnchor.constraint(equalTo: container.centerYAnchor),
             middleDot!.centerXAnchor.constraint(equalTo: container.centerXAnchor),
-            middleDot!.widthAnchor.constraint(equalToConstant: 20),
-            middleDot!.heightAnchor.constraint(equalToConstant: 20),
+            middleDot!.widthAnchor.constraint(equalToConstant: 30),
+            middleDot!.heightAnchor.constraint(equalToConstant: 30),
             
             rightDot!.centerYAnchor.constraint(equalTo: container.centerYAnchor),
             rightDot!.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -16),
-            rightDot!.widthAnchor.constraint(equalToConstant: 20),
-            rightDot!.heightAnchor.constraint(equalToConstant: 20)
+            rightDot!.widthAnchor.constraint(equalToConstant: 30),
+            rightDot!.heightAnchor.constraint(equalToConstant: 30)
         ])
     }
     
@@ -132,7 +132,7 @@ final class TimelineSliderView: UIView {
         let dot = UIView()
         dot.translatesAutoresizingMaskIntoConstraints = false
         dot.backgroundColor = .firstColor
-        dot.layer.cornerRadius = 6
+        dot.layer.cornerRadius = 8
         dot.isUserInteractionEnabled = true
         
         container.addSubview(dot)
@@ -141,14 +141,14 @@ final class TimelineSliderView: UIView {
         NSLayoutConstraint.activate([
             dot.centerXAnchor.constraint(equalTo: container.centerXAnchor),
             dot.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            dot.widthAnchor.constraint(equalToConstant: 12),
-            dot.heightAnchor.constraint(equalToConstant: 12)
+            dot.widthAnchor.constraint(equalToConstant: 16),
+            dot.heightAnchor.constraint(equalToConstant: 16)
         ])
         
         if isSelected {
             container.layer.borderWidth = 2
             container.layer.borderColor = UIColor.firstColor.cgColor
-            container.layer.cornerRadius = 10
+            container.layer.cornerRadius = 15
         }
         
         return container
@@ -181,15 +181,15 @@ final class TimelineSliderView: UIView {
         // Update dots using stored references
         leftDot?.layer.borderWidth = segment == 0 ? 2 : 0
         leftDot?.layer.borderColor = segment == 0 ? UIColor.firstColor.cgColor : nil
-        leftDot?.layer.cornerRadius = segment == 0 ? 10 : 0
+        leftDot?.layer.cornerRadius = segment == 0 ? 15 : 0
         
         middleDot?.layer.borderWidth = segment == 1 ? 2 : 0
         middleDot?.layer.borderColor = segment == 1 ? UIColor.firstColor.cgColor : nil
-        middleDot?.layer.cornerRadius = segment == 1 ? 10 : 0
+        middleDot?.layer.cornerRadius = segment == 1 ? 15 : 0
         
         rightDot?.layer.borderWidth = segment == 2 ? 2 : 0
         rightDot?.layer.borderColor = segment == 2 ? UIColor.firstColor.cgColor : nil
-        rightDot?.layer.cornerRadius = segment == 2 ? 10 : 0
+        rightDot?.layer.cornerRadius = segment == 2 ? 15 : 0
         
         // Notify delegate
         delegate?.timelineSliderView(self, didSelectDotAt: segment)

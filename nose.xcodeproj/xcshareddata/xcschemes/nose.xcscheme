@@ -21,6 +21,20 @@
                ReferencedContainer = "container:nose.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "49731FEF2E8AB28C002D3C85"
+               BuildableName = "OpenInNose.appex"
+               BlueprintName = "OpenInNose"
+               ReferencedContainer = "container:nose.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction

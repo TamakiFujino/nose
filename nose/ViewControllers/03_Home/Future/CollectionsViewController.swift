@@ -9,6 +9,7 @@ class CollectionsViewController: UIViewController {
     private var sharedCollections: [PlaceCollection] = []
     private var collectionEventCounts: [String: Int] = [:] // collectionId -> event count
     private var currentTab: CollectionTab = .personal
+    weak var mapManager: GoogleMapManager?
     
     private enum CollectionTab {
         case personal
@@ -54,7 +55,14 @@ class CollectionsViewController: UIViewController {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        configureSheetPresentation()
         loadCollections()
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        // Update map in case collections were already loaded
+        updateMapWithCollections()
     }
     
     deinit {
@@ -62,6 +70,32 @@ class CollectionsViewController: UIViewController {
     }
     
     // MARK: - Setup
+    private func configureSheetPresentation() {
+        guard let sheet = sheetPresentationController else { return }
+        
+        // Create a small detent identifier (approximately 10% of screen height)
+        let smallDetentIdentifier = UISheetPresentationController.Detent.Identifier("small")
+        let smallDetent = UISheetPresentationController.Detent.custom(identifier: smallDetentIdentifier) { context in
+            return context.maximumDetentValue * 0.1 // 10% of screen
+        }
+        
+        // Set detents: small (minimized) and large (full)
+        sheet.detents = [smallDetent, .large()]
+        
+        // Set the initial detent to large (full modal)
+        sheet.selectedDetentIdentifier = .large
+        
+        // Allow interaction with the map behind when minimized
+        // This makes the map interactive when the modal is at the small detent
+        sheet.largestUndimmedDetentIdentifier = smallDetentIdentifier
+        
+        // Enable grabber for better UX
+        sheet.prefersGrabberVisible = true
+        
+        // Allow dismissing by dragging down from any detent
+        sheet.prefersScrollingExpandsWhenScrolledToEdge = false
+    }
+    
     private func setupUI() {
         view.backgroundColor = .systemBackground
         
@@ -105,8 +139,23 @@ class CollectionsViewController: UIViewController {
         tableView.reloadData()
     }
     
+    private func updateMapWithCollections() {
+        // Combine all collections (personal + shared) and show on map
+        let allCollections = personalCollections + sharedCollections
+        mapManager?.showCollectionPlacesOnMap(allCollections)
+    }
+    
     private func showLoadingAlert(title: String) {
         LoadingView.shared.showAlertLoading(title: title, on: self)
+    }
+    
+    private func cacheCollectionsForExtension() {
+        let simpleCollections = personalCollections.map { ["id": $0.id, "name": $0.name] }
+        if let defaults = UserDefaults(suiteName: "group.com.tamakifujino.nose") {
+            defaults.set(simpleCollections, forKey: "CachedCollections")
+            defaults.synchronize()
+            print("💾 Cached \(simpleCollections.count) collections for Share Extension")
+        }
     }
     
     // MARK: - Data Loading
@@ -162,6 +211,10 @@ class CollectionsViewController: UIViewController {
             
             DispatchQueue.main.async {
                 self?.tableView.reloadData()
+                // Update map with all collections (personal + shared)
+                self?.updateMapWithCollections()
+                // Cache for Share Extension
+                self?.cacheCollectionsForExtension()
             }
         }
         
@@ -241,6 +294,8 @@ class CollectionsViewController: UIViewController {
                 self?.sharedCollections = loadedCollections.filter { $0.status == .active }
                 print("🎯 Active shared collections: \(self?.sharedCollections.count ?? 0)")
                 self?.tableView.reloadData()
+                // Update map with all collections (personal + shared)
+                self?.updateMapWithCollections()
             }
         }
     }

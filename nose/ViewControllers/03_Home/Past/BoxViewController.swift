@@ -51,6 +51,11 @@ class BoxViewController: UIViewController {
         loadCompletedCollections()
     }
     
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        configureSheetPresentation()
+    }
+    
     // MARK: - Setup
     private func setupUI() {
         view.backgroundColor = .systemBackground
@@ -77,6 +82,32 @@ class BoxViewController: UIViewController {
     @objc private func segmentedControlChanged(_ sender: UISegmentedControl) {
         currentTab = sender.selectedSegmentIndex == 0 ? .personal : .shared
         tableView.reloadData()
+    }
+    
+    private func configureSheetPresentation() {
+        guard let sheet = sheetPresentationController else { return }
+        
+        // Create a small detent identifier (approximately 10% of screen height)
+        let smallDetentIdentifier = UISheetPresentationController.Detent.Identifier("small")
+        let smallDetent = UISheetPresentationController.Detent.custom(identifier: smallDetentIdentifier) { context in
+            return context.maximumDetentValue * 0.1 // 10% of screen
+        }
+        
+        // Set detents: small (minimized) and large (full)
+        sheet.detents = [smallDetent, .large()]
+        
+        // Set the initial detent to large (full modal)
+        sheet.selectedDetentIdentifier = .large
+        
+        // Allow interaction with the map behind when minimized
+        // This makes the map interactive when the modal is at the small detent
+        sheet.largestUndimmedDetentIdentifier = smallDetentIdentifier
+        
+        // Enable grabber for better UX
+        sheet.prefersGrabberVisible = true
+        
+        // Allow dismissing by dragging down from any detent
+        sheet.prefersScrollingExpandsWhenScrolledToEdge = false
     }
     
     // MARK: - Data Loading

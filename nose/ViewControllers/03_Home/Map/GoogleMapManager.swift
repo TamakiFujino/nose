@@ -28,6 +28,7 @@ final class GoogleMapManager: NSObject {
     private var displayLink: CADisplayLink?
     private var markers: [GMSMarker] = []
     private var eventMarkers: [GMSMarker] = []
+    private var collectionPlaceMarkers: [GMSMarker] = []
     private var followUserLocation: Bool = true
     
     weak var delegate: GoogleMapManagerDelegate?
@@ -128,6 +129,11 @@ final class GoogleMapManager: NSObject {
         eventMarkers.removeAll()
     }
     
+    func clearCollectionPlaceMarkers() {
+        collectionPlaceMarkers.forEach { $0.map = nil }
+        collectionPlaceMarkers.removeAll()
+    }
+    
     func showEventsOnMap(_ events: [Event]) {
         Logger.log("showEventsOnMap with \(events.count) events", level: .debug, category: "Map")
         
@@ -153,6 +159,7 @@ final class GoogleMapManager: NSObject {
     func resetMap() {
         clearMarkers()
         clearEventMarkers()
+        clearCollectionPlaceMarkers()
         followUserLocation = true
         let camera = GMSCameraPosition.camera(
             withLatitude: Constants.defaultLatitude,
@@ -160,6 +167,67 @@ final class GoogleMapManager: NSObject {
             zoom: Constants.defaultZoom
         )
         mapView.animate(to: camera)
+    }
+    
+    func showCollectionPlacesOnMap(_ collections: [PlaceCollection]) {
+        Logger.log("showCollectionPlacesOnMap with \(collections.count) collections", level: .debug, category: "Map")
+        
+        // Clear existing collection place markers
+        clearCollectionPlaceMarkers()
+        
+        // Collect all unique places from all collections
+        var allPlaces: [PlaceCollection.Place] = []
+        var seenPlaceIds = Set<String>()
+        
+        for collection in collections {
+            for place in collection.places {
+                // Only add unique places (by placeId)
+                if !seenPlaceIds.contains(place.placeId) {
+                    allPlaces.append(place)
+                    seenPlaceIds.insert(place.placeId)
+                }
+            }
+        }
+        
+        Logger.log("Found \(allPlaces.count) unique places across all collections", level: .debug, category: "Map")
+        
+        // Fetch place details and create markers
+        let group = DispatchGroup()
+        var loadedPlaces: [GMSPlace] = []
+        
+        for place in allPlaces {
+            group.enter()
+            PlacesAPIManager.shared.fetchMapPlaceDetails(placeID: place.placeId) { gmsPlace in
+                defer { group.leave() }
+                
+                if let gmsPlace = gmsPlace {
+                    loadedPlaces.append(gmsPlace)
+                    Logger.log("Loaded place details for: \(gmsPlace.name ?? "Unknown")", level: .debug, category: "Map")
+                } else {
+                    Logger.log("Failed to load place details for placeId: \(place.placeId)", level: .warn, category: "Map")
+                }
+            }
+        }
+        
+        group.notify(queue: .main) { [weak self] in
+            guard let self = self else { return }
+            
+            // Create markers for all loaded places
+            for place in loadedPlaces {
+                let marker = MarkerFactory.createPlaceMarker(for: place)
+                marker.map = self.mapView
+                self.collectionPlaceMarkers.append(marker)
+            }
+            
+            Logger.log("Total collection place markers on map: \(self.collectionPlaceMarkers.count)", level: .debug, category: "Map")
+        }
+    }
+
+    // Convenience to move camera to arbitrary coordinate (for deep links)
+    func moveToCoordinate(_ latitude: Double, _ longitude: Double, zoom: Float = Constants.defaultZoom) {
+        let camera = GMSCameraPosition.camera(withLatitude: latitude, longitude: longitude, zoom: zoom)
+        mapView.animate(to: camera)
+        followUserLocation = false
     }
 
     private func updateCurrentLocationMarker(at location: CLLocation) {
