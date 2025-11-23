@@ -21,6 +21,7 @@ class ShareViewController: UIViewController, UITableViewDelegate, UITableViewDat
     private var extractedURL: String?
     private var isSaving = false
     private var selectedCollectionIndex: Int?
+    private var isValidLocationLink = false
     
     // MARK: - UI Components
     private lazy var containerView: UIView = {
@@ -65,7 +66,6 @@ class ShareViewController: UIViewController, UITableViewDelegate, UITableViewDat
         tv.register(UITableViewCell.self, forCellReuseIdentifier: "Cell")
         tv.backgroundColor = .clear
         tv.separatorStyle = .singleLine
-        // Remove extra separators
         tv.tableFooterView = UIView()
         return tv
     }()
@@ -97,6 +97,7 @@ class ShareViewController: UIViewController, UITableViewDelegate, UITableViewDat
         label.textAlignment = .center
         label.font = .systemFont(ofSize: 14)
         label.textColor = .secondaryLabel
+        label.numberOfLines = 0
         label.isHidden = true
         return label
     }()
@@ -178,11 +179,7 @@ class ShareViewController: UIViewController, UITableViewDelegate, UITableViewDat
         }
         
         if collections.isEmpty {
-            statusLabel.text = "No collections found.\nOpen Nose to create one."
-            statusLabel.numberOfLines = 0
-            statusLabel.isHidden = false
-            tableView.isHidden = true
-            saveButton.isHidden = true
+            showError(message: "No collections found.\nOpen Nose to create one.")
         }
     }
     
@@ -191,16 +188,20 @@ class ShareViewController: UIViewController, UITableViewDelegate, UITableViewDat
         
         guard let extensionContext = self.extensionContext else { return }
         
+        var foundURL = false
+        
         for item in extensionContext.inputItems as! [NSExtensionItem] {
             guard let attachments = item.attachments else { continue }
             for provider in attachments {
                 if provider.hasItemConformingToTypeIdentifier(kUTTypeURL as String) {
+                    foundURL = true
                     provider.loadItem(forTypeIdentifier: kUTTypeURL as String, options: nil) { [weak self] (url, error) in
                         DispatchQueue.main.async {
                             self?.loadingIndicator.stopAnimating()
                             if let url = url as? URL {
-                                self?.extractedURL = url.absoluteString
-                                self?.updateSaveButtonState()
+                                self?.validateAndSetURL(url)
+                            } else {
+                                self?.showError(message: "Invalid content.")
                             }
                         }
                     }
@@ -209,15 +210,46 @@ class ShareViewController: UIViewController, UITableViewDelegate, UITableViewDat
             }
         }
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            self.loadingIndicator.stopAnimating()
+        if !foundURL {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                self.loadingIndicator.stopAnimating()
+                self.showError(message: "No link found.")
+            }
         }
+    }
+    
+    private func validateAndSetURL(_ url: URL) {
+        // Basic validation to ensure it's a map link
+        let host = url.host?.lowercased() ?? ""
+        let path = url.path.lowercased()
+        
+        let isMapLink = host.contains("google.com") ||
+                        host.contains("goo.gl") ||
+                        host.contains("g.co") ||
+                        host.contains("maps.apple.com") ||
+                        host.contains("waze.com") ||
+                        path.contains("/maps")
+        
+        if isMapLink {
+            self.extractedURL = url.absoluteString
+            self.isValidLocationLink = true
+            self.updateSaveButtonState()
+        } else {
+            showError(message: "This link does not appear to be a location.")
+        }
+    }
+    
+    private func showError(message: String) {
+        tableView.isHidden = true
+        saveButton.isHidden = true
+        statusLabel.text = message
+        statusLabel.isHidden = false
     }
     
     private func updateSaveButtonState() {
         let hasURL = extractedURL != nil
         let hasSelection = selectedCollectionIndex != nil
-        let canSave = hasURL && hasSelection
+        let canSave = hasURL && hasSelection && isValidLocationLink
         
         UIView.animate(withDuration: 0.2) {
             self.saveButton.alpha = canSave ? 1.0 : 0.5

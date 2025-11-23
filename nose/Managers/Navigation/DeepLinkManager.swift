@@ -68,6 +68,12 @@ final class DeepLinkManager {
     // MARK: - Share Inbox Processing
     
     func processShareInbox(in window: UIWindow?) {
+        // Ensure user is authenticated before processing
+        guard Auth.auth().currentUser != nil else {
+            Logger.log("⏳ Deferring Share Inbox processing until Auth is ready", level: .info, category: "DeepLink")
+            return
+        }
+        
         guard let defaults = UserDefaults(suiteName: "group.com.tamakifujino.nose"),
               let inbox = defaults.array(forKey: "ShareInbox") as? [[String: Any]],
               !inbox.isEmpty else {

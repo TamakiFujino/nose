@@ -51,12 +51,20 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     
     func didFinishAuthentication() {
         // Called by ViewController after successful auth transition to HomeViewController
+        
+        // 1. Handle Deep Links
         if let url = pendingDeepLinkURL {
             pendingDeepLinkURL = nil
             // Small delay to ensure HomeViewController is fully loaded
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 _ = DeepLinkManager.shared.handle(url: url, in: self.window)
             }
+        }
+        
+        // 2. Handle Share Inbox (from Extension)
+        // We call this here to ensure Auth is ready
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            DeepLinkManager.shared.processShareInbox(in: self.window)
         }
     }
 
