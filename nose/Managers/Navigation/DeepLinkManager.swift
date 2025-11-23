@@ -89,20 +89,26 @@ final class DeepLinkManager {
         var processedCount = 0
         
         for item in inbox {
-            guard let urlString = item["url"] as? String,
-                  let url = URL(string: urlString),
-                  let collectionId = item["collectionId"] as? String,
-                  let collectionName = item["collectionName"] as? String else {
-                continue
-            }
+            let collectionId = item["collectionId"] as? String ?? ""
+            let collectionName = item["collectionName"] as? String ?? ""
+            let type = item["type"] as? String ?? "url"
+            let content = item["content"] as? String ?? item["url"] as? String ?? ""
             
-            // Resolve URL and Add to Collection
-            resolveAndAddToCollection(url: url, collectionId: collectionId, collectionName: collectionName) { success in
-                if success {
-                    processedCount += 1
+            guard !collectionId.isEmpty, !content.isEmpty else { continue }
+            
+            if type == "text" {
+                // Handle plain text query (Address/Name)
+                Logger.log("Processing TEXT share: \(content)", level: .info, category: "DeepLink")
+                searchPlaceAndAdd(query: content, collectionId: collectionId, collectionName: collectionName) { success in
+                    if success { processedCount += 1 }
                 }
-                if processedCount > 0 {
-                    Logger.log("✅ Successfully processed share item for collection: \(collectionName)", level: .info, category: "DeepLink")
+            } else {
+                // Handle URL
+                if let url = URL(string: content) {
+                    Logger.log("Processing URL share: \(content)", level: .info, category: "DeepLink")
+                    resolveAndAddToCollection(url: url, collectionId: collectionId, collectionName: collectionName) { success in
+                        if success { processedCount += 1 }
+                    }
                 }
             }
         }

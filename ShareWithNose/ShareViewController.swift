@@ -18,10 +18,10 @@ class ShareViewController: UIViewController, UITableViewDelegate, UITableViewDat
     }
     
     private var collections: [SimpleCollection] = []
-    private var extractedURL: String?
+    private var extractedContent: String?
+    private var contentType: String = "url" // "url" or "text"
     private var isSaving = false
     private var selectedCollectionIndex: Int?
-    private var isValidLocationLink = false
     
     // MARK: - UI Components
     private lazy var containerView: UIView = {
@@ -123,13 +123,11 @@ class ShareViewController: UIViewController, UITableViewDelegate, UITableViewDat
         containerView.addSubview(statusLabel)
         
         NSLayoutConstraint.activate([
-            // Container
             containerView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             containerView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
             containerView.widthAnchor.constraint(equalToConstant: 320),
             containerView.heightAnchor.constraint(equalToConstant: 480),
             
-            // Header
             headerView.topAnchor.constraint(equalTo: containerView.topAnchor),
             headerView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
             headerView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
@@ -143,19 +141,16 @@ class ShareViewController: UIViewController, UITableViewDelegate, UITableViewDat
             closeButton.widthAnchor.constraint(equalToConstant: 30),
             closeButton.heightAnchor.constraint(equalToConstant: 30),
             
-            // TableView
             tableView.topAnchor.constraint(equalTo: headerView.bottomAnchor),
             tableView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: saveButton.topAnchor, constant: -10),
             
-            // Save Button
             saveButton.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 20),
             saveButton.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -20),
             saveButton.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -20),
             saveButton.heightAnchor.constraint(equalToConstant: 50),
             
-            // Loading / Status
             loadingIndicator.centerXAnchor.constraint(equalTo: containerView.centerXAnchor),
             loadingIndicator.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
             
@@ -166,11 +161,9 @@ class ShareViewController: UIViewController, UITableViewDelegate, UITableViewDat
         ])
     }
     
-    // MARK: - Data Loading
     private func loadCachedCollections() {
         if let defaults = UserDefaults(suiteName: "group.com.tamakifujino.nose"),
            let cached = defaults.array(forKey: "CachedCollections") as? [[String: String]] {
-            
             self.collections = cached.compactMap { dict in
                 guard let id = dict["id"], let name = dict["name"] else { return nil }
                 return SimpleCollection(id: id, name: name)
@@ -188,54 +181,148 @@ class ShareViewController: UIViewController, UITableViewDelegate, UITableViewDat
         
         guard let extensionContext = self.extensionContext else { return }
         
-        var foundURL = false
+        var found = false
+        var debugTypes: [String] = []
         
         for item in extensionContext.inputItems as! [NSExtensionItem] {
             guard let attachments = item.attachments else { continue }
             for provider in attachments {
+                if let identifiers = provider.registeredTypeIdentifiers as? [String] {
+                    debugTypes.append(contentsOf: identifiers)
+                }
+                
                 if provider.hasItemConformingToTypeIdentifier(kUTTypeURL as String) {
-                    foundURL = true
+                    found = true
                     provider.loadItem(forTypeIdentifier: kUTTypeURL as String, options: nil) { [weak self] (url, error) in
                         DispatchQueue.main.async {
-                            self?.loadingIndicator.stopAnimating()
                             if let url = url as? URL {
-                                self?.validateAndSetURL(url)
+                                self?.validateAndSetContent(url.absoluteString, type: "url")
                             } else {
-                                self?.showError(message: "Invalid content.")
+                                self?.tryVCard(provider, debugTypes: debugTypes)
                             }
                         }
                     }
+                    return
+                } else if provider.hasItemConformingToTypeIdentifier(kUTTypeVCard as String) {
+                    found = true
+                    self.tryVCard(provider, debugTypes: debugTypes)
+                    return
+                } else if provider.hasItemConformingToTypeIdentifier(kUTTypePlainText as String) {
+                    found = true
+                    self.tryPlainText(provider, debugTypes: debugTypes)
                     return
                 }
             }
         }
         
-        if !foundURL {
+        if !found {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 self.loadingIndicator.stopAnimating()
-                self.showError(message: "No link found.")
+                self.showError(message: "No link found.\nTypes: \(debugTypes.joined(separator: ", "))")
             }
         }
     }
     
-    private func validateAndSetURL(_ url: URL) {
-        // Basic validation to ensure it's a map link
-        let host = url.host?.lowercased() ?? ""
-        let path = url.path.lowercased()
+    private func tryPlainText(_ provider: NSItemProvider, debugTypes: [String]) {
+        provider.loadItem(forTypeIdentifier: kUTTypePlainText as String, options: nil) { [weak self] (text, error) in
+            DispatchQueue.main.async {
+                guard let textString = text as? String else {
+                    self?.loadingIndicator.stopAnimating()
+                    self?.showError(message: "No text content found.")
+                    return
+                }
+                
+                // 1. Try to find a URL in the text
+                if let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue),
+                   let match = detector.firstMatch(in: textString, options: [], range: NSRange(location: 0, length: textString.utf16.count)),
+                   let url = match.url {
+                    self?.validateAndSetContent(url.absoluteString, type: "url")
+                } else {
+                    // 2. Fallback: Use the text itself as a query (e.g. address)
+                    // Apple Maps often shares just the address string if no URL
+                    if !textString.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        self?.validateAndSetContent(textString, type: "text")
+                    } else {
+                        self?.loadingIndicator.stopAnimating()
+                        self?.showError(message: "No location link or text found.")
+                    }
+                }
+            }
+        }
+    }
+    
+    private func tryVCard(_ provider: NSItemProvider, debugTypes: [String]) {
+        provider.loadItem(forTypeIdentifier: kUTTypeVCard as String, options: nil) { [weak self] (data, error) in
+            DispatchQueue.main.async {
+                var vCardString: String?
+                if let vCardData = data as? Data {
+                    vCardString = String(data: vCardData, encoding: .utf8)
+                } else if let vCardURL = data as? URL {
+                    if let fileData = try? Data(contentsOf: vCardURL) {
+                        vCardString = String(data: fileData, encoding: .utf8)
+                    }
+                }
+                
+                if let content = vCardString {
+                    if let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue),
+                       let match = detector.firstMatch(in: content, options: [], range: NSRange(location: 0, length: content.utf16.count)),
+                       let url = match.url {
+                        self?.validateAndSetContent(url.absoluteString, type: "url")
+                        return
+                    }
+                    if let range = content.range(of: "http") {
+                        let tail = content[range.lowerBound...]
+                        let urlString = tail.components(separatedBy: .newlines).first?.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if let urlString = urlString {
+                            self?.validateAndSetContent(urlString, type: "url")
+                            return
+                        }
+                    }
+                    
+                    // Fallback to text processing on vCard? 
+                    // VCards are messy, probably better to fail if no URL.
+                    self?.loadingIndicator.stopAnimating()
+                    self?.showError(message: "No URL in VCard.")
+                } else {
+                    self?.loadingIndicator.stopAnimating()
+                    self?.showError(message: "Invalid VCard data.")
+                }
+            }
+        }
+    }
+    
+    private func validateAndSetContent(_ content: String, type: String) {
+        self.loadingIndicator.stopAnimating()
         
-        let isMapLink = host.contains("google.com") ||
-                        host.contains("goo.gl") ||
-                        host.contains("g.co") ||
-                        host.contains("maps.apple.com") ||
-                        host.contains("waze.com") ||
-                        path.contains("/maps")
-        
-        if isMapLink {
-            self.extractedURL = url.absoluteString
-            self.isValidLocationLink = true
-            self.updateSaveButtonState()
+        if type == "url" {
+            let host = URL(string: content)?.host?.lowercased() ?? ""
+            let path = URL(string: content)?.path.lowercased() ?? ""
+            
+            let isMapLink = host.contains("google.com") ||
+                            host.contains("goo.gl") ||
+                            host.contains("g.co") ||
+                            host.contains("maps.apple.com") ||
+                            host.contains("waze.com") ||
+                            path.contains("/maps")
+            
+            if isMapLink {
+                self.extractedContent = content
+                self.contentType = "url"
+                self.updateSaveButtonState()
+            } else {
+                showError(message: "Not a recognized map link:\n\(host)")
+            }
         } else {
-            showError(message: "This link does not appear to be a location.")
+            // Text content (Address/Name)
+            // We accept it but maybe show it to user?
+            self.extractedContent = content
+            self.contentType = "text"
+            self.titleLabel.text = "Save Location"
+            // Update status to show what we found
+            let snippet = content.prefix(50).replacingOccurrences(of: "\n", with: " ")
+            self.statusLabel.text = "Found: \"\(snippet)...\""
+            self.statusLabel.isHidden = false
+            self.updateSaveButtonState()
         }
     }
     
@@ -247,17 +334,15 @@ class ShareViewController: UIViewController, UITableViewDelegate, UITableViewDat
     }
     
     private func updateSaveButtonState() {
-        let hasURL = extractedURL != nil
+        let hasContent = extractedContent != nil
         let hasSelection = selectedCollectionIndex != nil
-        let canSave = hasURL && hasSelection && isValidLocationLink
         
         UIView.animate(withDuration: 0.2) {
-            self.saveButton.alpha = canSave ? 1.0 : 0.5
-            self.saveButton.isEnabled = canSave
+            self.saveButton.alpha = (hasContent && hasSelection) ? 1.0 : 0.5
+            self.saveButton.isEnabled = (hasContent && hasSelection)
         }
     }
     
-    // MARK: - Actions
     @objc private func closeTapped() {
         self.extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
     }
@@ -269,15 +354,15 @@ class ShareViewController: UIViewController, UITableViewDelegate, UITableViewDat
     }
     
     private func saveToCollection(collectionId: String, collectionName: String) {
-        guard let urlString = extractedURL else { return }
+        guard let content = extractedContent else { return }
         guard !isSaving else { return }
         isSaving = true
         
-        // Show loading on button
         saveButton.setTitle("Saving...", for: .normal)
         
         let pendingItem: [String: Any] = [
-            "url": urlString,
+            "content": content,
+            "type": contentType, // "url" or "text"
             "collectionId": collectionId,
             "collectionName": collectionName,
             "timestamp": Date().timeIntervalSince1970
@@ -314,7 +399,6 @@ class ShareViewController: UIViewController, UITableViewDelegate, UITableViewDat
         let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath)
         cell.textLabel?.text = collections[indexPath.row].name
         
-        // Show selection checkmark
         if indexPath.row == selectedCollectionIndex {
             cell.accessoryType = .checkmark
             cell.textLabel?.textColor = .systemBlue
@@ -328,7 +412,6 @@ class ShareViewController: UIViewController, UITableViewDelegate, UITableViewDat
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        // Update selection
         let previousIndex = selectedCollectionIndex
         selectedCollectionIndex = indexPath.row
         
