@@ -29,7 +29,9 @@ final class GoogleMapManager: NSObject {
     private var markers: [GMSMarker] = []
     private var eventMarkers: [GMSMarker] = []
     private var collectionPlaceMarkers: [GMSMarker] = []
+    private var collectionPlacesData: [(place: PlaceCollection.Place, collection: PlaceCollection)] = [] // Store for zoom updates
     private var followUserLocation: Bool = true
+    private var currentZoom: Float = Constants.defaultZoom
     
     weak var delegate: GoogleMapManagerDelegate?
     
@@ -132,6 +134,30 @@ final class GoogleMapManager: NSObject {
     func clearCollectionPlaceMarkers() {
         collectionPlaceMarkers.forEach { $0.map = nil }
         collectionPlaceMarkers.removeAll()
+        collectionPlacesData.removeAll()
+    }
+    
+    private func updateCollectionPlaceMarkers() {
+        // Clear existing markers
+        collectionPlaceMarkers.forEach { $0.map = nil }
+        collectionPlaceMarkers.removeAll()
+        
+        // Get current zoom level
+        currentZoom = mapView.camera.zoom
+        
+        // Recreate markers with current zoom level using Firestore data
+        for (place, collection) in collectionPlacesData {
+            let coordinate = CLLocationCoordinate2D(latitude: place.latitude, longitude: place.longitude)
+            let marker = MarkerFactory.createCollectionPlaceMarker(
+                coordinate: coordinate,
+                title: place.name,
+                snippet: place.formattedAddress,
+                collection: collection,
+                zoomLevel: currentZoom
+            )
+            marker.map = mapView
+            collectionPlaceMarkers.append(marker)
+        }
     }
     
     func showEventsOnMap(_ events: [Event]) {
@@ -175,52 +201,33 @@ final class GoogleMapManager: NSObject {
         // Clear existing collection place markers
         clearCollectionPlaceMarkers()
         
-        // Collect all unique places from all collections
-        var allPlaces: [PlaceCollection.Place] = []
-        var seenPlaceIds = Set<String>()
+        // Track which collection each place belongs to (use first collection if place appears in multiple)
+        var placeToCollectionMap: [String: (place: PlaceCollection.Place, collection: PlaceCollection)] = [:]
         
         for collection in collections {
             for place in collection.places {
-                // Only add unique places (by placeId)
-                if !seenPlaceIds.contains(place.placeId) {
-                    allPlaces.append(place)
-                    seenPlaceIds.insert(place.placeId)
+                // Only add if we haven't seen this place yet (first collection wins)
+                if placeToCollectionMap[place.placeId] == nil {
+                    placeToCollectionMap[place.placeId] = (place: place, collection: collection)
                 }
             }
         }
         
-        Logger.log("Found \(allPlaces.count) unique places across all collections", level: .debug, category: "Map")
+        Logger.log("Found \(placeToCollectionMap.count) unique places across all collections", level: .debug, category: "Map")
         
-        // Fetch place details and create markers
-        let group = DispatchGroup()
-        var loadedPlaces: [GMSPlace] = []
+        // Use Firestore data directly - no API calls needed!
+        let placesData: [(PlaceCollection.Place, PlaceCollection)] = Array(placeToCollectionMap.values).map { ($0.place, $0.collection) }
         
-        for place in allPlaces {
-            group.enter()
-            PlacesAPIManager.shared.fetchMapPlaceDetails(placeID: place.placeId) { gmsPlace in
-                defer { group.leave() }
-                
-                if let gmsPlace = gmsPlace {
-                    loadedPlaces.append(gmsPlace)
-                    Logger.log("Loaded place details for: \(gmsPlace.name ?? "Unknown")", level: .debug, category: "Map")
-                } else {
-                    Logger.log("Failed to load place details for placeId: \(place.placeId)", level: .warn, category: "Map")
-                }
-            }
-        }
+        // Filter out places with invalid coordinates (0,0)
+        let validPlacesData = placesData.filter { $0.0.latitude != 0.0 || $0.0.longitude != 0.0 }
         
-        group.notify(queue: .main) { [weak self] in
-            guard let self = self else { return }
-            
-            // Create markers for all loaded places
-            for place in loadedPlaces {
-                let marker = MarkerFactory.createPlaceMarker(for: place)
-                marker.map = self.mapView
-                self.collectionPlaceMarkers.append(marker)
-            }
-            
-            Logger.log("Total collection place markers on map: \(self.collectionPlaceMarkers.count)", level: .debug, category: "Map")
-        }
+        // Store places data for zoom updates
+        self.collectionPlacesData = validPlacesData
+        
+        // Create markers for all places with their collection icons
+        self.updateCollectionPlaceMarkers()
+        
+        Logger.log("Total collection place markers on map: \(self.collectionPlaceMarkers.count)", level: .debug, category: "Map")
     }
 
     // Convenience to move camera to arbitrary coordinate (for deep links)
@@ -294,6 +301,23 @@ extension GoogleMapManager: CLLocationManagerDelegate {
 extension GoogleMapManager: GMSMapViewDelegate {
     func mapView(_ mapView: GMSMapView, didTapAt coordinate: CLLocationCoordinate2D) {
         // Handle map tap if needed
+    }
+    
+    func mapView(_ mapView: GMSMapView, didChange position: GMSCameraPosition) {
+        // Detect zoom changes and update marker sizes
+        let newZoom = position.zoom
+        let zoomThreshold: Float = 12.0
+        
+        // Only update if zoom crosses the threshold
+        let wasZoomedOut = currentZoom < zoomThreshold
+        let isZoomedOut = newZoom < zoomThreshold
+        
+        if wasZoomedOut != isZoomedOut && !collectionPlacesData.isEmpty {
+            currentZoom = newZoom
+            updateCollectionPlaceMarkers()
+        } else {
+            currentZoom = newZoom
+        }
     }
     
     func mapView(_ mapView: GMSMapView, didTap marker: GMSMarker) -> Bool {

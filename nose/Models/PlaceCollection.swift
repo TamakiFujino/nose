@@ -14,6 +14,8 @@ public struct PlaceCollection: Codable {
     public let createdAt: Date
     public let isOwner: Bool
     public let version: Int
+    public let iconName: String? // SF Symbol name or icon identifier (for backward compatibility)
+    public let iconUrl: String? // URL for custom icon image (new approach)
     
     public enum Status: String, Codable {
         case active
@@ -28,6 +30,8 @@ public struct PlaceCollection: Codable {
         public let phoneNumber: String
         public let addedAt: Date
         public var visited: Bool
+        public let latitude: Double
+        public let longitude: Double
         
         public var dictionary: [String: Any] {
             [
@@ -37,13 +41,15 @@ public struct PlaceCollection: Codable {
                 "rating": rating,
                 "phoneNumber": phoneNumber,
                 "addedAt": Timestamp(date: addedAt),
-                "visited": visited
+                "visited": visited,
+                "latitude": latitude,
+                "longitude": longitude
             ]
         }
     }
     
     public var dictionary: [String: Any] {
-        [
+        var dict: [String: Any] = [
             "id": id,
             "name": name,
             "places": places.map { $0.dictionary },
@@ -53,9 +59,16 @@ public struct PlaceCollection: Codable {
             "isOwner": isOwner,
             "version": version
         ]
+        if let iconName = iconName {
+            dict["iconName"] = iconName
+        }
+        if let iconUrl = iconUrl {
+            dict["iconUrl"] = iconUrl
+        }
+        return dict
     }
     
-    public init(id: String, name: String, places: [Place], userId: String, status: Status = .active, isOwner: Bool = true, version: Int = 1) {
+    public init(id: String, name: String, places: [Place], userId: String, status: Status = .active, isOwner: Bool = true, version: Int = 1, iconName: String? = nil, iconUrl: String? = nil) {
         self.id = id
         self.name = name
         self.places = places
@@ -64,6 +77,8 @@ public struct PlaceCollection: Codable {
         self.createdAt = Date()
         self.isOwner = isOwner
         self.version = version
+        self.iconName = iconName
+        self.iconUrl = iconUrl
     }
     
     public init?(dictionary: [String: Any]) {
@@ -107,6 +122,12 @@ public struct PlaceCollection: Codable {
             self.version = 1
         }
         
+        // Parse iconName, optional (for backward compatibility)
+        self.iconName = dictionary["iconName"] as? String
+        
+        // Parse iconUrl, optional (new approach for custom images)
+        self.iconUrl = dictionary["iconUrl"] as? String
+        
         if let placesData = dictionary["places"] as? [[String: Any]] {
             print("📦 Parsing \(placesData.count) places")
             self.places = placesData.compactMap { placeDict in
@@ -142,13 +163,28 @@ public struct PlaceCollection: Codable {
                 // Handle visited status, default to false if not found
                 let visited = placeDict["visited"] as? Bool ?? false
                 
+                // Handle coordinates - required for map display
+                let latitude: Double
+                let longitude: Double
+                if let lat = placeDict["latitude"] as? Double,
+                   let lng = placeDict["longitude"] as? Double {
+                    latitude = lat
+                    longitude = lng
+                } else {
+                    print("⚠️ Place missing coordinates, using default (0,0)")
+                    latitude = 0.0
+                    longitude = 0.0
+                }
+                
                 return Place(placeId: placeId,
                            name: name,
                            formattedAddress: formattedAddress,
                            rating: rating,
                            phoneNumber: phoneNumber,
                            addedAt: addedAt,
-                           visited: visited)
+                           visited: visited,
+                           latitude: latitude,
+                           longitude: longitude)
             }
             print("✅ Successfully parsed \(self.places.count) places")
         } else {

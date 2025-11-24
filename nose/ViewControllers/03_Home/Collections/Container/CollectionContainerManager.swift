@@ -276,7 +276,7 @@ class CollectionContainerManager {
                 
                 print("📤 Creating shared collection for member \(memberId) at path: \(sharedCollectionRef.path)")
                 
-                let sharedCollectionData: [String: Any] = [
+                var sharedCollectionData: [String: Any] = [
                     "id": collection.id,
                     "name": collection.name,
                     "userId": currentUserId,
@@ -287,6 +287,11 @@ class CollectionContainerManager {
                     "places": collection.places.map { $0.dictionary },
                     "members": newMembers  // Include all members in shared copy
                 ]
+                
+                // Include iconName if it exists
+                if let iconName = collection.iconName {
+                    sharedCollectionData["iconName"] = iconName
+                }
                 
                 print("📤 Shared collection data: \(sharedCollectionData)")
                 

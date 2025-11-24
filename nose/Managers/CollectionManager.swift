@@ -1,12 +1,15 @@
 import Foundation
 import FirebaseFirestore
 import FirebaseAuth
+import FirebaseStorage
 import GooglePlaces
 import Firebase
+import UIKit
 
 class CollectionManager {
     static let shared = CollectionManager()
     private let db = Firestore.firestore()
+    private let storage = Storage.storage()
     private let collectionsCollection = "collections"
     
     private init() {}
@@ -334,7 +337,7 @@ class CollectionManager {
                 .collection("collections")
                 .document(collection.id)
             
-            let sharedCollectionData: [String: Any] = [
+            var sharedCollectionData: [String: Any] = [
                 "id": collection.id,
                 "name": collection.name,
                 "places": collection.places.map { $0.dictionary },
@@ -346,6 +349,16 @@ class CollectionManager {
                 "sharedAt": FieldValue.serverTimestamp(),
                 "members": allMembers  // Include all members in shared copy
             ]
+            
+            // Include iconName if it exists (for backward compatibility)
+            if let iconName = collection.iconName {
+                sharedCollectionData["iconName"] = iconName
+            }
+            
+            // Include iconUrl if it exists (for custom images)
+            if let iconUrl = collection.iconUrl {
+                sharedCollectionData["iconUrl"] = iconUrl
+            }
             
             print("📤 Creating shared collection in path: users/\(friend.id)/collections/\(collection.id)")
             print("📤 Shared collection data: \(sharedCollectionData)")
@@ -386,5 +399,173 @@ class CollectionManager {
                     completion(.success(()))
                 }
             }
+    }
+    
+    // MARK: - Collection Icons
+    struct CollectionIcon {
+        let name: String
+        let url: String
+    }
+    
+    func fetchCollectionIcons(completion: @escaping (Result<[CollectionIcon], Error>) -> Void) {
+        print("🔄 Fetching collection icons from Firebase Storage...")
+        
+        // List all files in the collection_icons folder
+        let storageRef = storage.reference().child("collection_icons")
+        
+        storageRef.listAll { [weak self] result, error in
+            guard let self = self else { return }
+            
+            if let error = error {
+                print("❌ Error listing collection icons from Storage: \(error.localizedDescription)")
+                // Fallback: Try Firestore if Storage fails
+                self.fetchCollectionIconsFromFirestore(completion: completion)
+                return
+            }
+            
+            guard let items = result?.items, !items.isEmpty else {
+                print("⚠️ No collection icons found in Storage, trying Firestore...")
+                // Fallback: Try Firestore if Storage is empty
+                self.fetchCollectionIconsFromFirestore(completion: completion)
+                return
+            }
+            
+            // Get download URLs for all items
+            let group = DispatchGroup()
+            var icons: [CollectionIcon] = []
+            var fetchErrors: [Error] = []
+            
+            for item in items {
+                group.enter()
+                
+                // Get download URL for this item
+                item.downloadURL { url, error in
+                    defer { group.leave() }
+                    
+                    if let error = error {
+                        print("⚠️ Error getting download URL for \(item.name): \(error.localizedDescription)")
+                        fetchErrors.append(error)
+                        return
+                    }
+                    
+                    guard let downloadURL = url else {
+                        return
+                    }
+                    
+                    // Extract name from file name (remove extension)
+                    let name = item.name.replacingOccurrences(of: ".jpg", with: "")
+                        .replacingOccurrences(of: ".png", with: "")
+                        .replacingOccurrences(of: ".jpeg", with: "")
+                        .replacingOccurrences(of: "_", with: " ")
+                        .capitalized
+                    
+                    icons.append(CollectionIcon(name: name, url: downloadURL.absoluteString))
+                }
+            }
+            
+            group.notify(queue: .main) {
+                // Sort by name
+                icons.sort { $0.name < $1.name }
+                
+                if icons.isEmpty && !fetchErrors.isEmpty {
+                    print("❌ Failed to get download URLs for collection icons")
+                    completion(.failure(fetchErrors.first!))
+                } else {
+                    print("✅ Loaded \(icons.count) collection icons from Storage")
+                    completion(.success(icons))
+                }
+            }
+        }
+    }
+    
+    // Fallback method: Fetch from Firestore if Storage doesn't work
+    private func fetchCollectionIconsFromFirestore(completion: @escaping (Result<[CollectionIcon], Error>) -> Void) {
+        print("🔄 Fetching collection icons from Firestore (fallback)...")
+        
+        db.collection("collection_icons")
+            .order(by: "name")
+            .getDocuments { snapshot, error in
+                if let error = error {
+                    print("❌ Error fetching collection icons from Firestore: \(error.localizedDescription)")
+                    completion(.failure(error))
+                    return
+                }
+                
+                guard let documents = snapshot?.documents else {
+                    print("⚠️ No collection icons found in Firestore")
+                    completion(.success([]))
+                    return
+                }
+                
+                let icons = documents.compactMap { doc -> CollectionIcon? in
+                    let data = doc.data()
+                    guard let name = data["name"] as? String,
+                          let url = data["url"] as? String else {
+                        return nil
+                    }
+                    return CollectionIcon(name: name, url: url)
+                }
+                
+                print("✅ Loaded \(icons.count) collection icons from Firestore")
+                completion(.success(icons))
+            }
+    }
+    
+    // MARK: - Upload Collection Icon (Helper method for admin/manual setup)
+    /// Uploads an image to Firebase Storage and creates a Firestore document for it
+    /// This is a helper method that can be called manually or through admin tools
+    func uploadCollectionIcon(image: UIImage, name: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let imageData = image.jpegData(compressionQuality: 0.8) else {
+            completion(.failure(NSError(domain: "CollectionManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to convert image to data"])))
+            return
+        }
+        
+        // Upload to Firebase Storage
+        let storageRef = storage.reference()
+        let imageName = "\(name.replacingOccurrences(of: " ", with: "_")).jpg"
+        let imageRef = storageRef.child("collection_icons/\(imageName)")
+        
+        let metadata = StorageMetadata()
+        metadata.contentType = "image/jpeg"
+        
+        imageRef.putData(imageData, metadata: metadata) { [weak self] metadata, error in
+            guard let self = self else { return }
+            
+            if let error = error {
+                print("❌ Error uploading collection icon image: \(error.localizedDescription)")
+                completion(.failure(error))
+                return
+            }
+            
+            // Get download URL
+            imageRef.downloadURL { [weak self] url, error in
+                guard let self = self else { return }
+                
+                if let error = error {
+                    print("❌ Error getting download URL: \(error.localizedDescription)")
+                    completion(.failure(error))
+                    return
+                }
+                
+                guard let downloadURL = url else {
+                    completion(.failure(NSError(domain: "CollectionManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get download URL"])))
+                    return
+                }
+                
+                // Create Firestore document
+                self.db.collection("collection_icons").addDocument(data: [
+                    "name": name,
+                    "url": downloadURL.absoluteString
+                ]) { error in
+                    if let error = error {
+                        print("❌ Error creating collection icon document: \(error.localizedDescription)")
+                        completion(.failure(error))
+                    } else {
+                        print("✅ Successfully uploaded collection icon: \(name)")
+                        completion(.success(()))
+                    }
+                }
+            }
+        }
     }
 }

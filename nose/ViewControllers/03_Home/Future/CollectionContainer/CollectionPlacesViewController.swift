@@ -14,6 +14,8 @@ class CollectionPlacesViewController: UIViewController {
     private var sessionToken: GMSAutocompleteSessionToken?
     private var sharedFriendsCount: Int = 0
     private var avatarsLoadGeneration: Int = 0
+    private var currentIconName: String? // Track current icon name for updates (SF Symbol)
+    private var currentIconUrl: String? // Track current icon URL for updates (custom image)
     
     private var isCompleted: Bool = false
     private static let imageCache = NSCache<NSString, UIImage>()
@@ -50,6 +52,20 @@ class CollectionPlacesViewController: UIViewController {
         return tableView
     }()
 
+    private lazy var collectionIconImageView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.contentMode = .scaleAspectFit // Preserve aspect ratio
+        imageView.clipsToBounds = true
+        imageView.layer.masksToBounds = true // Ensure corner radius works properly
+        imageView.layer.cornerRadius = 30 // 60 / 2 for circular appearance
+        imageView.isUserInteractionEnabled = true // Enable tap interaction
+        // Add tap gesture
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(collectionIconTapped))
+        imageView.addGestureRecognizer(tapGesture)
+        return imageView
+    }()
+    
     private lazy var titleLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -90,7 +106,7 @@ class CollectionPlacesViewController: UIViewController {
         
         // Create attributed string with icon
         let imageAttachment = NSTextAttachment()
-        imageAttachment.image = UIImage(systemName: "mappin.circle.fill")?.withTintColor(.secondaryLabel)
+        imageAttachment.image = UIImage(systemName: "bookmark.fill")?.withTintColor(.secondaryLabel)
         let imageString = NSAttributedString(attachment: imageAttachment)
         
         let textString = NSAttributedString(string: " 0")
@@ -155,6 +171,8 @@ class CollectionPlacesViewController: UIViewController {
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
+        currentIconName = collection.iconName // Initialize with collection's icon (SF Symbol)
+        currentIconUrl = collection.iconUrl // Initialize with collection's icon URL (custom image)
         setupUI()
         loadPlaces()
         loadSharedFriendsCount()
@@ -169,6 +187,7 @@ class CollectionPlacesViewController: UIViewController {
     private func setupUI() {
         view.backgroundColor = .systemBackground
         view.addSubview(headerView)
+        headerView.addSubview(collectionIconImageView)
         headerView.addSubview(titleLabel)
         headerView.addSubview(menuButton)
         headerView.addSubview(sharedFriendsLabel)
@@ -179,26 +198,40 @@ class CollectionPlacesViewController: UIViewController {
 
         // Hide menu button if user is not the owner
         menuButton.isHidden = !collection.isOwner
+        
+        // Only allow icon editing if user is the owner
+        if !collection.isOwner {
+            collectionIconImageView.isUserInteractionEnabled = false
+        }
+        
+        // Set initial icon image
+        updateCollectionIconDisplay()
 
         NSLayoutConstraint.activate([
             headerView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             headerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             headerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
 
+            collectionIconImageView.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 16),
+            collectionIconImageView.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+            collectionIconImageView.widthAnchor.constraint(equalToConstant: 60),
+            collectionIconImageView.heightAnchor.constraint(equalToConstant: 60),
+            
             titleLabel.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 16),
-            titleLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+            titleLabel.leadingAnchor.constraint(equalTo: collectionIconImageView.trailingAnchor, constant: 12),
             titleLabel.trailingAnchor.constraint(equalTo: menuButton.leadingAnchor, constant: -16),
+            titleLabel.centerYAnchor.constraint(equalTo: collectionIconImageView.centerYAnchor),
 
             menuButton.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 16),
             menuButton.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
             menuButton.widthAnchor.constraint(equalToConstant: 44),
             menuButton.heightAnchor.constraint(equalToConstant: 44),
 
-            sharedFriendsLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
-            sharedFriendsLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
-            
             placesCountLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
-            placesCountLabel.leadingAnchor.constraint(equalTo: sharedFriendsLabel.trailingAnchor, constant: 16),
+            placesCountLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+            
+            sharedFriendsLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
+            sharedFriendsLabel.leadingAnchor.constraint(equalTo: placesCountLabel.trailingAnchor, constant: 16),
 
             avatarsStackView.topAnchor.constraint(equalTo: sharedFriendsLabel.bottomAnchor, constant: 8),
             avatarsStackView.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 0),
@@ -293,6 +326,91 @@ class CollectionPlacesViewController: UIViewController {
             nav.pushViewController(vc, animated: true)
         } else {
             present(vc, animated: true)
+        }
+    }
+    
+    @objc private func collectionIconTapped() {
+        // Only allow icon change if user is the owner
+        guard collection.isOwner else { return }
+        
+        let imagePickerVC = ImagePickerViewController()
+        imagePickerVC.delegate = self
+        imagePickerVC.modalPresentationStyle = .fullScreen
+        present(imagePickerVC, animated: true)
+    }
+    
+    private func updateCollectionIcon(iconName: String?, iconUrl: String?) {
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        let db = Firestore.firestore()
+        
+        // Show loading indicator
+        let alert = UIAlertController(title: "Updating icon...", message: nil, preferredStyle: .alert)
+        let loadingIndicator = UIActivityIndicatorView(frame: CGRect(x: 10, y: 5, width: 50, height: 50))
+        loadingIndicator.hidesWhenStopped = true
+        loadingIndicator.style = .medium
+        loadingIndicator.startAnimating()
+        alert.view.addSubview(loadingIndicator)
+        present(alert, animated: true)
+        
+        // Get references to both collections (user's copy and owner's copy)
+        let userCollectionRef = db.collection("users")
+            .document(currentUserId)
+            .collection("collections")
+            .document(collection.id)
+        
+        let ownerCollectionRef = db.collection("users")
+            .document(collection.userId)
+            .collection("collections")
+            .document(collection.id)
+        
+        // Create a batch write to update both
+        let batch = db.batch()
+        
+        // Prepare update data - support both iconName (SF Symbol) and iconUrl (custom image)
+        var updateData: [String: Any] = [:]
+        
+        if let iconUrl = iconUrl, !iconUrl.isEmpty {
+            // Using custom image URL - set it and clear iconName
+            updateData["iconUrl"] = iconUrl
+            updateData["iconName"] = FieldValue.delete()
+        } else if let iconName = iconName, !iconName.isEmpty {
+            // Using SF Symbol - set it and clear iconUrl
+            updateData["iconName"] = iconName
+            updateData["iconUrl"] = FieldValue.delete()
+        }
+        
+        // Only update if we have changes
+        guard !updateData.isEmpty else {
+            // No changes, just dismiss
+            alert.dismiss(animated: true)
+            return
+        }
+        
+        batch.updateData(updateData, forDocument: userCollectionRef)
+        batch.updateData(updateData, forDocument: ownerCollectionRef)
+        
+        // Commit the batch
+        batch.commit { [weak self] error in
+            DispatchQueue.main.async {
+                // Dismiss the local alert directly
+                alert.dismiss(animated: true) {
+                    guard let self = self else { return }
+                    
+                    if let error = error {
+                        print("❌ Error updating collection icon: \(error.localizedDescription)")
+                        ToastManager.showToast(message: "Failed to update icon", type: .error)
+                    } else {
+                        print("✅ Successfully updated collection icon")
+                        // Update the current icon name/URL and refresh the image view
+                        self.currentIconName = iconName
+                        self.currentIconUrl = iconUrl
+                        self.updateCollectionIconDisplay()
+                        ToastManager.showToast(message: "Icon updated", type: .success)
+                        // Post notification to refresh collections
+                        NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
+                    }
+                }
+            }
         }
     }
     
@@ -1039,6 +1157,214 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         }
     }
     
+    // MARK: - Helper Methods
+    private func createCollectionIconImage(collection: PlaceCollection?, iconName: String? = nil, iconUrl: String? = nil) -> UIImage? {
+        let size: CGFloat = 60 // 1.5x larger (40 * 1.5)
+        let format = UIGraphicsImageRendererFormat.default()
+        format.opaque = false
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size), format: format)
+        
+        // Priority: iconUrl > provided iconName > collection's iconUrl > collection's iconName
+        let finalIconUrl = iconUrl ?? collection?.iconUrl
+        let finalIconName = iconName ?? collection?.iconName
+        
+        // If we have an iconUrl, create a placeholder that will be replaced by async loading
+        if let iconUrlString = finalIconUrl, let url = URL(string: iconUrlString) {
+            // For now, return a placeholder - the actual image will be loaded asynchronously
+            // The caller should update the imageView separately
+            return renderer.image { context in
+                let rect = CGRect(x: 0, y: 0, width: size, height: size)
+                let cgContext = context.cgContext
+                
+                // Draw background circle
+                let path = UIBezierPath(ovalIn: rect)
+                cgContext.setFillColor(UIColor.white.cgColor)
+                cgContext.addPath(path.cgPath)
+                cgContext.fillPath()
+                
+                // Draw white border
+                cgContext.setStrokeColor(UIColor.white.cgColor)
+                cgContext.setLineWidth(1.5)
+                cgContext.addPath(path.cgPath)
+                cgContext.strokePath()
+            }
+        }
+        
+        // Fall back to SF Symbol if iconUrl is not available
+        return renderer.image { context in
+            let rect = CGRect(x: 0, y: 0, width: size, height: size)
+            let cgContext = context.cgContext
+            
+            // Draw background circle
+            let path = UIBezierPath(ovalIn: rect)
+            cgContext.setFillColor(UIColor.white.cgColor)
+            cgContext.addPath(path.cgPath)
+            cgContext.fillPath()
+            
+            // Draw white border
+            cgContext.setStrokeColor(UIColor.white.cgColor)
+            cgContext.setLineWidth(1.5)
+            cgContext.addPath(path.cgPath)
+            cgContext.strokePath()
+            
+            // Draw icon if available
+            if let iconName = finalIconName,
+               let iconImage = UIImage(systemName: iconName) {
+                let iconSize: CGFloat = 33 // Proportional icon size (22 * 1.5)
+                let iconRect = CGRect(
+                    x: (size - iconSize) / 2,
+                    y: (size - iconSize) / 2,
+                    width: iconSize,
+                    height: iconSize
+                )
+                
+                // Calculate aspect-preserving rect
+                let aspect = iconImage.size.width / iconImage.size.height
+                var drawRect = iconRect
+                
+                if aspect > 1 {
+                    // Wider than tall
+                    let height = iconRect.width / aspect
+                    drawRect = CGRect(
+                        x: iconRect.origin.x,
+                        y: iconRect.origin.y + (iconRect.height - height) / 2,
+                        width: iconRect.width,
+                        height: height
+                    )
+                } else {
+                    // Taller than wide
+                    let width = iconRect.height * aspect
+                    drawRect = CGRect(
+                        x: iconRect.origin.x + (iconRect.width - width) / 2,
+                        y: iconRect.origin.y,
+                        width: width,
+                        height: iconRect.height
+                    )
+                }
+                
+                // Draw icon in darker color
+                let tintedIcon = iconImage.withTintColor(.systemGray, renderingMode: .alwaysTemplate)
+                tintedIcon.draw(in: drawRect, blendMode: .normal, alpha: 1.0)
+            }
+        }
+    }
+    
+    private func loadRemoteIconImage(urlString: String, completion: @escaping (UIImage?) -> Void) {
+        guard let url = URL(string: urlString) else {
+            completion(nil)
+            return
+        }
+        
+        // Check cache first
+        if let cachedImage = CollectionPlacesViewController.imageCache.object(forKey: urlString as NSString) {
+            completion(cachedImage)
+            return
+        }
+        
+        // Download image
+        let request = URLRequest(url: url)
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            guard let data = data,
+                  let image = UIImage(data: data) else {
+                completion(nil)
+                return
+            }
+            
+            // Cache the image
+            CollectionPlacesViewController.imageCache.setObject(image, forKey: urlString as NSString)
+            completion(image)
+        }.resume()
+    }
+    
+    private func updateCollectionIconDisplay() {
+        // Priority: currentIconUrl > currentIconName > collection.iconUrl > collection.iconName
+        let iconUrlToUse = currentIconUrl ?? collection.iconUrl
+        let iconNameToUse = currentIconName ?? collection.iconName
+        
+        // Check if we have an iconUrl
+        if let iconUrl = iconUrlToUse, !iconUrl.isEmpty {
+            // Load remote image
+            loadRemoteIconImage(urlString: iconUrl) { [weak self] image in
+                DispatchQueue.main.async {
+                    guard let self = self else { return }
+                    if let image = image {
+                        // Create circular background for the remote image
+                        self.collectionIconImageView.image = self.createIconImageWithBackground(remoteImage: image)
+                    } else {
+                        // Fallback to SF Symbol if download fails
+                        self.collectionIconImageView.image = self.createCollectionIconImage(collection: self.collection, iconName: iconNameToUse, iconUrl: nil)
+                    }
+                }
+            }
+        } else {
+            // Use SF Symbol
+            collectionIconImageView.image = createCollectionIconImage(collection: collection, iconName: iconNameToUse, iconUrl: nil)
+        }
+    }
+    
+    private func createIconImageWithBackground(remoteImage: UIImage) -> UIImage? {
+        let size: CGFloat = 60
+        let format = UIGraphicsImageRendererFormat.default()
+        format.opaque = false
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size), format: format)
+        
+        return renderer.image { context in
+            let rect = CGRect(x: 0, y: 0, width: size, height: size)
+            let cgContext = context.cgContext
+            
+            // Draw background circle
+            let path = UIBezierPath(ovalIn: rect)
+            cgContext.setFillColor(UIColor.white.cgColor)
+            cgContext.addPath(path.cgPath)
+            cgContext.fillPath()
+            
+            // Draw white border
+            cgContext.setStrokeColor(UIColor.white.cgColor)
+            cgContext.setLineWidth(1.5)
+            cgContext.addPath(path.cgPath)
+            cgContext.strokePath()
+            
+            // Draw remote image in the center, preserving aspect ratio
+            let imageSize: CGFloat = size * 0.75 // 75% of circle size for padding
+            let imageRect = CGRect(
+                x: (size - imageSize) / 2,
+                y: (size - imageSize) / 2,
+                width: imageSize,
+                height: imageSize
+            )
+            
+            // Clip to circle
+            cgContext.addPath(path.cgPath)
+            cgContext.clip()
+            
+            // Calculate aspect-preserving rect
+            let aspect = remoteImage.size.width / remoteImage.size.height
+            var drawRect = imageRect
+            
+            if aspect > 1 {
+                // Wider than tall
+                let height = imageRect.width / aspect
+                drawRect = CGRect(
+                    x: imageRect.origin.x,
+                    y: imageRect.origin.y + (imageRect.height - height) / 2,
+                    width: imageRect.width,
+                    height: height
+                )
+            } else {
+                // Taller than wide
+                let width = imageRect.height * aspect
+                drawRect = CGRect(
+                    x: imageRect.origin.x + (imageRect.width - width) / 2,
+                    y: imageRect.origin.y,
+                    width: width,
+                    height: imageRect.height
+                )
+            }
+            
+            remoteImage.draw(in: drawRect, blendMode: .normal, alpha: 1.0)
+        }
+    }
+    
     // Add swipe actions functionality
     func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
         // Handle events section
@@ -1384,6 +1710,13 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
                 }
             }
         }
+    }
+}
+
+// MARK: - ImagePickerViewControllerDelegate
+extension CollectionPlacesViewController: ImagePickerViewControllerDelegate {
+    func imagePickerViewController(_ controller: ImagePickerViewController, didSelectImage imageName: String, imageUrl: String) {
+        updateCollectionIcon(iconName: imageName, iconUrl: imageUrl.isEmpty ? nil : imageUrl)
     }
 }
 

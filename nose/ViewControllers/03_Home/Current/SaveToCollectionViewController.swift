@@ -27,6 +27,9 @@ class SaveToCollectionViewController: UIViewController {
     private var selectedCollection: PlaceCollection?
     private var newCollectionName: String = ""
     private var currentTab: CollectionTab = .personal
+    private var collectionMemberCounts: [String: Int] = [:] // collectionId -> member count
+    private static let imageCache = NSCache<NSString, UIImage>()
+    private var loadedIconImages: [String: UIImage] = [:] // collectionId -> loaded image
     
     private enum CollectionTab {
         case personal
@@ -205,13 +208,15 @@ class SaveToCollectionViewController: UIViewController {
                 return
             }
             
-            self?.ownedCollections = snapshot?.documents.compactMap { document in
+            let collections = snapshot?.documents.compactMap { document -> PlaceCollection? in
                 var data = document.data()
                 data["id"] = document.documentID
                 data["isOwner"] = true
                 
                 if let collection = PlaceCollection(dictionary: data) {
                     print("✅ Loaded owned collection: '\(collection.name)' (ID: \(collection.id))")
+                    // Load member count for this collection
+                    self?.loadMemberCount(for: collection.id, ownerId: collection.userId)
                     return collection
                 }
                 print("❌ Failed to parse owned collection: \(document.documentID)")
@@ -219,7 +224,7 @@ class SaveToCollectionViewController: UIViewController {
             } ?? []
             
             // Filter to only show active collections
-            self?.ownedCollections = self?.ownedCollections.filter { $0.status == .active } ?? []
+            self?.ownedCollections = collections.filter { $0.status == .active }
             
             DispatchQueue.main.async {
                 self?.collectionsTableView.reloadData()
@@ -269,6 +274,8 @@ class SaveToCollectionViewController: UIViewController {
                                 
                                 if let collection = PlaceCollection(dictionary: collectionData) {
                                     print("✅ Loaded shared collection: '\(collection.name)' (ID: \(collection.id))")
+                                    // Load member count for this collection
+                                    self?.loadMemberCount(for: collection.id, ownerId: ownerId)
                                     loadedCollections.append(collection)
                                 } else {
                                     print("❌ Failed to parse shared collection: \(collectionId)")
@@ -294,58 +301,46 @@ class SaveToCollectionViewController: UIViewController {
         saveButton.isEnabled = selectedCollection != nil || !newCollectionName.isEmpty
     }
     
-    private func showCreateCollectionAlert() {
-        let alert = UIAlertController(title: "New Collection", message: "Enter a name for your collection", preferredStyle: .alert)
+    private func loadMemberCount(for collectionId: String, ownerId: String) {
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        let db = Firestore.firestore()
         
-        alert.addTextField { textField in
-            textField.placeholder = "Collection Name"
-            textField.autocapitalizationType = .words
-        }
-        
-        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
-        let createAction = UIAlertAction(title: "Create", style: .default) { [weak self] _ in
-            guard let self = self,
-                  let textField = alert.textFields?.first,
-                  let collectionName = textField.text?.trimmingCharacters(in: .whitespacesAndNewlines),
-                  !collectionName.isEmpty else {
-                return
-            }
-            
-            // Create new collection in Firestore
-            guard let currentUserId = Auth.auth().currentUser?.uid else { return }
-            let db = Firestore.firestore()
-            let collectionId = UUID().uuidString
-            
-            let collectionData: [String: Any] = [
-                "id": collectionId,
-                "name": collectionName,
-                "places": [],
-                "userId": currentUserId,
-                "createdAt": Timestamp(date: Date()),
-                "isOwner": true,
-                "status": PlaceCollection.Status.active.rawValue,
-                "members": [currentUserId]  // Add owner to members list by default
-            ]
-            
-            let collectionRef = db.collection("users")
-                .document(currentUserId)
-                .collection("collections")
-                .document(collectionId)
-            
-            collectionRef.setData(collectionData) { error in
-                if let error = error {
-                    print("❌ Error creating collection: \(error.localizedDescription)")
-                    return
-                }
+        // Get blocked users first
+        db.collection("users")
+            .document(currentUserId)
+            .collection("blocked")
+            .getDocuments { [weak self] blockedSnapshot, _ in
+                let blockedUserIds = blockedSnapshot?.documents.map { $0.documentID } ?? []
                 
-                print("✅ Successfully created collection: \(collectionName)")
-                self.loadUserCollections()
+                // Get the collection document from owner
+                db.collection("users")
+                    .document(ownerId)
+                    .collection("collections")
+                    .document(collectionId)
+                    .getDocument { snapshot, _ in
+                        if let members = snapshot?.data()?["members"] as? [String] {
+                            // Filter out blocked users
+                            let activeMembers = members.filter { !blockedUserIds.contains($0) }
+                            DispatchQueue.main.async {
+                                self?.collectionMemberCounts[collectionId] = activeMembers.count
+                                self?.collectionsTableView.reloadData()
+                            }
+                        } else {
+                            DispatchQueue.main.async {
+                                self?.collectionMemberCounts[collectionId] = 0
+                                self?.collectionsTableView.reloadData()
+                            }
+                        }
+                    }
             }
-        }
-        
-        alert.addAction(cancelAction)
-        alert.addAction(createAction)
-        present(alert, animated: true)
+    }
+    
+    private func showCreateCollectionAlert() {
+        let modalVC = NewCollectionModalViewController()
+        modalVC.delegate = self
+        modalVC.modalPresentationStyle = .overCurrentContext
+        modalVC.modalTransitionStyle = .crossDissolve
+        present(modalVC, animated: true)
     }
     
     // MARK: - Actions
@@ -586,6 +581,14 @@ class SaveToCollectionViewController: UIViewController {
     }
 }
 
+// MARK: - NewCollectionModalViewControllerDelegate
+extension SaveToCollectionViewController: NewCollectionModalViewControllerDelegate {
+    func newCollectionModalViewController(_ controller: NewCollectionModalViewController, didCreateCollection collectionId: String) {
+        // Reload collections to show the newly created one
+        loadUserCollections()
+    }
+}
+
 // MARK: - UITableViewDelegate & UITableViewDataSource
 extension SaveToCollectionViewController: UITableViewDelegate, UITableViewDataSource {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -601,7 +604,61 @@ extension SaveToCollectionViewController: UITableViewDelegate, UITableViewDataSo
         
         var content = cell.defaultContentConfiguration()
         content.text = collection.name
-        content.secondaryText = "\(collection.places.count) \(collection.places.count == 1 ? "place" : "places")"
+        
+        // Create icon image for the collection
+        var iconImage = createCollectionIconImage(collection: collection)
+        
+        // Load remote icon if available
+        if let iconUrl = collection.iconUrl, !iconUrl.isEmpty, loadedIconImages[collection.id] == nil {
+            loadRemoteIconImage(urlString: iconUrl, collectionId: collection.id)
+        } else if let url = collection.iconUrl, let loadedImage = loadedIconImages[collection.id] {
+            iconImage = createIconImageWithBackground(remoteImage: loadedImage, size: 40)
+        }
+        
+        content.image = iconImage
+        content.imageProperties.cornerRadius = 20 // Make it circular (40/2)
+        content.imageProperties.maximumSize = CGSize(width: 40, height: 40)
+        content.imageProperties.tintColor = nil // Let the image handle its own color
+        
+        // Create attributed string with places count and member count
+        let placesCount = collection.places.count
+        let memberCount = collectionMemberCounts[collection.id] ?? 0
+        
+        // Places count first
+        let placesImageAttachment = NSTextAttachment()
+        placesImageAttachment.image = UIImage(systemName: "bookmark.fill")?.withTintColor(.secondaryLabel)
+        let placesImageString = NSAttributedString(attachment: placesImageAttachment)
+        
+        let placesTextString = NSAttributedString(string: " \(placesCount)", attributes: [
+            .foregroundColor: UIColor.secondaryLabel,
+            .font: UIFont.systemFont(ofSize: 14)
+        ])
+        
+        // Member count second
+        let memberImageAttachment = NSTextAttachment()
+        memberImageAttachment.image = UIImage(systemName: "person.2.fill")?.withTintColor(.secondaryLabel)
+        let memberImageString = NSAttributedString(attachment: memberImageAttachment)
+        
+        let memberTextString = NSAttributedString(string: " \(memberCount)", attributes: [
+            .foregroundColor: UIColor.secondaryLabel,
+            .font: UIFont.systemFont(ofSize: 14)
+        ])
+        
+        // No separator between them
+        let spaceString = NSAttributedString(string: "  ", attributes: [
+            .foregroundColor: UIColor.secondaryLabel,
+            .font: UIFont.systemFont(ofSize: 14)
+        ])
+        
+        let attributedText = NSMutableAttributedString()
+        attributedText.append(placesImageString)
+        attributedText.append(placesTextString)
+        attributedText.append(spaceString)
+        attributedText.append(memberImageString)
+        attributedText.append(memberTextString)
+        
+        content.secondaryAttributedText = attributedText
+        
         cell.contentConfiguration = content
         
         // Show checkmark for selected collection
@@ -610,6 +667,172 @@ extension SaveToCollectionViewController: UITableViewDelegate, UITableViewDataSo
         cell.tintColor = .fourthColor
         
         return cell
+    }
+    
+    private func createCollectionIconImage(collection: PlaceCollection) -> UIImage? {
+        let size: CGFloat = 40 // Close to cell height
+        let format = UIGraphicsImageRendererFormat.default()
+        format.opaque = false
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size), format: format)
+        
+        // Priority: iconUrl > iconName
+        let iconUrl = collection.iconUrl
+        let iconName = collection.iconName
+        
+        // Check if we have a loaded custom image
+        if let url = iconUrl, let loadedImage = loadedIconImages[collection.id] {
+            return createIconImageWithBackground(remoteImage: loadedImage, size: size)
+        }
+        
+        // Fall back to SF Symbol if iconUrl is not available
+        return renderer.image { context in
+            let rect = CGRect(x: 0, y: 0, width: size, height: size)
+            let cgContext = context.cgContext
+            
+            // Draw background circle
+            let path = UIBezierPath(ovalIn: rect)
+            cgContext.setFillColor(UIColor.white.cgColor)
+            cgContext.addPath(path.cgPath)
+            cgContext.fillPath()
+            
+            // Draw white border
+            cgContext.setStrokeColor(UIColor.white.cgColor)
+            cgContext.setLineWidth(1.5)
+            cgContext.addPath(path.cgPath)
+            cgContext.strokePath()
+            
+            // Draw icon if available
+            if let iconName = iconName,
+               let iconImage = UIImage(systemName: iconName) {
+                let iconSize: CGFloat = 22
+                let iconRect = CGRect(
+                    x: (size - iconSize) / 2,
+                    y: (size - iconSize) / 2,
+                    width: iconSize,
+                    height: iconSize
+                )
+                
+                // Calculate aspect-preserving rect
+                let aspect = iconImage.size.width / iconImage.size.height
+                var drawRect = iconRect
+                
+                if aspect > 1 {
+                    let height = iconRect.width / aspect
+                    drawRect = CGRect(
+                        x: iconRect.origin.x,
+                        y: iconRect.origin.y + (iconRect.height - height) / 2,
+                        width: iconRect.width,
+                        height: height
+                    )
+                } else {
+                    let width = iconRect.height * aspect
+                    drawRect = CGRect(
+                        x: iconRect.origin.x + (iconRect.width - width) / 2,
+                        y: iconRect.origin.y,
+                        width: width,
+                        height: iconRect.height
+                    )
+                }
+                
+                // Draw icon in darker color
+                let tintedIcon = iconImage.withTintColor(.systemGray, renderingMode: .alwaysTemplate)
+                tintedIcon.draw(in: drawRect, blendMode: .normal, alpha: 1.0)
+            }
+        }
+    }
+    
+    private func createIconImageWithBackground(remoteImage: UIImage, size: CGFloat) -> UIImage? {
+        let format = UIGraphicsImageRendererFormat.default()
+        format.opaque = false
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size), format: format)
+        
+        return renderer.image { context in
+            let rect = CGRect(x: 0, y: 0, width: size, height: size)
+            let cgContext = context.cgContext
+            
+            // Draw background circle
+            let path = UIBezierPath(ovalIn: rect)
+            cgContext.setFillColor(UIColor.white.cgColor)
+            cgContext.addPath(path.cgPath)
+            cgContext.fillPath()
+            
+            // Draw white border
+            cgContext.setStrokeColor(UIColor.white.cgColor)
+            cgContext.setLineWidth(1.5)
+            cgContext.addPath(path.cgPath)
+            cgContext.strokePath()
+            
+            // Draw remote image in the center, preserving aspect ratio
+            let imageSize: CGFloat = size * 0.75 // 75% of circle size for padding
+            let imageRect = CGRect(
+                x: (size - imageSize) / 2,
+                y: (size - imageSize) / 2,
+                width: imageSize,
+                height: imageSize
+            )
+            
+            // Clip to circle
+            cgContext.addPath(path.cgPath)
+            cgContext.clip()
+            
+            // Calculate aspect-preserving rect
+            let aspect = remoteImage.size.width / remoteImage.size.height
+            var drawRect = imageRect
+            
+            if aspect > 1 {
+                let height = imageRect.width / aspect
+                drawRect = CGRect(
+                    x: imageRect.origin.x,
+                    y: imageRect.origin.y + (imageRect.height - height) / 2,
+                    width: imageRect.width,
+                    height: height
+                )
+            } else {
+                let width = imageRect.height * aspect
+                drawRect = CGRect(
+                    x: imageRect.origin.x + (imageRect.width - width) / 2,
+                    y: imageRect.origin.y,
+                    width: width,
+                    height: imageRect.height
+                )
+            }
+            
+            remoteImage.draw(in: drawRect, blendMode: .normal, alpha: 1.0)
+        }
+    }
+    
+    private func loadRemoteIconImage(urlString: String, collectionId: String) {
+        guard let url = URL(string: urlString) else { return }
+        
+        // Check cache first
+        if let cachedImage = SaveToCollectionViewController.imageCache.object(forKey: urlString as NSString) {
+            loadedIconImages[collectionId] = cachedImage
+            return
+        }
+        
+        // Download image
+        let request = URLRequest(url: url)
+        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            guard let self = self,
+                  let data = data,
+                  let image = UIImage(data: data) else {
+                return
+            }
+            
+            // Cache the image
+            SaveToCollectionViewController.imageCache.setObject(image, forKey: urlString as NSString)
+            
+            DispatchQueue.main.async {
+                self.loadedIconImages[collectionId] = image
+                // Reload the specific cell if visible
+                if let index = (self.currentTab == .personal ? self.ownedCollections : self.sharedCollections).firstIndex(where: { $0.id == collectionId }) {
+                    let indexPath = IndexPath(row: index, section: 0)
+                    if self.collectionsTableView.indexPathsForVisibleRows?.contains(indexPath) == true {
+                        self.collectionsTableView.reloadRows(at: [indexPath], with: .none)
+                    }
+                }
+            }
+        }.resume()
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
