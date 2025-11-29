@@ -441,7 +441,9 @@ final class HomeViewController: UIViewController {
     
     private func setupLocationManager() {
         locationManager.delegate = self
-        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        // Use reduced accuracy for faster initial location fix
+        locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+        locationManager.distanceFilter = 10 // Only update if moved 10 meters
         checkLocationPermission()
     }
     

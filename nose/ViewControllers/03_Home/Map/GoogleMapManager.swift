@@ -54,7 +54,10 @@ final class GoogleMapManager: NSObject {
     
     private func setupLocationManager() {
         locationManager.delegate = self
-        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        // Use reduced accuracy for faster initial location fix
+        // We can refine accuracy later if needed, but this gets us on the map quickly
+        locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+        locationManager.distanceFilter = 10 // Only update if moved 10 meters (reduces battery usage)
         // Don't request authorization here - let the delegate handle it based on current status
     }
     
@@ -262,14 +265,17 @@ extension GoogleMapManager: CLLocationManagerDelegate {
         guard let location = locations.last else { return }
         currentLocation = location
         
-        if markers.isEmpty && followUserLocation {
+        // Move to current location immediately if we're following user location
+        // Don't wait for markers to be empty - get user on map quickly
+        if followUserLocation {
             moveToCurrentLocation()
         }
         
         // Update custom marker
         updateCurrentLocationMarker(at: location)
         
-        // Stop updating location after first update
+        // Stop updating location after first update to save battery
+        // We got what we need for initial map positioning
         manager.stopUpdatingLocation()
     }
     
@@ -280,8 +286,9 @@ extension GoogleMapManager: CLLocationManagerDelegate {
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         switch manager.authorizationStatus {
         case .authorizedWhenInUse, .authorizedAlways:
-            // Permission granted, request location
-            locationManager.requestLocation()
+            // Permission granted, start location updates for faster response
+            // startUpdatingLocation() is faster than requestLocation() for initial fix
+            locationManager.startUpdatingLocation()
         case .denied, .restricted:
             delegate?.googleMapManager(self, didFailWithError: NSError(
                 domain: "GoogleMapManager",

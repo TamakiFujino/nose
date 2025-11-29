@@ -684,14 +684,17 @@ extension SaveToCollectionViewController: UITableViewDelegate, UITableViewDataSo
             return createIconImageWithBackground(remoteImage: loadedImage, size: size)
         }
         
+        // Check if icon is set - either iconUrl exists (even if not loaded) or iconName exists
+        let hasIcon = (iconUrl != nil && !iconUrl!.isEmpty) || (iconName != nil && UIImage(systemName: iconName!) != nil)
+        
         // Fall back to SF Symbol if iconUrl is not available
         return renderer.image { context in
             let rect = CGRect(x: 0, y: 0, width: size, height: size)
             let cgContext = context.cgContext
             
-            // Draw background circle
+            // Draw background circle - white if icon is set, light gray if no icon
             let path = UIBezierPath(ovalIn: rect)
-            cgContext.setFillColor(UIColor.white.cgColor)
+            cgContext.setFillColor(hasIcon ? UIColor.white.cgColor : UIColor.systemGray5.cgColor)
             cgContext.addPath(path.cgPath)
             cgContext.fillPath()
             

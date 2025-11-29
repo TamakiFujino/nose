@@ -68,23 +68,60 @@ final class MarkerFactory {
     // MARK: - Private Methods
     private static func createEventMarkerView() -> UIView {
         let size: CGFloat = 40
-        let markerView = UIView(frame: CGRect(x: 0, y: 0, width: size, height: size))
+        let shadowRadius: CGFloat = 3
+        
+        // Create container with extra space for shadow (centered, so need padding on all sides)
+        // Need enough padding to contain the full shadow which extends shadowRadius * 4 beyond the circle
+        let shadowPadding: CGFloat = shadowRadius * 3 // Extra padding to prevent clipping
+        let totalSize = size + shadowPadding * 2
+        let markerView = UIView(frame: CGRect(x: 0, y: 0, width: totalSize, height: totalSize))
         markerView.backgroundColor = .clear
         
-        // Background circle
-        let backgroundCircle = UIView(frame: CGRect(x: 0, y: 0, width: size, height: size))
+        // Create circular shadow using multiple layers for soft blur effect
+        let shadowSize = size + shadowRadius * 4
+        let shadowCenter = totalSize / 2 // Center of the container
+        
+        // Outer shadow (larger, more transparent) - centered
+        let outerShadow = UIView(frame: CGRect(
+            x: shadowCenter - shadowSize / 2,
+            y: shadowCenter - shadowSize / 2,
+            width: shadowSize,
+            height: shadowSize
+        ))
+        outerShadow.backgroundColor = UIColor.black.withAlphaComponent(0.08) // Lighter
+        outerShadow.layer.cornerRadius = shadowSize / 2
+        outerShadow.layer.masksToBounds = true
+        markerView.insertSubview(outerShadow, at: 0)
+        
+        // Inner shadow (smaller, less transparent) for depth - centered
+        let innerShadowSize = size + shadowRadius * 2
+        let innerShadow = UIView(frame: CGRect(
+            x: shadowCenter - innerShadowSize / 2,
+            y: shadowCenter - innerShadowSize / 2,
+            width: innerShadowSize,
+            height: innerShadowSize
+        ))
+        innerShadow.backgroundColor = UIColor.black.withAlphaComponent(0.12) // Lighter
+        innerShadow.layer.cornerRadius = innerShadowSize / 2
+        innerShadow.layer.masksToBounds = true
+        markerView.insertSubview(innerShadow, at: 1)
+        
+        // Background circle (centered)
+        let circleRect = CGRect(x: shadowPadding, y: shadowPadding, width: size, height: size)
+        let backgroundCircle = UIView(frame: circleRect)
         backgroundCircle.backgroundColor = .fifthColor
         backgroundCircle.layer.cornerRadius = size / 2
         backgroundCircle.layer.masksToBounds = true
         backgroundCircle.layer.borderWidth = 3
         backgroundCircle.layer.borderColor = UIColor.firstColor.cgColor
+        
         markerView.addSubview(backgroundCircle)
         
         // Bolt icon
         let iconSize: CGFloat = 20
         let iconImageView = UIImageView(frame: CGRect(
-            x: (size - iconSize) / 2,
-            y: (size - iconSize) / 2,
+            x: shadowPadding + (size - iconSize) / 2,
+            y: shadowPadding + (size - iconSize) / 2,
             width: iconSize,
             height: iconSize
         ))
@@ -123,12 +160,51 @@ final class MarkerFactory {
     
     private static func createCollectionPlaceMarkerView(iconName: String?, iconUrl: String?, isSmall: Bool = false) -> UIView {
         let size: CGFloat = isSmall ? 28 : 40 // Smaller when zoomed out
-        let markerView = UIView(frame: CGRect(x: 0, y: 0, width: size, height: size))
+        let shadowRadius: CGFloat = isSmall ? 2 : 3
+        
+        // Create container with extra space for shadow (centered, so need padding on all sides)
+        // Need enough padding to contain the full shadow which extends shadowRadius * 4 beyond the circle
+        let shadowPadding: CGFloat = shadowRadius * 3 // Extra padding to prevent clipping
+        let totalSize = size + shadowPadding * 2
+        let markerView = UIView(frame: CGRect(x: 0, y: 0, width: totalSize, height: totalSize))
         markerView.backgroundColor = .clear
         
-        // Background circle - now always pure white
-        let backgroundCircle = UIView(frame: CGRect(x: 0, y: 0, width: size, height: size))
-        backgroundCircle.backgroundColor = UIColor.white
+        // Check if icon is set
+        let hasIcon = (iconUrl != nil && !iconUrl!.isEmpty) || (iconName != nil && UIImage(systemName: iconName!) != nil)
+        
+        // Create circular shadow using multiple layers for soft blur effect
+        let shadowSize = size + shadowRadius * 4
+        let shadowCenter = totalSize / 2 // Center of the container
+        
+        // Outer shadow (larger, more transparent) - centered
+        let outerShadow = UIView(frame: CGRect(
+            x: shadowCenter - shadowSize / 2,
+            y: shadowCenter - shadowSize / 2,
+            width: shadowSize,
+            height: shadowSize
+        ))
+        outerShadow.backgroundColor = UIColor.black.withAlphaComponent(0.08) // Lighter
+        outerShadow.layer.cornerRadius = shadowSize / 2
+        outerShadow.layer.masksToBounds = true
+        markerView.insertSubview(outerShadow, at: 0)
+        
+        // Inner shadow (smaller, less transparent) for depth - centered
+        let innerShadowSize = size + shadowRadius * 2
+        let innerShadow = UIView(frame: CGRect(
+            x: shadowCenter - innerShadowSize / 2,
+            y: shadowCenter - innerShadowSize / 2,
+            width: innerShadowSize,
+            height: innerShadowSize
+        ))
+        innerShadow.backgroundColor = UIColor.black.withAlphaComponent(0.12) // Lighter
+        innerShadow.layer.cornerRadius = innerShadowSize / 2
+        innerShadow.layer.masksToBounds = true
+        markerView.insertSubview(innerShadow, at: 1)
+        
+        // Background circle - white if icon is set, light gray if no icon (centered)
+        let circleRect = CGRect(x: shadowPadding, y: shadowPadding, width: size, height: size)
+        let backgroundCircle = UIView(frame: circleRect)
+        backgroundCircle.backgroundColor = hasIcon ? UIColor.white : UIColor.systemGray5
         backgroundCircle.layer.cornerRadius = size / 2
         backgroundCircle.layer.masksToBounds = true
         
@@ -143,8 +219,8 @@ final class MarkerFactory {
             // Load custom image from URL, use tighter padding so icon fills the pin
             let iconSize: CGFloat = size * (isSmall ? 0.55 : 0.7)
             let iconImageView = UIImageView(frame: CGRect(
-                x: (size - iconSize) / 2,
-                y: (size - iconSize) / 2,
+                x: shadowPadding + (size - iconSize) / 2,
+                y: shadowPadding + (size - iconSize) / 2,
                 width: iconSize,
                 height: iconSize
             ))
@@ -160,8 +236,8 @@ final class MarkerFactory {
             // Use SF Symbol
             let iconSize: CGFloat = size * (isSmall ? 0.55 : 0.7)
             let iconImageView = UIImageView(frame: CGRect(
-                x: (size - iconSize) / 2,
-                y: (size - iconSize) / 2,
+                x: shadowPadding + (size - iconSize) / 2,
+                y: shadowPadding + (size - iconSize) / 2,
                 width: iconSize,
                 height: iconSize
             ))

@@ -1168,6 +1168,9 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         let finalIconUrl = iconUrl ?? collection?.iconUrl
         let finalIconName = iconName ?? collection?.iconName
         
+        // Check if icon is set - either iconUrl exists (even if not loaded) or iconName exists
+        let hasIcon = (finalIconUrl != nil && !finalIconUrl!.isEmpty) || (finalIconName != nil && UIImage(systemName: finalIconName!) != nil)
+        
         // If we have an iconUrl, create a placeholder that will be replaced by async loading
         if let iconUrlString = finalIconUrl, let url = URL(string: iconUrlString) {
             // For now, return a placeholder - the actual image will be loaded asynchronously
@@ -1176,9 +1179,9 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
                 let rect = CGRect(x: 0, y: 0, width: size, height: size)
                 let cgContext = context.cgContext
                 
-                // Draw background circle
+                // Draw background circle - white if icon is set, light gray if no icon
                 let path = UIBezierPath(ovalIn: rect)
-                cgContext.setFillColor(UIColor.white.cgColor)
+                cgContext.setFillColor(hasIcon ? UIColor.white.cgColor : UIColor.systemGray5.cgColor)
                 cgContext.addPath(path.cgPath)
                 cgContext.fillPath()
                 
@@ -1195,9 +1198,9 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
             let rect = CGRect(x: 0, y: 0, width: size, height: size)
             let cgContext = context.cgContext
             
-            // Draw background circle
+            // Draw background circle - white if icon is set, light gray if no icon
             let path = UIBezierPath(ovalIn: rect)
-            cgContext.setFillColor(UIColor.white.cgColor)
+            cgContext.setFillColor(hasIcon ? UIColor.white.cgColor : UIColor.systemGray5.cgColor)
             cgContext.addPath(path.cgPath)
             cgContext.fillPath()
             
