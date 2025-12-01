@@ -184,6 +184,7 @@ final class HomeViewController: UIViewController {
     
     deinit {
         NotificationCenter.default.removeObserver(self)
+        NotificationCenter.default.removeObserver(self)
     }
     
     // MARK: - Setup
@@ -450,6 +451,19 @@ final class HomeViewController: UIViewController {
     private func setupNotificationObservers() {
         // Removed appWillEnterForeground observer to prevent repeated permission checks
         // Location permissions are now only checked when actually needed
+        
+        // Listen for collection updates to refresh map pins
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(updateMapWithCollections),
+            name: NSNotification.Name("UpdateMapWithCollections"),
+            object: nil
+        )
+    }
+    
+    @objc private func updateMapWithCollections() {
+        // Reload collections which will update the map with new pins
+        loadCollections()
     }
     
     private func checkLocationPermission() {
@@ -600,6 +614,20 @@ extension HomeViewController: UITableViewDelegate, UITableViewDataSource {
                 DispatchQueue.main.async {
                     self?.mapManager?.showPlaceOnMap(place)
                     let detailViewController = PlaceDetailViewController(place: place, isFromCollection: false)
+                    
+                    // Configure sheet presentation
+                    if let sheet = detailViewController.sheetPresentationController {
+                        let mediumDetentIdentifier = UISheetPresentationController.Detent.Identifier("medium")
+                        let mediumDetent = UISheetPresentationController.Detent.custom(identifier: mediumDetentIdentifier) { context in
+                            return context.maximumDetentValue * 0.4
+                        }
+                        sheet.detents = [mediumDetent, .large()]
+                        sheet.selectedDetentIdentifier = mediumDetentIdentifier
+                        sheet.largestUndimmedDetentIdentifier = mediumDetentIdentifier
+                        sheet.prefersGrabberVisible = true
+                        sheet.prefersScrollingExpandsWhenScrolledToEdge = true
+                    }
+                    
                     self?.present(detailViewController, animated: true)
                 }
             }
@@ -624,9 +652,22 @@ extension HomeViewController: SearchViewControllerDelegate {
     func searchViewController(_ controller: SearchViewController, didSelectPlace place: GMSPlace) {
         mapManager?.showPlaceOnMap(place)
         let detailViewController = PlaceDetailViewController(place: place, isFromCollection: false)
-        // Dismiss the search UI first, then present the detail over current context so the map stays visible
+        
+        // Configure sheet presentation
+        if let sheet = detailViewController.sheetPresentationController {
+            let mediumDetentIdentifier = UISheetPresentationController.Detent.Identifier("medium")
+            let mediumDetent = UISheetPresentationController.Detent.custom(identifier: mediumDetentIdentifier) { context in
+                return context.maximumDetentValue * 0.4
+            }
+            sheet.detents = [mediumDetent, .large()]
+            sheet.selectedDetentIdentifier = mediumDetentIdentifier
+            sheet.largestUndimmedDetentIdentifier = mediumDetentIdentifier
+            sheet.prefersGrabberVisible = true
+            sheet.prefersScrollingExpandsWhenScrolledToEdge = true
+        }
+        
+        // Dismiss the search UI first, then present the detail
         controller.dismiss(animated: true) {
-            detailViewController.modalPresentationStyle = .overCurrentContext
             self.present(detailViewController, animated: true)
         }
     }
@@ -713,7 +754,20 @@ extension HomeViewController: SearchManagerDelegate {
     func searchManager(_ manager: SearchManager, didSelectPlace place: GMSPlace) {
         mapManager?.showPlaceOnMap(place)
         let detailViewController = PlaceDetailViewController(place: place, isFromCollection: false)
-        detailViewController.modalPresentationStyle = .overCurrentContext
+        
+        // Configure sheet presentation
+        if let sheet = detailViewController.sheetPresentationController {
+            let mediumDetentIdentifier = UISheetPresentationController.Detent.Identifier("medium")
+            let mediumDetent = UISheetPresentationController.Detent.custom(identifier: mediumDetentIdentifier) { context in
+                return context.maximumDetentValue * 0.4
+            }
+            sheet.detents = [mediumDetent, .large()]
+            sheet.selectedDetentIdentifier = mediumDetentIdentifier
+            sheet.largestUndimmedDetentIdentifier = mediumDetentIdentifier
+            sheet.prefersGrabberVisible = true
+            sheet.prefersScrollingExpandsWhenScrolledToEdge = true
+        }
+        
         // If a SearchViewController is currently presented, dismiss it before presenting details
         if let presented = self.presentedViewController as? SearchViewController {
             presented.dismiss(animated: true) {

@@ -110,12 +110,35 @@ final class GoogleMapManager: NSObject {
         let marker = MarkerFactory.createPlaceMarker(for: place)
         marker.map = mapView
         
+        // Adjust camera position to account for modal
+        // Modal starts at 60% from top and has height 40% (from code: y: 0.6, height: 0.4)
+        // Pin should be 20% of screen height down from top of modal
+        // So pin position = 60% (modal start) - 20% = 40% from top of screen
+        let screenHeight = mapView.bounds.height
+        let modalStartFromTop = 0.6 // Modal starts at 60% from top (actual from code)
+        let pinOffsetFromModalTop = 0.2 // Pin is 20% of screen height down from top of modal
+        let targetPositionFromTop = modalStartFromTop - pinOffsetFromModalTop // 40% from top of screen
+        let currentPositionFromTop = 0.5 // Center of screen (50% from top)
+        let offsetFromTop = screenHeight * (currentPositionFromTop - targetPositionFromTop) // 10% of screen height
+        
+        // Calculate latitude offset based on zoom level and screen dimensions
+        // Formula: degrees per pixel = (156543.03392 * cos(lat * π/180)) / (2^zoom)
+        let zoom = Double(Constants.defaultZoom)
+        let latRad = place.coordinate.latitude * .pi / 180.0
+        let metersPerPixel = 156543.03392 * cos(latRad) / pow(2.0, zoom)
+        let offsetMeters = Double(offsetFromTop) * metersPerPixel
+        let metersPerDegreeLat = 111000.0 // Approximate meters per degree latitude
+        let offsetLatitude = offsetMeters / metersPerDegreeLat
+        
+        // Calculate adjusted coordinate (move camera south so pin appears higher on screen)
+        let adjustedLatitude = place.coordinate.latitude - offsetLatitude
+        
         let camera = GMSCameraPosition.camera(
-            withLatitude: place.coordinate.latitude,
+            withLatitude: adjustedLatitude,
             longitude: place.coordinate.longitude,
             zoom: Constants.defaultZoom
         )
-        Logger.log("Animating map to: \(place.coordinate.latitude), \(place.coordinate.longitude)", level: .debug, category: "Map")
+        Logger.log("Animating map to: \(adjustedLatitude), \(place.coordinate.longitude) (adjusted for modal - upper area)", level: .debug, category: "Map")
         mapView.animate(to: camera)
         
         markers.append(marker)
@@ -227,10 +250,44 @@ final class GoogleMapManager: NSObject {
         // Store places data for zoom updates
         self.collectionPlacesData = validPlacesData
         
+        // Remove red place markers that are at the same location as collection places
+        removeRedMarkersForCollectionPlaces(validPlacesData)
+        
         // Create markers for all places with their collection icons
         self.updateCollectionPlaceMarkers()
         
         Logger.log("Total collection place markers on map: \(self.collectionPlaceMarkers.count)", level: .debug, category: "Map")
+    }
+    
+    private func removeRedMarkersForCollectionPlaces(_ collectionPlaces: [(place: PlaceCollection.Place, collection: PlaceCollection)]) {
+        // Count how many markers we'll remove
+        var removedCount = 0
+        let tolerance: Double = 0.0001 // Small tolerance for floating point comparison
+        
+        // Remove red markers that are at the same location as collection places
+        markers.removeAll { marker in
+            let markerLat = marker.position.latitude
+            let markerLng = marker.position.longitude
+            
+            // Check if this marker is at the same location as any collection place
+            for collectionPlace in collectionPlaces {
+                let placeLat = collectionPlace.place.latitude
+                let placeLng = collectionPlace.place.longitude
+                
+                // Check if coordinates match (within tolerance)
+                if abs(placeLat - markerLat) < tolerance && abs(placeLng - markerLng) < tolerance {
+                    // Remove the marker from the map
+                    marker.map = nil
+                    removedCount += 1
+                    return true
+                }
+            }
+            return false
+        }
+        
+        if removedCount > 0 {
+            Logger.log("Removed \(removedCount) red marker(s) that overlap with collection places", level: .debug, category: "Map")
+        }
     }
 
     // Convenience to move camera to arbitrary coordinate (for deep links)

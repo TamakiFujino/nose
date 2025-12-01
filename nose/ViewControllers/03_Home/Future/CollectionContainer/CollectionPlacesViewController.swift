@@ -174,6 +174,10 @@ class CollectionPlacesViewController: UIViewController {
         currentIconName = collection.iconName // Initialize with collection's icon (SF Symbol)
         currentIconUrl = collection.iconUrl // Initialize with collection's icon URL (custom image)
         setupUI()
+        // Hide shared friends label until count is loaded
+        sharedFriendsLabel.isHidden = true
+        // Preload icon immediately if it's a remote URL
+        preloadCollectionIconIfNeeded()
         loadPlaces()
         loadSharedFriendsCount()
         checkIfCompleted()
@@ -182,6 +186,28 @@ class CollectionPlacesViewController: UIViewController {
         // Listen for avatar thumbnail updates
         NotificationCenter.default.addObserver(self, selector: #selector(handleAvatarThumbnailUpdatedNotification(_:)), name: Notification.Name("AvatarThumbnailUpdated"), object: nil)
         // prefillAvatarImageIfCached() // disabled since big avatar image is not shown
+    }
+    
+    private func preloadCollectionIconIfNeeded() {
+        let iconUrlToUse = currentIconUrl ?? collection.iconUrl
+        if let iconUrl = iconUrlToUse, !iconUrl.isEmpty {
+            // Check if already cached
+            if CollectionPlacesViewController.imageCache.object(forKey: iconUrl as NSString) == nil {
+                // Preload the icon
+                loadRemoteIconImage(urlString: iconUrl) { [weak self] image in
+                    DispatchQueue.main.async {
+                        guard let self = self, let image = image else { return }
+                        // Update the icon display immediately if loaded
+                        self.collectionIconImageView.image = self.createIconImageWithBackground(remoteImage: image)
+                    }
+                }
+            } else {
+                // Already cached, use it immediately
+                if let cachedImage = CollectionPlacesViewController.imageCache.object(forKey: iconUrl as NSString) {
+                    collectionIconImageView.image = createIconImageWithBackground(remoteImage: cachedImage)
+                }
+            }
+        }
     }
 
     private func setupUI() {
@@ -758,6 +784,8 @@ class CollectionPlacesViewController: UIViewController {
         
         sharedFriendsLabel.attributedText = attributedText
         sharedFriendsLabel.accessibilityValue = "\(sharedFriendsCount)"
+        // Show the label now that the count is loaded
+        sharedFriendsLabel.isHidden = false
     }
 
     private func updatePlacesCountLabel() {

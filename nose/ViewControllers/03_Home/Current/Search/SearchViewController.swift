@@ -295,12 +295,12 @@ private extension SearchViewController {
         // If this VC was presented modally, dismiss it first, then present from the presenter
         if let presenter = self.presentingViewController {
             self.dismiss(animated: true) {
-                detailVC.modalPresentationStyle = .overCurrentContext
+                // Sheet presentation is configured in PlaceDetailViewController
                 detailVC.modalTransitionStyle = .crossDissolve
                 presenter.present(detailVC, animated: true)
             }
         } else {
-            detailVC.modalPresentationStyle = .overCurrentContext
+            // Sheet presentation is configured in PlaceDetailViewController
             detailVC.modalTransitionStyle = .crossDissolve
             self.present(detailVC, animated: true)
         }

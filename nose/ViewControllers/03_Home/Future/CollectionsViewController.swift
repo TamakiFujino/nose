@@ -168,6 +168,28 @@ class CollectionsViewController: UIViewController {
         
         print("🔍 Loading collections for user: \(currentUserId)")
         
+        // Create groups to track loading progress
+        let memberCountGroup = DispatchGroup()
+        var ownedCollectionsLoaded = false
+        var sharedCollectionsLoaded = false
+        var reloadSetup = false
+        
+        // Helper to check if we should reload the table
+        let checkAndReload: () -> Void = { [weak self] in
+            guard let self = self else { return }
+            if ownedCollectionsLoaded && sharedCollectionsLoaded && !reloadSetup {
+                reloadSetup = true
+                // Wait for all member counts to load before reloading table
+                memberCountGroup.notify(queue: .main) {
+                    self.tableView.reloadData()
+                    // Update map with all collections (personal + shared)
+                    self.updateMapWithCollections()
+                    // Cache for Share Extension
+                    self.cacheCollectionsForExtension()
+                }
+            }
+        }
+        
         // Load owned collections
         let ownedCollectionsRef = db.collection("users")
             .document(currentUserId)
@@ -178,6 +200,8 @@ class CollectionsViewController: UIViewController {
         ownedCollectionsRef.whereField("isOwner", isEqualTo: true).getDocuments { [weak self] snapshot, error in
             if let error = error {
                 print("❌ Error loading owned collections: \(error.localizedDescription)")
+                ownedCollectionsLoaded = true
+                checkAndReload()
                 return
             }
             
@@ -203,7 +227,8 @@ class CollectionsViewController: UIViewController {
                 if let collection = PlaceCollection(dictionary: data) {
                     print("✅ Loaded owned collection: '\(collection.name)' (ID: \(collection.id))")
                     // Load member count for this collection
-                    self?.loadMemberCount(for: collection.id, ownerId: collection.userId)
+                    memberCountGroup.enter()
+                    self?.loadMemberCount(for: collection.id, ownerId: collection.userId, group: memberCountGroup)
                     return collection
                 }
                 print("❌ Failed to parse owned collection: \(document.documentID)")
@@ -214,13 +239,11 @@ class CollectionsViewController: UIViewController {
             self?.personalCollections = self?.personalCollections.filter { $0.status == .active } ?? []
             print("🎯 Active owned collections: \(self?.personalCollections.count ?? 0)")
             
-            DispatchQueue.main.async {
-                self?.tableView.reloadData()
-                // Update map with all collections (personal + shared)
-                self?.updateMapWithCollections()
-                // Cache for Share Extension
-                self?.cacheCollectionsForExtension()
-            }
+            // Preload icons for owned collections
+            self?.preloadCollectionIcons()
+            
+            ownedCollectionsLoaded = true
+            checkAndReload()
         }
         
         // Load shared collections
@@ -282,7 +305,8 @@ class CollectionsViewController: UIViewController {
                                 if let collection = PlaceCollection(dictionary: collectionData) {
                                     print("✅ Loaded shared collection: '\(collection.name)' (ID: \(collection.id))")
                                     // Load member count for this collection
-                                    self?.loadMemberCount(for: collection.id, ownerId: ownerId)
+                                    memberCountGroup.enter()
+                                    self?.loadMemberCount(for: collection.id, ownerId: ownerId, group: memberCountGroup)
                                     loadedCollections.append(collection)
                                 } else {
                                     print("❌ Failed to parse shared collection: \(collectionId)")
@@ -300,15 +324,33 @@ class CollectionsViewController: UIViewController {
             group.notify(queue: .main) {
                 self?.sharedCollections = loadedCollections.filter { $0.status == .active }
                 print("🎯 Active shared collections: \(self?.sharedCollections.count ?? 0)")
-                self?.tableView.reloadData()
-                // Update map with all collections (personal + shared)
-                self?.updateMapWithCollections()
+                sharedCollectionsLoaded = true
+                // Preload all collection icons
+                self?.preloadCollectionIcons()
+                checkAndReload()
             }
         }
     }
     
-    private func loadMemberCount(for collectionId: String, ownerId: String) {
-        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+    private func preloadCollectionIcons() {
+        // Preload icons for all collections (personal + shared) in parallel
+        let allCollections = personalCollections + sharedCollections
+        
+        for collection in allCollections {
+            if let iconUrl = collection.iconUrl, !iconUrl.isEmpty {
+                // Only load if not already cached
+                if CollectionsViewController.imageCache.object(forKey: iconUrl as NSString) == nil {
+                    loadRemoteIconImage(urlString: iconUrl, collectionId: collection.id)
+                }
+            }
+        }
+    }
+    
+    private func loadMemberCount(for collectionId: String, ownerId: String, group: DispatchGroup) {
+        guard let currentUserId = Auth.auth().currentUser?.uid else {
+            group.leave()
+            return
+        }
         let db = Firestore.firestore()
         
         // Get blocked users first
@@ -324,17 +366,17 @@ class CollectionsViewController: UIViewController {
                     .collection("collections")
                     .document(collectionId)
                     .getDocument { snapshot, _ in
+                        defer { group.leave() }
+                        
                         if let members = snapshot?.data()?["members"] as? [String] {
                             // Filter out blocked users
                             let activeMembers = members.filter { !blockedUserIds.contains($0) }
                             DispatchQueue.main.async {
                                 self?.collectionMemberCounts[collectionId] = activeMembers.count
-                                self?.tableView.reloadData()
                             }
                         } else {
                             DispatchQueue.main.async {
                                 self?.collectionMemberCounts[collectionId] = 0
-                                self?.tableView.reloadData()
                             }
                         }
                     }
@@ -359,11 +401,19 @@ extension CollectionsViewController: UITableViewDelegate, UITableViewDataSource 
         // Create icon image for the collection
         var iconImage = createCollectionIconImage(collection: collection)
         
-        // Load remote icon if available
-        if let iconUrl = collection.iconUrl, !iconUrl.isEmpty, loadedIconImages[collection.id] == nil {
-            loadRemoteIconImage(urlString: iconUrl, collectionId: collection.id)
-        } else if let url = collection.iconUrl, let loadedImage = loadedIconImages[collection.id] {
-            iconImage = createIconImageWithBackground(remoteImage: loadedImage, size: 40)
+        // Check if we have a cached or loaded remote icon
+        if let iconUrl = collection.iconUrl, !iconUrl.isEmpty {
+            // First check if already loaded in memory
+            if let loadedImage = loadedIconImages[collection.id] {
+                iconImage = createIconImageWithBackground(remoteImage: loadedImage, size: 40)
+            } else if let cachedImage = CollectionsViewController.imageCache.object(forKey: iconUrl as NSString) {
+                // Use cached image immediately
+                loadedIconImages[collection.id] = cachedImage
+                iconImage = createIconImageWithBackground(remoteImage: cachedImage, size: 40)
+            } else {
+                // Not cached yet, load it (but don't block the UI)
+                loadRemoteIconImage(urlString: iconUrl, collectionId: collection.id)
+            }
         }
         
         content.image = iconImage

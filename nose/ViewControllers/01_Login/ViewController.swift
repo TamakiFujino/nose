@@ -384,7 +384,7 @@ extension ViewController: ASAuthorizationControllerDelegate {
             }
             
             let credential = OAuthProvider.credential(
-                withProviderID: "apple.com",
+                providerID: .apple,
                 idToken: idTokenString,
                 rawNonce: nonce
             )

@@ -196,6 +196,24 @@ class SaveToCollectionViewController: UIViewController {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         let db = Firestore.firestore()
         
+        // Create groups to track loading progress
+        let memberCountGroup = DispatchGroup()
+        var ownedCollectionsLoaded = false
+        var sharedCollectionsLoaded = false
+        var reloadSetup = false
+        
+        // Helper to check if we should reload the table
+        let checkAndReload: () -> Void = { [weak self] in
+            guard let self = self else { return }
+            if ownedCollectionsLoaded && sharedCollectionsLoaded && !reloadSetup {
+                reloadSetup = true
+                // Wait for all member counts to load before reloading table
+                memberCountGroup.notify(queue: .main) {
+                    self.collectionsTableView.reloadData()
+                }
+            }
+        }
+        
         // Load owned collections
         let ownedCollectionsRef = db.collection("users")
             .document(currentUserId)
@@ -205,6 +223,8 @@ class SaveToCollectionViewController: UIViewController {
         ownedCollectionsRef.getDocuments { [weak self] snapshot, error in
             if let error = error {
                 print("❌ Error loading owned collections: \(error.localizedDescription)")
+                ownedCollectionsLoaded = true
+                checkAndReload()
                 return
             }
             
@@ -216,7 +236,8 @@ class SaveToCollectionViewController: UIViewController {
                 if let collection = PlaceCollection(dictionary: data) {
                     print("✅ Loaded owned collection: '\(collection.name)' (ID: \(collection.id))")
                     // Load member count for this collection
-                    self?.loadMemberCount(for: collection.id, ownerId: collection.userId)
+                    memberCountGroup.enter()
+                    self?.loadMemberCount(for: collection.id, ownerId: collection.userId, group: memberCountGroup)
                     return collection
                 }
                 print("❌ Failed to parse owned collection: \(document.documentID)")
@@ -226,9 +247,11 @@ class SaveToCollectionViewController: UIViewController {
             // Filter to only show active collections
             self?.ownedCollections = collections.filter { $0.status == .active }
             
-            DispatchQueue.main.async {
-                self?.collectionsTableView.reloadData()
-            }
+            // Preload icons for owned collections
+            self?.preloadCollectionIcons()
+            
+            ownedCollectionsLoaded = true
+            checkAndReload()
         }
         
         // Load shared collections
@@ -240,6 +263,8 @@ class SaveToCollectionViewController: UIViewController {
         sharedCollectionsRef.getDocuments { [weak self] snapshot, error in
             if let error = error {
                 print("❌ Error loading shared collections: \(error.localizedDescription)")
+                sharedCollectionsLoaded = true
+                checkAndReload()
                 return
             }
             
@@ -275,7 +300,8 @@ class SaveToCollectionViewController: UIViewController {
                                 if let collection = PlaceCollection(dictionary: collectionData) {
                                     print("✅ Loaded shared collection: '\(collection.name)' (ID: \(collection.id))")
                                     // Load member count for this collection
-                                    self?.loadMemberCount(for: collection.id, ownerId: ownerId)
+                                    memberCountGroup.enter()
+                                    self?.loadMemberCount(for: collection.id, ownerId: ownerId, group: memberCountGroup)
                                     loadedCollections.append(collection)
                                 } else {
                                     print("❌ Failed to parse shared collection: \(collectionId)")
@@ -292,7 +318,24 @@ class SaveToCollectionViewController: UIViewController {
             
             group.notify(queue: .main) {
                 self?.sharedCollections = loadedCollections.filter { $0.status == .active }
-                self?.collectionsTableView.reloadData()
+                sharedCollectionsLoaded = true
+                // Preload all collection icons
+                self?.preloadCollectionIcons()
+                checkAndReload()
+            }
+        }
+    }
+    
+    private func preloadCollectionIcons() {
+        // Preload icons for all collections (owned + shared) in parallel
+        let allCollections = ownedCollections + sharedCollections
+        
+        for collection in allCollections {
+            if let iconUrl = collection.iconUrl, !iconUrl.isEmpty {
+                // Only load if not already cached
+                if SaveToCollectionViewController.imageCache.object(forKey: iconUrl as NSString) == nil {
+                    loadRemoteIconImage(urlString: iconUrl, collectionId: collection.id)
+                }
             }
         }
     }
@@ -301,8 +344,11 @@ class SaveToCollectionViewController: UIViewController {
         saveButton.isEnabled = selectedCollection != nil || !newCollectionName.isEmpty
     }
     
-    private func loadMemberCount(for collectionId: String, ownerId: String) {
-        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+    private func loadMemberCount(for collectionId: String, ownerId: String, group: DispatchGroup) {
+        guard let currentUserId = Auth.auth().currentUser?.uid else {
+            group.leave()
+            return
+        }
         let db = Firestore.firestore()
         
         // Get blocked users first
@@ -318,17 +364,17 @@ class SaveToCollectionViewController: UIViewController {
                     .collection("collections")
                     .document(collectionId)
                     .getDocument { snapshot, _ in
+                        defer { group.leave() }
+                        
                         if let members = snapshot?.data()?["members"] as? [String] {
                             // Filter out blocked users
                             let activeMembers = members.filter { !blockedUserIds.contains($0) }
                             DispatchQueue.main.async {
                                 self?.collectionMemberCounts[collectionId] = activeMembers.count
-                                self?.collectionsTableView.reloadData()
                             }
                         } else {
                             DispatchQueue.main.async {
                                 self?.collectionMemberCounts[collectionId] = 0
-                                self?.collectionsTableView.reloadData()
                             }
                         }
                     }
@@ -480,6 +526,8 @@ class SaveToCollectionViewController: UIViewController {
                             print("✅ Successfully saved place to collection")
                             // Refresh collections to update the count
                             self.loadCollections()
+                            // Post notification to update map immediately
+                            NotificationCenter.default.post(name: NSNotification.Name("UpdateMapWithCollections"), object: nil)
                             // Notify delegate and dismiss
                             if case .place(let place) = self.itemToSave {
                                 self.delegate?.saveToCollectionViewController(self, didSavePlace: place, toCollection: collection)
@@ -560,6 +608,8 @@ class SaveToCollectionViewController: UIViewController {
                     } else {
                         print("✅ Successfully saved event to collection")
                         self.loadCollections()
+                        // Post notification to update map immediately
+                        NotificationCenter.default.post(name: NSNotification.Name("UpdateMapWithCollections"), object: nil)
                         self.delegate?.saveToCollectionViewController(self, didSaveEvent: event, toCollection: collection)
                         self.dismiss(animated: true)
                     }
@@ -608,11 +658,19 @@ extension SaveToCollectionViewController: UITableViewDelegate, UITableViewDataSo
         // Create icon image for the collection
         var iconImage = createCollectionIconImage(collection: collection)
         
-        // Load remote icon if available
-        if let iconUrl = collection.iconUrl, !iconUrl.isEmpty, loadedIconImages[collection.id] == nil {
-            loadRemoteIconImage(urlString: iconUrl, collectionId: collection.id)
-        } else if let url = collection.iconUrl, let loadedImage = loadedIconImages[collection.id] {
-            iconImage = createIconImageWithBackground(remoteImage: loadedImage, size: 40)
+        // Check if we have a cached or loaded remote icon
+        if let iconUrl = collection.iconUrl, !iconUrl.isEmpty {
+            // First check if already loaded in memory
+            if let loadedImage = loadedIconImages[collection.id] {
+                iconImage = createIconImageWithBackground(remoteImage: loadedImage, size: 40)
+            } else if let cachedImage = SaveToCollectionViewController.imageCache.object(forKey: iconUrl as NSString) {
+                // Use cached image immediately
+                loadedIconImages[collection.id] = cachedImage
+                iconImage = createIconImageWithBackground(remoteImage: cachedImage, size: 40)
+            } else {
+                // Not cached yet, load it (but don't block the UI)
+                loadRemoteIconImage(urlString: iconUrl, collectionId: collection.id)
+            }
         }
         
         content.image = iconImage

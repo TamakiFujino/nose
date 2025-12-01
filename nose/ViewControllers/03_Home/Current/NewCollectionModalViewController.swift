@@ -11,6 +11,7 @@ class NewCollectionModalViewController: UIViewController {
     weak var delegate: NewCollectionModalViewControllerDelegate?
     private var selectedIconUrl: String? = nil
     private var collectionName: String = ""
+    private var containerViewCenterYConstraint: NSLayoutConstraint?
     
     // MARK: - UI Components
     private let containerView: UIView = {
@@ -114,6 +115,16 @@ class NewCollectionModalViewController: UIViewController {
         setupKeyboardDismissal()
     }
     
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        setupKeyboardObservers()
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        removeKeyboardObservers()
+    }
+    
     // MARK: - Setup
     private func setupUI() {
         view.backgroundColor = UIColor.black.withAlphaComponent(0.5)
@@ -127,10 +138,14 @@ class NewCollectionModalViewController: UIViewController {
         containerView.addSubview(cancelButton)
         containerView.addSubview(saveButton)
         
+        // Store centerY constraint for keyboard adjustments
+        let centerYConstraint = containerView.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+        containerViewCenterYConstraint = centerYConstraint
+        
         NSLayoutConstraint.activate([
             // Container view - centered in screen
             containerView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            containerView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            centerYConstraint,
             containerView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 32),
             containerView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -32),
             
@@ -194,6 +209,69 @@ class NewCollectionModalViewController: UIViewController {
     
     @objc private func dismissKeyboard() {
         view.endEditing(true)
+    }
+    
+    // MARK: - Keyboard Handling
+    private func setupKeyboardObservers() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(keyboardWillShow(_:)),
+            name: UIResponder.keyboardWillShowNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(keyboardWillHide(_:)),
+            name: UIResponder.keyboardWillHideNotification,
+            object: nil
+        )
+    }
+    
+    private func removeKeyboardObservers() {
+        NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardWillShowNotification, object: nil)
+        NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardWillHideNotification, object: nil)
+    }
+    
+    @objc private func keyboardWillShow(_ notification: Notification) {
+        guard let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
+              let animationDuration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double,
+              let animationCurve = notification.userInfo?[UIResponder.keyboardAnimationCurveUserInfoKey] as? UInt else {
+            return
+        }
+        
+        let keyboardHeight = keyboardFrame.height
+        let safeAreaBottom = view.safeAreaInsets.bottom
+        
+        // Calculate the bottom of the text field in the view's coordinate system
+        let textFieldFrame = nameTextField.convert(nameTextField.bounds, to: view)
+        let textFieldBottom = textFieldFrame.maxY
+        
+        // Calculate available space above keyboard
+        let availableSpace = view.bounds.height - keyboardHeight - safeAreaBottom
+        
+        // Calculate how much we need to move up
+        let offset = max(0, textFieldBottom - availableSpace + 20) // 20pt padding
+        
+        // Update constraint with animation
+        containerViewCenterYConstraint?.constant = -offset
+        
+        UIView.animate(withDuration: animationDuration, delay: 0, options: UIView.AnimationOptions(rawValue: animationCurve)) {
+            self.view.layoutIfNeeded()
+        }
+    }
+    
+    @objc private func keyboardWillHide(_ notification: Notification) {
+        guard let animationDuration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double,
+              let animationCurve = notification.userInfo?[UIResponder.keyboardAnimationCurveUserInfoKey] as? UInt else {
+            return
+        }
+        
+        // Reset constraint to original position
+        containerViewCenterYConstraint?.constant = 0
+        
+        UIView.animate(withDuration: animationDuration, delay: 0, options: UIView.AnimationOptions(rawValue: animationCurve)) {
+            self.view.layoutIfNeeded()
+        }
     }
     
     // MARK: - Actions
