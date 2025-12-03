@@ -21,8 +21,10 @@ final class MarkerFactory {
     
     static func createPlaceMarker(for place: GMSPlace) -> GMSMarker {
         let marker = GMSMarker(position: place.coordinate)
+        marker.iconView = createGlassmorphismMarkerView()
         marker.title = place.name
         marker.snippet = place.formattedAddress
+        marker.groundAnchor = CGPoint(x: 0.5, y: 1.0) // Anchor at bottom center (pin tip)
         return marker
     }
     
@@ -66,6 +68,150 @@ final class MarkerFactory {
     }
     
     // MARK: - Private Methods
+    private static func createGlassmorphismMarkerView() -> UIView {
+        // Original SVG is 16x20, scale up for visibility
+        let scale: CGFloat = 2.5
+        let width: CGFloat = 16 * scale
+        let height: CGFloat = 20 * scale
+        
+        // Add padding for shadow
+        let shadowPadding: CGFloat = 12
+        let containerWidth = width + shadowPadding * 2
+        let containerHeight = height + shadowPadding * 2
+        
+        let containerView = UIView(frame: CGRect(x: 0, y: 0, width: containerWidth, height: containerHeight))
+        containerView.backgroundColor = .clear
+        containerView.clipsToBounds = false
+        
+        // Create a sublayer view offset by the padding
+        let pinView = UIView(frame: CGRect(x: shadowPadding, y: shadowPadding, width: width, height: height))
+        pinView.backgroundColor = .clear
+        pinView.clipsToBounds = false
+        
+        // Create paths
+        let outerPinPath = createOuterPinPath(scale: scale)
+        let innerCirclePath = createInnerCirclePath(scale: scale)
+        
+        // Combined path with hole (for fill)
+        let combinedPath = UIBezierPath()
+        combinedPath.append(outerPinPath)
+        combinedPath.append(innerCirclePath.reversing()) // Reverse for even-odd hole
+        
+        // Create layered shadows like collection markers (no blur, solid colors, centered)
+        
+        // Outer shadow (larger, more transparent) - centered
+        let outerShadowScale = scale + 0.6
+        let outerShadowPath = createOuterPinPath(scale: outerShadowScale)
+        let outerShadowWidth = 16 * outerShadowScale
+        let outerShadowHeight = 20 * outerShadowScale
+        let outerShadowX = (width - outerShadowWidth) / 2
+        let outerShadowY = (height - outerShadowHeight) / 2
+        
+        let outerShadowLayer = CAShapeLayer()
+        outerShadowLayer.path = outerShadowPath.cgPath
+        outerShadowLayer.fillColor = UIColor.black.withAlphaComponent(0.08).cgColor
+        outerShadowLayer.frame = CGRect(x: outerShadowX, y: outerShadowY, width: outerShadowWidth, height: outerShadowHeight)
+        pinView.layer.insertSublayer(outerShadowLayer, at: 0)
+        
+        // Inner shadow (smaller, less transparent) - centered
+        let innerShadowScale = scale + 0.3
+        let innerShadowPath = createOuterPinPath(scale: innerShadowScale)
+        let innerShadowWidth = 16 * innerShadowScale
+        let innerShadowHeight = 20 * innerShadowScale
+        let innerShadowX = (width - innerShadowWidth) / 2
+        let innerShadowY = (height - innerShadowHeight) / 2
+        
+        let innerShadowLayer = CAShapeLayer()
+        innerShadowLayer.path = innerShadowPath.cgPath
+        innerShadowLayer.fillColor = UIColor.black.withAlphaComponent(0.12).cgColor
+        innerShadowLayer.frame = CGRect(x: innerShadowX, y: innerShadowY, width: innerShadowWidth, height: innerShadowHeight)
+        pinView.layer.insertSublayer(innerShadowLayer, at: 1)
+        
+        // Solid white fill (with hole)
+        let fillLayer = CAShapeLayer()
+        fillLayer.path = combinedPath.cgPath
+        fillLayer.fillRule = .evenOdd
+        fillLayer.fillColor = UIColor.white.cgColor
+        pinView.layer.addSublayer(fillLayer)
+        
+        containerView.addSubview(pinView)
+        
+        return containerView
+    }
+    
+    // Creates outer pin path from pin.svg
+    private static func createOuterPinPath(scale: CGFloat) -> UIBezierPath {
+        let path = UIBezierPath()
+        
+        // Pin shape from SVG
+        path.move(to: CGPoint(x: 8 * scale, y: 0))
+        
+        path.addCurve(
+            to: CGPoint(x: 2.37124 * scale, y: 2.31479 * scale),
+            controlPoint1: CGPoint(x: 5.89206 * scale, y: 0),
+            controlPoint2: CGPoint(x: 3.86926 * scale, y: 0.831759 * scale)
+        )
+        
+        path.addCurve(
+            to: CGPoint(x: 0, y: 7.92 * scale),
+            controlPoint1: CGPoint(x: 0.873231 * scale, y: 3.79782 * scale),
+            controlPoint2: CGPoint(x: 0.0210794 * scale, y: 5.81216 * scale)
+        )
+        
+        path.addCurve(
+            to: CGPoint(x: 7.35 * scale, y: 19.76 * scale),
+            controlPoint1: CGPoint(x: 0, y: 13.4 * scale),
+            controlPoint2: CGPoint(x: 7.05 * scale, y: 19.5 * scale)
+        )
+        
+        path.addCurve(
+            to: CGPoint(x: 8 * scale, y: 20 * scale),
+            controlPoint1: CGPoint(x: 7.53113 * scale, y: 19.9149 * scale),
+            controlPoint2: CGPoint(x: 7.76165 * scale, y: 20 * scale)
+        )
+        
+        path.addCurve(
+            to: CGPoint(x: 8.65 * scale, y: 19.76 * scale),
+            controlPoint1: CGPoint(x: 8.23835 * scale, y: 20 * scale),
+            controlPoint2: CGPoint(x: 8.46887 * scale, y: 19.9149 * scale)
+        )
+        
+        path.addCurve(
+            to: CGPoint(x: 16 * scale, y: 7.92 * scale),
+            controlPoint1: CGPoint(x: 9 * scale, y: 19.5 * scale),
+            controlPoint2: CGPoint(x: 16 * scale, y: 13.4 * scale)
+        )
+        
+        path.addCurve(
+            to: CGPoint(x: 13.6288 * scale, y: 2.31479 * scale),
+            controlPoint1: CGPoint(x: 15.9789 * scale, y: 5.81216 * scale),
+            controlPoint2: CGPoint(x: 15.1268 * scale, y: 3.79782 * scale)
+        )
+        
+        path.addCurve(
+            to: CGPoint(x: 8 * scale, y: 0),
+            controlPoint1: CGPoint(x: 12.1307 * scale, y: 0.831759 * scale),
+            controlPoint2: CGPoint(x: 10.1079 * scale, y: 0)
+        )
+        
+        path.close()
+        return path
+    }
+    
+    // Creates inner circle path (the hole) from pin.svg
+    private static func createInnerCirclePath(scale: CGFloat) -> UIBezierPath {
+        // The inner circle is centered at (8, 7.5) with radius 3.5 based on SVG
+        let centerX = 8 * scale
+        let centerY = 7.5 * scale
+        let radius = 3.5 * scale
+        
+        return UIBezierPath(arcCenter: CGPoint(x: centerX, y: centerY), 
+                           radius: radius, 
+                           startAngle: 0, 
+                           endAngle: .pi * 2, 
+                           clockwise: true)
+    }
+    
     private static func createEventMarkerView() -> UIView {
         let size: CGFloat = 40
         let shadowRadius: CGFloat = 3

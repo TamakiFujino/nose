@@ -459,11 +459,24 @@ final class HomeViewController: UIViewController {
             name: NSNotification.Name("UpdateMapWithCollections"),
             object: nil
         )
+        
+        // Listen for place detail dismissal to remove place marker
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(removePlaceMarker),
+            name: NSNotification.Name("RemovePlaceMarker"),
+            object: nil
+        )
     }
     
     @objc private func updateMapWithCollections() {
         // Reload collections which will update the map with new pins
         loadCollections()
+    }
+    
+    @objc private func removePlaceMarker() {
+        // Clear place markers when PlaceDetailViewController is dismissed
+        mapManager?.clearMarkers()
     }
     
     private func checkLocationPermission() {

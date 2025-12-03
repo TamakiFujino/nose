@@ -148,8 +148,21 @@ final class GoogleMapManager: NSObject {
     }
     
     func clearMarkers() {
-        markers.forEach { $0.map = nil }
+        // Animate fade out before removing
+        let markersToRemove = markers
         markers.removeAll()
+        
+        for marker in markersToRemove {
+            if let iconView = marker.iconView {
+                UIView.animate(withDuration: 0.3, animations: {
+                    iconView.alpha = 0
+                }, completion: { _ in
+                    marker.map = nil
+                })
+            } else {
+                marker.map = nil
+            }
+        }
     }
     
     func clearEventMarkers() {

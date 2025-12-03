@@ -211,6 +211,15 @@ final class PlaceDetailViewController: UIViewController {
         print("PlaceDetailViewController - viewDidAppear")
     }
     
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        print("PlaceDetailViewController - viewDidDisappear")
+        // Notify to remove the place marker when this view is dismissed
+        if isBeingDismissed || isMovingFromParent {
+            NotificationCenter.default.post(name: NSNotification.Name("RemovePlaceMarker"), object: nil)
+        }
+    }
+    
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         updateScrollViewContentSize()
