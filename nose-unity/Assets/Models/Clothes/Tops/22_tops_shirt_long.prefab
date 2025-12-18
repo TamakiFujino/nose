@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1001 &5680146805005481102
+--- !u!1001 &3157071699656755613
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -52,10 +52,6 @@ PrefabInstance:
       propertyPath: m_Name
       value: 22_tops_shirt_long
       objectReference: {fileID: 0}
-    - target: {fileID: 5353469959183797579, guid: a43dce3e8225c490a8ad05682457d1ff, type: 3}
-      propertyPath: m_Materials.Array.data[0]
-      value: 
-      objectReference: {fileID: 2100000, guid: e0e4eb5f24a574101ae72942ffc7e76c, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

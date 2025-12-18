@@ -310,6 +310,7 @@ final class ViewController: UIViewController {
         showLoading()
         guard let clientID = FirebaseApp.app()?.options.clientID else {
             hideLoading()
+            showError(message: "Google Sign-In is not properly configured. Please try again.")
             return
         }
         
@@ -322,6 +323,14 @@ final class ViewController: UIViewController {
             if let error = error {
                 print("Google Sign In error: \(error.localizedDescription)")
                 self.hideLoading()
+                // Check if user cancelled
+                if let gidError = error as NSError?,
+                   gidError.domain == "com.google.GIDSignIn",
+                   gidError.code == -5 { // GIDSignInErrorCode.canceled
+                    // User cancelled - don't show error
+                    return
+                }
+                self.showError(message: "Failed to sign in with Google: \(error.localizedDescription)")
                 return
             }
             
@@ -329,12 +338,16 @@ final class ViewController: UIViewController {
                   let idToken = authentication.idToken?.tokenString else {
                 print("Failed to get Google credentials")
                 self.hideLoading()
+                self.showError(message: "Failed to get Google authentication credentials. Please try again.")
                 return
             }
             
+            // accessToken is non-optional GIDToken, so we can access it directly
+            let accessTokenString = authentication.accessToken.tokenString
+            
             let credential = GoogleAuthProvider.credential(
                 withIDToken: idToken,
-                accessToken: authentication.accessToken.tokenString
+                accessToken: accessTokenString
             )
             
             Auth.auth().signIn(with: credential) { [weak self] authResult, error in
@@ -343,6 +356,7 @@ final class ViewController: UIViewController {
                 if let error = error {
                     print("Firebase Sign In error: \(error.localizedDescription)")
                     self.hideLoading()
+                    self.showError(message: "Failed to authenticate with Firebase: \(error.localizedDescription)")
                     return
                 }
                 

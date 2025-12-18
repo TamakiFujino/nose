@@ -91,15 +91,9 @@ final class HomeViewController: UIViewController {
     }()
     
     private lazy var mapView: GMSMapView = {
-        let camera = GMSCameraPosition.camera(
-            withLatitude: 35.6812,  // Tokyo coordinates as default
-            longitude: 139.7671,
-            zoom: 15
-        )
-        
+        // Don't set default camera here - we'll set it based on location permission
         // Create map options with Map ID
         let mapOptions = GMSMapViewOptions()
-        mapOptions.camera = camera
         mapOptions.frame = .zero
         mapOptions.mapID = GMSMapID(identifier: "7f9a1d61a6b1809f")
         
@@ -111,6 +105,8 @@ final class HomeViewController: UIViewController {
         mapView.delegate = self
         return mapView
     }()
+    
+    private var hasSetInitialCamera = false
     
     private lazy var searchResultsTableView: UITableView = {
         let tableView = UITableView()
@@ -174,6 +170,30 @@ final class HomeViewController: UIViewController {
         setupLocationManager()
         setupNotificationObservers()
         loadEvents()
+        
+        // Check location permission and set initial camera accordingly
+        // This happens after UI setup so mapView is already created
+        checkLocationPermissionForInitialCamera()
+    }
+    
+    private func checkLocationPermissionForInitialCamera() {
+        // Check permission status and set camera accordingly
+        switch locationManager.authorizationStatus {
+        case .restricted, .denied:
+            // Location not allowed - show default location immediately
+            setDefaultLocationCamera()
+        case .authorizedWhenInUse, .authorizedAlways:
+            // Permission granted - location manager will handle camera when location arrives
+            // Don't set default camera - wait for location update
+            break
+        case .notDetermined:
+            // Permission not determined yet - don't set camera, wait for permission response
+            // Default camera will be set if permission is denied, or we'll wait for location if granted
+            break
+        @unknown default:
+            // Fallback to default location
+            setDefaultLocationCamera()
+        }
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -183,7 +203,6 @@ final class HomeViewController: UIViewController {
     }
     
     deinit {
-        NotificationCenter.default.removeObserver(self)
         NotificationCenter.default.removeObserver(self)
     }
     
@@ -451,32 +470,6 @@ final class HomeViewController: UIViewController {
     private func setupNotificationObservers() {
         // Removed appWillEnterForeground observer to prevent repeated permission checks
         // Location permissions are now only checked when actually needed
-        
-        // Listen for collection updates to refresh map pins
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(updateMapWithCollections),
-            name: NSNotification.Name("UpdateMapWithCollections"),
-            object: nil
-        )
-        
-        // Listen for place detail dismissal to remove place marker
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(removePlaceMarker),
-            name: NSNotification.Name("RemovePlaceMarker"),
-            object: nil
-        )
-    }
-    
-    @objc private func updateMapWithCollections() {
-        // Reload collections which will update the map with new pins
-        loadCollections()
-    }
-    
-    @objc private func removePlaceMarker() {
-        // Clear place markers when PlaceDetailViewController is dismissed
-        mapManager?.clearMarkers()
     }
     
     private func checkLocationPermission() {
@@ -484,15 +477,37 @@ final class HomeViewController: UIViewController {
         case .notDetermined:
             // Only request permission if we haven't asked before
             locationManager.requestWhenInUseAuthorization()
+            // Don't set camera yet - wait for permission response
         case .restricted, .denied:
-            // Don't show alert, just continue without location
-            print("Location access denied or restricted")
+            // Location not allowed - show default location if not already set
+            print("Location access denied or restricted - showing default location")
+            if !hasSetInitialCamera {
+                setDefaultLocationCamera()
+            }
         case .authorizedWhenInUse, .authorizedAlways:
-            // Permission already granted, start location updates
+            // Permission granted - wait for current location before setting camera
+            print("Location permission granted - waiting for current location")
             locationManager.startUpdatingLocation()
+            // Don't set default camera - wait for location update
         @unknown default:
+            // Fallback to default location
+            if !hasSetInitialCamera {
+                setDefaultLocationCamera()
+            }
             break
         }
+    }
+    
+    private func setDefaultLocationCamera() {
+        guard !hasSetInitialCamera else { return }
+        hasSetInitialCamera = true
+        
+        let camera = GMSCameraPosition.camera(
+            withLatitude: 35.6812,  // Tokyo coordinates as default
+            longitude: 139.7671,
+            zoom: 15
+        )
+        mapView.camera = camera
     }
     
     @objc private func currentLocationButtonTapped() {
@@ -627,20 +642,6 @@ extension HomeViewController: UITableViewDelegate, UITableViewDataSource {
                 DispatchQueue.main.async {
                     self?.mapManager?.showPlaceOnMap(place)
                     let detailViewController = PlaceDetailViewController(place: place, isFromCollection: false)
-                    
-                    // Configure sheet presentation
-                    if let sheet = detailViewController.sheetPresentationController {
-                        let mediumDetentIdentifier = UISheetPresentationController.Detent.Identifier("medium")
-                        let mediumDetent = UISheetPresentationController.Detent.custom(identifier: mediumDetentIdentifier) { context in
-                            return context.maximumDetentValue * 0.4
-                        }
-                        sheet.detents = [mediumDetent, .large()]
-                        sheet.selectedDetentIdentifier = mediumDetentIdentifier
-                        sheet.largestUndimmedDetentIdentifier = mediumDetentIdentifier
-                        sheet.prefersGrabberVisible = true
-                        sheet.prefersScrollingExpandsWhenScrolledToEdge = true
-                    }
-                    
                     self?.present(detailViewController, animated: true)
                 }
             }
@@ -665,22 +666,9 @@ extension HomeViewController: SearchViewControllerDelegate {
     func searchViewController(_ controller: SearchViewController, didSelectPlace place: GMSPlace) {
         mapManager?.showPlaceOnMap(place)
         let detailViewController = PlaceDetailViewController(place: place, isFromCollection: false)
-        
-        // Configure sheet presentation
-        if let sheet = detailViewController.sheetPresentationController {
-            let mediumDetentIdentifier = UISheetPresentationController.Detent.Identifier("medium")
-            let mediumDetent = UISheetPresentationController.Detent.custom(identifier: mediumDetentIdentifier) { context in
-                return context.maximumDetentValue * 0.4
-            }
-            sheet.detents = [mediumDetent, .large()]
-            sheet.selectedDetentIdentifier = mediumDetentIdentifier
-            sheet.largestUndimmedDetentIdentifier = mediumDetentIdentifier
-            sheet.prefersGrabberVisible = true
-            sheet.prefersScrollingExpandsWhenScrolledToEdge = true
-        }
-        
-        // Dismiss the search UI first, then present the detail
+        // Dismiss the search UI first, then present the detail over current context so the map stays visible
         controller.dismiss(animated: true) {
+            detailViewController.modalPresentationStyle = .overCurrentContext
             self.present(detailViewController, animated: true)
         }
     }
@@ -767,20 +755,7 @@ extension HomeViewController: SearchManagerDelegate {
     func searchManager(_ manager: SearchManager, didSelectPlace place: GMSPlace) {
         mapManager?.showPlaceOnMap(place)
         let detailViewController = PlaceDetailViewController(place: place, isFromCollection: false)
-        
-        // Configure sheet presentation
-        if let sheet = detailViewController.sheetPresentationController {
-            let mediumDetentIdentifier = UISheetPresentationController.Detent.Identifier("medium")
-            let mediumDetent = UISheetPresentationController.Detent.custom(identifier: mediumDetentIdentifier) { context in
-                return context.maximumDetentValue * 0.4
-            }
-            sheet.detents = [mediumDetent, .large()]
-            sheet.selectedDetentIdentifier = mediumDetentIdentifier
-            sheet.largestUndimmedDetentIdentifier = mediumDetentIdentifier
-            sheet.prefersGrabberVisible = true
-            sheet.prefersScrollingExpandsWhenScrolledToEdge = true
-        }
-        
+        detailViewController.modalPresentationStyle = .overCurrentContext
         // If a SearchViewController is currently presented, dismiss it before presenting details
         if let presented = self.presentedViewController as? SearchViewController {
             presented.dismiss(animated: true) {
@@ -855,12 +830,25 @@ extension HomeViewController: CLLocationManagerDelegate {
     }
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard locations.last != nil else { return }
-        mapManager?.moveToCurrentLocation()
+        guard let location = locations.last else { return }
+        
+        // Only move to current location if we haven't set initial camera yet
+        // This prevents the jarring movement from default to current location
+        if !hasSetInitialCamera {
+            hasSetInitialCamera = true
+            mapManager?.moveToCurrentLocation()
+        }
+        
         locationManager.stopUpdatingLocation() // Stop updating after getting the first location
     }
     
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         print("Location manager failed with error: \(error.localizedDescription)")
+        
+        // If we haven't set initial camera yet and location fails, show default location
+        if !hasSetInitialCamera {
+            print("Location failed - falling back to default location")
+            setDefaultLocationCamera()
+        }
     }
 }

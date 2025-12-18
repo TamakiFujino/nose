@@ -78,7 +78,7 @@ class FloatingUIController: UIViewController {
         let stackView = UIStackView()
         stackView.axis = .horizontal
         stackView.spacing = 8
-        stackView.distribution = .fill
+        stackView.distribution = .fill // Allow tabs to size to content
         stackView.alignment = .leading
         stackView.translatesAutoresizingMaskIntoConstraints = false
         return stackView
@@ -88,7 +88,8 @@ class FloatingUIController: UIViewController {
         let stackView = UIStackView()
         stackView.axis = .horizontal
         stackView.spacing = 8
-        stackView.distribution = .fillEqually
+        stackView.distribution = .fill // Changed from fillEqually to allow content-based sizing
+        stackView.alignment = .leading
         stackView.translatesAutoresizingMaskIntoConstraints = false
         return stackView
     }()
@@ -704,21 +705,31 @@ class FloatingUIController: UIViewController {
         button.setTitle(title, for: .normal)
         button.titleLabel?.font = isParent ? .systemFont(ofSize: 14, weight: .medium) : .systemFont(ofSize: 12, weight: .medium)
         button.setTitleColor(.black, for: .normal)
-        button.backgroundColor = .clear
+        // Set default background to secondColor
+        button.backgroundColor = .secondColor
         button.layer.cornerRadius = isParent ? 16 : 12
         button.layer.borderWidth = 0
         button.layer.borderColor = UIColor.clear.cgColor
         button.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Add padding so text doesn't touch edges
+        let horizontalPadding: CGFloat = isParent ? 16 : 12
+        button.contentEdgeInsets = UIEdgeInsets(top: 0, left: horizontalPadding, bottom: 0, right: horizontalPadding)
+        
         if !isParent {
             button.heightAnchor.constraint(equalToConstant: 26).isActive = true
-            // Ensure minimum width so tabs don't get too small; scroll handles overflow
-            button.widthAnchor.constraint(greaterThanOrEqualToConstant: 80).isActive = true
+            // Minimum width for easy tapping, but size to content
+            button.widthAnchor.constraint(greaterThanOrEqualToConstant: 60).isActive = true
+            // Allow button to size to content
+            button.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+            button.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
         } else {
             button.heightAnchor.constraint(equalToConstant: 30).isActive = true
-            // Parent tabs: minimum width, size to content
-            button.widthAnchor.constraint(greaterThanOrEqualToConstant: 80).isActive = true
-            button.setContentHuggingPriority(.required, for: .horizontal)
-            button.setContentCompressionResistancePriority(.required, for: .horizontal)
+            // Minimum width for easy tapping, but size to content
+            button.widthAnchor.constraint(greaterThanOrEqualToConstant: 60).isActive = true
+            // Allow button to size to content
+            button.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+            button.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
         }
         if isParent {
             button.addTarget(self, action: #selector(parentCategoryTapped(_:)), for: .touchUpInside)
@@ -791,7 +802,11 @@ class FloatingUIController: UIViewController {
             if let button = subview as? UIButton {
                 button.layer.borderWidth = 0
                 button.layer.borderColor = UIColor.clear.cgColor
-                button.backgroundColor = index == selectedParentIndex ? .thirdColor : .clear
+                let isSelected = index == selectedParentIndex
+                // Active tab: darker background with white text
+                // Inactive tab: secondColor background with black text
+                button.backgroundColor = isSelected ? .fourthColor : .secondColor
+                button.setTitleColor(isSelected ? .white : .black, for: .normal)
                 button.layer.cornerRadius = 16
             }
         }
@@ -799,7 +814,11 @@ class FloatingUIController: UIViewController {
             if let button = subview as? UIButton {
                 button.layer.borderWidth = 0
                 button.layer.borderColor = UIColor.clear.cgColor
-                button.backgroundColor = index == selectedChildIndex ? .thirdColor : .clear
+                let isSelected = index == selectedChildIndex
+                // Active tab: darker background with white text
+                // Inactive tab: secondColor background with black text
+                button.backgroundColor = isSelected ? .fourthColor : .secondColor
+                button.setTitleColor(isSelected ? .white : .black, for: .normal)
                 button.layer.cornerRadius = 12
             }
         }

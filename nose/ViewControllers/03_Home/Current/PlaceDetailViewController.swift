@@ -18,10 +18,26 @@ final class PlaceDetailViewController: UIViewController {
         let scrollView = UIScrollView()
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.showsVerticalScrollIndicator = false
-        scrollView.delegate = self
         return scrollView
     }()
     
+    private lazy var containerView: UIView = {
+        let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.backgroundColor = .systemBackground
+        view.layer.cornerRadius = 20
+        view.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
+        view.clipsToBounds = true
+        return view
+    }()
+    
+    private lazy var dragIndicator: UIView = {
+        let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.backgroundColor = .thirdColor
+        view.layer.cornerRadius = 2.5
+        return view
+    }()
     
     private lazy var photoCollectionView: UICollectionView = {
         let layout = UICollectionViewFlowLayout()
@@ -152,7 +168,7 @@ final class PlaceDetailViewController: UIViewController {
         self.place = place
         self.isFromCollection = isFromCollection
         super.init(nibName: nil, bundle: nil)
-        modalPresentationStyle = .pageSheet
+        modalPresentationStyle = .overCurrentContext
     }
     
     required init?(coder: NSCoder) {
@@ -173,37 +189,6 @@ final class PlaceDetailViewController: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         print("PlaceDetailViewController - viewWillAppear")
-        configureSheetPresentation()
-    }
-    
-    private func configureSheetPresentation() {
-        guard let sheet = sheetPresentationController else {
-            print("⚠️ No sheet presentation controller available")
-            return
-        }
-        
-        // Create a medium detent (40% of screen height)
-        let mediumDetentIdentifier = UISheetPresentationController.Detent.Identifier("medium")
-        let mediumDetent = UISheetPresentationController.Detent.custom(identifier: mediumDetentIdentifier) { context in
-            return context.maximumDetentValue * 0.4 // 40% of screen
-        }
-        
-        // Set detents: medium (40% - initial) and large (full)
-        sheet.detents = [mediumDetent, .large()]
-        
-        // Set the initial detent to medium (40% modal)
-        sheet.selectedDetentIdentifier = mediumDetentIdentifier
-        
-        // Allow interaction with the map behind when minimized
-        sheet.largestUndimmedDetentIdentifier = mediumDetentIdentifier
-        
-        // Enable grabber for better UX
-        sheet.prefersGrabberVisible = true
-        
-        // Allow sheet to expand when scrolling reaches the edge
-        sheet.prefersScrollingExpandsWhenScrolledToEdge = true
-        
-        print("✅ Sheet presentation configured with 40% medium detent")
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -211,28 +196,21 @@ final class PlaceDetailViewController: UIViewController {
         print("PlaceDetailViewController - viewDidAppear")
     }
     
-    override func viewDidDisappear(_ animated: Bool) {
-        super.viewDidDisappear(animated)
-        print("PlaceDetailViewController - viewDidDisappear")
-        // Notify to remove the place marker when this view is dismissed
-        if isBeingDismissed || isMovingFromParent {
-            NotificationCenter.default.post(name: NSNotification.Name("RemovePlaceMarker"), object: nil)
-        }
-    }
-    
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         updateScrollViewContentSize()
-        print("View height: \(view.frame.height)")
+        print("Container view height: \(containerView.frame.height)")
     }
     
     // MARK: - Setup
     private func setupUI() {
         print("PlaceDetailViewController - setupUI")
-        view.backgroundColor = .systemBackground
+        view.backgroundColor = .clear
         
-        // Add subviews directly to view (sheet controller handles sizing)
-        view.addSubview(scrollView)
+        // Add subviews
+        view.addSubview(containerView)
+        containerView.addSubview(scrollView)
+        scrollView.addSubview(dragIndicator)
         scrollView.addSubview(photoCollectionView)
         scrollView.addSubview(pageControl)
         scrollView.addSubview(nameLabel)
@@ -244,20 +222,33 @@ final class PlaceDetailViewController: UIViewController {
         
         // Setup constraints
         NSLayoutConstraint.activate([
-            // Scroll view fills the view
-            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            // Container view constraints
+            containerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            containerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            containerView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            containerView.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.6),
             
             // Save button constraints
-            saveButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            saveButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -16),
+            saveButton.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
+            saveButton.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -16),
             saveButton.widthAnchor.constraint(equalToConstant: 50),
             saveButton.heightAnchor.constraint(equalToConstant: 50),
             
+            // Scroll view constraints
+            scrollView.topAnchor.constraint(equalTo: containerView.topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
+            scrollView.widthAnchor.constraint(equalTo: containerView.widthAnchor),
+            
+            // Drag indicator constraints
+            dragIndicator.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 8),
+            dragIndicator.centerXAnchor.constraint(equalTo: scrollView.centerXAnchor),
+            dragIndicator.widthAnchor.constraint(equalToConstant: 40),
+            dragIndicator.heightAnchor.constraint(equalToConstant: 5),
+            
             // Photo collection view constraints
-            photoCollectionView.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 16),
+            photoCollectionView.topAnchor.constraint(equalTo: dragIndicator.bottomAnchor, constant: 16),
             photoCollectionView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
             photoCollectionView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
             photoCollectionView.heightAnchor.constraint(equalToConstant: 200),
@@ -292,9 +283,14 @@ final class PlaceDetailViewController: UIViewController {
             openingHoursView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -24)
         ])
         
-        // Setup initial name label constraint - will be updated when photos load
-        nameLabelTopConstraint = nameLabel.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 16)
+        // Setup initial name label constraint
+        nameLabelTopConstraint = nameLabel.topAnchor.constraint(equalTo: pageControl.bottomAnchor, constant: 16)
         nameLabelTopConstraint?.isActive = true
+        
+        // Add tap gesture to dismiss
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
+        tapGesture.delegate = self
+        view.addGestureRecognizer(tapGesture)
         
         print("PlaceDetailViewController - UI setup completed")
     }
@@ -424,9 +420,9 @@ final class PlaceDetailViewController: UIViewController {
             photoCollectionView.isHidden = true
             pageControl.isHidden = true
             
-            // Update name label constraint to be directly at top of scroll view when no photos
+            // Update name label constraint to be directly below drag indicator when no photos
             nameLabelTopConstraint?.isActive = false
-            nameLabelTopConstraint = nameLabel.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 16)
+            nameLabelTopConstraint = nameLabel.topAnchor.constraint(equalTo: dragIndicator.bottomAnchor, constant: 16)
             nameLabelTopConstraint?.isActive = true
             
             updateScrollViewContentSize()
@@ -474,8 +470,8 @@ final class PlaceDetailViewController: UIViewController {
         // Calculate the total height needed for all content
         var totalHeight: CGFloat = 0
         
-        // Add heights of all components (drag indicator is fixed, not in scroll view)
-        totalHeight += 8 // Top padding
+        // Add heights of all components
+        totalHeight += dragIndicator.frame.height + 8 // Top padding
         totalHeight += photoCollectionView.isHidden ? 0 : (photoCollectionView.frame.height + 8)
         totalHeight += pageControl.isHidden ? 0 : (pageControl.frame.height + 16)
         totalHeight += nameLabel.frame.height + 8
@@ -520,6 +516,14 @@ final class PlaceDetailViewController: UIViewController {
     }
     
     // MARK: - Actions
+    @objc private func handleTap(_ gesture: UITapGestureRecognizer) {
+        let location = gesture.location(in: view)
+        if location.y < containerView.frame.minY {
+            print("PlaceDetailViewController - Dismissing due to tap outside")
+            dismiss(animated: true)
+        }
+    }
+    
     @objc private func saveButtonTapped() {
         print("Save button tapped for place: \(place.name ?? "Unknown")")
         let saveVC = SaveToCollectionViewController(place: place)
@@ -550,14 +554,59 @@ final class PlaceDetailViewController: UIViewController {
     }
 }
 
-// MARK: - UIScrollViewDelegate
-extension PlaceDetailViewController: UIScrollViewDelegate {
-    func scrollViewDidScroll(_ scrollView: UIScrollView) {
-        // This is for the photo collection view horizontal scrolling
-        if scrollView == photoCollectionView {
-            let page = Int(scrollView.contentOffset.x / scrollView.frame.width)
-            pageControl.currentPage = page
-        }
+// MARK: - UIGestureRecognizerDelegate
+extension PlaceDetailViewController: UIGestureRecognizerDelegate {
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        let location = touch.location(in: view)
+        return location.y < containerView.frame.minY
+    }
+}
+
+// MARK: - UIViewControllerTransitioningDelegate
+extension PlaceDetailViewController: UIViewControllerTransitioningDelegate {
+    func presentationController(forPresented presented: UIViewController, presenting: UIViewController?, source: UIViewController) -> UIPresentationController? {
+        return HalfModalPresentationController(presentedViewController: presented, presenting: presenting)
+    }
+}
+
+// MARK: - HalfModalPresentationController
+class HalfModalPresentationController: UIPresentationController {
+    private let dimmingView: UIView = {
+        let view = UIView()
+        view.backgroundColor = UIColor.clear
+        view.alpha = 0
+        return view
+    }()
+    
+    override var frameOfPresentedViewInContainerView: CGRect {
+        guard let containerView = containerView else { return .zero }
+        return CGRect(x: 0,
+                     y: containerView.bounds.height * 0.4,
+                     width: containerView.bounds.width,
+                     height: containerView.bounds.height * 0.6)
+    }
+    
+    override func presentationTransitionWillBegin() {
+        guard let containerView = containerView else { return }
+        
+        dimmingView.frame = containerView.bounds
+        containerView.addSubview(dimmingView)
+        
+        // Keep background fully visible; no dimming animation
+        presentedViewController.transitionCoordinator?.animate(alongsideTransition: { [weak self] _ in
+            self?.dimmingView.alpha = 0
+        })
+    }
+    
+    override func dismissalTransitionWillBegin() {
+        presentedViewController.transitionCoordinator?.animate(alongsideTransition: { [weak self] _ in
+            self?.dimmingView.alpha = 0
+        })
+    }
+    
+    override func containerViewDidLayoutSubviews() {
+        super.containerViewDidLayoutSubviews()
+        presentedView?.frame = frameOfPresentedViewInContainerView
     }
 }
 
@@ -573,6 +622,11 @@ extension PlaceDetailViewController: UICollectionViewDelegate, UICollectionViewD
         print("🖼️ Configuring cell \(indexPath.item) with image: \(image != nil ? "loaded" : "loading")")
         cell.configure(with: image)
         return cell
+    }
+    
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        let page = Int(scrollView.contentOffset.x / scrollView.frame.width)
+        pageControl.currentPage = page
     }
 }
 

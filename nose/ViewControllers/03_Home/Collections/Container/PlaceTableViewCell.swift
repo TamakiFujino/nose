@@ -3,6 +3,9 @@ import GooglePlaces
 import FirebaseFirestore
 
 class PlaceTableViewCell: UITableViewCell {
+    // MARK: - Properties
+    private var currentPlaceId: String? // Track which place this cell is currently displaying
+    
     // MARK: - UI Components
     private let placeImageView: UIImageView = {
         let imageView = UIImageView()
@@ -70,6 +73,7 @@ class PlaceTableViewCell: UITableViewCell {
         placeImageView.tintColor = nil
         nameLabel.text = nil
         ratingLabel.text = nil
+        currentPlaceId = nil // Clear the tracked place ID
     }
 
     // MARK: - Setup
@@ -102,6 +106,12 @@ class PlaceTableViewCell: UITableViewCell {
 
     // MARK: - Configuration
     func configure(with place: PlaceCollection.Place) {
+        // Store the placeId to verify in async callbacks
+        currentPlaceId = place.placeId
+        
+        // Clear image immediately to prevent showing stale images from cell reuse
+        placeImageView.image = nil
+        
         nameLabel.text = place.name
         ratingLabel.text = "Rating: \(String(format: "%.1f", place.rating))"
         
@@ -118,18 +128,30 @@ class PlaceTableViewCell: UITableViewCell {
         // Check cache first for this place's photo
         let photoID = "\(place.placeId)_photo"
         if let cachedImage = PlacesCacheManager.shared.getCachedPhoto(for: photoID) {
-            placeImageView.image = cachedImage
+            // Verify cell hasn't been reused before setting cached image
+            if currentPlaceId == place.placeId {
+                placeImageView.image = cachedImage
+            }
             return
         }
         
         // Fetch photo from Places API (only first photo to save API calls)
         PlacesAPIManager.shared.fetchPhotosOnly(placeID: place.placeId) { [weak self] fetchedPlace in
+            // Verify cell hasn't been reused before processing
+            guard let self = self, self.currentPlaceId == place.placeId else { return }
+            
             // Only load the first photo to minimize API usage
             if let photoMetadata = fetchedPlace?.photos?.first {
                 PlacesAPIManager.shared.loadPlacePhoto(photo: photoMetadata, placeID: place.placeId, photoIndex: 0) { [weak self] photo in
+                    // Verify cell hasn't been reused before setting image
+                    guard let self = self, self.currentPlaceId == place.placeId else { return }
+                    
                     if let photo = photo {
                         DispatchQueue.main.async {
-                            self?.placeImageView.image = photo
+                            // Double-check one more time before setting image
+                            if self.currentPlaceId == place.placeId {
+                                self.placeImageView.image = photo
+                            }
                         }
                     }
                 }
@@ -138,6 +160,9 @@ class PlaceTableViewCell: UITableViewCell {
     }
     
     func configureWithEvent(_ event: Event) {
+        // Store the eventId to verify in async callbacks
+        currentPlaceId = event.id
+        
         nameLabel.text = event.title
         
         // Format date for event
@@ -157,7 +182,10 @@ class PlaceTableViewCell: UITableViewCell {
         // Use already loaded image if available
         if !event.images.isEmpty {
             print("📸 Using loaded event image for: \(event.title)")
-            placeImageView.image = event.images[0]
+            // Verify cell hasn't been reused before setting image
+            if currentPlaceId == event.id {
+                placeImageView.image = event.images[0]
+            }
         } else {
             print("📥 Need to download event image for: \(event.title)")
             loadEventImage(eventId: event.id, userId: event.userId)
@@ -175,6 +203,11 @@ class PlaceTableViewCell: UITableViewCell {
             .collection("events")
             .document(eventId)
             .getDocument { [weak self] snapshot, error in
+                guard let self = self else { return }
+                
+                // Verify cell hasn't been reused before processing
+                guard self.currentPlaceId == eventId else { return }
+                
                 if let error = error {
                     print("❌ Error loading event image: \(error.localizedDescription)")
                     return
@@ -193,8 +226,11 @@ class PlaceTableViewCell: UITableViewCell {
                 URLSession.shared.dataTask(with: url) { data, response, error in
                     if let data = data, let image = UIImage(data: data) {
                         DispatchQueue.main.async {
-                            self?.placeImageView.image = image
-                            self?.placeImageView.contentMode = .scaleAspectFill
+                            // Verify cell hasn't been reused before setting image
+                            if self.currentPlaceId == eventId {
+                                self.placeImageView.image = image
+                                self.placeImageView.contentMode = .scaleAspectFill
+                            }
                         }
                     }
                 }.resume()

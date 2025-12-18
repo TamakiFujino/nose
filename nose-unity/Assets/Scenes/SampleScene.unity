@@ -293,7 +293,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2f25c74f47c6a45d5988de1d2b9ee3f2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  avatarRoot: {fileID: 0}
+  avatarRoot: {fileID: 1200255445}
   bodySkinnedMesh: {fileID: 1733127814}
   skeletonRootOverride: {fileID: 0}
   remoteCatalogBaseUrl: https://nose-a2309.web.app/addressables
@@ -359,6 +359,8 @@ MonoBehaviour:
     clip: {fileID: 8636189982785743086, guid: 08088760bdf3b4a74a9863d5c734a6f9, type: 3}
   - name: walk
     clip: {fileID: -4799524434163024911, guid: 08088760bdf3b4a74a9863d5c734a6f9, type: 3}
+  verboseLogs: 0
+  verboseDiscoveryLogs: 0
   hideLabelPrefix: 'hide:'
   regionDefs:
   - name: chest
@@ -402,9 +404,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9c5dc29f1cd534583aba55a74c39ac8a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  clothingShader: {fileID: 4800000, guid: 628628f6f14d04ceaae129efe46725f7, type: 3}
+  jacketStencilWriterShader: {fileID: 0}
+  innerClothingMaskShader: {fileID: 0}
   bodyMaskShader: {fileID: 4800000, guid: 0eb1a0dd0b4ac46f8a4f6c6feed7ac9c, type: 3}
-  bodySkinnedMesh: {fileID: 0}
+  bodySkinnedMesh: {fileID: 1733127814}
   applyBodyMaskToBody: 0
   excludeMaterialNameContains:
   - Hand
@@ -628,7 +631,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fe60fb45fdbb8485d908d3e6b9a43901, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  avatarRoot: {fileID: 0}
+  avatarRoot: {fileID: 1983304435}
   avatarMeshRenderer: {fileID: 1733127814}
   baseSlot: {fileID: 0}
   hairSlot: {fileID: 0}
@@ -1199,6 +1202,11 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: -90, y: 0, z: 0}
+--- !u!4 &1983304435 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 8879528566716807029, guid: 08088760bdf3b4a74a9863d5c734a6f9, type: 3}
+  m_PrefabInstance: {fileID: 1733127813}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
