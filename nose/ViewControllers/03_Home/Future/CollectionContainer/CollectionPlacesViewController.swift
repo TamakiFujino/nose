@@ -59,10 +59,8 @@ class CollectionPlacesViewController: UIViewController {
         imageView.clipsToBounds = true
         imageView.layer.masksToBounds = true // Ensure corner radius works properly
         imageView.layer.cornerRadius = 30 // 60 / 2 for circular appearance
-        imageView.isUserInteractionEnabled = true // Enable tap interaction
-        // Add tap gesture
-        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(collectionIconTapped))
-        imageView.addGestureRecognizer(tapGesture)
+        // Icon tap is disabled - editing is done through "Edit Collection" menu option
+        imageView.isUserInteractionEnabled = false
         return imageView
     }()
     
@@ -225,10 +223,7 @@ class CollectionPlacesViewController: UIViewController {
         // Hide menu button if user is not the owner
         menuButton.isHidden = !collection.isOwner
         
-        // Only allow icon editing if user is the owner
-        if !collection.isOwner {
-            collectionIconImageView.isUserInteractionEnabled = false
-        }
+        // Icon editing is now done through "Edit Collection" menu option, not by tapping icon
         
         // Set initial icon image
         updateCollectionIconDisplay()
@@ -292,6 +287,15 @@ class CollectionPlacesViewController: UIViewController {
     @objc private func menuButtonTapped() {
         let alertController = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
         
+        // Edit Collection action (only for owner)
+        if collection.isOwner {
+            let editAction = UIAlertAction(title: "Edit Collection", style: .default) { [weak self] _ in
+                self?.editCollection()
+            }
+            editAction.setValue(UIImage(systemName: "pencil"), forKey: "image")
+            alertController.addAction(editAction)
+        }
+        
         if collection.status == .completed {
             // Put back collection action
             let putBackAction = UIAlertAction(title: "Put back collection", style: .default) { [weak self] _ in
@@ -336,6 +340,14 @@ class CollectionPlacesViewController: UIViewController {
         
         present(alertController, animated: true)
     }
+    
+    private func editCollection() {
+        let editModal = EditCollectionModalViewController(collection: collection)
+        editModal.delegate = self
+        editModal.modalPresentationStyle = .overFullScreen
+        editModal.modalTransitionStyle = .crossDissolve
+        present(editModal, animated: true)
+    }
 
     @objc private func avatarImageTapped() {
         let vc = ContentViewController(collection: collection)
@@ -353,16 +365,6 @@ class CollectionPlacesViewController: UIViewController {
         } else {
             present(vc, animated: true)
         }
-    }
-    
-    @objc private func collectionIconTapped() {
-        // Only allow icon change if user is the owner
-        guard collection.isOwner else { return }
-        
-        let imagePickerVC = ImagePickerViewController()
-        imagePickerVC.delegate = self
-        imagePickerVC.modalPresentationStyle = .fullScreen
-        present(imagePickerVC, animated: true)
     }
     
     private func updateCollectionIcon(iconName: String?, iconUrl: String?) {
@@ -1585,19 +1587,19 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         
         // First get the current collection data
         userCollectionRef.getDocument { [weak self] snapshot, error in
+            guard let self = self else { return }
+            
             if let error = error {
                 print("Error getting collection: \(error.localizedDescription)")
-                self?.dismiss(animated: true) {
-                    ToastManager.showToast(message: "Failed to update place status", type: .error)
-                }
+                LoadingView.shared.hideAlertLoading()
+                ToastManager.showToast(message: "Failed to update place status", type: .error)
                 return
             }
             
             guard let data = snapshot?.data() else {
                 print("No data found in collection document")
-                self?.dismiss(animated: true) {
-                    ToastManager.showToast(message: "Failed to update place status", type: .error)
-                }
+                LoadingView.shared.hideAlertLoading()
+                ToastManager.showToast(message: "Failed to update place status", type: .error)
                 return
             }
             
@@ -1624,30 +1626,28 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
                     
                     // Commit the batch
                     batch.commit { error in
-                        self?.dismiss(animated: true) {
-                            if let error = error {
-                                print("Error updating place status: \(error.localizedDescription)")
-                                ToastManager.showToast(message: "Failed to update place status", type: .error)
-                            } else {
-                                // Update local data
-                                self?.places[indexPath.row].visited = newVisitedStatus
-                                self?.tableView.reloadRows(at: [indexPath], with: .automatic)
-                                ToastManager.showToast(message: newVisitedStatus ? "Marked as visited" : "Marked as unvisited", type: .success)
-                                NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
-                            }
+                        LoadingView.shared.hideAlertLoading()
+                        
+                        if let error = error {
+                            print("Error updating place status: \(error.localizedDescription)")
+                            ToastManager.showToast(message: "Failed to update place status", type: .error)
+                        } else {
+                            // Update local data
+                            self.places[indexPath.row].visited = newVisitedStatus
+                            self.tableView.reloadRows(at: [indexPath], with: .automatic)
+                            ToastManager.showToast(message: newVisitedStatus ? "Marked as visited" : "Marked as unvisited", type: .success)
+                            NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
                         }
                     }
                 } else {
                     print("Place not found in collection data")
-                    self?.dismiss(animated: true) {
-                        ToastManager.showToast(message: "Failed to update place status", type: .error)
-                    }
+                    LoadingView.shared.hideAlertLoading()
+                    ToastManager.showToast(message: "Failed to update place status", type: .error)
                 }
             } else {
                 print("No places array found in collection data")
-                self?.dismiss(animated: true) {
-                    ToastManager.showToast(message: "Failed to update place status", type: .error)
-                }
+                LoadingView.shared.hideAlertLoading()
+                ToastManager.showToast(message: "Failed to update place status", type: .error)
             }
         }
     }
@@ -1744,10 +1744,48 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
     }
 }
 
-// MARK: - ImagePickerViewControllerDelegate
-extension CollectionPlacesViewController: ImagePickerViewControllerDelegate {
-    func imagePickerViewController(_ controller: ImagePickerViewController, didSelectImage imageName: String, imageUrl: String) {
-        updateCollectionIcon(iconName: imageName, iconUrl: imageUrl.isEmpty ? nil : imageUrl)
+// MARK: - EditCollectionModalViewControllerDelegate
+extension CollectionPlacesViewController: EditCollectionModalViewControllerDelegate {
+    func editCollectionModalViewController(_ controller: EditCollectionModalViewController, didUpdateCollection collection: PlaceCollection) {
+        // Refresh the UI with updated collection data
+        // Reload collection from Firestore to get latest data
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        let db = Firestore.firestore()
+        
+        db.collection("users")
+            .document(currentUserId)
+            .collection("collections")
+            .document(collection.id)
+            .getDocument { [weak self] document, error in
+                guard let self = self,
+                      let document = document,
+                      document.exists,
+                      let data = document.data() else {
+                    print("❌ Error fetching updated collection: \(error?.localizedDescription ?? "Unknown error")")
+                    return
+                }
+                
+                // Update local collection properties
+                if let name = data["name"] as? String {
+                    self.titleLabel.text = name
+                }
+                
+                // Update icon
+                if let iconUrl = data["iconUrl"] as? String, !iconUrl.isEmpty {
+                    self.currentIconUrl = iconUrl
+                    self.currentIconName = nil
+                } else if let iconName = data["iconName"] as? String, !iconName.isEmpty {
+                    self.currentIconName = iconName
+                    self.currentIconUrl = nil
+                }
+                
+                self.updateCollectionIconDisplay()
+                
+                // Post notification to refresh collections list
+                NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
+                
+                ToastManager.showToast(message: "Collection updated", type: .success)
+            }
     }
 }
 

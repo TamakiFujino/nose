@@ -196,6 +196,12 @@ final class PlaceDetailViewController: UIViewController {
         print("PlaceDetailViewController - viewDidAppear")
     }
     
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        // Post notification when modal is about to close to remove search marker
+        NotificationCenter.default.post(name: NSNotification.Name("PlaceDetailViewControllerWillDismiss"), object: nil)
+    }
+    
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         updateScrollViewContentSize()
@@ -520,6 +526,8 @@ final class PlaceDetailViewController: UIViewController {
         let location = gesture.location(in: view)
         if location.y < containerView.frame.minY {
             print("PlaceDetailViewController - Dismissing due to tap outside")
+            // Post notification before dismissing
+            NotificationCenter.default.post(name: NSNotification.Name("PlaceDetailViewControllerWillDismiss"), object: nil)
             dismiss(animated: true)
         }
     }

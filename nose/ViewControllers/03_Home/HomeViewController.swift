@@ -176,6 +176,10 @@ final class HomeViewController: UIViewController {
         checkLocationPermissionForInitialCamera()
     }
     
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+    
     private func checkLocationPermissionForInitialCamera() {
         // Check permission status and set camera accordingly
         switch locationManager.authorizationStatus {
@@ -200,10 +204,6 @@ final class HomeViewController: UIViewController {
         super.viewWillAppear(animated)
         // Refresh events when view appears
         loadEvents()
-    }
-    
-    deinit {
-        NotificationCenter.default.removeObserver(self)
     }
     
     // MARK: - Setup
@@ -470,6 +470,18 @@ final class HomeViewController: UIViewController {
     private func setupNotificationObservers() {
         // Removed appWillEnterForeground observer to prevent repeated permission checks
         // Location permissions are now only checked when actually needed
+        
+        // Listen for PlaceDetailViewController dismissal to clear search marker
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(placeDetailViewControllerWillDismiss),
+            name: NSNotification.Name("PlaceDetailViewControllerWillDismiss"),
+            object: nil
+        )
+    }
+    
+    @objc private func placeDetailViewControllerWillDismiss() {
+        mapManager?.clearSearchPlaceMarker()
     }
     
     private func checkLocationPermission() {

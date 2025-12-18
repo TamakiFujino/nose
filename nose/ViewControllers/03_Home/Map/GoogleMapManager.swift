@@ -30,6 +30,7 @@ final class GoogleMapManager: NSObject {
     private var eventMarkers: [GMSMarker] = []
     private var collectionPlaceMarkers: [GMSMarker] = []
     private var collectionPlacesData: [(place: PlaceCollection.Place, collection: PlaceCollection)] = [] // Store for zoom updates
+    private var searchPlaceMarker: GMSMarker? // Marker for searched place (shown when PlaceDetailViewController is open)
     private var followUserLocation: Bool = true
     private var currentZoom: Float = Constants.defaultZoom
     
@@ -107,19 +108,24 @@ final class GoogleMapManager: NSObject {
     
     func showPlaceOnMap(_ place: GMSPlace) {
         Logger.log("showPlaceOnMap: \(place.name ?? "Unknown")", level: .debug, category: "Map")
+        
+        // Remove previous search marker if exists
+        searchPlaceMarker?.map = nil
+        
         let marker = MarkerFactory.createPlaceMarker(for: place)
         marker.map = mapView
+        searchPlaceMarker = marker
         
         // Adjust camera position to account for modal
         // Modal starts at 60% from top and has height 40% (from code: y: 0.6, height: 0.4)
-        // Pin should be 20% of screen height down from top of modal
-        // So pin position = 60% (modal start) - 20% = 40% from top of screen
+        // Pin should be positioned higher - about 30% of screen height down from top of modal
+        // So pin position = 60% (modal start) - 30% = 30% from top of screen
         let screenHeight = mapView.bounds.height
-        let modalStartFromTop = 0.6 // Modal starts at 60% from top (actual from code)
-        let pinOffsetFromModalTop = 0.2 // Pin is 20% of screen height down from top of modal
-        let targetPositionFromTop = modalStartFromTop - pinOffsetFromModalTop // 40% from top of screen
+        let modalStartFromTop = 0.6 // Modal starts at 60% from top
+        let pinOffsetFromModalTop = 0.3 // Pin is 30% of screen height down from top of modal (increased from 0.2)
+        let targetPositionFromTop = modalStartFromTop - pinOffsetFromModalTop // 30% from top of screen
         let currentPositionFromTop = 0.5 // Center of screen (50% from top)
-        let offsetFromTop = screenHeight * (currentPositionFromTop - targetPositionFromTop) // 10% of screen height
+        let offsetFromTop = screenHeight * (currentPositionFromTop - targetPositionFromTop) // 20% of screen height
         
         // Calculate latitude offset based on zoom level and screen dimensions
         // Formula: degrees per pixel = (156543.03392 * cos(lat * π/180)) / (2^zoom)
@@ -138,13 +144,16 @@ final class GoogleMapManager: NSObject {
             longitude: place.coordinate.longitude,
             zoom: Constants.defaultZoom
         )
-        Logger.log("Animating map to: \(adjustedLatitude), \(place.coordinate.longitude) (adjusted for modal - upper area)", level: .debug, category: "Map")
+        Logger.log("Animating map to: \(adjustedLatitude), \(place.coordinate.longitude) (adjusted for modal - pin higher)", level: .debug, category: "Map")
         mapView.animate(to: camera)
-        
-        markers.append(marker)
 
         // User picked a place – stop auto recentring to current location
         followUserLocation = false
+    }
+    
+    func clearSearchPlaceMarker() {
+        searchPlaceMarker?.map = nil
+        searchPlaceMarker = nil
     }
     
     func clearMarkers() {

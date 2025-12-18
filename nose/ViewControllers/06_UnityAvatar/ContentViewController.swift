@@ -99,6 +99,22 @@ class ContentViewController: UIViewController, ContentViewControllerDelegate {
     }
 
     private func fetchExistingSelections(completion: @escaping ([String: [String: String]]?) -> Void) {
+        // For temporary event avatar collections, load from UserDefaults instead of Firestore
+        if collection.id == "temp_event_avatar" {
+            let tempAvatarDataKey = "temp_event_avatar_data"
+            if let savedData = UserDefaults.standard.data(forKey: tempAvatarDataKey),
+               let avatarData = try? JSONDecoder().decode(CollectionAvatar.AvatarData.self, from: savedData) {
+                print("[ContentViewController] Loaded temporary avatar data from UserDefaults")
+                completion(avatarData.selections)
+                return
+            } else {
+                print("[ContentViewController] No temporary avatar data found in UserDefaults")
+                completion(nil)
+                return
+            }
+        }
+        
+        // For regular collections, fetch from Firestore
         guard let userId = Auth.auth().currentUser?.uid else { completion(nil); return }
         let db = Firestore.firestore()
         db.collection("users")

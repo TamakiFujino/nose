@@ -737,8 +737,8 @@ final class CreateEventViewController: UIViewController {
     @objc private func customizeAvatarTapped() {
         guard let userId = Auth.auth().currentUser?.uid else { return }
         
-        // Create a temporary collection for avatar customization
-        // We'll use a consistent ID so we can retrieve the avatar data later
+        // Create a temporary collection object for avatar customization (not saved to Firestore)
+        // We'll use a consistent ID so ContentViewController can recognize it as temporary
         let tempCollection = PlaceCollection(
             id: tempAvatarCollectionId,
             name: "Event Avatar",
@@ -748,46 +748,19 @@ final class CreateEventViewController: UIViewController {
             isOwner: true
         )
         
-        // If we have existing avatar data (edit mode), save it to the temp collection first
+        // Save existing avatar data locally (if any) before navigating
+        // This ensures ContentViewController can load it if needed
         if let existingAvatarData = avatarData {
-            let db = Firestore.firestore()
-            db.collection("users")
-                .document(userId)
-                .collection("collections")
-                .document(tempAvatarCollectionId)
-                .setData([
-                    "id": tempAvatarCollectionId,
-                    "name": "Event Avatar",
-                    "places": [],
-                    "userId": userId,
-                    "status": "active",
-                    "createdAt": Timestamp(date: Date()),
-                    "isOwner": true,
-                    "version": 1,
-                    "avatarData": existingAvatarData.toFirestoreDict()
-                ], merge: true) { [weak self] error in
-                    if let error = error {
-                        print("❌ Error saving avatar data to temp collection: \(error.localizedDescription)")
-                    } else {
-                        print("✅ Saved existing avatar data to temp collection")
-                    }
-                    
-                    // Navigate to ContentViewController
-                    let vc = ContentViewController(collection: tempCollection)
-                    if let nav = self?.navigationController {
-                        nav.pushViewController(vc, animated: true)
-                    } else {
-                        self?.present(vc, animated: true)
-                    }
-                }
+            saveAvatarDataLocally(existingAvatarData)
+            print("✅ Saved existing avatar data locally before customization")
+        }
+        
+        // Navigate to ContentViewController (no Firestore operations)
+        let vc = ContentViewController(collection: tempCollection)
+        if let nav = navigationController {
+            nav.pushViewController(vc, animated: true)
         } else {
-            // No existing avatar data, just navigate
-            let vc = ContentViewController(collection: tempCollection)
-            if let nav = navigationController {
-                nav.pushViewController(vc, animated: true)
-            } else {
-                present(vc, animated: true)
-            }
+            present(vc, animated: true)
         }
     }
     
@@ -1394,20 +1367,7 @@ extension CreateEventViewController {
         // Delete the temporary avatar image file
         deleteTemporaryAvatarImage()
         
-        // Remove the temporary collection document from Firestore
-        guard let userId = Auth.auth().currentUser?.uid else { return }
-        Firestore.firestore()
-            .collection("users")
-            .document(userId)
-            .collection("collections")
-            .document(tempAvatarCollectionId)
-            .delete { error in
-                if let error = error {
-                    print("⚠️ Failed to delete temporary avatar document: \(error.localizedDescription)")
-                } else {
-                    print("🗑️ Deleted temporary avatar document from Firestore")
-                }
-            }
+        // No Firestore cleanup needed - we never create a collection there
     }
 
     private func dismissSelf() {

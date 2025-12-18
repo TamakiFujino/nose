@@ -112,6 +112,9 @@ class SaveToCollectionViewController: UIViewController {
         return button
     }()
     
+    // MARK: - Properties
+    private var isLoadingCollections = false
+    
     // MARK: - Initialization
     init(place: GMSPlace) {
         self.itemToSave = .place(place)
@@ -193,7 +196,15 @@ class SaveToCollectionViewController: UIViewController {
     }
     
     private func loadUserCollections() {
+        // Prevent concurrent loads
+        guard !isLoadingCollections else {
+            print("⚠️ loadUserCollections() already in progress, skipping")
+            return
+        }
+        
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        
+        isLoadingCollections = true
         let db = Firestore.firestore()
         
         // Create groups to track loading progress
@@ -209,6 +220,8 @@ class SaveToCollectionViewController: UIViewController {
                 reloadSetup = true
                 // Wait for all member counts to load before reloading table
                 memberCountGroup.notify(queue: .main) {
+                    // Ensure we're on main thread and reset loading flag
+                    self.isLoadingCollections = false
                     self.collectionsTableView.reloadData()
                 }
             }
@@ -223,6 +236,7 @@ class SaveToCollectionViewController: UIViewController {
         ownedCollectionsRef.getDocuments { [weak self] snapshot, error in
             if let error = error {
                 print("❌ Error loading owned collections: \(error.localizedDescription)")
+                self?.isLoadingCollections = false
                 ownedCollectionsLoaded = true
                 checkAndReload()
                 return
@@ -263,6 +277,7 @@ class SaveToCollectionViewController: UIViewController {
         sharedCollectionsRef.getDocuments { [weak self] snapshot, error in
             if let error = error {
                 print("❌ Error loading shared collections: \(error.localizedDescription)")
+                self?.isLoadingCollections = false
                 sharedCollectionsLoaded = true
                 checkAndReload()
                 return
@@ -884,14 +899,28 @@ extension SaveToCollectionViewController: UITableViewDelegate, UITableViewDataSo
             SaveToCollectionViewController.imageCache.setObject(image, forKey: urlString as NSString)
             
             DispatchQueue.main.async {
-                self.loadedIconImages[collectionId] = image
-                // Reload the specific cell if visible
-                if let index = (self.currentTab == .personal ? self.ownedCollections : self.sharedCollections).firstIndex(where: { $0.id == collectionId }) {
-                    let indexPath = IndexPath(row: index, section: 0)
-                    if self.collectionsTableView.indexPathsForVisibleRows?.contains(indexPath) == true {
-                        self.collectionsTableView.reloadRows(at: [indexPath], with: .none)
-                    }
+                // Check if collection still exists in current arrays before updating
+                let collections = self.currentTab == .personal ? self.ownedCollections : self.sharedCollections
+                guard let index = collections.firstIndex(where: { $0.id == collectionId }) else {
+                    // Collection no longer exists (might have been reloaded), ignore this update
+                    return
                 }
+                
+                self.loadedIconImages[collectionId] = image
+                
+                // Reload the specific cell if visible and indexPath is valid
+                let indexPath = IndexPath(row: index, section: 0)
+                let numberOfRows = self.collectionsTableView.numberOfRows(inSection: 0)
+                
+                // Double-check that the indexPath is valid
+                guard indexPath.row < numberOfRows,
+                      self.collectionsTableView.indexPathsForVisibleRows?.contains(indexPath) == true else {
+                    // IndexPath is invalid or cell is not visible, just update the cache
+                    return
+                }
+                
+                // Safely reload the row
+                self.collectionsTableView.reloadRows(at: [indexPath], with: .none)
             }
         }.resume()
     }
