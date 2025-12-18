@@ -2,6 +2,10 @@ import UIKit
 import GooglePlaces
 import FirebaseFirestore
 
+protocol PlaceTableViewCellDelegate: AnyObject {
+    func placeTableViewCell(_ cell: PlaceTableViewCell, didTapHeart placeId: String, isHearted: Bool)
+}
+
 class PlaceTableViewCell: UITableViewCell {
     // MARK: - Properties
     private var currentPlaceId: String? // Track which place this cell is currently displaying
@@ -55,6 +59,61 @@ class PlaceTableViewCell: UITableViewCell {
         
         return view
     }()
+    
+    private lazy var heartButton: UIButton = {
+        let button = UIButton(type: .custom)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.setImage(UIImage(systemName: "heart")?.withRenderingMode(.alwaysTemplate), for: .normal)
+        button.setImage(UIImage(systemName: "heart.fill")?.withRenderingMode(.alwaysTemplate), for: .selected)
+        button.tintColor = .secondaryLabel // Match bookmark color
+        button.adjustsImageWhenHighlighted = false
+        button.addTarget(self, action: #selector(heartButtonTapped), for: .touchUpInside)
+        return button
+    }()
+    
+    private let heartCountLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.font = .systemFont(ofSize: 14)
+        label.textColor = .secondaryLabel // Match bookmark color
+        label.text = "0"
+        return label
+    }()
+    
+    private lazy var heartContainerView: UIView = {
+        let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.isUserInteractionEnabled = true
+        view.addSubview(heartButton)
+        view.addSubview(heartCountLabel)
+        
+        NSLayoutConstraint.activate([
+            heartButton.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            heartButton.topAnchor.constraint(equalTo: view.topAnchor),
+            heartButton.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            heartButton.widthAnchor.constraint(equalToConstant: 44),
+            heartButton.heightAnchor.constraint(equalToConstant: 44),
+            
+            heartCountLabel.leadingAnchor.constraint(equalTo: heartButton.trailingAnchor, constant: 0),
+            heartCountLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            heartCountLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor)
+        ])
+        
+        return view
+    }()
+    
+    private let bottomBorderView: UIView = {
+        let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.backgroundColor = .separator
+        return view
+    }()
+    
+    // MARK: - Properties
+    weak var delegate: PlaceTableViewCellDelegate?
+    private var placeId: String?
+    private var isHearted: Bool = false
+    private var heartCount: Int = 0
 
     // MARK: - Initialization
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
@@ -74,6 +133,11 @@ class PlaceTableViewCell: UITableViewCell {
         nameLabel.text = nil
         ratingLabel.text = nil
         currentPlaceId = nil // Clear the tracked place ID
+        placeId = nil
+        isHearted = false
+        heartCount = 0
+        heartButton.isSelected = false
+        heartCountLabel.text = "0"
     }
 
     // MARK: - Setup
@@ -82,6 +146,8 @@ class PlaceTableViewCell: UITableViewCell {
         contentView.addSubview(nameLabel)
         contentView.addSubview(ratingLabel)
         contentView.addSubview(visitedIndicator)
+        contentView.addSubview(heartContainerView)
+        contentView.addSubview(bottomBorderView)
 
         NSLayoutConstraint.activate([
             placeImageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
@@ -100,20 +166,75 @@ class PlaceTableViewCell: UITableViewCell {
             visitedIndicator.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 16),
             visitedIndicator.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
             visitedIndicator.widthAnchor.constraint(equalToConstant: 24),
-            visitedIndicator.heightAnchor.constraint(equalToConstant: 24)
+            visitedIndicator.heightAnchor.constraint(equalToConstant: 24),
+            
+            heartContainerView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            heartContainerView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -8),
+            
+            // Custom bottom border with consistent margins on both sides
+            bottomBorderView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            bottomBorderView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            bottomBorderView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+            bottomBorderView.heightAnchor.constraint(equalToConstant: 0.5)
         ])
+    }
+    
+    @objc private func heartButtonTapped() {
+        guard let placeId = placeId else { return }
+        let newHeartedState = !isHearted
+        delegate?.placeTableViewCell(self, didTapHeart: placeId, isHearted: newHeartedState)
+    }
+    
+    // MARK: - Public Methods
+    /// Update heart state without reloading the entire cell (prevents image flicker)
+    func updateHeartState(isHearted: Bool, heartCount: Int) {
+        self.isHearted = isHearted
+        self.heartCount = heartCount
+        heartButton.isSelected = isHearted
+        heartCountLabel.text = "\(heartCount)"
+        
+        // Animate the heart with a pink flash and scale effect
+        animateHeart(isHearted: isHearted)
+    }
+    
+    private func animateHeart(isHearted: Bool) {
+        // Flash pink color
+        heartButton.tintColor = .systemPink
+        
+        // Scale up animation
+        UIView.animate(withDuration: 0.15, delay: 0, options: [.curveEaseOut], animations: {
+            self.heartButton.transform = CGAffineTransform(scaleX: 1.3, y: 1.3)
+        }) { _ in
+            // Scale back down and return to gray
+            UIView.animate(withDuration: 0.15, delay: 0.1, options: [.curveEaseIn], animations: {
+                self.heartButton.transform = .identity
+            }) { _ in
+                // Return to gray color after animation
+                UIView.animate(withDuration: 0.2) {
+                    self.heartButton.tintColor = .secondaryLabel
+                }
+            }
+        }
     }
 
     // MARK: - Configuration
-    func configure(with place: PlaceCollection.Place) {
+    func configure(with place: PlaceCollection.Place, isHearted: Bool = false, heartCount: Int = 0, showHeartButton: Bool = true) {
         // Store the placeId to verify in async callbacks
         currentPlaceId = place.placeId
+        self.placeId = place.placeId
+        self.isHearted = isHearted
+        self.heartCount = heartCount
         
         // Clear image immediately to prevent showing stale images from cell reuse
         placeImageView.image = nil
         
         nameLabel.text = place.name
         ratingLabel.text = "Rating: \(String(format: "%.1f", place.rating))"
+        
+        // Update heart button state and visibility
+        heartButton.isSelected = isHearted
+        heartCountLabel.text = "\(heartCount)"
+        heartContainerView.isHidden = !showHeartButton
         
         // Change background color based on visited status
         if place.visited {

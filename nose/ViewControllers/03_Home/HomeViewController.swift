@@ -537,15 +537,33 @@ final class HomeViewController: UIViewController {
     }
     
     @objc private func profileButtonTapped() {
-        let settingVC = SettingsViewController()
-        navigationController?.pushViewController(settingVC, animated: true)
+        // Dismiss any open modal first
+        if let presentedVC = presentedViewController {
+            presentedVC.dismiss(animated: true) { [weak self] in
+                let settingVC = SettingsViewController()
+                self?.navigationController?.pushViewController(settingVC, animated: true)
+            }
+        } else {
+            let settingVC = SettingsViewController()
+            navigationController?.pushViewController(settingVC, animated: true)
+        }
     }
     
     @objc private func createEventButtonTapped() {
-        let manageEventVC = ManageEventViewController()
-        let navController = UINavigationController(rootViewController: manageEventVC)
-        navController.modalPresentationStyle = .fullScreen
-        present(navController, animated: true)
+        // Dismiss any open modal first
+        if let presentedVC = presentedViewController {
+            presentedVC.dismiss(animated: true) { [weak self] in
+                let manageEventVC = ManageEventViewController()
+                let navController = UINavigationController(rootViewController: manageEventVC)
+                navController.modalPresentationStyle = .fullScreen
+                self?.present(navController, animated: true)
+            }
+        } else {
+            let manageEventVC = ManageEventViewController()
+            let navController = UINavigationController(rootViewController: manageEventVC)
+            navController.modalPresentationStyle = .fullScreen
+            present(navController, animated: true)
+        }
     }
     
     @objc private func searchButtonTapped() {

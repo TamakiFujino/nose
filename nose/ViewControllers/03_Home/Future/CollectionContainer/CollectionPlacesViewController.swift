@@ -17,6 +17,15 @@ class CollectionPlacesViewController: UIViewController {
     private var currentIconName: String? // Track current icon name for updates (SF Symbol)
     private var currentIconUrl: String? // Track current icon URL for updates (custom image)
     
+    // Heart tracking: placeId -> [userId] array
+    private var placeHearts: [String: [String]] = [:]
+    private var collectionMembers: [String] = [] // Users who have access to this collection
+    
+    // Debouncing for heart writes
+    private var pendingHeartChanges: [String: [String]] = [:] // placeId -> hearts array to write
+    private var heartDebounceTimer: Timer?
+    private let heartDebounceInterval: TimeInterval = 0.8 // Wait 0.8 seconds before writing
+    
     private var isCompleted: Bool = false
     private static let imageCache = NSCache<NSString, UIImage>()
 
@@ -49,6 +58,7 @@ class CollectionPlacesViewController: UIViewController {
         tableView.register(PlaceTableViewCell.self, forCellReuseIdentifier: "PlaceCell")
         tableView.backgroundColor = .systemBackground
         tableView.rowHeight = 100
+        tableView.separatorStyle = .none
         return tableView
     }()
 
@@ -278,8 +288,16 @@ class CollectionPlacesViewController: UIViewController {
         loadOverlappingAvatars()
     }
 
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        // Flush any pending heart changes before leaving
+        heartDebounceTimer?.invalidate()
+        flushPendingHeartChanges()
+    }
+    
     deinit {
         NotificationCenter.default.removeObserver(self)
+        heartDebounceTimer?.invalidate()
     }
 
     // MARK: - Actions
@@ -547,9 +565,164 @@ class CollectionPlacesViewController: UIViewController {
 
     private func loadPlaces() {
         places = collection.places
+        loadPlaceHearts()
         loadEvents()
         updatePlacesCountLabel()
         tableView.reloadData()
+    }
+    
+    private func loadPlaceHearts() {
+        let db = Firestore.firestore()
+        
+        // Always load hearts from the owner's collection (single source of truth)
+        // This ensures all users see the same heart data
+        db.collection("users")
+            .document(collection.userId)
+            .collection("collections")
+            .document(collection.id)
+            .getDocument { [weak self] snapshot, error in
+                guard let self = self else { return }
+                
+                if let error = error {
+                    print("❌ Error loading place hearts: \(error.localizedDescription)")
+                    return
+                }
+                
+                guard let data = snapshot?.data() else {
+                    self.placeHearts = [:]
+                    self.collectionMembers = []
+                    DispatchQueue.main.async {
+                        self.tableView.reloadData()
+                    }
+                    return
+                }
+                
+                // Load hearts data
+                if let heartsData = data["placeHearts"] as? [String: [String]] {
+                    self.placeHearts = heartsData
+                } else {
+                    self.placeHearts = [:]
+                }
+                
+                // Load members list
+                if let members = data["members"] as? [String] {
+                    self.collectionMembers = members
+                } else {
+                    // Default to owner if no members field
+                    self.collectionMembers = [self.collection.userId]
+                }
+                
+                // Sort places by heart count (most hearts first)
+                self.sortPlacesByHeartCount()
+                
+                DispatchQueue.main.async {
+                    self.tableView.reloadData()
+                }
+            }
+    }
+    
+    private func sortPlacesByHeartCount() {
+        places.sort { place1, place2 in
+            let hearts1 = placeHearts[place1.placeId]?.count ?? 0
+            let hearts2 = placeHearts[place2.placeId]?.count ?? 0
+            // Sort by heart count descending (most hearts first)
+            // If same heart count, maintain original order
+            return hearts1 > hearts2
+        }
+    }
+    
+    private func toggleHeart(for placeId: String, isHearted: Bool) {
+        guard let currentUserId = Auth.auth().currentUser?.uid else {
+            ToastManager.showToast(message: "Please sign in to heart spots", type: .error)
+            return
+        }
+        
+        // Check if user is a member of this collection
+        guard collectionMembers.contains(currentUserId) else {
+            ToastManager.showToast(message: "Only collection members can heart spots", type: .error)
+            return
+        }
+        
+        // Get current hearts for this place
+        var currentHearts = placeHearts[placeId] ?? []
+        
+        if isHearted {
+            // Add user to hearts if not already there
+            if !currentHearts.contains(currentUserId) {
+                currentHearts.append(currentUserId)
+            }
+        } else {
+            // Remove user from hearts
+            currentHearts.removeAll { $0 == currentUserId }
+        }
+        
+        // Update local state immediately for responsive UI
+        placeHearts[placeId] = currentHearts.isEmpty ? nil : currentHearts
+        
+        // Update the specific cell directly (without reloading to prevent image flicker)
+        if let index = places.firstIndex(where: { $0.placeId == placeId }) {
+            let indexPath = IndexPath(row: index, section: 1)
+            if let cell = tableView.cellForRow(at: indexPath) as? PlaceTableViewCell {
+                cell.updateHeartState(isHearted: isHearted, heartCount: currentHearts.count)
+            }
+        }
+        
+        // Store pending change for debounced write
+        pendingHeartChanges[placeId] = currentHearts
+        
+        // Reset debounce timer
+        heartDebounceTimer?.invalidate()
+        heartDebounceTimer = Timer.scheduledTimer(withTimeInterval: heartDebounceInterval, repeats: false) { [weak self] _ in
+            self?.flushPendingHeartChanges()
+        }
+    }
+    
+    /// Write all pending heart changes to Firestore (called after debounce interval)
+    private func flushPendingHeartChanges() {
+        guard !pendingHeartChanges.isEmpty else { return }
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        
+        let db = Firestore.firestore()
+        
+        // Get references to both collections (user's copy and owner's copy)
+        let userCollectionRef = db.collection("users")
+            .document(currentUserId)
+            .collection("collections")
+            .document(collection.id)
+        
+        let ownerCollectionRef = db.collection("users")
+            .document(collection.userId)
+            .collection("collections")
+            .document(collection.id)
+        
+        // Build update data for all pending changes
+        var updateData: [String: Any] = [:]
+        for (placeId, hearts) in pendingHeartChanges {
+            updateData["placeHearts.\(placeId)"] = hearts.isEmpty ? FieldValue.delete() : hearts
+        }
+        
+        // Clear pending changes before writing
+        let changesToWrite = pendingHeartChanges
+        pendingHeartChanges.removeAll()
+        
+        print("💾 Writing \(changesToWrite.count) heart change(s) to Firestore")
+        
+        // Batch write to both documents
+        let batch = db.batch()
+        batch.updateData(updateData, forDocument: userCollectionRef)
+        batch.updateData(updateData, forDocument: ownerCollectionRef)
+        
+        batch.commit { [weak self] error in
+            if let error = error {
+                print("❌ Error saving hearts: \(error.localizedDescription)")
+                ToastManager.showToast(message: "Failed to save hearts", type: .error)
+                
+                // Revert local state on error
+                self?.loadPlaceHearts()
+            } else {
+                print("✅ Successfully saved \(changesToWrite.count) heart change(s)")
+            }
+        }
     }
     
     private func loadEvents() {
@@ -875,7 +1048,19 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         } else {
             // Place cell
             let cell = tableView.dequeueReusableCell(withIdentifier: "PlaceCell", for: indexPath) as! PlaceTableViewCell
-            cell.configure(with: places[indexPath.row])
+            let place = places[indexPath.row]
+            cell.delegate = self
+            
+            // Check if current user is a member (can heart spots)
+            let currentUserId = Auth.auth().currentUser?.uid ?? ""
+            let canHeart = collectionMembers.contains(currentUserId)
+            
+            // Get heart data for this place
+            let heartedUserIds = placeHearts[place.placeId] ?? []
+            let isHearted = heartedUserIds.contains(currentUserId)
+            let heartCount = heartedUserIds.count
+            
+            cell.configure(with: place, isHearted: isHearted, heartCount: heartCount, showHeartButton: canHeart)
             return cell
         }
     }
@@ -1741,6 +1926,13 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
                 }
             }
         }
+    }
+}
+
+// MARK: - PlaceTableViewCellDelegate
+extension CollectionPlacesViewController: PlaceTableViewCellDelegate {
+    func placeTableViewCell(_ cell: PlaceTableViewCell, didTapHeart placeId: String, isHearted: Bool) {
+        toggleHeart(for: placeId, isHearted: isHearted)
     }
 }
 
