@@ -753,14 +753,14 @@ final class CreateEventViewController: UIViewController {
         if let existingAvatarData = avatarData {
             saveAvatarDataLocally(existingAvatarData)
             print("✅ Saved existing avatar data locally before customization")
-        }
-        
+                    }
+                    
         // Navigate to ContentViewController (no Firestore operations)
-        let vc = ContentViewController(collection: tempCollection)
-        if let nav = navigationController {
-            nav.pushViewController(vc, animated: true)
-        } else {
-            present(vc, animated: true)
+            let vc = ContentViewController(collection: tempCollection)
+            if let nav = navigationController {
+                nav.pushViewController(vc, animated: true)
+            } else {
+                present(vc, animated: true)
         }
     }
     

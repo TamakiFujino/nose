@@ -406,33 +406,64 @@ final class HomeViewController: UIViewController {
                 if let ownerId = data["userId"] as? String,
                    let collectionId = data["id"] as? String {
                     
-                    db.collection("users")
-                        .document(ownerId)
-                        .collection("collections")
-                        .document(collectionId)
-                        .getDocument { snapshot, error in
-                            defer { sharedGroup.leave() }
-                            
-                            if let error = error {
-                                print("❌ Error loading original collection: \(error.localizedDescription)")
-                                return
-                            }
-                            
-                            if let originalData = snapshot?.data() {
-                                var collectionData = originalData
-                                collectionData["id"] = collectionId
-                                collectionData["isOwner"] = false
-                                
-                                // If status is missing, treat it as active
-                                if collectionData["status"] == nil {
-                                    collectionData["status"] = PlaceCollection.Status.active.rawValue
-                                }
-                                
-                                if let collection = PlaceCollection(dictionary: collectionData) {
-                                    sharedLoadedCollections.append(collection)
-                                }
-                            }
+                    // First check if owner account still exists and is not deleted
+                    db.collection("users").document(ownerId).getDocument { ownerSnapshot, ownerError in
+                        if let ownerError = ownerError {
+                            print("❌ Error checking owner: \(ownerError.localizedDescription)")
+                            sharedGroup.leave()
+                            return
                         }
+                        
+                        // Check if owner is deleted or doesn't exist
+                        let ownerData = ownerSnapshot?.data()
+                        let isOwnerDeleted = ownerData?["isDeleted"] as? Bool ?? false
+                        
+                        if ownerSnapshot?.exists == false || isOwnerDeleted {
+                            print("🗑️ Owner account deleted, skipping collection: \(collectionId)")
+                            
+                            // Mark this collection as inactive in user's database
+                            db.collection("users")
+                                .document(currentUserId)
+                                .collection("collections")
+                                .document(collectionId)
+                                .updateData([
+                                    "status": "inactive",
+                                    "ownerDeleted": true
+                                ]) { _ in
+                                    sharedGroup.leave()
+                                }
+                            return
+                        }
+                        
+                        // Owner exists, proceed to load the collection
+                        db.collection("users")
+                            .document(ownerId)
+                            .collection("collections")
+                            .document(collectionId)
+                            .getDocument { snapshot, error in
+                                defer { sharedGroup.leave() }
+                                
+                                if let error = error {
+                                    print("❌ Error loading original collection: \(error.localizedDescription)")
+                                    return
+                                }
+                                
+                                if let originalData = snapshot?.data() {
+                                    var collectionData = originalData
+                                    collectionData["id"] = collectionId
+                                    collectionData["isOwner"] = false
+                                    
+                                    // If status is missing, treat it as active
+                                    if collectionData["status"] == nil {
+                                        collectionData["status"] = PlaceCollection.Status.active.rawValue
+                                    }
+                                    
+                                    if let collection = PlaceCollection(dictionary: collectionData) {
+                                        sharedLoadedCollections.append(collection)
+                                    }
+                                }
+                            }
+                    }
                 } else {
                     sharedGroup.leave()
                 }
@@ -478,10 +509,23 @@ final class HomeViewController: UIViewController {
             name: NSNotification.Name("PlaceDetailViewControllerWillDismiss"),
             object: nil
         )
+        
+        // Listen for collection updates to refresh map
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(refreshCollections),
+            name: NSNotification.Name("RefreshCollections"),
+            object: nil
+        )
     }
     
     @objc private func placeDetailViewControllerWillDismiss() {
         mapManager?.clearSearchPlaceMarker()
+    }
+    
+    @objc private func refreshCollections() {
+        print("🔄 Refreshing collections on map after update")
+        loadCollections()
     }
     
     private func checkLocationPermission() {

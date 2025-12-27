@@ -251,7 +251,7 @@ class PlaceTableViewCell: UITableViewCell {
         if let cachedImage = PlacesCacheManager.shared.getCachedPhoto(for: photoID) {
             // Verify cell hasn't been reused before setting cached image
             if currentPlaceId == place.placeId {
-                placeImageView.image = cachedImage
+            placeImageView.image = cachedImage
             }
             return
         }
@@ -305,7 +305,7 @@ class PlaceTableViewCell: UITableViewCell {
             print("📸 Using loaded event image for: \(event.title)")
             // Verify cell hasn't been reused before setting image
             if currentPlaceId == event.id {
-                placeImageView.image = event.images[0]
+            placeImageView.image = event.images[0]
             }
         } else {
             print("📥 Need to download event image for: \(event.title)")

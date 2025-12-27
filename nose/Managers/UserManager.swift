@@ -145,31 +145,77 @@ final class UserManager {
                     batch.deleteDocument(document.reference)
                 }
                 
-                // 4. Delete user's collections
+                // 4. Get user's collections and mark shared copies as inactive
                 let collectionsRef = userRef.collection("collections")
                 collectionsRef.getDocuments { [weak self] snapshot, error in
-                    guard self != nil else { return }
+                    guard let self = self else { return }
                     
                     if let error = error {
                         completion(.failure(error))
                         return
                     }
                     
-                    snapshot?.documents.forEach { document in
-                        batch.deleteDocument(document.reference)
+                    // Find collections owned by this user that have been shared with others
+                    let sharedCollections = snapshot?.documents.filter { doc in
+                        let data = doc.data()
+                        let isOwner = data["isOwner"] as? Bool ?? false
+                        let members = data["members"] as? [String] ?? []
+                        // Collection is shared if user is owner and has other members
+                        return isOwner && members.contains(where: { $0 != userId })
+                    } ?? []
+                    
+                    print("🗑️ Found \(sharedCollections.count) shared collections to mark inactive in friends' databases")
+                    
+                    // Mark shared copies as inactive in friends' databases
+                    let group = DispatchGroup()
+                    
+                    for collectionDoc in sharedCollections {
+                        let data = collectionDoc.data()
+                        let collectionId = collectionDoc.documentID
+                        let members = data["members"] as? [String] ?? []
+                        
+                        // Update each friend's copy of this collection
+                        for memberId in members where memberId != userId {
+                            group.enter()
+                            let friendCollectionRef = self.db.collection("users")
+                                .document(memberId)
+                                .collection("collections")
+                                .document(collectionId)
+                            
+                            friendCollectionRef.updateData([
+                                "status": "inactive",
+                                "ownerDeleted": true,
+                                "ownerDeletedAt": FieldValue.serverTimestamp()
+                            ]) { error in
+                                if let error = error {
+                                    print("❌ Error marking shared collection as inactive for user \(memberId): \(error.localizedDescription)")
+                                } else {
+                                    print("✅ Marked collection \(collectionId) as inactive for user \(memberId)")
+                                }
+                                group.leave()
+                            }
+                        }
                     }
                     
-                    // Commit all changes
-                    batch.commit { error in
-                        if let error = error {
-                            completion(.failure(error))
-                        } else {
-                            // Delete Firebase Auth account
-                            Auth.auth().currentUser?.delete { error in
-                                if let error = error {
-                                    completion(.failure(error))
-                                } else {
-                                    completion(.success(()))
+                    // Wait for all shared collection updates to complete
+                    group.notify(queue: .main) {
+                        // Delete user's own collections
+                        snapshot?.documents.forEach { document in
+                            batch.deleteDocument(document.reference)
+                        }
+                        
+                        // Commit all changes
+                        batch.commit { error in
+                            if let error = error {
+                                completion(.failure(error))
+                            } else {
+                                // Delete Firebase Auth account
+                                Auth.auth().currentUser?.delete { error in
+                                    if let error = error {
+                                        completion(.failure(error))
+                                    } else {
+                                        completion(.success(()))
+                                    }
                                 }
                             }
                         }

@@ -193,7 +193,47 @@ class CollectionPlacesViewController: UIViewController {
 
         // Listen for avatar thumbnail updates
         NotificationCenter.default.addObserver(self, selector: #selector(handleAvatarThumbnailUpdatedNotification(_:)), name: Notification.Name("AvatarThumbnailUpdated"), object: nil)
+        
+        // Listen for collection updates to refresh places
+        NotificationCenter.default.addObserver(self, selector: #selector(refreshPlaces), name: NSNotification.Name("RefreshCollections"), object: nil)
+        
         // prefillAvatarImageIfCached() // disabled since big avatar image is not shown
+    }
+    
+    @objc private func refreshPlaces() {
+        // Reload places from Firestore when collections are updated (e.g., after copying a place)
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        let db = Firestore.firestore()
+        
+        // Reload collection from Firestore to get latest places
+        let collectionRef = db.collection("users")
+            .document(currentUserId)
+            .collection("collections")
+            .document(collection.id)
+        
+        collectionRef.getDocument { [weak self] snapshot, error in
+            guard let self = self else { return }
+            
+            if let error = error {
+                print("❌ Error refreshing collection: \(error.localizedDescription)")
+                return
+            }
+            
+            guard let data = snapshot?.data(),
+                  let updatedCollection = PlaceCollection(dictionary: data) else {
+                print("❌ Failed to parse refreshed collection")
+                return
+            }
+            
+            // Update the collection property with fresh data
+            // Note: collection is let, so we can't reassign it, but we can update places
+            DispatchQueue.main.async {
+                self.places = updatedCollection.places
+                self.tableView.reloadData()
+                self.updatePlacesCountLabel()
+                print("✅ Refreshed places: \(self.places.count) places")
+            }
+        }
     }
     
     private func preloadCollectionIconIfNeeded() {
@@ -1622,8 +1662,16 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
             self?.toggleVisitedStatus(at: indexPath)
             completion(true) // Dismiss the swipe action immediately
         }
-        visitedAction.backgroundColor = .blueColor
+        visitedAction.backgroundColor = UIColor.blueColor
         visitedAction.image = UIImage(systemName: place.visited ? "xmark.circle" : "checkmark.circle")
+        
+        // Copy action
+        let copyAction = UIContextualAction(style: .normal, title: "Copy") { [weak self] (action, view, completion) in
+            self?.showCopyOptions(for: place, at: indexPath)
+            completion(true)
+        }
+        copyAction.backgroundColor = .systemOrange
+        copyAction.image = UIImage(systemName: "doc.on.doc")
         
         // Delete action
         let deleteAction = UIContextualAction(style: .destructive, title: "Delete") { [weak self] (action, view, completion) in
@@ -1633,7 +1681,7 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         deleteAction.backgroundColor = .fourthColor
         deleteAction.image = UIImage(systemName: "trash")
         
-        return UISwipeActionsConfiguration(actions: [deleteAction, visitedAction, mapAction])
+        return UISwipeActionsConfiguration(actions: [deleteAction, copyAction, visitedAction, mapAction])
     }
     
     private func confirmDeleteEvent(at indexPath: IndexPath) {
@@ -1675,6 +1723,278 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         alertController.addAction(deleteAction)
         
         present(alertController, animated: true)
+    }
+    
+    private func showCopyOptions(for place: PlaceCollection.Place, at indexPath: IndexPath) {
+        guard let currentUserId = Auth.auth().currentUser?.uid else {
+            ToastManager.showToast(message: "Please sign in to move places", type: .error)
+            return
+        }
+        
+        let db = Firestore.firestore()
+        
+        // Load user's collections
+        db.collection("users")
+            .document(currentUserId)
+            .collection("collections")
+            .whereField("status", isEqualTo: "active")
+            .getDocuments { [weak self] snapshot, error in
+                guard let self = self else { return }
+                
+                if let error = error {
+                    print("❌ Error loading collections: \(error.localizedDescription)")
+                    ToastManager.showToast(message: "Failed to load collections", type: .error)
+                    return
+                }
+                
+                guard let documents = snapshot?.documents else {
+                    ToastManager.showToast(message: "No collections found", type: .error)
+                    return
+                }
+                
+                // Filter out the current collection
+                let otherCollections = documents.compactMap { doc -> (id: String, name: String)? in
+                    let data = doc.data()
+                    guard doc.documentID != self.collection.id,
+                          let name = data["name"] as? String else {
+                        return nil
+                    }
+                    return (id: doc.documentID, name: name)
+                }
+                
+                if otherCollections.isEmpty {
+                    ToastManager.showToast(message: "No other collections to move to", type: .info)
+                    return
+                }
+                
+                // Show action sheet with collection options
+                DispatchQueue.main.async {
+                    self.presentCopyActionSheet(for: place, at: indexPath, collections: otherCollections)
+                }
+            }
+    }
+    
+    private func presentCopyActionSheet(for place: PlaceCollection.Place, at indexPath: IndexPath, collections: [(id: String, name: String)]) {
+        let actionSheet = UIAlertController(
+            title: "Copy to Collection",
+            message: "Select a collection to copy '\(place.name)' to:",
+            preferredStyle: .actionSheet
+        )
+        
+        for collection in collections {
+            let action = UIAlertAction(title: collection.name, style: .default) { [weak self] _ in
+                self?.confirmCopyPlace(place, at: indexPath, toCollection: collection)
+            }
+            actionSheet.addAction(action)
+        }
+        
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+        actionSheet.addAction(cancelAction)
+        
+        // For iPad support
+        if let popoverController = actionSheet.popoverPresentationController {
+            popoverController.sourceView = self.view
+            popoverController.sourceRect = CGRect(x: self.view.bounds.midX, y: self.view.bounds.midY, width: 0, height: 0)
+            popoverController.permittedArrowDirections = []
+        }
+        
+        present(actionSheet, animated: true)
+    }
+    
+    private func confirmCopyPlace(_ place: PlaceCollection.Place, at indexPath: IndexPath, toCollection targetCollection: (id: String, name: String)) {
+        let alertController = UIAlertController(
+            title: "Copy Place",
+            message: "Copy '\(place.name)' to '\(targetCollection.name)'?",
+            preferredStyle: .alert
+        )
+        
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+        let copyAction = UIAlertAction(title: "Copy", style: .default) { [weak self] _ in
+            self?.copyPlace(place, toCollectionId: targetCollection.id)
+        }
+        
+        alertController.addAction(cancelAction)
+        alertController.addAction(copyAction)
+        
+        present(alertController, animated: true)
+    }
+    
+    private func copyPlace(_ place: PlaceCollection.Place, toCollectionId: String) {
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        
+        showLoadingAlert(title: "Copying place...")
+        
+        let db = Firestore.firestore()
+        
+        // Get source collection reference (owner's if shared, user's if owned)
+        let sourceRef = collection.userId != currentUserId ?
+            db.collection("users").document(collection.userId).collection("collections").document(collection.id) :
+            db.collection("users").document(currentUserId).collection("collections").document(collection.id)
+        
+        let targetUserRef = db.collection("users")
+            .document(currentUserId)
+            .collection("collections")
+            .document(toCollectionId)
+        
+        // Step 1: Get place data from source
+        sourceRef.getDocument { [weak self] sourceSnapshot, error in
+            guard let self = self else { return }
+            
+            guard error == nil,
+                  let sourceData = sourceSnapshot?.data(),
+                  let placesArray = sourceData["places"] as? [[String: Any]],
+                  let placeIndex = placesArray.firstIndex(where: { ($0["placeId"] as? String) == place.placeId }),
+                  let placeId = placesArray[placeIndex]["placeId"] as? String,
+                  let name = placesArray[placeIndex]["name"] as? String else {
+                self.dismiss(animated: true) {
+                    ToastManager.showToast(message: "Failed to copy place", type: .error)
+                }
+                return
+            }
+            
+            // Prepare clean place data with proper types
+            let cleanPlaceData = self.preparePlaceDataForCopy(
+                from: placesArray[placeIndex],
+                placeId: placeId,
+                name: name
+            )
+            
+            // Step 2: Copy to target collection
+            self.copyPlaceToTarget(
+                placeData: cleanPlaceData,
+                placeId: placeId,
+                targetUserRef: targetUserRef,
+                toCollectionId: toCollectionId,
+                currentUserId: currentUserId,
+                db: db
+            )
+        }
+    }
+    
+    /// Prepares place data for copying by ensuring all required fields exist with correct types
+    private func preparePlaceDataForCopy(from placeData: [String: Any], placeId: String, name: String) -> [String: Any] {
+        // Helper to convert any numeric type to Double
+        func toDouble(_ value: Any?) -> Double {
+            if let val = value as? Double { return val }
+            if let val = value as? Float { return Double(val) }
+            if let val = value as? Int { return Double(val) }
+            return 0.0
+        }
+        
+        // Helper to convert rating to Float
+        func toFloat(_ value: Any?) -> Float {
+            if let val = value as? Float { return val }
+            if let val = value as? Double { return Float(val) }
+            if let val = value as? String, let floatVal = Float(val) { return floatVal }
+            return 0.0
+        }
+        
+        return [
+            "placeId": placeId,
+            "name": name,
+            "formattedAddress": placeData["formattedAddress"] as? String ?? "",
+            "phoneNumber": placeData["phoneNumber"] as? String ?? "",
+            "rating": toFloat(placeData["rating"]),
+            "latitude": toDouble(placeData["latitude"]),
+            "longitude": toDouble(placeData["longitude"]),
+            "visited": placeData["visited"] as? Bool ?? false,
+            "addedAt": Timestamp()
+        ]
+    }
+    
+    /// Copies place to target collection (handles both owned and shared collections)
+    private func copyPlaceToTarget(
+        placeData: [String: Any],
+        placeId: String,
+        targetUserRef: DocumentReference,
+        toCollectionId: String,
+        currentUserId: String,
+        db: Firestore
+    ) {
+        targetUserRef.getDocument { [weak self] targetSnapshot, error in
+            guard let self = self else { return }
+            
+            guard error == nil,
+                  targetSnapshot?.exists == true,
+                  let targetData = targetSnapshot?.data() else {
+                self.dismiss(animated: true) {
+                    ToastManager.showToast(message: "Target collection not found", type: .error)
+                }
+                return
+            }
+            
+            // Determine if target is shared collection
+            let targetOwnerId = targetData["userId"] as? String ?? currentUserId
+            let isTargetShared = targetOwnerId != currentUserId
+            
+            // Get the correct target reference
+            let targetRefToUpdate = isTargetShared ?
+                db.collection("users").document(targetOwnerId).collection("collections").document(toCollectionId) :
+                targetUserRef
+            
+            // For shared collections, verify owner's collection exists
+            if isTargetShared {
+                targetRefToUpdate.getDocument { [weak self] ownerSnapshot, error in
+                    guard let self = self else { return }
+                    
+                    guard error == nil, ownerSnapshot?.exists == true else {
+                        self.dismiss(animated: true) {
+                            ToastManager.showToast(message: "Target collection not found", type: .error)
+                        }
+                        return
+                    }
+                    
+                    self.performCopy(placeData: placeData, targetRef: targetRefToUpdate, userCopyRef: targetUserRef)
+                }
+            } else {
+                // For own collection, check for duplicates first
+                let targetPlaces = targetData["places"] as? [[String: Any]] ?? []
+                if targetPlaces.contains(where: { ($0["placeId"] as? String) == placeId }) {
+                    self.dismiss(animated: true) {
+                        ToastManager.showToast(message: "Place already in collection", type: .info)
+                    }
+                    return
+                }
+                
+                // Update with full array (more reliable than arrayUnion for own collections)
+                var updatedPlaces = targetPlaces
+                updatedPlaces.append(placeData)
+                
+                let batch = db.batch()
+                batch.updateData(["places": updatedPlaces], forDocument: targetRefToUpdate)
+                
+                batch.commit { [weak self] error in
+                    self?.dismiss(animated: true) {
+                        if let error = error {
+                            print("❌ Error copying place: \(error.localizedDescription)")
+                            ToastManager.showToast(message: "Failed to copy place", type: .error)
+                        } else {
+                            ToastManager.showToast(message: "Place copied successfully", type: .success)
+                            NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    /// Performs the actual copy operation using arrayUnion
+    private func performCopy(placeData: [String: Any], targetRef: DocumentReference, userCopyRef: DocumentReference) {
+        let batch = Firestore.firestore().batch()
+        batch.updateData(["places": FieldValue.arrayUnion([placeData])], forDocument: targetRef)
+        batch.updateData(["places": FieldValue.arrayUnion([placeData])], forDocument: userCopyRef)
+        
+        batch.commit { [weak self] error in
+            self?.dismiss(animated: true) {
+                if let error = error {
+                    print("❌ Error copying place: \(error.localizedDescription)")
+                    ToastManager.showToast(message: "Failed to copy place", type: .error)
+                } else {
+                    ToastManager.showToast(message: "Place copied successfully", type: .success)
+                    NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
+                }
+            }
+        }
     }
     
     private func deleteEvent(at indexPath: IndexPath) {

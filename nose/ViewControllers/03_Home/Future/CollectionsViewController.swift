@@ -273,48 +273,89 @@ class CollectionsViewController: UIViewController {
                    let collectionId = data["id"] as? String {
                     print("🔍 Loading original collection from owner: \(ownerId), collection: \(collectionId)")
                     
-                    db.collection("users")
-                        .document(ownerId)
-                        .collection("collections")
-                        .document(collectionId)
-                        .getDocument { snapshot, error in
-                            defer { group.leave() }
+                    // First check if owner account still exists and is not deleted
+                    db.collection("users").document(ownerId).getDocument { [weak self] ownerSnapshot, ownerError in
+                        if let ownerError = ownerError {
+                            print("❌ Error checking owner: \(ownerError.localizedDescription)")
+                            group.leave()
+                            return
+                        }
+                        
+                        // Check if owner is deleted or doesn't exist
+                        let ownerData = ownerSnapshot?.data()
+                        let isOwnerDeleted = ownerData?["isDeleted"] as? Bool ?? false
+                        
+                        if ownerSnapshot?.exists == false || isOwnerDeleted {
+                            print("🗑️ Owner account deleted or doesn't exist, marking collection as inactive: \(collectionId)")
                             
-                            if let error = error {
-                                print("❌ Error loading original collection: \(error.localizedDescription)")
+                            // Mark this collection as inactive in user's database
+                            guard let currentUserId = Auth.auth().currentUser?.uid else {
+                                group.leave()
                                 return
                             }
                             
-                            if let originalData = snapshot?.data() {
-                                var collectionData = originalData
-                                collectionData["id"] = collectionId
-                                collectionData["isOwner"] = false
-                                
-                                // If status is missing, treat it as active
-                                if collectionData["status"] == nil {
-                                    collectionData["status"] = PlaceCollection.Status.active.rawValue
+                            db.collection("users")
+                                .document(currentUserId)
+                                .collection("collections")
+                                .document(collectionId)
+                                .updateData([
+                                    "status": "inactive",
+                                    "ownerDeleted": true
+                                ]) { error in
+                                    if let error = error {
+                                        print("❌ Error marking collection as inactive: \(error.localizedDescription)")
+                                    } else {
+                                        print("✅ Marked stale collection as inactive: \(collectionId)")
+                                    }
+                                    group.leave()
                                 }
-                                
-                                // Store events count for this collection
-                                if let eventsArray = originalData["events"] as? [[String: Any]] {
-                                    self?.collectionEventCounts[collectionId] = eventsArray.count
-                                } else {
-                                    self?.collectionEventCounts[collectionId] = 0
-                                }
-                                
-                                if let collection = PlaceCollection(dictionary: collectionData) {
-                                    print("✅ Loaded shared collection: '\(collection.name)' (ID: \(collection.id))")
-                                    // Load member count for this collection
-                                    memberCountGroup.enter()
-                                    self?.loadMemberCount(for: collection.id, ownerId: ownerId, group: memberCountGroup)
-                                    loadedCollections.append(collection)
-                                } else {
-                                    print("❌ Failed to parse shared collection: \(collectionId)")
-                                }
-                            } else {
-                                print("❌ No data found for shared collection: \(collectionId)")
-                            }
+                            return
                         }
+                        
+                        // Owner exists, proceed to load the collection
+                        db.collection("users")
+                            .document(ownerId)
+                            .collection("collections")
+                            .document(collectionId)
+                            .getDocument { snapshot, error in
+                                defer { group.leave() }
+                                
+                                if let error = error {
+                                    print("❌ Error loading original collection: \(error.localizedDescription)")
+                                    return
+                                }
+                                
+                                if let originalData = snapshot?.data() {
+                                    var collectionData = originalData
+                                    collectionData["id"] = collectionId
+                                    collectionData["isOwner"] = false
+                                    
+                                    // If status is missing, treat it as active
+                                    if collectionData["status"] == nil {
+                                        collectionData["status"] = PlaceCollection.Status.active.rawValue
+                                    }
+                                    
+                                    // Store events count for this collection
+                                    if let eventsArray = originalData["events"] as? [[String: Any]] {
+                                        self?.collectionEventCounts[collectionId] = eventsArray.count
+                                    } else {
+                                        self?.collectionEventCounts[collectionId] = 0
+                                    }
+                                    
+                                    if let collection = PlaceCollection(dictionary: collectionData) {
+                                        print("✅ Loaded shared collection: '\(collection.name)' (ID: \(collection.id))")
+                                        // Load member count for this collection
+                                        memberCountGroup.enter()
+                                        self?.loadMemberCount(for: collection.id, ownerId: ownerId, group: memberCountGroup)
+                                        loadedCollections.append(collection)
+                                    } else {
+                                        print("❌ Failed to parse shared collection: \(collectionId)")
+                                    }
+                                } else {
+                                    print("❌ No data found for shared collection: \(collectionId)")
+                                }
+                            }
+                    }
                 } else {
                     print("❌ Invalid shared collection data: \(data)")
                     group.leave()
