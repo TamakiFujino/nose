@@ -334,7 +334,7 @@ class CollectionPlacesViewController: UIViewController {
         heartDebounceTimer?.invalidate()
         flushPendingHeartChanges()
     }
-    
+
     deinit {
         NotificationCenter.default.removeObserver(self)
         heartDebounceTimer?.invalidate()
@@ -2097,14 +2097,14 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
             if let error = error {
                 print("Error getting collection: \(error.localizedDescription)")
                 LoadingView.shared.hideAlertLoading()
-                ToastManager.showToast(message: "Failed to update place status", type: .error)
+                    ToastManager.showToast(message: "Failed to update place status", type: .error)
                 return
             }
             
             guard let data = snapshot?.data() else {
                 print("No data found in collection document")
                 LoadingView.shared.hideAlertLoading()
-                ToastManager.showToast(message: "Failed to update place status", type: .error)
+                    ToastManager.showToast(message: "Failed to update place status", type: .error)
                 return
             }
             
@@ -2133,26 +2133,26 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
                     batch.commit { error in
                         LoadingView.shared.hideAlertLoading()
                         
-                        if let error = error {
-                            print("Error updating place status: \(error.localizedDescription)")
-                            ToastManager.showToast(message: "Failed to update place status", type: .error)
-                        } else {
-                            // Update local data
+                            if let error = error {
+                                print("Error updating place status: \(error.localizedDescription)")
+                                ToastManager.showToast(message: "Failed to update place status", type: .error)
+                            } else {
+                                // Update local data
                             self.places[indexPath.row].visited = newVisitedStatus
                             self.tableView.reloadRows(at: [indexPath], with: .automatic)
-                            ToastManager.showToast(message: newVisitedStatus ? "Marked as visited" : "Marked as unvisited", type: .success)
-                            NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
+                                ToastManager.showToast(message: newVisitedStatus ? "Marked as visited" : "Marked as unvisited", type: .success)
+                                NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
                         }
                     }
                 } else {
                     print("Place not found in collection data")
                     LoadingView.shared.hideAlertLoading()
-                    ToastManager.showToast(message: "Failed to update place status", type: .error)
+                        ToastManager.showToast(message: "Failed to update place status", type: .error)
                 }
             } else {
                 print("No places array found in collection data")
                 LoadingView.shared.hideAlertLoading()
-                ToastManager.showToast(message: "Failed to update place status", type: .error)
+                    ToastManager.showToast(message: "Failed to update place status", type: .error)
             }
         }
     }

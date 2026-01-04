@@ -7,6 +7,11 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: black.006
+    second: {fileID: 2100000, guid: e0e4eb5f24a574101ae72942ffc7e76c, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: eye
     second: {fileID: 2100000, guid: e0e4eb5f24a574101ae72942ffc7e76c, type: 2}
   materials:

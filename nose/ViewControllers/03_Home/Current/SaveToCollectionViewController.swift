@@ -325,37 +325,37 @@ class SaveToCollectionViewController: UIViewController {
                         }
                         
                         // Owner exists, proceed to load the collection
-                        db.collection("users")
-                            .document(ownerId)
-                            .collection("collections")
-                            .document(collectionId)
-                            .getDocument { snapshot, error in
-                                defer { group.leave() }
+                    db.collection("users")
+                        .document(ownerId)
+                        .collection("collections")
+                        .document(collectionId)
+                        .getDocument { snapshot, error in
+                            defer { group.leave() }
+                            
+                            if let error = error {
+                                print("❌ Error loading original collection: \(error.localizedDescription)")
+                                return
+                            }
+                            
+                            if let originalData = snapshot?.data() {
+                                var collectionData = originalData
+                                collectionData["id"] = collectionId
+                                collectionData["isOwner"] = false
                                 
-                                if let error = error {
-                                    print("❌ Error loading original collection: \(error.localizedDescription)")
-                                    return
-                                }
-                                
-                                if let originalData = snapshot?.data() {
-                                    var collectionData = originalData
-                                    collectionData["id"] = collectionId
-                                    collectionData["isOwner"] = false
-                                    
-                                    if let collection = PlaceCollection(dictionary: collectionData) {
-                                        print("✅ Loaded shared collection: '\(collection.name)' (ID: \(collection.id))")
-                                        // Load member count for this collection
-                                        memberCountGroup.enter()
-                                        self?.loadMemberCount(for: collection.id, ownerId: ownerId, group: memberCountGroup)
-                                        loadedCollections.append(collection)
-                                    } else {
-                                        print("❌ Failed to parse shared collection: \(collectionId)")
-                                    }
+                                if let collection = PlaceCollection(dictionary: collectionData) {
+                                    print("✅ Loaded shared collection: '\(collection.name)' (ID: \(collection.id))")
+                                    // Load member count for this collection
+                                    memberCountGroup.enter()
+                                    self?.loadMemberCount(for: collection.id, ownerId: ownerId, group: memberCountGroup)
+                                    loadedCollections.append(collection)
                                 } else {
-                                    print("❌ No data found for shared collection: \(collectionId)")
+                                    print("❌ Failed to parse shared collection: \(collectionId)")
+                                }
+                            } else {
+                                print("❌ No data found for shared collection: \(collectionId)")
                                 }
                             }
-                    }
+                        }
                 } else {
                     print("❌ Invalid shared collection data: \(data)")
                     group.leave()
@@ -940,7 +940,7 @@ extension SaveToCollectionViewController: UITableViewDelegate, UITableViewDataSo
                 self.loadedIconImages[collectionId] = image
                 
                 // Reload the specific cell if visible and indexPath is valid
-                let indexPath = IndexPath(row: index, section: 0)
+                    let indexPath = IndexPath(row: index, section: 0)
                 let numberOfRows = self.collectionsTableView.numberOfRows(inSection: 0)
                 
                 // Double-check that the indexPath is valid
@@ -951,7 +951,7 @@ extension SaveToCollectionViewController: UITableViewDelegate, UITableViewDataSo
                 }
                 
                 // Safely reload the row
-                self.collectionsTableView.reloadRows(at: [indexPath], with: .none)
+                        self.collectionsTableView.reloadRows(at: [indexPath], with: .none)
             }
         }.resume()
     }

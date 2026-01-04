@@ -436,34 +436,34 @@ final class HomeViewController: UIViewController {
                         }
                         
                         // Owner exists, proceed to load the collection
-                        db.collection("users")
-                            .document(ownerId)
-                            .collection("collections")
-                            .document(collectionId)
-                            .getDocument { snapshot, error in
-                                defer { sharedGroup.leave() }
+                    db.collection("users")
+                        .document(ownerId)
+                        .collection("collections")
+                        .document(collectionId)
+                        .getDocument { snapshot, error in
+                            defer { sharedGroup.leave() }
+                            
+                            if let error = error {
+                                print("❌ Error loading original collection: \(error.localizedDescription)")
+                                return
+                            }
+                            
+                            if let originalData = snapshot?.data() {
+                                var collectionData = originalData
+                                collectionData["id"] = collectionId
+                                collectionData["isOwner"] = false
                                 
-                                if let error = error {
-                                    print("❌ Error loading original collection: \(error.localizedDescription)")
-                                    return
+                                // If status is missing, treat it as active
+                                if collectionData["status"] == nil {
+                                    collectionData["status"] = PlaceCollection.Status.active.rawValue
                                 }
                                 
-                                if let originalData = snapshot?.data() {
-                                    var collectionData = originalData
-                                    collectionData["id"] = collectionId
-                                    collectionData["isOwner"] = false
-                                    
-                                    // If status is missing, treat it as active
-                                    if collectionData["status"] == nil {
-                                        collectionData["status"] = PlaceCollection.Status.active.rawValue
-                                    }
-                                    
-                                    if let collection = PlaceCollection(dictionary: collectionData) {
-                                        sharedLoadedCollections.append(collection)
+                                if let collection = PlaceCollection(dictionary: collectionData) {
+                                    sharedLoadedCollections.append(collection)
                                     }
                                 }
                             }
-                    }
+                        }
                 } else {
                     sharedGroup.leave()
                 }
@@ -588,8 +588,8 @@ final class HomeViewController: UIViewController {
                 self?.navigationController?.pushViewController(settingVC, animated: true)
             }
         } else {
-            let settingVC = SettingsViewController()
-            navigationController?.pushViewController(settingVC, animated: true)
+        let settingVC = SettingsViewController()
+        navigationController?.pushViewController(settingVC, animated: true)
         }
     }
     
@@ -603,10 +603,10 @@ final class HomeViewController: UIViewController {
                 self?.present(navController, animated: true)
             }
         } else {
-            let manageEventVC = ManageEventViewController()
-            let navController = UINavigationController(rootViewController: manageEventVC)
-            navController.modalPresentationStyle = .fullScreen
-            present(navController, animated: true)
+        let manageEventVC = ManageEventViewController()
+        let navController = UINavigationController(rootViewController: manageEventVC)
+        navController.modalPresentationStyle = .fullScreen
+        present(navController, animated: true)
         }
     }
     
@@ -910,7 +910,7 @@ extension HomeViewController: CLLocationManagerDelegate {
         // This prevents the jarring movement from default to current location
         if !hasSetInitialCamera {
             hasSetInitialCamera = true
-            mapManager?.moveToCurrentLocation()
+        mapManager?.moveToCurrentLocation()
         }
         
         locationManager.stopUpdatingLocation() // Stop updating after getting the first location

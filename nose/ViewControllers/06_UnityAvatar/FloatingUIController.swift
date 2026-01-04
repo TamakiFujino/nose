@@ -8,14 +8,73 @@ class FloatingUIController: UIViewController {
     private var rotatePan: UIPanGestureRecognizer?
     private var lastPanTranslationX: CGFloat = 0
 
-    // Category data
-    private let parentCategories = ["Base", "Hair", "Clothes", "Accessories"]
-    private let childCategories = [
-        ["Eye", "Eyebrow", "Body"],
-        ["Base", "Front", "Side", "Back", "Arrange"],
-        ["Tops", "Bottoms", "Jacket", "Socks"],
-        ["Headwear", "Eyewear", "Neckwear"]
-    ]
+    // Category data - organized by tab
+    private var parentCategories: [String] {
+        switch selectedCategoryTab {
+        case .face:
+            return ["Base", "Hair", "Make Up"]
+        case .clothes:
+            return ["Clothes", "Accessories"]
+        }
+    }
+    
+    private var childCategories: [[String]] {
+        switch selectedCategoryTab {
+        case .face:
+            return [
+                ["Body", "Eye", "Eyebrow"],  // Base
+                ["Base", "Front", "Side", "Back", "Arrange"],  // Hair
+                ["Eyeshadow", "Blush"]  // Make Up
+            ]
+        case .clothes:
+            return [
+                ["Tops", "Bottoms", "Socks"],  // Clothes
+                ["Headwear", "Neckwear"]  // Accessories
+            ]
+        }
+    }
+    
+    // Mapping from display category to Unity category for compatibility
+    private func getUnityCategory(displayCategory: String) -> String {
+        switch selectedCategoryTab {
+        case .face:
+            switch displayCategory {
+            case "Base": return "Base"
+            case "Hair": return "Hair"
+            case "Make Up": return "Base"  // Make up might be part of Base category
+            default: return displayCategory
+            }
+        case .clothes:
+            switch displayCategory {
+            case "Clothes": return "Clothes"
+            case "Accessories": return "Accessories"
+            default: return displayCategory
+            }
+        }
+    }
+    
+    private func getUnitySubcategory(displayCategory: String, displaySubcategory: String) -> String {
+        switch selectedCategoryTab {
+        case .face:
+            switch displayCategory {
+            case "Base":
+                return displaySubcategory  // Eye, Eyebrow map directly
+            case "Hair":
+                return displaySubcategory  // Base, Front, Side, Back, Arrange map directly
+            case "Make Up":
+                // Map make up subcategories - might need adjustment based on actual Unity structure
+                switch displaySubcategory {
+                case "Eyeshadow": return "Eyeshadow"
+                case "Blush": return "Blush"
+                default: return displaySubcategory
+                }
+            default:
+                return displaySubcategory
+            }
+        case .clothes:
+            return displaySubcategory  // All map directly
+        }
+    }
 
     private var selectedParentIndex = 0
     private var selectedChildIndex = 0
@@ -34,6 +93,47 @@ class FloatingUIController: UIViewController {
     private var colorOverlayView: UIView?
     private var colorSheetView: UIView?
     private var colorButtons: [UIButton] = []
+    
+    // New category tab buttons
+    private lazy var categoryTabStackView: UIStackView = {
+        let stackView = UIStackView()
+        stackView.axis = .vertical
+        stackView.spacing = 12
+        stackView.distribution = .fillEqually
+        stackView.alignment = .center
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        return stackView
+    }()
+    
+    private lazy var faceTabButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        if let faceIcon = UIImage(systemName: "face.smiling.fill") {
+            button.setImage(faceIcon, for: .normal)
+        }
+        button.tintColor = .black
+        button.backgroundColor = UIColor.white.withAlphaComponent(0.9)
+        button.contentEdgeInsets = UIEdgeInsets(top: 8, left: 14, bottom: 8, right: 14)
+        button.layer.cornerRadius = 16
+        button.layer.masksToBounds = true
+        button.addTarget(self, action: #selector(didTapFaceTab), for: .touchUpInside)
+        return button
+    }()
+    
+    private lazy var clothesTabButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        if let clothesIcon = UIImage(systemName: "tshirt.fill") {
+            button.setImage(clothesIcon, for: .normal)
+        }
+        button.tintColor = .black
+        button.backgroundColor = UIColor.white.withAlphaComponent(0.9)
+        button.contentEdgeInsets = UIEdgeInsets(top: 8, left: 14, bottom: 8, right: 14)
+        button.layer.cornerRadius = 16
+        button.layer.masksToBounds = true
+        button.addTarget(self, action: #selector(didTapClothesTab), for: .touchUpInside)
+        return button
+    }()
 
     private lazy var bottomPanel: UIView = {
         let view = UIView()
@@ -137,6 +237,8 @@ class FloatingUIController: UIViewController {
         loadColorPalette()
         setupUI()
         loadAssetData()
+        // Set initial tab state to face
+        updateTabButtonStates(selectedTab: .face)
     }
 
     override func viewDidLayoutSubviews() {
@@ -177,6 +279,7 @@ class FloatingUIController: UIViewController {
         thumbnailScrollView.addSubview(thumbnailContentView)
         thumbnailContentView.addSubview(thumbnailStackView)
         setupColorButton()
+        setupCategoryTabs()
         createThumbnailRows()
         createCategoryButtons()
 
@@ -193,7 +296,7 @@ class FloatingUIController: UIViewController {
             bottomPanel.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.45),
 
             parentCategoryStackView.leadingAnchor.constraint(equalTo: bottomPanel.leadingAnchor, constant: 20),
-            parentCategoryStackView.trailingAnchor.constraint(equalTo: bottomPanel.trailingAnchor, constant: -20),
+            parentCategoryStackView.trailingAnchor.constraint(lessThanOrEqualTo: bottomPanel.trailingAnchor, constant: -20),
             parentCategoryStackView.topAnchor.constraint(equalTo: bottomPanel.topAnchor, constant: 10),
             parentCategoryStackView.heightAnchor.constraint(equalToConstant: 30),
 
@@ -280,6 +383,85 @@ class FloatingUIController: UIViewController {
         colorButton.setContentCompressionResistancePriority(.required, for: .horizontal)
         colorButton.setContentCompressionResistancePriority(.required, for: .vertical)
         colorButton.contentEdgeInsets = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
+    }
+    
+    private func setupCategoryTabs() {
+        categoryTabStackView.addArrangedSubview(faceTabButton)
+        categoryTabStackView.addArrangedSubview(clothesTabButton)
+        
+        view.addSubview(categoryTabStackView)
+        view.bringSubviewToFront(categoryTabStackView)
+        
+        // Set minimum width and allow buttons to size to content
+        let minWidth: CGFloat = 56
+        NSLayoutConstraint.activate([
+            faceTabButton.widthAnchor.constraint(greaterThanOrEqualToConstant: minWidth),
+            clothesTabButton.widthAnchor.constraint(greaterThanOrEqualToConstant: minWidth),
+            
+            categoryTabStackView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -12),
+            categoryTabStackView.bottomAnchor.constraint(equalTo: bottomPanel.topAnchor, constant: -20)
+        ])
+        
+        // Allow buttons to size to content
+        faceTabButton.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        faceTabButton.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
+        clothesTabButton.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        clothesTabButton.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
+    }
+    
+    @objc private func didTapFaceTab() {
+        print("[FloatingUIController] Face tab tapped")
+        updateTabButtonStates(selectedTab: .face)
+        refreshCategoriesForTab()
+    }
+    
+    @objc private func didTapClothesTab() {
+        print("[FloatingUIController] Clothes tab tapped")
+        updateTabButtonStates(selectedTab: .clothes)
+        refreshCategoriesForTab()
+    }
+    
+    private func refreshCategoriesForTab() {
+        // Reset selections
+        selectedParentIndex = 0
+        selectedChildIndex = 0
+        
+        // Recreate category buttons
+        parentCategoryStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        for (index, title) in parentCategories.enumerated() {
+            let button = createCategoryButton(title: title, tag: index, isParent: true)
+            parentCategoryStackView.addArrangedSubview(button)
+        }
+        
+        // Update child categories
+        updateChildCategories()
+        
+        // Refresh thumbnails
+        refetchAssetsForSelectedCategory()
+    }
+    
+    private enum CategoryTab {
+        case face
+        case clothes
+    }
+    
+    private var selectedCategoryTab: CategoryTab = .face
+    
+    private func updateTabButtonStates(selectedTab: CategoryTab) {
+        selectedCategoryTab = selectedTab
+        
+        // Update button appearances - use same color as active tabs
+        faceTabButton.backgroundColor = selectedTab == .face ? 
+            .fourthColor : 
+            UIColor.white.withAlphaComponent(0.9)
+        
+        faceTabButton.tintColor = selectedTab == .face ? .white : .black
+        
+        clothesTabButton.backgroundColor = selectedTab == .clothes ? 
+            .fourthColor : 
+            UIColor.white.withAlphaComponent(0.9)
+        
+        clothesTabButton.tintColor = selectedTab == .clothes ? .white : .black
     }
 
     @objc private func didTapColorButton() { showColorPicker() }
@@ -473,9 +655,13 @@ class FloatingUIController: UIViewController {
     }
 
     private func sendColorToUnity(category: String, subcategory: String, hex: String) {
+        // Convert display category/subcategory to Unity category/subcategory
+        let unityCategory = getUnityCategory(displayCategory: category)
+        let unitySubcategory = getUnitySubcategory(displayCategory: category, displaySubcategory: subcategory)
+        
         let payload: [String: Any] = [
-            "category": category,
-            "subcategory": subcategory,
+            "category": unityCategory,
+            "subcategory": unitySubcategory,
             "colorHex": hex
         ]
         if let data = try? JSONSerialization.data(withJSONObject: payload),
@@ -612,9 +798,13 @@ class FloatingUIController: UIViewController {
     }
 
     private func sendRemoveAssetToUnity(category: String, subcategory: String) {
+        // Convert display category/subcategory to Unity category/subcategory
+        let unityCategory = getUnityCategory(displayCategory: category)
+        let unitySubcategory = getUnitySubcategory(displayCategory: category, displaySubcategory: subcategory)
+        
         let payload: [String: Any] = [
-            "category": category,
-            "subcategory": subcategory,
+            "category": unityCategory,
+            "subcategory": unitySubcategory,
             "callbackId": UUID().uuidString
         ]
         if let data = try? JSONSerialization.data(withJSONObject: payload),
@@ -676,11 +866,15 @@ class FloatingUIController: UIViewController {
     }
 
     private func changeAssetInUnity(asset: AssetItem) {
+        // Convert display category/subcategory to Unity category/subcategory
+        let unityCategory = getUnityCategory(displayCategory: asset.category)
+        let unitySubcategory = getUnitySubcategory(displayCategory: asset.category, displaySubcategory: asset.subcategory)
+        
         var assetInfo: [String: Any] = [
             "id": asset.id,
             "name": asset.name,
-            "category": asset.category,
-            "subcategory": asset.subcategory
+            "category": unityCategory,
+            "subcategory": unitySubcategory
         ]
         if !asset.modelPath.isEmpty {
             assetInfo["modelPath"] = asset.modelPath
@@ -727,9 +921,9 @@ class FloatingUIController: UIViewController {
             button.heightAnchor.constraint(equalToConstant: 30).isActive = true
             // Minimum width for easy tapping, but size to content
             button.widthAnchor.constraint(greaterThanOrEqualToConstant: 60).isActive = true
-            // Allow button to size to content
-            button.setContentHuggingPriority(.defaultHigh, for: .horizontal)
-            button.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
+            // Allow button to size to content - use higher priority for parent categories
+            button.setContentHuggingPriority(.required, for: .horizontal)
+            button.setContentCompressionResistancePriority(.required, for: .horizontal)
         }
         if isParent {
             button.addTarget(self, action: #selector(parentCategoryTapped(_:)), for: .touchUpInside)
@@ -774,9 +968,13 @@ class FloatingUIController: UIViewController {
     }
 
     private func setSlotVisibilityInUnity(category: String, subcategory: String, visible: Bool) {
+        // Convert display category/subcategory to Unity category/subcategory
+        let unityCategory = getUnityCategory(displayCategory: category)
+        let unitySubcategory = getUnitySubcategory(displayCategory: category, displaySubcategory: subcategory)
+        
         let payload: [String: Any] = [
-            "category": category,
-            "subcategory": subcategory,
+            "category": unityCategory,
+            "subcategory": unitySubcategory,
             "visible": visible
         ]
         if let data = try? JSONSerialization.data(withJSONObject: payload),
@@ -1362,3 +1560,4 @@ class FloatingUIController: UIViewController {
         }
     }
 }
+

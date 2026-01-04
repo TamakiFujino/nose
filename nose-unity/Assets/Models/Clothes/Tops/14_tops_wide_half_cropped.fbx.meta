@@ -7,7 +7,7 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
-      name: clothes
+      name: clothes.014
     second: {fileID: 2100000, guid: e0e4eb5f24a574101ae72942ffc7e76c, type: 2}
   materials:
     materialImportMode: 2

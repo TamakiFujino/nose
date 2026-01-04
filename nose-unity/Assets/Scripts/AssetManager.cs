@@ -83,6 +83,9 @@ public class AssetManager : MonoBehaviour
     private bool bodyAnimatorDisabledForAPose = false;
     private string currentPoseName = null;
 
+    // Cache solid-color textures (used to tint face base map)
+    private readonly Dictionary<int, Texture2D> solidColorTextureCache = new Dictionary<int, Texture2D>();
+
     [Header("Debug")]
     public bool verboseLogs = false;
     public bool verboseDiscoveryLogs = false;
@@ -288,6 +291,64 @@ public class AssetManager : MonoBehaviour
             smr.updateWhenOffscreen = true;
             smr.skinnedMotionVectors = true;
         }
+    }
+
+    /// <summary>
+    /// Public method to rebind all skinned meshes under avatarRoot to the body skeleton.
+    /// Call this after separating face/body models to ensure they follow poses.
+    /// Also parents static meshes (like face models) to the head bone if they're not skinned.
+    /// </summary>
+    public void RebindAllSkinnedMeshes()
+    {
+        if (avatarRoot == null) return;
+        
+        var animator = GetBodyAnimator();
+        var headBone = animator != null ? animator.GetBoneTransform(HumanBodyBones.Head) : null;
+        
+        foreach (var child in avatarRoot.GetComponentsInChildren<Transform>(true))
+        {
+            if (child == avatarRoot) continue;
+            var go = child.gameObject;
+            
+            // Skip if this is the body model itself (to avoid rebinding it to itself)
+            var bodySmr = GetBodySkinnedMesh();
+            if (bodySmr != null && go == bodySmr.gameObject) continue;
+            
+            // Rebind skinned meshes
+            RebindSkinnedMeshesToBody(go);
+            
+            // If this GameObject has a MeshRenderer (static mesh) but no SkinnedMeshRenderer,
+            // and it's not already parented to a bone, parent it to the head bone
+            var meshRenderer = go.GetComponent<MeshRenderer>();
+            var skinnedMeshRenderer = go.GetComponent<SkinnedMeshRenderer>();
+            if (meshRenderer != null && skinnedMeshRenderer == null && headBone != null)
+            {
+                // Check if it's already parented to a bone in the skeleton
+                var skeletonRoot = GetSkeletonRoot();
+                bool isParentedToBone = false;
+                if (skeletonRoot != null)
+                {
+                    var current = go.transform.parent;
+                    while (current != null && current != avatarRoot)
+                    {
+                        if (IsUnder(current, skeletonRoot))
+                        {
+                            isParentedToBone = true;
+                            break;
+                        }
+                        current = current.parent;
+                    }
+                }
+                
+                // If not parented to a bone, parent to head bone
+                if (!isParentedToBone && go.transform.parent != headBone)
+                {
+                    go.transform.SetParent(headBone, true);
+                    Debug.Log($"RebindAllSkinnedMeshes: Parented static mesh '{go.name}' to head bone");
+                }
+            }
+        }
+        Debug.Log("RebindAllSkinnedMeshes: Rebound all skinned meshes to body skeleton");
     }
 
     private string GetPlatformFolder()
@@ -1011,6 +1072,9 @@ public class AssetManager : MonoBehaviour
         animator.Update(0f);
         currentPoseName = poseName;
 
+        // Ensure face model and other separated models are rebinded to follow poses
+        RebindAllSkinnedMeshes();
+
         Debug.Log($"ApplyBodyPose: Applied pose '{poseName}'");
     }
 
@@ -1119,6 +1183,32 @@ public class AssetManager : MonoBehaviour
             if (payload == null) { Debug.LogWarning("Color payload null"); return; }
             string slotKey = $"{payload.category}:{payload.subcategory}";
 
+            // Special case: Face makeup shader (Base/Face, Base/Blush, Base/Eyeshadow)
+            if (string.Equals(payload.category, "Base", System.StringComparison.OrdinalIgnoreCase))
+            {
+                var sub = payload.subcategory ?? string.Empty;
+                if (string.Equals(sub, "Face", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    if (TryParseHexColor(payload.colorHex, out Color faceColor))
+                    {
+                        // Face base skin color is driven via the BaseColorMap texture in the shader graph.
+                        ApplyFaceBaseSkinColor(faceColor);
+                        return;
+                    }
+                    Debug.LogWarning($"Failed to parse face color {payload.colorHex}");
+                }
+                if (string.Equals(sub, "Blush", System.StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(sub, "Eyeshadow", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    if (TryParseHexColor(payload.colorHex, out Color faceColor))
+                    {
+                        ApplyFaceMakeupColor(sub, faceColor);
+                        return;
+                    }
+                    Debug.LogWarning($"Failed to parse face/makeup color {payload.colorHex}");
+                }
+            }
+
             // Special case: Base/Body → color the body mesh instead of items
             if (string.Equals(payload.category, "Base", System.StringComparison.OrdinalIgnoreCase) &&
                 string.Equals(payload.subcategory, "Body", System.StringComparison.OrdinalIgnoreCase))
@@ -1129,11 +1219,15 @@ public class AssetManager : MonoBehaviour
                     if (bodySmr != null)
                     {
                         ApplyColorToObject(bodySmr.gameObject, bodyColor, false);
+                        // Also apply to face base skin (shader graph uses BaseColorMap texture)
+                        ApplyFaceBaseSkinColor(bodyColor);
                         return;
                     }
                     // Fallback to avatarRoot if body SMR not assigned/found
                     if (avatarRoot != null) {
                         ApplyColorToObject(avatarRoot.gameObject, bodyColor, false);
+                        // Also apply to face base skin (shader graph uses BaseColorMap texture)
+                        ApplyFaceBaseSkinColor(bodyColor);
                         return;
                     }
                 }
@@ -1172,6 +1266,172 @@ public class AssetManager : MonoBehaviour
         catch (Exception e)
         {
             Debug.LogError($"Error handling color change: {e.Message}");
+        }
+    }
+
+    private static bool NameContains(Transform t, string needleLower)
+    {
+        if (t == null) return false;
+        var n = t.name;
+        return !string.IsNullOrEmpty(n) && n.ToLowerInvariant().Contains(needleLower);
+    }
+
+    private static bool MaterialHasAny(Material m, params string[] props)
+    {
+        if (m == null) return false;
+        for (int i = 0; i < props.Length; i++)
+        {
+            if (m.HasProperty(props[i])) return true;
+        }
+        return false;
+    }
+
+    private static bool TrySetFirst(Material m, Color c, params string[] props)
+    {
+        if (m == null) return false;
+        for (int i = 0; i < props.Length; i++)
+        {
+            var p = props[i];
+            if (m.HasProperty(p))
+            {
+                m.SetColor(p, c);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Applies color to face shader graph properties (base skin, blush, eyeshadow).
+    // We intentionally target renderers that look like "face" OR materials that expose makeup properties.
+    private void ApplyFaceMakeupColor(string subcategory, Color color)
+    {
+        if (avatarRoot == null)
+        {
+            Debug.LogWarning("ApplyFaceMakeupColor: avatarRoot is null");
+            return;
+        }
+
+        string sub = (subcategory ?? string.Empty).ToLowerInvariant();
+        bool isFace = sub == "face";
+        bool isBlush = sub == "blush";
+        bool isEyeshadow = sub == "eyeshadow";
+
+        // Candidate property names to support different Shader Graph setups
+        // NOTE: Shader Graph "Reference" names often start with "_" (e.g. _BlushColor),
+        // but they can also be custom without it (e.g. BlushColor). Support both.
+        string[] faceProps = new[] { "_BaseColorTint", "BaseColorTint", "_FaceColor", "FaceColor", "_SkinColor", "SkinColor", "_BaseColor", "_Color" };
+        string[] blushProps = new[] { "_BlushColor", "BlushColor", "_BlushTint", "BlushTint" };
+        string[] eyeshadowProps = new[] { "_EyeshadowColor", "EyeshadowColor", "_EyeshadowTint", "EyeshadowTint" };
+
+        var renderers = avatarRoot.GetComponentsInChildren<Renderer>(true);
+        int materialsTouched = 0;
+
+        foreach (var r in renderers)
+        {
+            if (r == null) continue;
+
+            bool looksLikeFaceObject = NameContains(r.transform, "face");
+            var mats = r.materials;
+            if (mats == null || mats.Length == 0) continue;
+
+            for (int i = 0; i < mats.Length; i++)
+            {
+                var m = mats[i];
+                if (m == null) continue;
+
+                bool hasMakeupProps = MaterialHasAny(
+                    m,
+                    "_BlushColor", "BlushColor",
+                    "_EyeshadowColor", "EyeshadowColor",
+                    "_BaseColorTint", "BaseColorTint",
+                    "_FaceColor", "FaceColor",
+                    "_SkinColor", "SkinColor"
+                );
+                if (!looksLikeFaceObject && !hasMakeupProps) continue;
+
+                bool changed = false;
+                if (isFace) changed = TrySetFirst(m, color, faceProps);
+                else if (isBlush) changed = TrySetFirst(m, color, blushProps);
+                else if (isEyeshadow) changed = TrySetFirst(m, color, eyeshadowProps);
+
+                if (changed) materialsTouched++;
+            }
+        }
+
+        if (materialsTouched == 0)
+        {
+            Debug.LogWarning($"ApplyFaceMakeupColor: No materials updated for '{subcategory}'. Check shader property names and face renderer naming.");
+        }
+        else
+        {
+            Debug.Log($"ApplyFaceMakeupColor: Updated {materialsTouched} material(s) for '{subcategory}'.");
+        }
+    }
+
+    private Texture2D GetOrCreateSolidTexture(Color color)
+    {
+        var c32 = (Color32)color;
+        int key = (c32.r << 24) | (c32.g << 16) | (c32.b << 8) | c32.a;
+        if (solidColorTextureCache.TryGetValue(key, out var tex) && tex != null) return tex;
+
+        tex = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+        tex.name = $"SolidColor_{c32.r:X2}{c32.g:X2}{c32.b:X2}{c32.a:X2}";
+        tex.wrapMode = TextureWrapMode.Clamp;
+        tex.filterMode = FilterMode.Bilinear;
+        tex.SetPixel(0, 0, color);
+        tex.Apply(false, false);
+
+        solidColorTextureCache[key] = tex;
+        return tex;
+    }
+
+    // FaceMakeup.shadergraph drives base skin via _BaseColorMap (Texture2D).
+    // To "set base color" we assign a 1x1 solid texture of the chosen skin color.
+    private void ApplyFaceBaseSkinColor(Color color)
+    {
+        if (avatarRoot == null)
+        {
+            Debug.LogWarning("ApplyFaceBaseSkinColor: avatarRoot is null");
+            return;
+        }
+
+        var tex = GetOrCreateSolidTexture(color);
+        var renderers = avatarRoot.GetComponentsInChildren<Renderer>(true);
+        int materialsTouched = 0;
+
+        foreach (var r in renderers)
+        {
+            if (r == null) continue;
+
+            bool looksLikeFaceObject = NameContains(r.transform, "face");
+            var mats = r.materials;
+            if (mats == null || mats.Length == 0) continue;
+
+            for (int i = 0; i < mats.Length; i++)
+            {
+                var m = mats[i];
+                if (m == null) continue;
+
+                // Prefer explicit base-color-map property used by the shader graph
+                bool hasBaseMap = m.HasProperty("_BaseColorMap") || m.HasProperty("BaseColorMap");
+                bool hasMakeup = MaterialHasAny(m, "_BlushColor", "BlushColor", "_EyeshadowColor", "EyeshadowColor");
+                if (!looksLikeFaceObject && !hasBaseMap && !hasMakeup) continue;
+
+                if (m.HasProperty("_BaseColorMap")) { m.SetTexture("_BaseColorMap", tex); materialsTouched++; continue; }
+                if (m.HasProperty("BaseColorMap")) { m.SetTexture("BaseColorMap", tex); materialsTouched++; continue; }
+
+                // Fallback: if the graph was authored differently, try common base color properties
+                if (TrySetFirst(m, color, "_BaseColor", "_Color")) { materialsTouched++; }
+            }
+        }
+
+        if (materialsTouched == 0)
+        {
+            Debug.LogWarning("ApplyFaceBaseSkinColor: No materials updated. Ensure face material uses FaceMakeup shader and has _BaseColorMap.");
+        }
+        else
+        {
+            Debug.Log($"ApplyFaceBaseSkinColor: Updated {materialsTouched} material(s).");
         }
     }
 

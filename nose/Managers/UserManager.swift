@@ -200,21 +200,21 @@ final class UserManager {
                     // Wait for all shared collection updates to complete
                     group.notify(queue: .main) {
                         // Delete user's own collections
-                        snapshot?.documents.forEach { document in
-                            batch.deleteDocument(document.reference)
-                        }
-                        
-                        // Commit all changes
-                        batch.commit { error in
-                            if let error = error {
-                                completion(.failure(error))
-                            } else {
-                                // Delete Firebase Auth account
-                                Auth.auth().currentUser?.delete { error in
-                                    if let error = error {
-                                        completion(.failure(error))
-                                    } else {
-                                        completion(.success(()))
+                    snapshot?.documents.forEach { document in
+                        batch.deleteDocument(document.reference)
+                    }
+                    
+                    // Commit all changes
+                    batch.commit { error in
+                        if let error = error {
+                            completion(.failure(error))
+                        } else {
+                            // Delete Firebase Auth account
+                            Auth.auth().currentUser?.delete { error in
+                                if let error = error {
+                                    completion(.failure(error))
+                                } else {
+                                    completion(.success(()))
                                     }
                                 }
                             }

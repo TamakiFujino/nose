@@ -313,49 +313,49 @@ class CollectionsViewController: UIViewController {
                         }
                         
                         // Owner exists, proceed to load the collection
-                        db.collection("users")
-                            .document(ownerId)
-                            .collection("collections")
-                            .document(collectionId)
-                            .getDocument { snapshot, error in
-                                defer { group.leave() }
+                    db.collection("users")
+                        .document(ownerId)
+                        .collection("collections")
+                        .document(collectionId)
+                        .getDocument { snapshot, error in
+                            defer { group.leave() }
+                            
+                            if let error = error {
+                                print("❌ Error loading original collection: \(error.localizedDescription)")
+                                return
+                            }
+                            
+                            if let originalData = snapshot?.data() {
+                                var collectionData = originalData
+                                collectionData["id"] = collectionId
+                                collectionData["isOwner"] = false
                                 
-                                if let error = error {
-                                    print("❌ Error loading original collection: \(error.localizedDescription)")
-                                    return
+                                // If status is missing, treat it as active
+                                if collectionData["status"] == nil {
+                                    collectionData["status"] = PlaceCollection.Status.active.rawValue
                                 }
                                 
-                                if let originalData = snapshot?.data() {
-                                    var collectionData = originalData
-                                    collectionData["id"] = collectionId
-                                    collectionData["isOwner"] = false
-                                    
-                                    // If status is missing, treat it as active
-                                    if collectionData["status"] == nil {
-                                        collectionData["status"] = PlaceCollection.Status.active.rawValue
-                                    }
-                                    
-                                    // Store events count for this collection
-                                    if let eventsArray = originalData["events"] as? [[String: Any]] {
-                                        self?.collectionEventCounts[collectionId] = eventsArray.count
-                                    } else {
-                                        self?.collectionEventCounts[collectionId] = 0
-                                    }
-                                    
-                                    if let collection = PlaceCollection(dictionary: collectionData) {
-                                        print("✅ Loaded shared collection: '\(collection.name)' (ID: \(collection.id))")
-                                        // Load member count for this collection
-                                        memberCountGroup.enter()
-                                        self?.loadMemberCount(for: collection.id, ownerId: ownerId, group: memberCountGroup)
-                                        loadedCollections.append(collection)
-                                    } else {
-                                        print("❌ Failed to parse shared collection: \(collectionId)")
-                                    }
+                                // Store events count for this collection
+                                if let eventsArray = originalData["events"] as? [[String: Any]] {
+                                    self?.collectionEventCounts[collectionId] = eventsArray.count
                                 } else {
-                                    print("❌ No data found for shared collection: \(collectionId)")
+                                    self?.collectionEventCounts[collectionId] = 0
+                                }
+                                
+                                if let collection = PlaceCollection(dictionary: collectionData) {
+                                    print("✅ Loaded shared collection: '\(collection.name)' (ID: \(collection.id))")
+                                    // Load member count for this collection
+                                    memberCountGroup.enter()
+                                    self?.loadMemberCount(for: collection.id, ownerId: ownerId, group: memberCountGroup)
+                                    loadedCollections.append(collection)
+                                } else {
+                                    print("❌ Failed to parse shared collection: \(collectionId)")
+                                }
+                            } else {
+                                print("❌ No data found for shared collection: \(collectionId)")
                                 }
                             }
-                    }
+                        }
                 } else {
                     print("❌ Invalid shared collection data: \(data)")
                     group.leave()
