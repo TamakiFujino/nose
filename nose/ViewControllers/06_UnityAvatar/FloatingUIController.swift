@@ -271,8 +271,9 @@ class FloatingUIController: UIViewController {
         loadColorPalette()
         setupUI()
         loadAssetData()
-        // Set initial tab state to face
-        updateTabButtonStates(selectedTab: .face)
+        // Set initial tab state to clothes (t-shirt)
+        updateTabButtonStates(selectedTab: .clothes)
+        UnityLauncher.shared().sendMessage(toUnity: "UnityBridge", method: "SetAvatarCameraFocus", message: "clothes")
     }
 
     override func viewDidLayoutSubviews() {
@@ -447,12 +448,15 @@ class FloatingUIController: UIViewController {
         print("[FloatingUIController] Face tab tapped")
         updateTabButtonStates(selectedTab: .face)
         refreshCategoriesForTab()
+        UnityLauncher.shared().sendMessage(toUnity: "UnityBridge", method: "SetAvatarCameraFocus", message: "face")
     }
     
     @objc private func didTapClothesTab() {
         print("[FloatingUIController] Clothes tab tapped")
         updateTabButtonStates(selectedTab: .clothes)
         refreshCategoriesForTab()
+        // Return to the default (original) camera view
+        UnityLauncher.shared().sendMessage(toUnity: "UnityBridge", method: "SetAvatarCameraFocus", message: "clothes")
     }
     
     private func refreshCategoriesForTab() {
@@ -479,7 +483,7 @@ class FloatingUIController: UIViewController {
         case clothes
     }
     
-    private var selectedCategoryTab: CategoryTab = .face
+    private var selectedCategoryTab: CategoryTab = .clothes
     
     private func updateTabButtonStates(selectedTab: CategoryTab) {
         selectedCategoryTab = selectedTab
@@ -878,13 +882,29 @@ class FloatingUIController: UIViewController {
 
     // MARK: - Public reset helpers
     func resetAllSlotsInUnity() {
-        // Clear Unity state for all categories/subcategories
-        for (pi, parent) in parentCategories.enumerated() {
-            for child in childCategories[pi] {
-                if parent.lowercased() == "base" && child.lowercased() == "body" {
+        // Clear Unity state for ALL slots across BOTH tabs.
+        // This is important because selectedCategoryTab defaults to .clothes, and we still need to clear face/makeup slots
+        // so a new customization session doesn't inherit state from the previous one.
+        let allSlots: [(parent: String, children: [String])] = [
+            ("Base", ["Body", "Eye", "Eyebrow"]),
+            ("Hair", ["Base", "Front", "Side", "Back", "Arrange"]),
+            ("Make Up", ["Eyeshadow", "Blush"]),
+            ("Clothes", ["Tops", "Bottoms", "Socks"]),
+            ("Accessories", ["Headwear", "Neckwear"])
+        ]
+        for slot in allSlots {
+            for child in slot.children {
+                if slot.parent.lowercased() == "base" && child.lowercased() == "body" {
                     sendResetBodyPose()
+                    // Reset skin color too; otherwise Unity keeps the previous session's material color.
+                    let defaultHex = colorSwatches.first ?? "#FFFFFF"
+                    sendColorToUnity(category: slot.parent, subcategory: child, hex: defaultHex)
                 } else {
-                    sendRemoveAssetToUnity(category: parent, subcategory: child)
+                    sendRemoveAssetToUnity(category: slot.parent, subcategory: child)
+                }
+                // Makeup is color-driven, so also force it off.
+                if slot.parent == "Make Up" {
+                    sendColorToUnity(category: slot.parent, subcategory: child, hex: "#000000")
                 }
             }
         }
@@ -1066,7 +1086,10 @@ class FloatingUIController: UIViewController {
     private func loadAssetData() {
         // Prefer loading from Addressables catalog on Hosting
         loadAssetsFromAddressablesCatalog { [weak self] in
-            self?.updateThumbnailsForCategory()
+            guard let self else { return }
+            self.updateThumbnailsForCategory()
+            // Ensure pose + all saved selections are applied on first load (even if default tab is clothes)
+            self.applyAllSelectionsToUnity()
         }
     }
 
@@ -1650,23 +1673,44 @@ class FloatingUIController: UIViewController {
             let unitySubcategory = getUnitySubcategory(displayCategory: displayCategory, displaySubcategory: displaySubcategory)
             
             // Check if this is a color-only entry (like Blush, Eyeshadow) that doesn't have a model
-            let isColorOnly = (displayCategory == "Make Up" && (displaySubcategory == "Blush" || displaySubcategory == "Eyeshadow")) ||
-                              (displayCategory == "Base" && displaySubcategory == "Body")
+            // NOTE: Base/Body is NOT color-only because we also need to apply the body pose.
+            let isColorOnly = (displayCategory == "Make Up" && (displaySubcategory == "Blush" || displaySubcategory == "Eyeshadow"))
             
             // Apply model/asset if available
-            if !isColorOnly {
-                let name: String?
-                if displayCategory.lowercased() == "base" && displaySubcategory.lowercased() == "body" {
-                    name = entry["pose"] ?? entry["model"]
+            if displayCategory.lowercased() == "base" && displaySubcategory.lowercased() == "body" {
+                // Base/Body uses "pose" (or "model") as the pose name.
+                let poseName = (entry["pose"] ?? entry["model"])?.trimmingCharacters(in: .whitespacesAndNewlines)
+                if let poseName, !poseName.isEmpty {
+                    let asset = AssetItem(
+                        id: "\(unityCategory)_\(unitySubcategory)_\(poseName)",
+                        name: poseName,
+                        modelPath: "",
+                        thumbnailPath: nil,
+                        category: unityCategory,
+                        subcategory: unitySubcategory,
+                        isActive: true,
+                        metadata: nil
+                    )
+                    changeAssetInUnity(asset: asset)
+                } else if let def = defaultBodyPoseName(), !def.isEmpty {
+                    let asset = AssetItem(
+                        id: "\(unityCategory)_\(unitySubcategory)_\(def)",
+                        name: def,
+                        modelPath: "",
+                        thumbnailPath: nil,
+                        category: unityCategory,
+                        subcategory: unitySubcategory,
+                        isActive: true,
+                        metadata: nil
+                    )
+                    changeAssetInUnity(asset: asset)
                 } else {
-                    name = entry["model"]
+                    sendResetBodyPose()
                 }
-                
+            } else if !isColorOnly {
+                let name = entry["model"]?.trimmingCharacters(in: .whitespacesAndNewlines)
                 if let modelName = name, !modelName.isEmpty {
-                    var modelPath = ""
-                    if !(displayCategory.lowercased() == "base" && displaySubcategory.lowercased() == "body") {
-                        modelPath = "Models/\(unityCategory)/\(unitySubcategory)/\(modelName)"
-                    }
+                    let modelPath = "Models/\(unityCategory)/\(unitySubcategory)/\(modelName)"
                     let asset = AssetItem(
                         id: "\(unityCategory)_\(unitySubcategory)_\(modelName)",
                         name: modelName,

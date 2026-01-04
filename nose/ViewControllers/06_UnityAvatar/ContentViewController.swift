@@ -146,31 +146,41 @@ protocol ContentViewControllerDelegate: AnyObject {
 extension ContentViewController {
     func didRequestClose() {
         print("[ContentViewController] didRequestClose() called")
-        // Remove floating UI and go back
-        floatingWindow?.isHidden = true
-        floatingWindow?.rootViewController = nil
-        floatingWindow = nil
-        // Optionally hide Unity window to reveal host UI
-        print("[ContentViewController] Hiding Unity window (no-op)")
-        UnityLauncher.shared().hideUnity()
-        // Bring host app window to front again
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
-            let normalWindows = windowScene.windows.filter { $0.windowLevel == .normal }
-            if let appWindow = normalWindows.first {
-                print("[ContentViewController] Making app window key and visible")
-                appWindow.makeKeyAndVisible()
+        
+        let cleanupUnityOverlays = {
+            // Remove floating UI overlay window
+            self.floatingWindow?.isHidden = true
+            self.floatingWindow?.rootViewController = nil
+            self.floatingWindow = nil
+            
+            // Bring host app window to front again
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+                let normalWindows = windowScene.windows.filter { $0.windowLevel == .normal }
+                if let appWindow = normalWindows.first {
+                    print("[ContentViewController] Making app window key and visible")
+                    appWindow.makeKeyAndVisible()
+                } else {
+                    print("[ContentViewController] No normal-level app window found")
+                }
             } else {
-                print("[ContentViewController] No normal-level app window found")
+                print("[ContentViewController] No UIWindowScene available")
             }
-        } else {
-            print("[ContentViewController] No UIWindowScene available")
+            
+            // Hide Unity after we're already back, so we don't flash a blank ContentViewController background.
+            print("[ContentViewController] Hiding Unity window (no-op)")
+            UnityLauncher.shared().hideUnity()
         }
+        
         if let nav = navigationController {
-            print("[ContentViewController] Popping view controller")
-            nav.popViewController(animated: true)
+            print("[ContentViewController] Popping view controller (no animation to avoid white flash)")
+            // Pop first (instant), then cleanup Unity/window overlays.
+            nav.popViewController(animated: false)
+            cleanupUnityOverlays()
         } else {
-            print("[ContentViewController] Dismissing view controller")
-            dismiss(animated: true)
+            print("[ContentViewController] Dismissing view controller (no animation to avoid white flash)")
+            dismiss(animated: false) {
+                cleanupUnityOverlays()
+            }
         }
     }
 

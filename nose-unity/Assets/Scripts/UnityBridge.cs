@@ -16,6 +16,14 @@ public class UnityBridge : MonoBehaviour
     private HorizontalRotateOnDrag rotator;
     private CommandBuffer stencilClearCmd;
     
+    // Camera focus coroutine (cancel previous when switching)
+    private Coroutine cameraFocusCoroutine;
+    // Default view snapshot (so we can return to the original "main camera" view)
+    private bool hasDefaultView = false;
+    private Vector3 defaultCamPos;
+    private Quaternion defaultCamRot;
+    private float defaultCamFov;
+    
     // Debounce duplicate ChangeAsset calls per slot to avoid redundant loads
     private class LastAssetCall { public string assetId; public float time; }
     private readonly Dictionary<string, LastAssetCall> lastAssetPerSlot = new Dictionary<string, LastAssetCall>();
@@ -101,6 +109,208 @@ public class UnityBridge : MonoBehaviour
 
         // Attach stencil clear before opaques on avatar cameras to avoid stale stencil between category switches
         TryAttachStencilClearToAvatarCameras();
+
+        // Capture default view camera transform/FOV once (used for "clothes"/default focus)
+        var viewCam = GetAvatarViewCamera();
+        if (viewCam != null)
+        {
+            defaultCamPos = viewCam.transform.position;
+            defaultCamRot = viewCam.transform.rotation;
+            defaultCamFov = viewCam.fieldOfView;
+            hasDefaultView = true;
+        }
+    }
+
+    private Camera GetAvatarViewCamera()
+    {
+        // Prefer an explicitly-named camera if present
+        var avatarCam = GameObject.Find("AvatarCamera")?.GetComponent<Camera>();
+        if (avatarCam != null) return avatarCam;
+
+        // Avoid the thumbnail camera for view
+        var main = Camera.main;
+        if (main != null && main.gameObject != null && main.gameObject.name != "ThumbnailCamera") return main;
+
+        // Fallback: any enabled camera that's not ThumbnailCamera
+        foreach (var cam in GameObject.FindObjectsOfType<Camera>(true))
+        {
+            if (cam == null || cam.gameObject == null) continue;
+            if (cam.gameObject.name == "ThumbnailCamera") continue;
+            if (cam.enabled) return cam;
+        }
+        // Last resort: any non-thumbnail camera
+        foreach (var cam in GameObject.FindObjectsOfType<Camera>(true))
+        {
+            if (cam == null || cam.gameObject == null) continue;
+            if (cam.gameObject.name == "ThumbnailCamera") continue;
+            return cam;
+        }
+        return null;
+    }
+
+    private Transform GetAvatarFocusTarget(string focus)
+    {
+        var mgr = assetManager != null ? assetManager : FindObjectOfType<AssetManager>();
+        var root = mgr != null ? mgr.avatarRoot : null;
+        // Prefer humanoid bones if available
+        Animator anim = null;
+        if (root != null)
+        {
+            anim = root.GetComponent<Animator>() ?? root.GetComponentInChildren<Animator>(true);
+        }
+
+        focus = (focus ?? "").ToLowerInvariant();
+        if (anim != null)
+        {
+            if (focus == "face")
+            {
+                var head = anim.GetBoneTransform(HumanBodyBones.Head);
+                if (head != null) return head;
+                var neck = anim.GetBoneTransform(HumanBodyBones.Neck);
+                if (neck != null) return neck;
+            }
+            // clothes/body focus: chest/hips
+            var chest = anim.GetBoneTransform(HumanBodyBones.Chest);
+            if (chest != null) return chest;
+            var hips = anim.GetBoneTransform(HumanBodyBones.Hips);
+            if (hips != null) return hips;
+        }
+        return root != null ? root : (assetManager != null ? assetManager.transform : transform);
+    }
+
+    private IEnumerator AnimateCameraTo(Camera cam, Vector3 targetPos, Quaternion targetRot, float targetFov, float duration)
+    {
+        if (cam == null) yield break;
+
+        var t0 = cam.transform.position;
+        var r0 = cam.transform.rotation;
+        var f0 = cam.fieldOfView;
+
+        float d = Mathf.Max(0.01f, duration);
+        float t = 0f;
+        while (t < d)
+        {
+            t += Time.deltaTime;
+            float u = Mathf.Clamp01(t / d);
+            // Smoothstep
+            u = u * u * (3f - 2f * u);
+            cam.transform.position = Vector3.Lerp(t0, targetPos, u);
+            cam.transform.rotation = Quaternion.Slerp(r0, targetRot, u);
+            cam.fieldOfView = Mathf.Lerp(f0, targetFov, u);
+            yield return null;
+        }
+
+        cam.transform.position = targetPos;
+        cam.transform.rotation = targetRot;
+        cam.fieldOfView = targetFov;
+    }
+
+    // Dolly (straight-line) camera move that keeps looking at a fixed point throughout.
+    // This avoids the "down then up" feeling caused by mixing vertical offsets + rotation.
+    private IEnumerator AnimateCameraDollyLookAt(
+        Camera cam,
+        Vector3 targetPos,
+        Vector3 lookAtPoint,
+        float targetFov,
+        float duration,
+        bool easeOut = false
+    )
+    {
+        if (cam == null) yield break;
+
+        var p0 = cam.transform.position;
+        var f0 = cam.fieldOfView;
+
+        float d = Mathf.Max(0.01f, duration);
+        float t = 0f;
+        while (t < d)
+        {
+            t += Time.deltaTime;
+            float u = Mathf.Clamp01(t / d);
+            if (easeOut)
+            {
+                // Ease-out cubic: snappier at the start, less "floaty"
+                u = 1f - Mathf.Pow(1f - u, 3f);
+            }
+            else
+            {
+                // Smoothstep (ease-in-out)
+                u = u * u * (3f - 2f * u);
+            }
+
+            var p = Vector3.Lerp(p0, targetPos, u);
+            cam.transform.position = p;
+            var forward = (lookAtPoint - p);
+            if (forward.sqrMagnitude > 0.0001f)
+            {
+                cam.transform.rotation = Quaternion.LookRotation(forward.normalized, Vector3.up);
+            }
+            // Animate position + FOV together.
+            cam.fieldOfView = Mathf.Lerp(f0, targetFov, u);
+            yield return null;
+        }
+
+        cam.transform.position = targetPos;
+        var finalForward = (lookAtPoint - targetPos);
+        if (finalForward.sqrMagnitude > 0.0001f)
+        {
+            cam.transform.rotation = Quaternion.LookRotation(finalForward.normalized, Vector3.up);
+        }
+        cam.fieldOfView = targetFov;
+    }
+
+    // iOS calls this to change the avatar camera focus.
+    // message: "face" or "clothes"
+    public void SetAvatarCameraFocus(string message)
+    {
+        var cam = GetAvatarViewCamera();
+        if (cam == null)
+        {
+            Debug.LogWarning("SetAvatarCameraFocus: No view camera found");
+            return;
+        }
+
+        string focus = (message ?? "").Trim().ToLowerInvariant();
+        // "clothes" means return to default view (no zoom)
+        if (focus == "clothes" || focus == "default" || string.IsNullOrEmpty(focus))
+        {
+            if (hasDefaultView)
+            {
+                if (cameraFocusCoroutine != null) StopCoroutine(cameraFocusCoroutine);
+                cameraFocusCoroutine = StartCoroutine(AnimateCameraTo(cam, defaultCamPos, defaultCamRot, defaultCamFov, 0.22f));
+            }
+            return;
+        }
+        if (focus != "face") focus = "face";
+
+        var target = GetAvatarFocusTarget(focus);
+        if (target == null)
+        {
+            Debug.LogWarning("SetAvatarCameraFocus: No target found");
+            return;
+        }
+
+        // Use the default camera direction so zoom in/out is a straight dolly.
+        Vector3 basePos = hasDefaultView ? defaultCamPos : cam.transform.position;
+        Vector3 toCam = basePos - target.position;
+        Vector3 dir = toCam.sqrMagnitude > 0.0001f ? toCam.normalized : -target.forward;
+
+        // Face framing: wider + higher (show more upper body, keep face higher in frame).
+        float distance = 5.10f;
+        float height = 0.95f;
+        float fov = 66f;
+
+        Vector3 desiredPos = target.position + dir * distance + Vector3.up * height;
+        // Aim lower (neck/chest) so the face appears higher in frame.
+        // Prefer humanoid chest/hips via our existing resolver; fall back to an offset.
+        var chestOrHips = GetAvatarFocusTarget("clothes");
+        Vector3 lookAt = (chestOrHips != null)
+            ? (chestOrHips.position + Vector3.down * 0.15f)
+            : (target.position + Vector3.down * 0.75f);
+
+        if (cameraFocusCoroutine != null) StopCoroutine(cameraFocusCoroutine);
+        // Zoom-in: slightly faster + ease-out so it doesn't feel overly animated.
+        cameraFocusCoroutine = StartCoroutine(AnimateCameraDollyLookAt(cam, desiredPos, lookAt, fov, 0.16f, easeOut: true));
     }
 
     // iOS calls this to override the remote catalog URL explicitly
