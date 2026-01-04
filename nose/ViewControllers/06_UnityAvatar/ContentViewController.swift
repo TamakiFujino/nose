@@ -403,14 +403,23 @@ extension ContentViewController {
             guard parts.count == 2 else { continue }
             let category = parts[0].lowercased()
             let subcategory = parts[1].lowercased()
+            
+            // Check for color-only entries (like Blush, Eyeshadow, Body)
+            let hasColor = !(entry["color"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            
             if category == "base" && subcategory == "body" {
-                // Keep only if pose/model is present
+                // Keep if pose/model OR color is present
                 let pose = (entry["pose"] ?? entry["model"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-                if !pose.isEmpty {
+                if !pose.isEmpty || hasColor {
+                    result[key] = entry
+                }
+            } else if category == "make up" && (subcategory == "blush" || subcategory == "eyeshadow") {
+                // Keep color-only entries for makeup (Blush, Eyeshadow)
+                if hasColor {
                     result[key] = entry
                 }
             } else {
-                // Keep only if model is present
+                // Keep only if model is present (for items that require models)
                 let model = (entry["model"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
                 if !model.isEmpty {
                     result[key] = entry
@@ -419,4 +428,5 @@ extension ContentViewController {
         }
         return result
     }
+
 }

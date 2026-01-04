@@ -35,13 +35,28 @@ class FloatingUIController: UIViewController {
     }
     
     // Mapping from display category to Unity category for compatibility
+    // Can work with or without current tab context (for loading saved data)
     private func getUnityCategory(displayCategory: String) -> String {
+        // Check if this is a face tab category
+        if displayCategory == "Base" || displayCategory == "Hair" || displayCategory == "Make Up" {
+            switch displayCategory {
+            case "Base": return "Base"
+            case "Hair": return "Hair"
+            case "Make Up": return "Base"  // Make up is part of Base category in Unity
+            default: return displayCategory
+            }
+        }
+        // Check if this is a clothes tab category
+        if displayCategory == "Clothes" || displayCategory == "Accessories" {
+            return displayCategory  // These map directly
+        }
+        // Fallback: use current tab if available, otherwise return as-is
         switch selectedCategoryTab {
         case .face:
             switch displayCategory {
             case "Base": return "Base"
             case "Hair": return "Hair"
-            case "Make Up": return "Base"  // Make up might be part of Base category
+            case "Make Up": return "Base"
             default: return displayCategory
             }
         case .clothes:
@@ -54,15 +69,15 @@ class FloatingUIController: UIViewController {
     }
     
     private func getUnitySubcategory(displayCategory: String, displaySubcategory: String) -> String {
-        switch selectedCategoryTab {
-        case .face:
+        // Check if this is a face tab category
+        if displayCategory == "Base" || displayCategory == "Hair" || displayCategory == "Make Up" {
             switch displayCategory {
             case "Base":
-                return displaySubcategory  // Eye, Eyebrow map directly
+                return displaySubcategory  // Body, Eye, Eyebrow map directly
             case "Hair":
                 return displaySubcategory  // Base, Front, Side, Back, Arrange map directly
             case "Make Up":
-                // Map make up subcategories - might need adjustment based on actual Unity structure
+                // Map make up subcategories
                 switch displaySubcategory {
                 case "Eyeshadow": return "Eyeshadow"
                 case "Blush": return "Blush"
@@ -71,13 +86,32 @@ class FloatingUIController: UIViewController {
             default:
                 return displaySubcategory
             }
-        case .clothes:
-            return displaySubcategory  // All map directly
         }
+        // Clothes tab categories map directly
+        return displaySubcategory
     }
 
     private var selectedParentIndex = 0
     private var selectedChildIndex = 0
+
+    // MARK: - Make Up toggles (Blush / Eyeshadow)
+    private func isMakeupSlot(parent: String, child: String) -> Bool {
+        return parent == "Make Up" && (child == "Blush" || child == "Eyeshadow")
+    }
+
+    private func isMakeupEnabled(parent: String, child: String) -> Bool {
+        let key = "\(parent)_\(child)"
+        let enabled = selections[key]?["enabled"]?.lowercased()
+        // Default to OFF if not set
+        return enabled == "true"
+    }
+
+    private func setMakeupEnabled(parent: String, child: String, enabled: Bool) {
+        let key = "\(parent)_\(child)"
+        var entry = selections[key] ?? [:]
+        entry["enabled"] = enabled ? "true" : "false"
+        selections[key] = entry
+    }
 
     // Asset management
     private var assetData: [String: [String: [AssetItem]]] = [:]
@@ -630,8 +664,15 @@ class FloatingUIController: UIViewController {
         let key = "\(parent)_\(child)"
         var entry = selections[key] ?? [:]
         entry["color"] = hex
+        // If this is a Make Up slot, selecting a color should enable it
+        if isMakeupSlot(parent: parent, child: child) {
+            entry["enabled"] = "true"
+            // Enabled = ON; "nosign" thumbnail becomes unselected (no border)
+            currentTopIndex = -1
+        }
         selections[key] = entry
         updateColorSelectionBorder(selectedHex: hex)
+        updateThumbnailBorders()
         // Keep panel open until the user taps close
     }
 
@@ -1391,8 +1432,14 @@ class FloatingUIController: UIViewController {
         // Remove any existing no-assets overlay
         if let existingOverlay = bottomPanel.viewWithTag(9999) { existingOverlay.removeFromSuperview() }
 
+        let parentCategory = parentCategories[selectedParentIndex]
+        let childCategory = childCategories[selectedParentIndex][selectedChildIndex]
+
         if !currentAssets.isEmpty {
             createThumbnailRows()
+        } else if isMakeupSlot(parent: parentCategory, child: childCategory) {
+            // Show a single toggle thumbnail for Make Up slots (Blush / Eyeshadow)
+            showMakeupToggleThumbnail(parent: parentCategory, child: childCategory)
         } else {
             // Overlay a centered message over the thumbnail area
             let container = UIView()
@@ -1423,6 +1470,77 @@ class FloatingUIController: UIViewController {
         }
         updateThumbnailBorders()
         LoadingView.shared.hideOverlayLoading()
+    }
+
+    private func showMakeupToggleThumbnail(parent: String, child: String) {
+        // Remove any existing no-assets overlay
+        if let existingOverlay = bottomPanel.viewWithTag(9999) { existingOverlay.removeFromSuperview() }
+
+        // Create a square thumbnail (same style as other image thumbnails)
+        let button = UIButton(type: .system)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.tag = 0
+        button.imageView?.contentMode = .scaleAspectFill
+        button.clipsToBounds = true
+        button.backgroundColor = UIColor.black.withAlphaComponent(0.05)
+        button.layer.cornerRadius = 12
+        button.layer.borderWidth = 2
+        button.layer.borderColor = UIColor.clear.cgColor
+        // Always show "nosign". Selected (border on) means OFF.
+        button.setImage(UIImage(systemName: "nosign"), for: .normal)
+        button.tintColor = .black
+        button.contentEdgeInsets = UIEdgeInsets(top: 22, left: 22, bottom: 22, right: 22)
+        button.addTarget(self, action: #selector(makeupToggleTapped(_:)), for: .touchUpInside)
+        // Square aspect
+        button.heightAnchor.constraint(equalTo: button.widthAnchor).isActive = true
+
+        // Place into a 4-column row so its size matches other thumbnails
+        let row = UIStackView()
+        row.axis = .horizontal
+        row.spacing = 12
+        row.distribution = .fillEqually
+        row.translatesAutoresizingMaskIntoConstraints = false
+        row.addArrangedSubview(button)
+        for _ in 0..<3 {
+            let placeholder = UIView()
+            placeholder.translatesAutoresizingMaskIntoConstraints = false
+            placeholder.backgroundColor = .clear
+            placeholder.isUserInteractionEnabled = false
+            placeholder.heightAnchor.constraint(equalTo: placeholder.widthAnchor).isActive = true
+            row.addArrangedSubview(placeholder)
+        }
+        thumbnailStackView.addArrangedSubview(row)
+
+        // Default is OFF (selected/bordered). Enabled => unselected (no border).
+        currentTopIndex = isMakeupEnabled(parent: parent, child: child) ? -1 : 0
+    }
+
+    @objc private func makeupToggleTapped(_ sender: UIButton) {
+        let parent = parentCategories[selectedParentIndex]
+        let child = childCategories[selectedParentIndex][selectedChildIndex]
+        guard isMakeupSlot(parent: parent, child: child) else { return }
+
+        let key = "\(parent)_\(child)"
+        let currentlyEnabled = isMakeupEnabled(parent: parent, child: child)
+
+        if currentlyEnabled {
+            // Turn OFF: show as selected (border on); remove effect (shader uses Add, so black = no effect)
+            setMakeupEnabled(parent: parent, child: child, enabled: false)
+            sendColorToUnity(category: parent, subcategory: child, hex: "#000000")
+            currentTopIndex = 0
+        } else {
+            // Turn ON: unselect (no border) and apply saved color (or default)
+            setMakeupEnabled(parent: parent, child: child, enabled: true)
+            let savedHex = selections[key]?["color"]
+            let hexToApply = (savedHex?.isEmpty == false) ? savedHex! : (colorSwatches.first ?? "#FFFFFF")
+            var entry = selections[key] ?? [:]
+            entry["color"] = hexToApply
+            selections[key] = entry
+            sendColorToUnity(category: parent, subcategory: child, hex: hexToApply)
+            currentTopIndex = -1
+        }
+
+        updateThumbnailBorders()
     }
 
     // MARK: - Rotation overlay forwarding pan to Unity
@@ -1524,35 +1642,59 @@ class FloatingUIController: UIViewController {
         for (key, entry) in selections {
             let parts = key.split(separator: "_").map(String.init)
             guard parts.count == 2 else { continue }
-            let category = parts[0]
-            let subcategory = parts[1]
-            let name: String?
-            if category.lowercased() == "base" && subcategory.lowercased() == "body" {
-                name = entry["pose"] ?? entry["model"]
-            } else {
-                name = entry["model"]
+            let displayCategory = parts[0]
+            let displaySubcategory = parts[1]
+            
+            // Convert display category/subcategory to Unity category/subcategory for Unity communication
+            let unityCategory = getUnityCategory(displayCategory: displayCategory)
+            let unitySubcategory = getUnitySubcategory(displayCategory: displayCategory, displaySubcategory: displaySubcategory)
+            
+            // Check if this is a color-only entry (like Blush, Eyeshadow) that doesn't have a model
+            let isColorOnly = (displayCategory == "Make Up" && (displaySubcategory == "Blush" || displaySubcategory == "Eyeshadow")) ||
+                              (displayCategory == "Base" && displaySubcategory == "Body")
+            
+            // Apply model/asset if available
+            if !isColorOnly {
+                let name: String?
+                if displayCategory.lowercased() == "base" && displaySubcategory.lowercased() == "body" {
+                    name = entry["pose"] ?? entry["model"]
+                } else {
+                    name = entry["model"]
+                }
+                
+                if let modelName = name, !modelName.isEmpty {
+                    var modelPath = ""
+                    if !(displayCategory.lowercased() == "base" && displaySubcategory.lowercased() == "body") {
+                        modelPath = "Models/\(unityCategory)/\(unitySubcategory)/\(modelName)"
+                    }
+                    let asset = AssetItem(
+                        id: "\(unityCategory)_\(unitySubcategory)_\(modelName)",
+                        name: modelName,
+                        modelPath: modelPath,
+                        thumbnailPath: nil,
+                        category: unityCategory,
+                        subcategory: unitySubcategory,
+                        isActive: true,
+                        metadata: nil
+                    )
+                    changeAssetInUnity(asset: asset)
+                }
             }
-            guard let modelName = name, !modelName.isEmpty else { continue }
-            var modelPath = ""
-            if !(category.lowercased() == "base" && subcategory.lowercased() == "body") {
-                modelPath = "Models/\(category)/\(subcategory)/\(modelName)"
-            }
-            let asset = AssetItem(
-                id: "\(category)_\(subcategory)_\(modelName)",
-                name: modelName,
-                modelPath: modelPath,
-                thumbnailPath: nil,
-                category: category,
-                subcategory: subcategory,
-                isActive: true,
-                metadata: nil
-            )
-            changeAssetInUnity(asset: asset)
-            if let hex = entry["color"], !hex.isEmpty {
-                sendColorToUnity(category: category, subcategory: subcategory, hex: hex)
-            } else if let defaultHex = colorSwatches.first {
-                // No saved color — apply default palette color
-                sendColorToUnity(category: category, subcategory: subcategory, hex: defaultHex)
+            
+            // Apply color (for all entries including color-only ones like Blush/Eyeshadow)
+            if displayCategory == "Make Up" && (displaySubcategory == "Blush" || displaySubcategory == "Eyeshadow") {
+                let enabled = entry["enabled"]?.lowercased() == "true"
+                if enabled, let hex = entry["color"], !hex.isEmpty {
+                    sendColorToUnity(category: unityCategory, subcategory: unitySubcategory, hex: hex)
+                } else {
+                    // Disabled -> remove effect (shader uses Add, black = no effect)
+                    sendColorToUnity(category: unityCategory, subcategory: unitySubcategory, hex: "#000000")
+                }
+            } else if let hex = entry["color"], !hex.isEmpty {
+                sendColorToUnity(category: unityCategory, subcategory: unitySubcategory, hex: hex)
+            } else if isColorOnly, let defaultHex = colorSwatches.first {
+                // For color-only entries, apply default if no saved color
+                sendColorToUnity(category: unityCategory, subcategory: unitySubcategory, hex: defaultHex)
                 var updated = selections[key] ?? [:]
                 updated["color"] = defaultHex
                 selections[key] = updated
