@@ -405,75 +405,93 @@ class CollectionManager {
     struct CollectionIcon {
         let name: String
         let url: String
+        let category: String // "hobby", "food", "places"
     }
     
     func fetchCollectionIcons(completion: @escaping (Result<[CollectionIcon], Error>) -> Void) {
         print("🔄 Fetching collection icons from Firebase Storage...")
         
-        // List all files in the collection_icons folder
-        let storageRef = storage.reference().child("collection_icons")
+        let categories = ["hobby", "food", "places"]
+        let group = DispatchGroup()
+        var allIcons: [CollectionIcon] = []
+        var fetchErrors: [Error] = []
         
-        storageRef.listAll { [weak self] result, error in
-            guard let self = self else { return }
+        // Fetch icons from each category folder
+        for category in categories {
+            group.enter()
             
-            if let error = error {
-                print("❌ Error listing collection icons from Storage: \(error.localizedDescription)")
-                // Fallback: Try Firestore if Storage fails
-                self.fetchCollectionIconsFromFirestore(completion: completion)
-                return
-            }
+            let categoryRef = storage.reference().child("collection_icons/\(category)")
             
-            guard let items = result?.items, !items.isEmpty else {
-                print("⚠️ No collection icons found in Storage, trying Firestore...")
-                // Fallback: Try Firestore if Storage is empty
-                self.fetchCollectionIconsFromFirestore(completion: completion)
-                return
-            }
-            
-            // Get download URLs for all items
-            let group = DispatchGroup()
-            var icons: [CollectionIcon] = []
-            var fetchErrors: [Error] = []
-            
-            for item in items {
-                group.enter()
+            categoryRef.listAll { [weak self] result, error in
+                defer { group.leave() }
+                guard let self = self else { return }
                 
-                // Get download URL for this item
-                item.downloadURL { url, error in
-                    defer { group.leave() }
-                    
-                    if let error = error {
-                        print("⚠️ Error getting download URL for \(item.name): \(error.localizedDescription)")
-                        fetchErrors.append(error)
-                        return
-                    }
-                    
-                    guard let downloadURL = url else {
-                        return
-                    }
-                    
-                    // Extract name from file name (remove extension)
-                    let name = item.name.replacingOccurrences(of: ".jpg", with: "")
-                        .replacingOccurrences(of: ".png", with: "")
-                        .replacingOccurrences(of: ".jpeg", with: "")
-                        .replacingOccurrences(of: "_", with: " ")
-                        .capitalized
-                    
-                    icons.append(CollectionIcon(name: name, url: downloadURL.absoluteString))
+                if let error = error {
+                    print("⚠️ Error listing icons from \(category) folder: \(error.localizedDescription)")
+                    fetchErrors.append(error)
+                    return
                 }
+                
+                guard let items = result?.items, !items.isEmpty else {
+                    print("⚠️ No icons found in \(category) folder")
+                    return
+                }
+                
+                print("📁 Found \(items.count) items in \(category) folder")
+                
+                // Get download URLs for all items in this category
+                let iconGroup = DispatchGroup()
+                
+                for item in items {
+                    iconGroup.enter()
+                    
+                    item.downloadURL { url, error in
+                        defer { iconGroup.leave() }
+                        
+                        if let error = error {
+                            print("⚠️ Error getting download URL for \(item.name): \(error.localizedDescription)")
+                            return
+                        }
+                        
+                        guard let downloadURL = url else {
+                            return
+                        }
+                        
+                        // Extract name from file name (remove extension)
+                        let name = item.name.replacingOccurrences(of: ".jpg", with: "")
+                            .replacingOccurrences(of: ".png", with: "")
+                            .replacingOccurrences(of: ".jpeg", with: "")
+                            .replacingOccurrences(of: "_", with: " ")
+                            .capitalized
+                        
+                        let icon = CollectionIcon(name: name, url: downloadURL.absoluteString, category: category)
+                        allIcons.append(icon)
+                    }
+                }
+                
+                iconGroup.wait()
+            }
+        }
+        
+        group.notify(queue: .main) {
+            // Sort by category, then by name
+            allIcons.sort { icon1, icon2 in
+                if icon1.category == icon2.category {
+                    return icon1.name < icon2.name
+                }
+                return icon1.category < icon2.category
             }
             
-            group.notify(queue: .main) {
-                // Sort by name
-                icons.sort { $0.name < $1.name }
-                
-                if icons.isEmpty && !fetchErrors.isEmpty {
-                    print("❌ Failed to get download URLs for collection icons")
-                    completion(.failure(fetchErrors.first!))
-                } else {
-                    print("✅ Loaded \(icons.count) collection icons from Storage")
-                    completion(.success(icons))
-                }
+            if allIcons.isEmpty && !fetchErrors.isEmpty {
+                print("❌ Failed to fetch collection icons from all categories")
+                // Fallback to Firestore
+                self.fetchCollectionIconsFromFirestore(completion: completion)
+            } else if allIcons.isEmpty {
+                print("⚠️ No collection icons found in any category folder, trying Firestore...")
+                self.fetchCollectionIconsFromFirestore(completion: completion)
+            } else {
+                print("✅ Loaded \(allIcons.count) collection icons from Storage across \(categories.count) categories")
+                completion(.success(allIcons))
             }
         }
     }
@@ -503,7 +521,9 @@ class CollectionManager {
                           let url = data["url"] as? String else {
                         return nil
                     }
-                    return CollectionIcon(name: name, url: url)
+                    // Firestore fallback uses "hobby" as default category
+                    let category = data["category"] as? String ?? "hobby"
+                    return CollectionIcon(name: name, url: url, category: category)
                 }
                 
                 print("✅ Loaded \(icons.count) collection icons from Firestore")
@@ -514,16 +534,16 @@ class CollectionManager {
     // MARK: - Upload Collection Icon (Helper method for admin/manual setup)
     /// Uploads an image to Firebase Storage and creates a Firestore document for it
     /// This is a helper method that can be called manually or through admin tools
-    func uploadCollectionIcon(image: UIImage, name: String, completion: @escaping (Result<Void, Error>) -> Void) {
+    func uploadCollectionIcon(image: UIImage, name: String, category: String = "hobby", completion: @escaping (Result<Void, Error>) -> Void) {
         guard let imageData = image.jpegData(compressionQuality: 0.8) else {
             completion(.failure(NSError(domain: "CollectionManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to convert image to data"])))
             return
         }
         
-        // Upload to Firebase Storage
+        // Upload to Firebase Storage in categorized folder
         let storageRef = storage.reference()
         let imageName = "\(name.replacingOccurrences(of: " ", with: "_")).jpg"
-        let imageRef = storageRef.child("collection_icons/\(imageName)")
+        let imageRef = storageRef.child("collection_icons/\(category)/\(imageName)")
         
         let metadata = StorageMetadata()
         metadata.contentType = "image/jpeg"
@@ -552,16 +572,17 @@ class CollectionManager {
                     return
                 }
                 
-                // Create Firestore document
+                // Create Firestore document with category
                 self.db.collection("collection_icons").addDocument(data: [
                     "name": name,
-                    "url": downloadURL.absoluteString
+                    "url": downloadURL.absoluteString,
+                    "category": category
                 ]) { error in
                     if let error = error {
                         print("❌ Error creating collection icon document: \(error.localizedDescription)")
                         completion(.failure(error))
                     } else {
-                        print("✅ Successfully uploaded collection icon: \(name)")
+                        print("✅ Successfully uploaded collection icon: \(name) in category: \(category)")
                         completion(.success(()))
                     }
                 }
