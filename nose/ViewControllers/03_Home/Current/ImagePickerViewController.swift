@@ -7,10 +7,29 @@ protocol ImagePickerViewControllerDelegate: AnyObject {
 class ImagePickerViewController: UIViewController {
     // MARK: - Properties
     weak var delegate: ImagePickerViewControllerDelegate?
-    private var icons: [CollectionManager.CollectionIcon] = []
+    private var allIcons: [CollectionManager.CollectionIcon] = []
+    private var filteredIcons: [CollectionManager.CollectionIcon] = []
     private let imageCache = NSCache<NSString, UIImage>()
     
+    // Category tabs
+    private enum IconCategory: String, CaseIterable {
+        case all = "All"
+        case hobby = "hobby"
+        case food = "food"
+        case places = "places"
+    }
+    private var selectedCategory: IconCategory = .all
+    
     // MARK: - UI Components
+    private lazy var categoryTabStackView: UIStackView = {
+        let stackView = UIStackView()
+        stackView.axis = .horizontal
+        stackView.spacing = 8
+        stackView.distribution = .fillEqually
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        return stackView
+    }()
+    
     private lazy var closeButton: UIButton = {
         let button = UIButton(type: .system)
         button.setImage(UIImage(systemName: "xmark"), for: .normal)
@@ -61,8 +80,11 @@ class ImagePickerViewController: UIViewController {
         view.backgroundColor = .systemBackground
         
         view.addSubview(closeButton)
+        view.addSubview(categoryTabStackView)
         view.addSubview(collectionView)
         view.addSubview(activityIndicator)
+        
+        setupCategoryTabs()
         
         NSLayoutConstraint.activate([
             // Close button
@@ -71,8 +93,14 @@ class ImagePickerViewController: UIViewController {
             closeButton.widthAnchor.constraint(equalToConstant: 30),
             closeButton.heightAnchor.constraint(equalToConstant: 30),
             
+            // Category tabs
+            categoryTabStackView.topAnchor.constraint(equalTo: closeButton.bottomAnchor, constant: 16),
+            categoryTabStackView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            categoryTabStackView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            categoryTabStackView.heightAnchor.constraint(equalToConstant: 44),
+            
             // Collection view
-            collectionView.topAnchor.constraint(equalTo: closeButton.bottomAnchor, constant: 8),
+            collectionView.topAnchor.constraint(equalTo: categoryTabStackView.bottomAnchor, constant: 16),
             collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
@@ -83,23 +111,69 @@ class ImagePickerViewController: UIViewController {
         ])
     }
     
+    private func setupCategoryTabs() {
+        for category in IconCategory.allCases {
+            let button = createTabButton(for: category)
+            categoryTabStackView.addArrangedSubview(button)
+        }
+        updateTabButtonStates()
+    }
+    
+    private func createTabButton(for category: IconCategory) -> UIButton {
+        let button = UIButton(type: .system)
+        button.setTitle(category.rawValue, for: .normal)
+        button.titleLabel?.font = .systemFont(ofSize: 15, weight: .medium)
+        button.layer.cornerRadius = 12
+        button.layer.masksToBounds = true
+        button.tag = IconCategory.allCases.firstIndex(of: category) ?? 0
+        button.addTarget(self, action: #selector(categoryTabTapped(_:)), for: .touchUpInside)
+        return button
+    }
+    
+    private func updateTabButtonStates() {
+        for (index, category) in IconCategory.allCases.enumerated() {
+            guard let button = categoryTabStackView.arrangedSubviews[index] as? UIButton else { continue }
+            
+            let isSelected = category == selectedCategory
+            button.backgroundColor = isSelected ? .systemBlue : UIColor.systemGray5
+            button.tintColor = isSelected ? .white : .label
+            button.setTitleColor(isSelected ? .white : .label, for: .normal)
+        }
+    }
+    
+    @objc private func categoryTabTapped(_ sender: UIButton) {
+        guard let category = IconCategory.allCases[safe: sender.tag] else { return }
+        selectedCategory = category
+        updateTabButtonStates()
+        filterIcons()
+    }
+    
+    private func filterIcons() {
+        if selectedCategory == .all {
+            filteredIcons = allIcons
+        } else {
+            filteredIcons = allIcons.filter { $0.category == selectedCategory.rawValue }
+        }
+        collectionView.reloadData()
+    }
+    
     private func fetchIcons() {
         activityIndicator.startAnimating()
         
-        // Fetch collection icons from Firestore via CollectionManager
+        // Fetch collection icons from Firebase Storage via CollectionManager
         CollectionManager.shared.fetchCollectionIcons { [weak self] result in
             DispatchQueue.main.async {
                 self?.activityIndicator.stopAnimating()
                 
                 switch result {
                 case .success(let fetchedIcons):
-                    self?.icons = fetchedIcons
-                    self?.collectionView.reloadData()
+                    self?.allIcons = fetchedIcons
+                    self?.filterIcons()
                 case .failure(let error):
                     print("❌ Error fetching collection icons: \(error.localizedDescription)")
-                    // Fall back to SF Symbols if Firestore fetch fails
-                    self?.icons = []
-                    self?.collectionView.reloadData()
+                    // Fall back to empty list if fetch fails
+                    self?.allIcons = []
+                    self?.filterIcons()
                 }
             }
         }
@@ -114,23 +188,30 @@ class ImagePickerViewController: UIViewController {
 // MARK: - UICollectionViewDelegate & UICollectionViewDataSource
 extension ImagePickerViewController: UICollectionViewDelegate, UICollectionViewDataSource {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return icons.count
+        return filteredIcons.count
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "ImagePickerCell", for: indexPath) as! ImagePickerCell
         
         // Show remote images
-        let icon = icons[indexPath.item]
+        let icon = filteredIcons[indexPath.item]
         cell.configure(with: icon.url, sfSymbolName: nil)
         
         return cell
     }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        let icon = icons[indexPath.item]
+        let icon = filteredIcons[indexPath.item]
         delegate?.imagePickerViewController(self, didSelectImage: icon.name, imageUrl: icon.url)
         dismiss(animated: true)
+    }
+}
+
+// MARK: - Array Extension for Safe Access
+extension Array {
+    subscript(safe index: Index) -> Element? {
+        return indices.contains(index) ? self[index] : nil
     }
 }
 
