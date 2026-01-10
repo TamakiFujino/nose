@@ -210,13 +210,6 @@ extension ImagePickerViewController: UICollectionViewDelegate, UICollectionViewD
     }
 }
 
-// MARK: - Array Extension for Safe Access
-extension Array {
-    subscript(safe index: Index) -> Element? {
-        return indices.contains(index) ? self[index] : nil
-    }
-}
-
 // MARK: - ImagePickerCell
 class ImagePickerCell: UICollectionViewCell {
     private let imageView: UIImageView = {
