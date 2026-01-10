@@ -16,7 +16,9 @@ class ImagePickerViewController: UIViewController {
         case all = "All"
         case hobby = "hobby"
         case food = "food"
-        case places = "places"
+        case place = "place"
+        case sports = "sports"
+        case symbol = "symbol"
     }
     private var selectedCategory: IconCategory = .all
     

@@ -405,13 +405,13 @@ class CollectionManager {
     struct CollectionIcon {
         let name: String
         let url: String
-        let category: String // "hobby", "food", "places"
+        let category: String // "hobby", "food", "place", "sports", "symbol"
     }
     
     func fetchCollectionIcons(completion: @escaping (Result<[CollectionIcon], Error>) -> Void) {
         print("🔄 Fetching collection icons from Firebase Storage...")
         
-        let categories = ["hobby", "food", "places"]
+        let categories = ["hobby", "food", "place", "sports", "symbol"]
         let group = DispatchGroup()
         var allIcons: [CollectionIcon] = []
         var fetchErrors: [Error] = []
