@@ -416,7 +416,7 @@ class CollectionManager {
         var allIcons: [CollectionIcon] = []
         var fetchErrors: [Error] = []
         
-        // Fetch icons from each category folder
+        // First, try to fetch from categorized folders
         for category in categories {
             group.enter()
             
@@ -474,24 +474,93 @@ class CollectionManager {
         }
         
         group.notify(queue: .main) {
-            // Sort by category, then by name
-            allIcons.sort { icon1, icon2 in
-                if icon1.category == icon2.category {
-                    return icon1.name < icon2.name
-                }
-                return icon1.category < icon2.category
-            }
-            
-            if allIcons.isEmpty && !fetchErrors.isEmpty {
-                print("❌ Failed to fetch collection icons from all categories")
-                // Fallback to Firestore
-                self.fetchCollectionIconsFromFirestore(completion: completion)
-            } else if allIcons.isEmpty {
-                print("⚠️ No collection icons found in any category folder, trying Firestore...")
-                self.fetchCollectionIconsFromFirestore(completion: completion)
+            // If no icons found in categorized folders, try root collection_icons folder (backward compatibility)
+            if allIcons.isEmpty {
+                print("⚠️ No icons found in categorized folders, checking root collection_icons folder...")
+                self.fetchIconsFromRootFolder(completion: completion)
             } else {
+                // Sort by category, then by name
+                allIcons.sort { icon1, icon2 in
+                    if icon1.category == icon2.category {
+                        return icon1.name < icon2.name
+                    }
+                    return icon1.category < icon2.category
+                }
+                
                 print("✅ Loaded \(allIcons.count) collection icons from Storage across \(categories.count) categories")
                 completion(.success(allIcons))
+            }
+        }
+    }
+    
+    // Backward compatibility: Fetch icons from root collection_icons folder
+    private func fetchIconsFromRootFolder(completion: @escaping (Result<[CollectionIcon], Error>) -> Void) {
+        print("🔄 Fetching icons from root collection_icons folder (backward compatibility)...")
+        
+        let storageRef = storage.reference().child("collection_icons")
+        
+        storageRef.listAll { [weak self] result, error in
+            guard let self = self else { return }
+            
+            if let error = error {
+                print("❌ Error listing collection icons from root folder: \(error.localizedDescription)")
+                // Final fallback: Try Firestore
+                self.fetchCollectionIconsFromFirestore(completion: completion)
+                return
+            }
+            
+            guard let items = result?.items, !items.isEmpty else {
+                print("⚠️ No collection icons found in root folder, trying Firestore...")
+                // Final fallback: Try Firestore
+                self.fetchCollectionIconsFromFirestore(completion: completion)
+                return
+            }
+            
+            print("📁 Found \(items.count) items in root collection_icons folder")
+            
+            // Get download URLs for all items
+            let group = DispatchGroup()
+            var icons: [CollectionIcon] = []
+            
+            for item in items {
+                group.enter()
+                
+                item.downloadURL { url, error in
+                    defer { group.leave() }
+                    
+                    if let error = error {
+                        print("⚠️ Error getting download URL for \(item.name): \(error.localizedDescription)")
+                        return
+                    }
+                    
+                    guard let downloadURL = url else {
+                        return
+                    }
+                    
+                    // Extract name from file name (remove extension)
+                    let name = item.name.replacingOccurrences(of: ".jpg", with: "")
+                        .replacingOccurrences(of: ".png", with: "")
+                        .replacingOccurrences(of: ".jpeg", with: "")
+                        .replacingOccurrences(of: "_", with: " ")
+                        .capitalized
+                    
+                    // Assign to "hobby" category by default for backward compatibility
+                    let icon = CollectionIcon(name: name, url: downloadURL.absoluteString, category: "hobby")
+                    icons.append(icon)
+                }
+            }
+            
+            group.notify(queue: .main) {
+                // Sort by name
+                icons.sort { $0.name < $1.name }
+                
+                if icons.isEmpty {
+                    print("⚠️ No valid icons found, trying Firestore...")
+                    self.fetchCollectionIconsFromFirestore(completion: completion)
+                } else {
+                    print("✅ Loaded \(icons.count) collection icons from root folder (assigned to 'hobby' category)")
+                    completion(.success(icons))
+                }
             }
         }
     }
