@@ -509,8 +509,17 @@ class CollectionManager {
                 return
             }
             
+            // Debug logging
+            print("📊 Root folder contents:")
+            print("   - Items (files): \(result?.items.count ?? 0)")
+            print("   - Prefixes (subfolders): \(result?.prefixes.count ?? 0)")
+            if let prefixes = result?.prefixes {
+                print("   - Subfolder names: \(prefixes.map { $0.name })")
+            }
+            
             guard let items = result?.items, !items.isEmpty else {
-                print("⚠️ No collection icons found in root folder, trying Firestore...")
+                print("⚠️ No collection icons (files) found in root folder, trying Firestore...")
+                print("   (Note: If your icons are in subfolders like hobby/, food/, etc., that's expected)")
                 // Final fallback: Try Firestore
                 self.fetchCollectionIconsFromFirestore(completion: completion)
                 return
