@@ -144,7 +144,8 @@ class ImagePickerViewController: UIViewController {
     }
     
     @objc private func categoryTabTapped(_ sender: UIButton) {
-        guard let category = IconCategory.allCases[safe: sender.tag] else { return }
+        guard sender.tag < IconCategory.allCases.count else { return }
+        let category = IconCategory.allCases[sender.tag]
         selectedCategory = category
         updateTabButtonStates()
         filterIcons()
