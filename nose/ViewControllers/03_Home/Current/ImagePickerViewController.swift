@@ -7,27 +7,51 @@ protocol ImagePickerViewControllerDelegate: AnyObject {
 class ImagePickerViewController: UIViewController {
     // MARK: - Properties
     weak var delegate: ImagePickerViewControllerDelegate?
-    private var allIcons: [CollectionManager.CollectionIcon] = []
+    private var allIcons: [CollectionManager.CollectionIcon] = [] // Cache of all loaded icons
     private var filteredIcons: [CollectionManager.CollectionIcon] = []
     private let imageCache = NSCache<NSString, UIImage>()
     
+    // Configure image cache limits
+    private func configureImageCache() {
+        // Set cache limits: 200 images max, 50MB cost limit
+        imageCache.countLimit = 200
+        imageCache.totalCostLimit = 50 * 1024 * 1024 // 50MB
+        
+        // Configure URLCache for HTTP-level caching
+        let urlCache = URLCache(memoryCapacity: 50 * 1024 * 1024, // 50MB memory
+                                diskCapacity: 200 * 1024 * 1024,  // 200MB disk
+                                diskPath: "collection_icons_cache")
+        URLCache.shared = urlCache
+    }
+    
     // Category tabs
     private enum IconCategory: String, CaseIterable {
-        case all = "All"
-        case hobby = "hobby"
-        case food = "food"
-        case place = "place"
-        case sports = "sports"
-        case symbol = "symbol"
+        case hobby = "Hobby"
+        case food = "Food"
+        case sports = "Sports"
+        case symbol = "Symbol"
     }
-    private var selectedCategory: IconCategory = .all
+    private var selectedCategory: IconCategory = .hobby // Default to first category
+    private var loadedCategories: Set<String> = [] // Track which categories have been loaded
     
     // MARK: - UI Components
+    private lazy var categoryTabScrollView: UIScrollView = {
+        let scrollView = UIScrollView()
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.showsHorizontalScrollIndicator = false
+        scrollView.alwaysBounceHorizontal = true
+        scrollView.alwaysBounceVertical = false
+        scrollView.showsVerticalScrollIndicator = false
+        scrollView.isDirectionalLockEnabled = true
+        return scrollView
+    }()
+    
     private lazy var categoryTabStackView: UIStackView = {
         let stackView = UIStackView()
         stackView.axis = .horizontal
         stackView.spacing = 8
-        stackView.distribution = .fillEqually
+        stackView.distribution = .fill
+        stackView.alignment = .leading
         stackView.translatesAutoresizingMaskIntoConstraints = false
         return stackView
     }()
@@ -47,12 +71,9 @@ class ImagePickerViewController: UIViewController {
         layout.minimumInteritemSpacing = 1
         layout.minimumLineSpacing = 1
         
-        // Calculate item size for 4 columns (images might need more space than symbols)
-        let totalWidth = UIScreen.main.bounds.width
-        let itemsPerRow: CGFloat = 4
-        let spacing: CGFloat = (itemsPerRow - 1) * layout.minimumInteritemSpacing
-        let itemWidth = (totalWidth - spacing) / itemsPerRow
-        layout.itemSize = CGSize(width: itemWidth, height: itemWidth)
+        // Calculate item size for 6 columns (will be recalculated in viewDidLayoutSubviews for margins)
+        let itemsPerRow: CGFloat = 6
+        layout.itemSize = CGSize(width: 50, height: 50) // Temporary size, will be updated
         
         let collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.translatesAutoresizingMaskIntoConstraints = false
@@ -73,8 +94,28 @@ class ImagePickerViewController: UIViewController {
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
+        configureImageCache()
         setupUI()
         fetchIcons()
+    }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        updateCollectionViewItemSize()
+    }
+    
+    private func updateCollectionViewItemSize() {
+        guard let layout = collectionView.collectionViewLayout as? UICollectionViewFlowLayout else { return }
+        
+        let itemsPerRow: CGFloat = 6
+        let collectionViewWidth = collectionView.bounds.width
+        let spacing: CGFloat = (itemsPerRow - 1) * layout.minimumInteritemSpacing
+        let itemWidth = (collectionViewWidth - spacing) / itemsPerRow
+        
+        if layout.itemSize.width != itemWidth {
+            layout.itemSize = CGSize(width: itemWidth, height: itemWidth)
+            layout.invalidateLayout()
+        }
     }
     
     // MARK: - Setup
@@ -82,7 +123,8 @@ class ImagePickerViewController: UIViewController {
         view.backgroundColor = .systemBackground
         
         view.addSubview(closeButton)
-        view.addSubview(categoryTabStackView)
+        view.addSubview(categoryTabScrollView)
+        categoryTabScrollView.addSubview(categoryTabStackView)
         view.addSubview(collectionView)
         view.addSubview(activityIndicator)
         
@@ -95,16 +137,23 @@ class ImagePickerViewController: UIViewController {
             closeButton.widthAnchor.constraint(equalToConstant: 30),
             closeButton.heightAnchor.constraint(equalToConstant: 30),
             
-            // Category tabs
-            categoryTabStackView.topAnchor.constraint(equalTo: closeButton.bottomAnchor, constant: 16),
-            categoryTabStackView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            categoryTabStackView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            categoryTabStackView.heightAnchor.constraint(equalToConstant: 44),
+            // Category tabs scroll view
+            categoryTabScrollView.topAnchor.constraint(equalTo: closeButton.bottomAnchor, constant: 16),
+            categoryTabScrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            categoryTabScrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            categoryTabScrollView.heightAnchor.constraint(equalToConstant: 30),
+            
+            // Category tabs stack view inside scroll view
+            categoryTabStackView.leadingAnchor.constraint(equalTo: categoryTabScrollView.contentLayoutGuide.leadingAnchor, constant: 16),
+            categoryTabStackView.trailingAnchor.constraint(equalTo: categoryTabScrollView.contentLayoutGuide.trailingAnchor, constant: -16),
+            categoryTabStackView.topAnchor.constraint(equalTo: categoryTabScrollView.contentLayoutGuide.topAnchor),
+            categoryTabStackView.bottomAnchor.constraint(equalTo: categoryTabScrollView.contentLayoutGuide.bottomAnchor),
+            categoryTabStackView.heightAnchor.constraint(equalTo: categoryTabScrollView.frameLayoutGuide.heightAnchor),
             
             // Collection view
-            collectionView.topAnchor.constraint(equalTo: categoryTabStackView.bottomAnchor, constant: 16),
-            collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            collectionView.topAnchor.constraint(equalTo: categoryTabScrollView.bottomAnchor, constant: 16),
+            collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             
             // Activity Indicator
@@ -124,11 +173,30 @@ class ImagePickerViewController: UIViewController {
     private func createTabButton(for category: IconCategory) -> UIButton {
         let button = UIButton(type: .system)
         button.setTitle(category.rawValue, for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 15, weight: .medium)
-        button.layer.cornerRadius = 12
+        button.titleLabel?.font = .systemFont(ofSize: 14, weight: .medium)
+        button.setTitleColor(.black, for: .normal)
+        button.backgroundColor = .secondColor
+        button.layer.cornerRadius = 16
+        button.layer.borderWidth = 0
+        button.layer.borderColor = UIColor.clear.cgColor
         button.layer.masksToBounds = true
         button.tag = IconCategory.allCases.firstIndex(of: category) ?? 0
         button.addTarget(self, action: #selector(categoryTabTapped(_:)), for: .touchUpInside)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Padding so text doesn't touch edges
+        button.contentEdgeInsets = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
+        
+        // Set height constraint
+        button.heightAnchor.constraint(equalToConstant: 30).isActive = true
+        
+        // Minimum width for easy tapping, but size to content
+        button.widthAnchor.constraint(greaterThanOrEqualToConstant: 60).isActive = true
+        
+        // Allow button to size to content
+        button.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        button.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
+        
         return button
     }
     
@@ -137,9 +205,11 @@ class ImagePickerViewController: UIViewController {
             guard let button = categoryTabStackView.arrangedSubviews[index] as? UIButton else { continue }
             
             let isSelected = category == selectedCategory
-            button.backgroundColor = isSelected ? .systemBlue : UIColor.systemGray5
-            button.tintColor = isSelected ? .white : .label
-            button.setTitleColor(isSelected ? .white : .label, for: .normal)
+            // Active tab: darker background with white text
+            // Inactive tab: secondColor background with black text
+            button.backgroundColor = isSelected ? .fourthColor : .secondColor
+            button.setTitleColor(isSelected ? .white : .black, for: .normal)
+            button.layer.cornerRadius = 16
         }
     }
     
@@ -148,38 +218,54 @@ class ImagePickerViewController: UIViewController {
         let category = IconCategory.allCases[sender.tag]
         selectedCategory = category
         updateTabButtonStates()
-        filterIcons()
+        loadIconsForSelectedCategory()
     }
     
-    private func filterIcons() {
-        if selectedCategory == .all {
-            filteredIcons = allIcons
-        } else {
-            filteredIcons = allIcons.filter { $0.category == selectedCategory.rawValue }
+    private func loadIconsForSelectedCategory() {
+        let categoryLowercase = selectedCategory.rawValue.lowercased()
+        
+        // Check if category is already loaded in this view controller instance
+        if loadedCategories.contains(categoryLowercase) {
+            // Just filter existing icons
+            filterIcons()
+            return
         }
-        collectionView.reloadData()
-    }
-    
-    private func fetchIcons() {
+        
+        // Load icons for this category (will use cache if available)
         activityIndicator.startAnimating()
         
-        // Fetch collection icons from Firebase Storage via CollectionManager
-        CollectionManager.shared.fetchCollectionIcons { [weak self] result in
+        CollectionManager.shared.fetchCollectionIcons(for: categoryLowercase) { [weak self] result in
             DispatchQueue.main.async {
                 self?.activityIndicator.stopAnimating()
                 
                 switch result {
                 case .success(let fetchedIcons):
-                    self?.allIcons = fetchedIcons
+                    // Remove existing icons for this category first to avoid duplicates
+                    self?.allIcons.removeAll { $0.category.lowercased() == categoryLowercase }
+                    
+                    // Add the fetched icons and mark category as loaded
+                    self?.allIcons.append(contentsOf: fetchedIcons)
+                    self?.loadedCategories.insert(categoryLowercase)
                     self?.filterIcons()
                 case .failure(let error):
-                    print("❌ Error fetching collection icons: \(error.localizedDescription)")
-                    // Fall back to empty list if fetch fails
-                    self?.allIcons = []
+                    print("❌ Error fetching collection icons for \(categoryLowercase): \(error.localizedDescription)")
+                    // Keep existing icons, just filter
                     self?.filterIcons()
                 }
             }
         }
+    }
+    
+    private func filterIcons() {
+        // Filter by category (matching lowercase category values from icons)
+        let categoryLowercase = selectedCategory.rawValue.lowercased()
+        filteredIcons = allIcons.filter { $0.category.lowercased() == categoryLowercase }
+        collectionView.reloadData()
+    }
+    
+    private func fetchIcons() {
+        // Load icons for the initial selected category (hobby by default)
+        loadIconsForSelectedCategory()
     }
     
     // MARK: - Actions
@@ -189,7 +275,11 @@ class ImagePickerViewController: UIViewController {
 }
 
 // MARK: - UICollectionViewDelegate & UICollectionViewDataSource
-extension ImagePickerViewController: UICollectionViewDelegate, UICollectionViewDataSource {
+extension ImagePickerViewController: UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
+    func numberOfSections(in collectionView: UICollectionView) -> Int {
+        return 1
+    }
+    
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return filteredIcons.count
     }
@@ -208,6 +298,36 @@ extension ImagePickerViewController: UICollectionViewDelegate, UICollectionViewD
         let icon = filteredIcons[indexPath.item]
         delegate?.imagePickerViewController(self, didSelectImage: icon.name, imageUrl: icon.url)
         dismiss(animated: true)
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
+        // Preload images for nearby cells to improve scrolling performance
+        preloadImagesForNearbyCells(around: indexPath)
+    }
+    
+    private func preloadImagesForNearbyCells(around indexPath: IndexPath) {
+        // Preload images for cells 5 positions ahead and behind
+        let preloadRange = 5
+        let startIndex = max(0, indexPath.item - preloadRange)
+        let endIndex = min(filteredIcons.count - 1, indexPath.item + preloadRange)
+        
+        for i in startIndex...endIndex {
+            guard i != indexPath.item, i < filteredIcons.count else { continue }
+            let icon = filteredIcons[i]
+            
+            // Only preload if not already cached
+            if ImagePickerCell.imageCache.object(forKey: icon.url as NSString) == nil,
+               let url = URL(string: icon.url) {
+                var request = URLRequest(url: url)
+                request.cachePolicy = .returnCacheDataElseLoad
+                
+                // Check URLCache first
+                if URLCache.shared.cachedResponse(for: request) == nil {
+                    // Preload in background
+                    URLSession.shared.dataTask(with: request).resume()
+                }
+            }
+        }
     }
 }
 
@@ -303,6 +423,28 @@ class ImagePickerCell: UICollectionViewCell {
         CATransaction.commit()
     }
     
+    private func resizeImage(_ image: UIImage, maxDimension: CGFloat) -> UIImage {
+        let size = image.size
+        let maxSize = max(size.width, size.height)
+        
+        // If image is already smaller than maxDimension, return as-is
+        guard maxSize > maxDimension else {
+            return image
+        }
+        
+        // Calculate new size maintaining aspect ratio
+        let scale = maxDimension / maxSize
+        let newSize = CGSize(width: size.width * scale, height: size.height * scale)
+        
+        // Create resized image
+        let renderer = UIGraphicsImageRenderer(size: newSize)
+        let resizedImage = renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: newSize))
+        }
+        
+        return resizedImage
+    }
+    
     func configure(with urlString: String?, sfSymbolName: String?) {
         if let urlString = urlString, let url = URL(string: urlString) {
             // Check cache first
@@ -315,25 +457,50 @@ class ImagePickerCell: UICollectionViewCell {
             startSkeleton()
             imageView.image = nil
             
-            // Download image
-            let request = URLRequest(url: url)
+            // Download image with caching support
+            var request = URLRequest(url: url)
+            request.cachePolicy = .returnCacheDataElseLoad // Use cache if available, otherwise load
+            
+            // Check URLCache first
+            if let cachedResponse = URLCache.shared.cachedResponse(for: request),
+               let cachedImage = UIImage(data: cachedResponse.data) {
+                let resizedImage = self.resizeImage(cachedImage, maxDimension: 150)
+                ImagePickerCell.imageCache.setObject(resizedImage, forKey: urlString as NSString)
+                DispatchQueue.main.async {
+                    self.imageView.image = resizedImage
+                    self.stopSkeleton()
+                }
+                return
+            }
+            
             URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
                 guard let self = self else { return }
                 
                 guard let data = data,
                       let image = UIImage(data: data) else {
                     DispatchQueue.main.async {
-                        self.stopSkeleton()
-                        self.imageView.image = UIImage(systemName: "photo")
+                        // When icon fails to load, show gray placeholder (keep skeleton visible)
+                        self.imageView.image = nil
+                        self.startSkeleton()
                     }
                     return
                 }
                 
-                // Cache the image
-                ImagePickerCell.imageCache.setObject(image, forKey: urlString as NSString)
+                // Resize image to thumbnail size for memory efficiency (max 150px)
+                let maxThumbnailSize: CGFloat = 150
+                let resizedImage = self.resizeImage(image, maxDimension: maxThumbnailSize)
+                
+                // Cache the resized image in memory (NSCache)
+                ImagePickerCell.imageCache.setObject(resizedImage, forKey: urlString as NSString)
+                
+                // Also cache the original response in URLCache for disk persistence
+                if let httpResponse = response as? HTTPURLResponse {
+                    let cachedResponse = CachedURLResponse(response: httpResponse, data: data)
+                    URLCache.shared.storeCachedResponse(cachedResponse, for: request)
+                }
                 
                 DispatchQueue.main.async {
-                    self.imageView.image = image
+                    self.imageView.image = resizedImage
                     self.stopSkeleton()
                 }
             }.resume()
@@ -346,7 +513,13 @@ class ImagePickerCell: UICollectionViewCell {
         }
     }
     
-    static let imageCache = NSCache<NSString, UIImage>()
+    static let imageCache: NSCache<NSString, UIImage> = {
+        let cache = NSCache<NSString, UIImage>()
+        // Configure cache limits: 200 images max, 50MB cost limit
+        cache.countLimit = 200
+        cache.totalCostLimit = 50 * 1024 * 1024 // 50MB
+        return cache
+    }()
     
     override var isHighlighted: Bool {
         didSet {
@@ -354,4 +527,5 @@ class ImagePickerCell: UICollectionViewCell {
         }
     }
 }
+
 
