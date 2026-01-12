@@ -11,6 +11,8 @@ class CollectionPlacesViewController: UIViewController {
     private let collection: PlaceCollection
     private var places: [PlaceCollection.Place] = []
     private var events: [Event] = []
+    private var futureEvents: [Event] = []
+    private var pastEvents: [Event] = []
     private var sessionToken: GMSAutocompleteSessionToken?
     private var sharedFriendsCount: Int = 0
     private var avatarsLoadGeneration: Int = 0
@@ -28,6 +30,13 @@ class CollectionPlacesViewController: UIViewController {
     
     private var isCompleted: Bool = false
     private static let imageCache = NSCache<NSString, UIImage>()
+    
+    // Tab selection
+    private enum Tab: Int {
+        case places = 0
+        case events = 1
+    }
+    private var selectedTab: Tab = .places
 
     // MARK: - UI Components
 
@@ -162,6 +171,27 @@ class CollectionPlacesViewController: UIViewController {
         button.addTarget(self, action: #selector(customizeAvatarTapped), for: .touchUpInside)
         return button
     }()
+    
+    private lazy var categoryTabScrollView: UIScrollView = {
+        let scrollView = UIScrollView()
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.showsHorizontalScrollIndicator = false
+        scrollView.alwaysBounceHorizontal = true
+        scrollView.alwaysBounceVertical = false
+        scrollView.showsVerticalScrollIndicator = false
+        scrollView.isDirectionalLockEnabled = true
+        return scrollView
+    }()
+    
+    private lazy var categoryTabStackView: UIStackView = {
+        let stackView = UIStackView()
+        stackView.axis = .horizontal
+        stackView.spacing = 8
+        stackView.distribution = .fill
+        stackView.alignment = .leading
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        return stackView
+    }()
 
     // Removed button; using avatarImageView as trigger to customization
 
@@ -229,6 +259,7 @@ class CollectionPlacesViewController: UIViewController {
             // Note: collection is let, so we can't reassign it, but we can update places
             DispatchQueue.main.async {
                 self.places = updatedCollection.places
+                self.categorizeEvents()
                 self.tableView.reloadData()
                 self.updatePlacesCountLabel()
                 print("✅ Refreshed places: \(self.places.count) places")
@@ -268,7 +299,11 @@ class CollectionPlacesViewController: UIViewController {
         headerView.addSubview(placesCountLabel)
         headerView.addSubview(avatarsStackView)
         headerView.addSubview(customizeButton)
+        view.addSubview(categoryTabScrollView)
+        categoryTabScrollView.addSubview(categoryTabStackView)
         view.addSubview(tableView)
+        
+        setupCategoryTabs()
 
         // Hide menu button if user is not the owner
         menuButton.isHidden = !collection.isOwner
@@ -314,8 +349,21 @@ class CollectionPlacesViewController: UIViewController {
             customizeButton.heightAnchor.constraint(equalToConstant: 48),
 
             headerView.bottomAnchor.constraint(equalTo: customizeButton.bottomAnchor),
+            
+            // Category tabs scroll view
+            categoryTabScrollView.topAnchor.constraint(equalTo: headerView.bottomAnchor, constant: DesignTokens.Spacing.xl),
+            categoryTabScrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            categoryTabScrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            categoryTabScrollView.heightAnchor.constraint(equalToConstant: 30),
+            
+            // Category tabs stack view inside scroll view
+            categoryTabStackView.leadingAnchor.constraint(equalTo: categoryTabScrollView.contentLayoutGuide.leadingAnchor, constant: 16),
+            categoryTabStackView.trailingAnchor.constraint(equalTo: categoryTabScrollView.contentLayoutGuide.trailingAnchor, constant: -16),
+            categoryTabStackView.topAnchor.constraint(equalTo: categoryTabScrollView.contentLayoutGuide.topAnchor),
+            categoryTabStackView.bottomAnchor.constraint(equalTo: categoryTabScrollView.contentLayoutGuide.bottomAnchor),
+            categoryTabStackView.heightAnchor.constraint(equalTo: categoryTabScrollView.frameLayoutGuide.heightAnchor),
 
-            tableView.topAnchor.constraint(equalTo: headerView.bottomAnchor, constant: 8),
+            tableView.topAnchor.constraint(equalTo: categoryTabScrollView.bottomAnchor),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
@@ -423,6 +471,69 @@ class CollectionPlacesViewController: UIViewController {
         } else {
             present(vc, animated: true)
         }
+    }
+    
+    private func setupCategoryTabs() {
+        let tabs: [(Tab, String)] = [(.places, "Places"), (.events, "Events")]
+        for (index, (tab, title)) in tabs.enumerated() {
+            let button = createTabButton(title: title, tag: index, tab: tab)
+            categoryTabStackView.addArrangedSubview(button)
+        }
+        updateTabButtonStates()
+    }
+    
+    private func createTabButton(title: String, tag: Int, tab: Tab) -> UIButton {
+        let button = UIButton(type: .system)
+        button.setTitle(title, for: .normal)
+        button.titleLabel?.font = .systemFont(ofSize: 14, weight: .medium)
+        button.setTitleColor(.black, for: .normal)
+        button.backgroundColor = .secondColor
+        button.layer.cornerRadius = 16
+        button.layer.borderWidth = 0
+        button.layer.borderColor = UIColor.clear.cgColor
+        button.layer.masksToBounds = true
+        button.tag = tag
+        button.addTarget(self, action: #selector(categoryTabTapped(_:)), for: .touchUpInside)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Padding so text doesn't touch edges
+        button.contentEdgeInsets = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
+        
+        // Set height constraint
+        button.heightAnchor.constraint(equalToConstant: 30).isActive = true
+        
+        // Minimum width for easy tapping, but size to content
+        button.widthAnchor.constraint(greaterThanOrEqualToConstant: 60).isActive = true
+        
+        // Allow button to size to content
+        button.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        button.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
+        
+        return button
+    }
+    
+    private func updateTabButtonStates() {
+        let tabs: [Tab] = [.places, .events]
+        for (index, tab) in tabs.enumerated() {
+            guard index < categoryTabStackView.arrangedSubviews.count,
+                  let button = categoryTabStackView.arrangedSubviews[index] as? UIButton else { continue }
+            
+            let isSelected = tab == selectedTab
+            // Active tab: darker background with white text
+            // Inactive tab: secondColor background with black text
+            button.backgroundColor = isSelected ? .fourthColor : .secondColor
+            button.setTitleColor(isSelected ? .white : .black, for: .normal)
+            button.layer.cornerRadius = 16
+        }
+    }
+    
+    @objc private func categoryTabTapped(_ sender: UIButton) {
+        guard sender.tag < 2 else { return }
+        let tabs: [Tab] = [.places, .events]
+        let tab = tabs[sender.tag]
+        selectedTab = tab
+        updateTabButtonStates()
+        tableView.reloadData()
     }
     
     private func updateCollectionIcon(iconName: String?, iconUrl: String?) {
@@ -608,7 +719,26 @@ class CollectionPlacesViewController: UIViewController {
         loadPlaceHearts()
         loadEvents()
         updatePlacesCountLabel()
+        categorizeEvents()
         tableView.reloadData()
+    }
+    
+    private func categorizeEvents() {
+        let now = Date()
+        futureEvents = events.filter { event in
+            // Future events include current events (events that haven't ended yet)
+            return event.dateTime.endDate >= now
+        }
+        pastEvents = events.filter { event in
+            // Past events are those that have ended
+            return event.dateTime.endDate < now
+        }
+        
+        // Sort future events by start date (earliest first)
+        futureEvents.sort { $0.dateTime.startDate < $1.dateTime.startDate }
+        
+        // Sort past events by end date (most recent first)
+        pastEvents.sort { $0.dateTime.endDate > $1.dateTime.endDate }
     }
     
     private func loadPlaceHearts() {
@@ -881,6 +1011,7 @@ class CollectionPlacesViewController: UIViewController {
                 group.notify(queue: .main) {
                     print("✅ Loaded \(loadedEvents.count) active events")
                     self?.events = loadedEvents
+                    self?.categorizeEvents()
                     self?.updatePlacesCountLabel()
                     self?.tableView.reloadData()
                     
@@ -1059,33 +1190,72 @@ class CollectionPlacesViewController: UIViewController {
 
 extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSource {
     func numberOfSections(in tableView: UITableView) -> Int {
-        return 2 // Section 0: Events, Section 1: Places
-    }
-    
-    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        if section == 0 {
-            return events.isEmpty ? nil : "Events"
-        } else {
-            return places.isEmpty ? nil : "Places"
+        switch selectedTab {
+        case .places:
+            return 1 // Single section for places
+        case .events:
+            // Section 0: Future events (including current), Section 1: Past events
+            let hasFutureEvents = !futureEvents.isEmpty
+            let hasPastEvents = !pastEvents.isEmpty
+            if hasFutureEvents && hasPastEvents {
+                return 2
+            } else if hasFutureEvents || hasPastEvents {
+                return 1
+            }
+            return 0
         }
     }
     
+    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        switch selectedTab {
+        case .places:
+            return nil // No section header for places
+        case .events:
+            let hasFutureEvents = !futureEvents.isEmpty
+            let hasPastEvents = !pastEvents.isEmpty
+            
+            if hasFutureEvents && hasPastEvents {
+                return section == 0 ? "Upcoming Events" : "Past Events"
+            } else if hasFutureEvents {
+                return "Upcoming Events"
+            } else if hasPastEvents {
+                return "Past Events"
+            }
+            return nil
+        }
+    }
+    
+    func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
+        // Return 0 for places tab to ensure no spacing
+        if selectedTab == .places {
+            return 0
+        }
+        // Use default height for events sections
+        return UITableView.automaticDimension
+    }
+    
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        if section == 0 {
-            return events.count
-        } else {
+        switch selectedTab {
+        case .places:
             return places.count
+        case .events:
+            let hasFutureEvents = !futureEvents.isEmpty
+            let hasPastEvents = !pastEvents.isEmpty
+            
+            if hasFutureEvents && hasPastEvents {
+                return section == 0 ? futureEvents.count : pastEvents.count
+            } else if hasFutureEvents {
+                return futureEvents.count
+            } else if hasPastEvents {
+                return pastEvents.count
+            }
+            return 0
         }
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        if indexPath.section == 0 {
-            // Event cell
-            let cell = tableView.dequeueReusableCell(withIdentifier: "PlaceCell", for: indexPath) as! PlaceTableViewCell
-            let event = events[indexPath.row]
-            cell.configureWithEvent(event)
-            return cell
-        } else {
+        switch selectedTab {
+        case .places:
             // Place cell
             let cell = tableView.dequeueReusableCell(withIdentifier: "PlaceCell", for: indexPath) as! PlaceTableViewCell
             let place = places[indexPath.row]
@@ -1102,56 +1272,79 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
             
             cell.configure(with: place, isHearted: isHearted, heartCount: heartCount, showHeartButton: canHeart)
             return cell
+            
+        case .events:
+            // Event cell
+            let cell = tableView.dequeueReusableCell(withIdentifier: "PlaceCell", for: indexPath) as! PlaceTableViewCell
+            
+            let hasFutureEvents = !futureEvents.isEmpty
+            let event: Event
+            if hasFutureEvents && indexPath.section == 0 {
+                event = futureEvents[indexPath.row]
+            } else {
+                event = pastEvents[indexPath.row]
+            }
+            
+            cell.configureWithEvent(event)
+            return cell
         }
     }
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         
-        if indexPath.section == 0 {
-            // Event tapped
-            let event = events[indexPath.row]
-            let detailVC = EventDetailViewController(event: event)
-            present(detailVC, animated: true)
-            return
-        }
-        
-        // Place tapped
-        let place = places[indexPath.row]
-        
-        // Since PlaceCollection.Place doesn't have coordinates, we need to fetch the place details
-        // But we'll use the cache first to avoid unnecessary API calls
-        if let cachedPlace = PlacesCacheManager.shared.getCachedPlace(for: place.placeId) {
-            let detailVC = PlaceDetailViewController(place: cachedPlace, isFromCollection: true)
-            present(detailVC, animated: true)
-            return
-        }
-        
-        // If not cached, fetch the place details
-        PlacesAPIManager.shared.fetchCollectionPlaceDetails(placeID: place.placeId) { [weak self] fetchedPlace in
-            if let fetchedPlace = fetchedPlace {
-                DispatchQueue.main.async {
-                    let detailVC = PlaceDetailViewController(place: fetchedPlace, isFromCollection: true)
-                    self?.present(detailVC, animated: true)
-                }
-            } else {
-                // If we can't fetch the place details, just show a simple alert
-                DispatchQueue.main.async {
-                    let alert = UIAlertController(
-                        title: "Unable to Load Details",
-                        message: "Could not load complete details for \(place.name). Please try again later.",
-                        preferredStyle: .alert
-                    )
-                    alert.addAction(UIAlertAction(title: "OK", style: .default))
-                    self?.present(alert, animated: true)
+        switch selectedTab {
+        case .places:
+            // Place tapped
+            let place = places[indexPath.row]
+            
+            // Since PlaceCollection.Place doesn't have coordinates, we need to fetch the place details
+            // But we'll use the cache first to avoid unnecessary API calls
+            if let cachedPlace = PlacesCacheManager.shared.getCachedPlace(for: place.placeId) {
+                let detailVC = PlaceDetailViewController(place: cachedPlace, isFromCollection: true)
+                present(detailVC, animated: true)
+                return
+            }
+            
+            // If not cached, fetch the place details
+            PlacesAPIManager.shared.fetchCollectionPlaceDetails(placeID: place.placeId) { [weak self] fetchedPlace in
+                if let fetchedPlace = fetchedPlace {
+                    DispatchQueue.main.async {
+                        let detailVC = PlaceDetailViewController(place: fetchedPlace, isFromCollection: true)
+                        self?.present(detailVC, animated: true)
+                    }
+                } else {
+                    // If we can't fetch the place details, just show a simple alert
+                    DispatchQueue.main.async {
+                        let alert = UIAlertController(
+                            title: "Unable to Load Details",
+                            message: "Could not load complete details for \(place.name). Please try again later.",
+                            preferredStyle: .alert
+                        )
+                        alert.addAction(UIAlertAction(title: "OK", style: .default))
+                        self?.present(alert, animated: true)
+                    }
                 }
             }
+            
+        case .events:
+            // Event tapped
+            let hasFutureEvents = !futureEvents.isEmpty
+            let event: Event
+            if hasFutureEvents && indexPath.section == 0 {
+                event = futureEvents[indexPath.row]
+            } else {
+                event = pastEvents[indexPath.row]
+            }
+            
+            let detailVC = EventDetailViewController(event: event)
+            present(detailVC, animated: true)
         }
     }
 
     func tableView(_ tableView: UITableView, accessoryButtonTappedForRowWith indexPath: IndexPath) {
-        // Map icon tapped
-        guard indexPath.row < places.count else { return }
+        // Map icon tapped - only for places tab
+        guard selectedTab == .places, indexPath.row < places.count else { return }
         let place = places[indexPath.row]
         if let cachedPlace = PlacesCacheManager.shared.getCachedPlace(for: place.placeId) {
             openPlaceInMapsByName(cachedPlace.name ?? place.name)
@@ -1625,15 +1818,33 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
     
     // Add swipe actions functionality
     func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
-        // Handle events section
-        if indexPath.section == 0 {
-            guard indexPath.row < events.count else {
+        switch selectedTab {
+        case .places:
+            // Handle places section
+            guard indexPath.row < places.count else {
                 return UISwipeActionsConfiguration(actions: [])
+            }
+            return createPlaceSwipeActions(for: indexPath)
+            
+        case .events:
+            // Handle events section
+            let hasFutureEvents = !futureEvents.isEmpty
+            let event: Event
+            if hasFutureEvents && indexPath.section == 0 {
+                guard indexPath.row < futureEvents.count else {
+                    return UISwipeActionsConfiguration(actions: [])
+                }
+                event = futureEvents[indexPath.row]
+            } else {
+                guard indexPath.row < pastEvents.count else {
+                    return UISwipeActionsConfiguration(actions: [])
+                }
+                event = pastEvents[indexPath.row]
             }
             
             // Delete action for events
             let deleteAction = UIContextualAction(style: .destructive, title: "Delete") { [weak self] (action, view, completion) in
-                self?.confirmDeleteEvent(at: indexPath)
+                self?.confirmDeleteEvent(event: event, at: indexPath)
                 completion(false)
             }
             deleteAction.backgroundColor = .fourthColor
@@ -1641,11 +1852,9 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
             
             return UISwipeActionsConfiguration(actions: [deleteAction])
         }
-        
-        // Handle places section
-        guard indexPath.row < places.count else {
-            return UISwipeActionsConfiguration(actions: [])
-        }
+    }
+    
+    private func createPlaceSwipeActions(for indexPath: IndexPath) -> UISwipeActionsConfiguration {
         
         let place = places[indexPath.row]
         
@@ -1684,9 +1893,7 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         return UISwipeActionsConfiguration(actions: [deleteAction, copyAction, visitedAction, mapAction])
     }
     
-    private func confirmDeleteEvent(at indexPath: IndexPath) {
-        guard indexPath.row < events.count else { return }
-        let event = events[indexPath.row]
+    private func confirmDeleteEvent(event: Event, at indexPath: IndexPath) {
         let alertController = UIAlertController(
             title: "Remove Event",
             message: "Are you sure you want to remove '\(event.title)' from this collection?",
@@ -1695,7 +1902,7 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         
         let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
         let deleteAction = UIAlertAction(title: "Remove", style: .destructive) { [weak self] _ in
-            self?.deleteEvent(at: indexPath)
+            self?.deleteEvent(event: event, at: indexPath)
         }
         
         alertController.addAction(cancelAction)
@@ -1997,9 +2204,7 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         }
     }
     
-    private func deleteEvent(at indexPath: IndexPath) {
-        guard indexPath.row < events.count else { return }
-        let event = events[indexPath.row]
+    private func deleteEvent(event: Event, at indexPath: IndexPath) {
         showLoadingAlert(title: "Removing Event")
         
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
@@ -2054,7 +2259,10 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
                         ToastManager.showToast(message: "Failed to remove event", type: .error)
                     } else {
                         // Update local data
-                        self?.events.remove(at: indexPath.row)
+                        if let index = self?.events.firstIndex(where: { $0.id == event.id }) {
+                            self?.events.remove(at: index)
+                        }
+                        self?.categorizeEvents()
                         self?.tableView.deleteRows(at: [indexPath], with: .automatic)
                         self?.updatePlacesCountLabel()
                         ToastManager.showToast(message: "Event removed", type: .success)
