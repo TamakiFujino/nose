@@ -1,8 +1,10 @@
 default_platform(:ios)
 
 platform :ios do
-  desc "Build and upload to TestFlight (Staging)"
-  lane :beta do
+  desc "Build, upload, and automatically distribute to TestFlight (Staging)"
+  desc "Automatically distributes to 'Beta Tester' group after upload"
+  desc "Set TESTFLIGHT_CHANGELOG env var or pass changelog:'Release notes' to include changelog"
+  lane :beta do |options|
     # Configure App Store Connect API key if available
     if ENV["APP_STORE_CONNECT_KEY_CONTENT"]
       app_store_connect_api_key(
@@ -11,6 +13,18 @@ platform :ios do
         key_content: ENV["APP_STORE_CONNECT_KEY_CONTENT"],
         is_key_content_base64: false
       )
+    elsif ENV["APP_STORE_CONNECT_API_KEY"]
+      app_store_connect_api_key(
+        key_id: ENV["APP_STORE_CONNECT_API_KEY_ID"],
+        issuer_id: ENV["APP_STORE_CONNECT_API_KEY_ISSUER_ID"],
+        key_content: ENV["APP_STORE_CONNECT_API_KEY"],
+        is_key_content_base64: false
+      )
+    else
+      UI.user_error!("App Store Connect API key not found. Please set either:\n" \
+                     "  - APP_STORE_CONNECT_KEY_CONTENT, APP_STORE_CONNECT_KEY_ID, APP_STORE_CONNECT_ISSUER_ID\n" \
+                     "  - OR APP_STORE_CONNECT_API_KEY, APP_STORE_CONNECT_API_KEY_ID, APP_STORE_CONNECT_API_KEY_ISSUER_ID\n" \
+                     "See: https://docs.fastlane.tools/app-store-connect-api/")
     end
 
     # Increment build number
@@ -32,23 +46,45 @@ platform :ios do
       output_name: "nose.ipa"
     )
 
-    # Upload to TestFlight
+    # Get changelog from options or environment variable
+    changelog = options[:changelog] || ENV["TESTFLIGHT_CHANGELOG"] || ""
+
+    # Upload to TestFlight and automatically distribute to external testers
     upload_to_testflight(
-      skip_waiting_for_build_processing: true,
-      skip_submission: true
+      skip_waiting_for_build_processing: false,
+      distribute_external: true,
+      groups: ["Beta Tester"],
+      changelog: changelog,
+      notify_external_testers: true
     )
+
+    UI.success("✅ Successfully uploaded and distributed build to 'Beta Tester' group")
   end
 
-  desc "Build and upload to TestFlight (Production)"
-  lane :production do
+  desc "Build, upload, and automatically distribute to TestFlight (Production)"
+  desc "Automatically distributes to 'Beta Tester' group after upload"
+  desc "Set TESTFLIGHT_CHANGELOG env var or pass changelog:'Release notes' to include changelog"
+  lane :production do |options|
     # Configure App Store Connect API key if available
-    if ENV["APP_STORE_CONNECT_API_KEY"]
+    if ENV["APP_STORE_CONNECT_KEY_CONTENT"]
+      app_store_connect_api_key(
+        key_id: ENV["APP_STORE_CONNECT_KEY_ID"],
+        issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
+        key_content: ENV["APP_STORE_CONNECT_KEY_CONTENT"],
+        is_key_content_base64: false
+      )
+    elsif ENV["APP_STORE_CONNECT_API_KEY"]
       app_store_connect_api_key(
         key_id: ENV["APP_STORE_CONNECT_API_KEY_ID"],
         issuer_id: ENV["APP_STORE_CONNECT_API_KEY_ISSUER_ID"],
         key_content: ENV["APP_STORE_CONNECT_API_KEY"],
         is_key_content_base64: false
       )
+    else
+      UI.user_error!("App Store Connect API key not found. Please set either:\n" \
+                     "  - APP_STORE_CONNECT_KEY_CONTENT, APP_STORE_CONNECT_KEY_ID, APP_STORE_CONNECT_ISSUER_ID\n" \
+                     "  - OR APP_STORE_CONNECT_API_KEY, APP_STORE_CONNECT_API_KEY_ID, APP_STORE_CONNECT_API_KEY_ISSUER_ID\n" \
+                     "See: https://docs.fastlane.tools/app-store-connect-api/")
     end
 
     # Increment build number
@@ -70,11 +106,19 @@ platform :ios do
       output_name: "nose-production.ipa"
     )
 
-    # Upload to TestFlight
+    # Get changelog from options or environment variable
+    changelog = options[:changelog] || ENV["TESTFLIGHT_CHANGELOG"] || ""
+
+    # Upload to TestFlight and automatically distribute to external testers
     upload_to_testflight(
-      skip_waiting_for_build_processing: true,
-      skip_submission: true
+      skip_waiting_for_build_processing: false,
+      distribute_external: true,
+      groups: ["Beta Tester"],
+      changelog: changelog,
+      notify_external_testers: true
     )
+
+    UI.success("✅ Successfully uploaded and distributed build to 'Beta Tester' group")
   end
 
   desc "Build app only"
@@ -90,5 +134,98 @@ platform :ios do
       output_directory: "builds",
       output_name: "nose.ipa"
     )
+  end
+
+  desc "Distribute latest uploaded build to TestFlight external testers"
+  desc "Usage: fastlane distribute group_name:'Your Group Name' changelog:'Release notes'"
+  desc "Or set TESTFLIGHT_GROUP_NAME and TESTFLIGHT_CHANGELOG environment variables"
+  lane :distribute do |options|
+    # Configure App Store Connect API key if available
+    if ENV["APP_STORE_CONNECT_KEY_CONTENT"]
+      app_store_connect_api_key(
+        key_id: ENV["APP_STORE_CONNECT_KEY_ID"],
+        issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
+        key_content: ENV["APP_STORE_CONNECT_KEY_CONTENT"],
+        is_key_content_base64: false
+      )
+    elsif ENV["APP_STORE_CONNECT_API_KEY"]
+      app_store_connect_api_key(
+        key_id: ENV["APP_STORE_CONNECT_API_KEY_ID"],
+        issuer_id: ENV["APP_STORE_CONNECT_API_KEY_ISSUER_ID"],
+        key_content: ENV["APP_STORE_CONNECT_API_KEY"],
+        is_key_content_base64: false
+      )
+    end
+
+    # Get group name from options or environment variable
+    group_name = options[:group_name] || ENV["TESTFLIGHT_GROUP_NAME"]
+    
+    if group_name.nil? || group_name.empty?
+      UI.user_error!("TestFlight group name is required. Set TESTFLIGHT_GROUP_NAME env var or pass group_name:'Your Group Name'")
+    end
+
+    # Get changelog from options or environment variable
+    changelog = options[:changelog] || ENV["TESTFLIGHT_CHANGELOG"] || ""
+
+    # Distribute the latest uploaded build to external testers
+    upload_to_testflight(
+      distribute_only: true,
+      distribute_external: true,
+      groups: [group_name],
+      changelog: changelog,
+      notify_external_testers: true,
+      skip_waiting_for_build_processing: false
+    )
+
+    UI.success("✅ Successfully distributed build to TestFlight group: #{group_name}")
+  end
+
+  desc "Distribute specific build version to TestFlight external testers"
+  desc "Usage: fastlane distribute_version version:'1.0.0' build_number:'123' group_name:'Your Group Name'"
+  lane :distribute_version do |options|
+    # Configure App Store Connect API key if available
+    if ENV["APP_STORE_CONNECT_KEY_CONTENT"]
+      app_store_connect_api_key(
+        key_id: ENV["APP_STORE_CONNECT_KEY_ID"],
+        issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
+        key_content: ENV["APP_STORE_CONNECT_KEY_CONTENT"],
+        is_key_content_base64: false
+      )
+    elsif ENV["APP_STORE_CONNECT_API_KEY"]
+      app_store_connect_api_key(
+        key_id: ENV["APP_STORE_CONNECT_API_KEY_ID"],
+        issuer_id: ENV["APP_STORE_CONNECT_API_KEY_ISSUER_ID"],
+        key_content: ENV["APP_STORE_CONNECT_API_KEY"],
+        is_key_content_base64: false
+      )
+    end
+
+    # Get required parameters
+    app_version = options[:version]
+    build_number = options[:build_number]
+    group_name = options[:group_name] || ENV["TESTFLIGHT_GROUP_NAME"]
+    changelog = options[:changelog] || ENV["TESTFLIGHT_CHANGELOG"] || ""
+
+    if group_name.nil? || group_name.empty?
+      UI.user_error!("TestFlight group name is required. Set TESTFLIGHT_GROUP_NAME env var or pass group_name:'Your Group Name'")
+    end
+
+    if app_version.nil? || build_number.nil?
+      UI.user_error!("Both version and build_number are required")
+    end
+
+    # Distribute specific build to external testers
+    upload_to_testflight(
+      distribute_only: true,
+      distribute_external: true,
+      groups: [group_name],
+      app_version: app_version,
+      build_number: build_number,
+      changelog: changelog,
+      notify_external_testers: true,
+      skip_waiting_for_build_processing: false
+    )
+
+    UI.success("✅ Successfully distributed build #{build_number} (v#{app_version}) to TestFlight group: #{group_name}")
   end
 end
