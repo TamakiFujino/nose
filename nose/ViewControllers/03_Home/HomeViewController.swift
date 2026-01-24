@@ -14,6 +14,7 @@ final class HomeViewController: UIViewController {
         static let searchResultsHeight: CGFloat = 200
         static let messageViewPadding: CGFloat = 24
         static let messageViewSpacing: CGFloat = 8
+        static let footerBarHeight: CGFloat = 80
     }
     
     // MARK: - Properties
@@ -50,43 +51,60 @@ final class HomeViewController: UIViewController {
         return view
     }()
     
+    // Larger icon configuration for footer buttons (1.2x)
+    private let footerIconConfig = UIImage.SymbolConfiguration(pointSize: 22, weight: .medium)
+    
     private lazy var profileButton: IconButton = {
         IconButton(
-            image: UIImage(systemName: "person.fill"),
+            image: UIImage(systemName: "person.fill", withConfiguration: footerIconConfig),
             action: #selector(profileButtonTapped),
-            target: self
+            target: self,
+            backgroundColor: .clear
         )
     }()
     
     private lazy var createEventButton: IconButton = {
         IconButton(
-            image: UIImage(systemName: "calendar"),
+            image: UIImage(systemName: "calendar", withConfiguration: footerIconConfig),
             action: #selector(createEventButtonTapped),
-            target: self
+            target: self,
+            backgroundColor: .clear
         )
     }()
     
     private lazy var searchButton: IconButton = {
         IconButton(
-            image: UIImage(systemName: "magnifyingglass"),
+            image: UIImage(systemName: "magnifyingglass", withConfiguration: footerIconConfig),
             action: #selector(searchButtonTapped),
-            target: self
+            target: self,
+            backgroundColor: .clear
         )
     }()
     
     private lazy var sparkButton: IconButton = {
         IconButton(
-            image: UIImage(systemName: "sparkle"),
+            image: UIImage(systemName: "sparkle", withConfiguration: footerIconConfig),
             action: #selector(sparkButtonTapped),
-            target: self
+            target: self,
+            backgroundColor: .clear
         )
     }()
     
     private lazy var boxButton: IconButton = {
         IconButton(
-            image: UIImage(systemName: "archivebox.fill"),
+            image: UIImage(systemName: "archivebox.fill", withConfiguration: footerIconConfig),
             action: #selector(boxButtonTapped),
-            target: self
+            target: self,
+            backgroundColor: .clear
+        )
+    }()
+    
+    private lazy var newButton: IconButton = {
+        IconButton(
+            image: UIImage(systemName: "flame.fill", withConfiguration: footerIconConfig),
+            action: #selector(newButtonTapped),
+            target: self,
+            backgroundColor: .clear
         )
     }()
     
@@ -99,6 +117,21 @@ final class HomeViewController: UIViewController {
         mapView.ornaments.options.scaleBar.visibility = .hidden
         // Zoom gestures are enabled by default in Mapbox
         return mapView
+    }()
+    
+    // Blur overlays for focus lens effect
+    private lazy var topBlurOverlay: UIVisualEffectView = {
+        let blurView = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
+        blurView.translatesAutoresizingMaskIntoConstraints = false
+        blurView.isUserInteractionEnabled = false
+        return blurView
+    }()
+    
+    private lazy var bottomBlurOverlay: UIVisualEffectView = {
+        let blurView = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
+        blurView.translatesAutoresizingMaskIntoConstraints = false
+        blurView.isUserInteractionEnabled = false
+        return blurView
     }()
     
     private var hasSetInitialCamera = false
@@ -123,6 +156,17 @@ final class HomeViewController: UIViewController {
             size: Constants.buttonSize
         )
     }()
+    
+    private lazy var toggle3DButton: IconButton = {
+        IconButton(
+            image: UIImage(systemName: "cube.fill"),
+            action: #selector(toggle3DButtonTapped),
+            target: self,
+            size: Constants.buttonSize
+        )
+    }()
+    
+    private var is3DViewEnabled = false
     
     private lazy var messageView: UIView = {
         let view = UIView()
@@ -154,6 +198,42 @@ final class HomeViewController: UIViewController {
         label.font = .systemFont(ofSize: 16, weight: .regular)
         label.textAlignment = .center
         return label
+    }()
+    
+    private lazy var footerBar: UIView = {
+        // Semi-transparent view matching button style
+        let containerView = UIView()
+        containerView.translatesAutoresizingMaskIntoConstraints = false
+        containerView.backgroundColor = UIColor.fourthColor.withAlphaComponent(0.3)
+        
+        // Shadow
+        containerView.layer.shadowColor = UIColor.black.cgColor
+        containerView.layer.shadowOffset = CGSize(width: 0, height: -2)
+        containerView.layer.shadowRadius = 10
+        containerView.layer.shadowOpacity = 0.1
+        
+        // Corner radius - top corners only
+        containerView.layer.cornerRadius = 20
+        containerView.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
+        containerView.layer.masksToBounds = true
+        
+        return containerView
+    }()
+    
+    private lazy var footerStackView: UIStackView = {
+        let stackView = UIStackView()
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        stackView.axis = .horizontal
+        stackView.distribution = .equalSpacing
+        stackView.alignment = .center
+        return stackView
+    }()
+    
+    // Container for dynamic buttons (search/spark/box) - they stack in the same position
+    private lazy var dynamicButtonContainer: UIView = {
+        let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
     }()
     
     // MARK: - Lifecycle
@@ -197,8 +277,42 @@ final class HomeViewController: UIViewController {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        // Hide navigation bar on this screen
+        navigationController?.setNavigationBarHidden(true, animated: animated)
         // Refresh events when view appears
         loadEvents()
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        // Show navigation bar for other screens (so they have the back button)
+        navigationController?.setNavigationBarHidden(false, animated: animated)
+    }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        // Apply gradient masks to blur overlays for focus lens effect
+        applyBlurGradientMasks()
+    }
+    
+    private func applyBlurGradientMasks() {
+        // Top blur: opaque at top, transparent toward bottom
+        let topGradient = CAGradientLayer()
+        topGradient.frame = topBlurOverlay.bounds
+        topGradient.colors = [UIColor.black.cgColor, UIColor.clear.cgColor]
+        topGradient.locations = [0.0, 1.0]
+        topGradient.startPoint = CGPoint(x: 0.5, y: 0.0)
+        topGradient.endPoint = CGPoint(x: 0.5, y: 1.0)
+        topBlurOverlay.layer.mask = topGradient
+        
+        // Bottom blur: opaque at bottom, transparent toward top
+        let bottomGradient = CAGradientLayer()
+        bottomGradient.frame = bottomBlurOverlay.bounds
+        bottomGradient.colors = [UIColor.clear.cgColor, UIColor.black.cgColor]
+        bottomGradient.locations = [0.0, 1.0]
+        bottomGradient.startPoint = CGPoint(x: 0.5, y: 0.0)
+        bottomGradient.endPoint = CGPoint(x: 0.5, y: 1.0)
+        bottomBlurOverlay.layer.mask = bottomGradient
     }
     
     // MARK: - Setup
@@ -217,9 +331,24 @@ final class HomeViewController: UIViewController {
     }
     
     private func setupSubviews() {
-        [mapView, headerView, dotSlider, searchButton, sparkButton, boxButton,
-         searchResultsTableView, currentLocationButton, profileButton, createEventButton, messageView].forEach {
+        // Add main views to the view hierarchy
+        // Blur overlays are added right after mapView so they're on top of map but below other UI
+        [mapView, topBlurOverlay, bottomBlurOverlay, footerBar, headerView, dotSlider,
+         searchResultsTableView, currentLocationButton, toggle3DButton, messageView].forEach {
             view.addSubview($0)
+        }
+        
+        // Add footer stack view to footer bar
+        footerBar.addSubview(footerStackView)
+        
+        // Add dynamic buttons to their container (they stack in the same position)
+        [searchButton, sparkButton, boxButton].forEach {
+            dynamicButtonContainer.addSubview($0)
+        }
+        
+        // Add buttons to footer stack view (left to right: profile, event, new, dynamic)
+        [profileButton, createEventButton, newButton, dynamicButtonContainer].forEach {
+            footerStackView.addArrangedSubview($0)
         }
         
         [titleLabel, subtitleLabel].forEach {
@@ -235,59 +364,71 @@ final class HomeViewController: UIViewController {
             mapView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             mapView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             
+            // Top blur overlay constraints (focus lens effect)
+            topBlurOverlay.topAnchor.constraint(equalTo: view.topAnchor),
+            topBlurOverlay.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            topBlurOverlay.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            topBlurOverlay.heightAnchor.constraint(equalToConstant: 250),
+            
+            // Bottom blur overlay constraints (focus lens effect) - extends under footer
+            bottomBlurOverlay.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            bottomBlurOverlay.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            bottomBlurOverlay.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            bottomBlurOverlay.heightAnchor.constraint(equalToConstant: 250),
+            
             // Header view constraints
             headerView.topAnchor.constraint(equalTo: view.topAnchor),
             headerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             headerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             headerView.bottomAnchor.constraint(equalTo: dotSlider.bottomAnchor, constant: 16),
             
-            // Dot slider constraints
+            // Dot slider constraints - just below the status bar (clock/battery area)
             dotSlider.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             dotSlider.heightAnchor.constraint(equalToConstant: Constants.buttonSize),
             dotSlider.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             dotSlider.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             
-            // Profile button constraints
-            profileButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 65),
-            profileButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: Constants.standardPadding),
-            profileButton.widthAnchor.constraint(equalToConstant: Constants.buttonSize),
-            profileButton.heightAnchor.constraint(equalToConstant: Constants.buttonSize),
-            
-            // Create event button constraints
-            createEventButton.topAnchor.constraint(equalTo: profileButton.bottomAnchor, constant: 12),
-            createEventButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: Constants.standardPadding),
-            createEventButton.widthAnchor.constraint(equalToConstant: Constants.buttonSize),
-            createEventButton.heightAnchor.constraint(equalToConstant: Constants.buttonSize),
-            
-            // Search button constraints
-            searchButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 65),
-            searchButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -Constants.standardPadding),
-            searchButton.widthAnchor.constraint(equalToConstant: Constants.buttonSize),
-            searchButton.heightAnchor.constraint(equalToConstant: Constants.buttonSize),
-            
-            // Box button constraints
-            boxButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 65),
-            boxButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -Constants.standardPadding),
-            boxButton.widthAnchor.constraint(equalToConstant: Constants.buttonSize),
-            boxButton.heightAnchor.constraint(equalToConstant: Constants.buttonSize),
-            
-            // Spark button constraints
-            sparkButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 65),
-            sparkButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -Constants.standardPadding),
-            sparkButton.widthAnchor.constraint(equalToConstant: Constants.buttonSize),
-            sparkButton.heightAnchor.constraint(equalToConstant: Constants.buttonSize),
-            
             // Search results table view constraints
-            searchResultsTableView.topAnchor.constraint(equalTo: searchButton.bottomAnchor),
+            searchResultsTableView.topAnchor.constraint(equalTo: dotSlider.bottomAnchor, constant: 8),
             searchResultsTableView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: Constants.standardPadding),
             searchResultsTableView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -Constants.standardPadding),
             searchResultsTableView.heightAnchor.constraint(equalToConstant: Constants.searchResultsHeight),
             
-            // Current location button constraints
+            // Footer bar constraints - full width, extends to bottom edge
+            footerBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            footerBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            footerBar.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            footerBar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -Constants.footerBarHeight),
+            
+            // Footer stack view constraints - inside footer bar with padding
+            footerStackView.leadingAnchor.constraint(equalTo: footerBar.leadingAnchor, constant: 32),
+            footerStackView.trailingAnchor.constraint(equalTo: footerBar.trailingAnchor, constant: -32),
+            footerStackView.topAnchor.constraint(equalTo: footerBar.topAnchor, constant: 12),
+            footerStackView.heightAnchor.constraint(equalToConstant: Constants.buttonSize),
+            
+            // Dynamic button container constraints - same size as buttons
+            dynamicButtonContainer.widthAnchor.constraint(equalToConstant: Constants.buttonSize),
+            dynamicButtonContainer.heightAnchor.constraint(equalToConstant: Constants.buttonSize),
+            
+            // Dynamic buttons centered in container
+            searchButton.centerXAnchor.constraint(equalTo: dynamicButtonContainer.centerXAnchor),
+            searchButton.centerYAnchor.constraint(equalTo: dynamicButtonContainer.centerYAnchor),
+            sparkButton.centerXAnchor.constraint(equalTo: dynamicButtonContainer.centerXAnchor),
+            sparkButton.centerYAnchor.constraint(equalTo: dynamicButtonContainer.centerYAnchor),
+            boxButton.centerXAnchor.constraint(equalTo: dynamicButtonContainer.centerXAnchor),
+            boxButton.centerYAnchor.constraint(equalTo: dynamicButtonContainer.centerYAnchor),
+            
+            // Current location button constraints - positioned above footer bar (right side)
             currentLocationButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -Constants.standardPadding),
-            currentLocationButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -Constants.standardPadding),
+            currentLocationButton.bottomAnchor.constraint(equalTo: footerBar.topAnchor, constant: -Constants.standardPadding),
             currentLocationButton.widthAnchor.constraint(equalToConstant: Constants.buttonSize),
             currentLocationButton.heightAnchor.constraint(equalToConstant: Constants.buttonSize),
+            
+            // 3D view toggle button constraints - positioned above footer bar (left side)
+            toggle3DButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: Constants.standardPadding),
+            toggle3DButton.bottomAnchor.constraint(equalTo: footerBar.topAnchor, constant: -Constants.standardPadding),
+            toggle3DButton.widthAnchor.constraint(equalToConstant: Constants.buttonSize),
+            toggle3DButton.heightAnchor.constraint(equalToConstant: Constants.buttonSize),
             
             // Message view constraints
             messageView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -574,6 +715,30 @@ final class HomeViewController: UIViewController {
         }
     }
     
+    @objc private func toggle3DButtonTapped() {
+        is3DViewEnabled.toggle()
+        
+        // Get current camera state
+        let currentCenter = mapView.mapboxMap.cameraState.center
+        let currentZoom = mapView.mapboxMap.cameraState.zoom
+        
+        // Set pitch: 0 for 2D, 50 for 3D view
+        let targetPitch: CGFloat = is3DViewEnabled ? 50 : 0
+        
+        let cameraOptions = CameraOptions(
+            center: currentCenter,
+            zoom: currentZoom,
+            pitch: targetPitch
+        )
+        
+        // Animate the camera transition
+        mapView.camera.ease(to: cameraOptions, duration: 0.5)
+        
+        // Update button appearance to show current state
+        let iconName = is3DViewEnabled ? "cube.fill" : "cube"
+        toggle3DButton.setImage(UIImage(systemName: iconName), for: .normal)
+    }
+    
     @objc private func profileButtonTapped() {
         // Dismiss any open modal first
         if let presentedVC = presentedViewController {
@@ -620,6 +785,11 @@ final class HomeViewController: UIViewController {
     @objc private func boxButtonTapped() {
         let boxVC = BoxViewController()
         present(boxVC, animated: true)
+    }
+    
+    @objc private func newButtonTapped() {
+        // TODO: Implement new/create action
+        print("New button tapped")
     }
     
     private func showMessage(title: String, subtitle: String) {
