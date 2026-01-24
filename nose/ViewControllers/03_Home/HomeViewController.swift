@@ -1,5 +1,5 @@
 import UIKit
-import GoogleMaps
+import MapboxMaps
 import CoreLocation
 import GooglePlaces
 import FirebaseFirestore
@@ -32,7 +32,7 @@ final class HomeViewController: UIViewController {
     private var dotLine: UIView?
     private var containerView: UIView?
     
-    var mapManager: GoogleMapManager?
+    var mapManager: MapboxMapManager?
     private var searchManager: SearchManager?
     
     // MARK: - UI Components
@@ -90,19 +90,14 @@ final class HomeViewController: UIViewController {
         )
     }()
     
-    private lazy var mapView: GMSMapView = {
-        // Don't set default camera here - we'll set it based on location permission
-        // Create map options with Map ID
-        let mapOptions = GMSMapViewOptions()
-        mapOptions.frame = .zero
-        mapOptions.mapID = GMSMapID(identifier: "7f9a1d61a6b1809f")
-        
-        let mapView = GMSMapView(options: mapOptions)
+    private lazy var mapView: MapView = {
+        // Create map view with default style
+        // Mapbox access token is set in AppDelegate as environment variable
+        let mapView = MapView(frame: .zero, mapInitOptions: MapInitOptions())
         mapView.translatesAutoresizingMaskIntoConstraints = false
-        mapView.settings.myLocationButton = false  // Disable default location button
-        mapView.settings.compassButton = true
-        mapView.settings.zoomGestures = true
-        mapView.delegate = self
+        mapView.ornaments.options.compass.visibility = .hidden
+        mapView.ornaments.options.scaleBar.visibility = .hidden
+        // Zoom gestures are enabled by default in Mapbox
         return mapView
     }()
     
@@ -314,7 +309,7 @@ final class HomeViewController: UIViewController {
     
     private func setupManagers() {
         sessionToken = GMSAutocompleteSessionToken()
-        mapManager = GoogleMapManager(mapView: mapView)
+        mapManager = MapboxMapManager(mapView: mapView)
         mapManager?.delegate = self
         searchManager = SearchManager()
         searchManager?.delegate = self
@@ -558,12 +553,11 @@ final class HomeViewController: UIViewController {
         guard !hasSetInitialCamera else { return }
         hasSetInitialCamera = true
         
-        let camera = GMSCameraPosition.camera(
-            withLatitude: 35.6812,  // Tokyo coordinates as default
-            longitude: 139.7671,
+        let cameraOptions = CameraOptions(
+            center: CLLocationCoordinate2D(latitude: 35.6812, longitude: 139.7671),  // Tokyo coordinates as default
             zoom: 15
         )
-        mapView.camera = camera
+        mapView.camera.ease(to: cameraOptions, duration: 0.0)
     }
     
     @objc private func currentLocationButtonTapped() {
@@ -723,15 +717,13 @@ extension HomeViewController: UITableViewDelegate, UITableViewDataSource {
     }
 }
 
-// MARK: - GMSMapViewDelegate
-extension HomeViewController: GMSMapViewDelegate {
-    func mapView(_ mapView: GMSMapView, didTapAt coordinate: CLLocationCoordinate2D) {
-        // Hide search results when tapping on the map
-        searchResultsTableView.isHidden = true
-    }
-    
-    func mapViewDidFinishTileRendering(_ mapView: GMSMapView) {
-        print("Map style successfully loaded")
+// MARK: - Mapbox Map Handling
+extension HomeViewController {
+    // Handle map taps to hide search results
+    // This can be set up via gesture recognizers if needed
+    func setupMapTapHandling() {
+        // Mapbox handles taps through annotation managers
+        // Search results hiding can be handled elsewhere if needed
     }
 }
 
@@ -851,9 +843,9 @@ extension HomeViewController: CreateEventViewControllerDelegate {
     }
 }
 
-// MARK: - GoogleMapManagerDelegate
-extension HomeViewController: GoogleMapManagerDelegate {
-    func googleMapManager(_ manager: GoogleMapManager, didFailWithError error: Error) {
+// MARK: - MapboxMapManagerDelegate
+extension HomeViewController: MapboxMapManagerDelegate {
+    func mapboxMapManager(_ manager: MapboxMapManager, didFailWithError error: Error) {
         // Only log errors that are not common/expected (like permission denied, network issues)
         let nsError = error as NSError
         if nsError.domain == "kCLErrorDomain" || (error as? CLError) != nil {
@@ -888,7 +880,7 @@ extension HomeViewController: GoogleMapManagerDelegate {
         }
     }
     
-    func googleMapManager(_ manager: GoogleMapManager, didTapEventMarker event: Event) {
+    func mapboxMapManager(_ manager: MapboxMapManager, didTapEventMarker event: Event) {
         print("🎯 Showing event detail: \(event.title)")
         let eventDetailVC = EventDetailViewController(event: event)
         eventDetailVC.modalPresentationStyle = .overCurrentContext

@@ -10,7 +10,7 @@ class CollectionsViewController: UIViewController {
     private var collectionEventCounts: [String: Int] = [:] // collectionId -> event count
     private var collectionMemberCounts: [String: Int] = [:] // collectionId -> member count
     private var currentTab: CollectionTab = .personal
-    weak var mapManager: GoogleMapManager?
+    weak var mapManager: MapboxMapManager?
     private static let imageCache = NSCache<NSString, UIImage>()
     private var loadedIconImages: [String: UIImage] = [:] // collectionId -> loaded image
     

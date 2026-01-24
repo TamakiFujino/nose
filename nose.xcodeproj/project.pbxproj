@@ -13,7 +13,7 @@
 		4915172D2E9A01C800D5C35F /* GoogleService-Info-Production.plist in Resources */ = {isa = PBXBuildFile; fileRef = 491517282E9A01C800D5C35F /* GoogleService-Info-Production.plist */; };
 		4915172F2E9A026F00D5C35F /* Config.plist in Resources */ = {isa = PBXBuildFile; fileRef = 4915172E2E9A026F00D5C35F /* Config.plist */; };
 		491FD1FE2ECA18C30085D3BA /* ShareWithNose.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 491FD1F42ECA18C30085D3BA /* ShareWithNose.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		49A0F1A32EA9B00100F1A2B4 /* nose/Bridging/UnityBridgeShim.m in Sources */ = {isa = PBXBuildFile; fileRef = 49A0F1A22EA9B00100F1A2B3 /* nose/Bridging/UnityBridgeShim.m */; };
+		49A0F1A32EA9B00100F1A2B4 /* UnityBridgeShim.m in Sources */ = {isa = PBXBuildFile; fileRef = 49A0F1A22EA9B00100F1A2B3 /* UnityBridgeShim.m */; };
 		49F7C2162E49E258003A3D50 /* UnityLauncher.mm in Sources */ = {isa = PBXBuildFile; fileRef = 49F7C2152E49E258003A3D50 /* UnityLauncher.mm */; };
 		49F87F4D2E64769D00C129C4 /* UnityFramework.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 49F87F4A2E64768400C129C4 /* UnityFramework.framework */; };
 		49F87F522E6476DD00C129C4 /* Data in Resources */ = {isa = PBXBuildFile; fileRef = 49F87F512E6476DD00C129C4 /* Data */; };
@@ -106,7 +106,7 @@
 		491517292E9A01C800D5C35F /* GoogleService-Info-Staging.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info-Staging.plist"; sourceTree = "<group>"; };
 		4915172E2E9A026F00D5C35F /* Config.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Config.plist; sourceTree = "<group>"; };
 		491FD1F42ECA18C30085D3BA /* ShareWithNose.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShareWithNose.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		49A0F1A22EA9B00100F1A2B3 /* nose/Bridging/UnityBridgeShim.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = nose/Bridging/UnityBridgeShim.m; sourceTree = "<group>"; };
+		49A0F1A22EA9B00100F1A2B3 /* UnityBridgeShim.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = nose/Bridging/UnityBridgeShim.m; sourceTree = "<group>"; };
 		49E99BF62D3BE432000F3CE5 /* nose.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = nose.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		49E99C0C2D3BE433000F3CE5 /* noseTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = noseTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		49E99C162D3BE433000F3CE5 /* noseUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = noseUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -153,7 +153,6 @@
 				Managers/Services/Avatar/DynamicCategoryManager.swift,
 				ViewControllers/03_Home/Current/SearchManager.swift,
 				ViewControllers/03_Home/Current/SearchViewController.swift,
-				ViewControllers/03_Home/GoogleMapManager.swift,
 			);
 			target = 49E99BF52D3BE432000F3CE5 /* nose */;
 		};
@@ -170,6 +169,8 @@
 		};
 		49B95D8D2E0CE4B8004F2DCD /* .github */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = .github;
 			sourceTree = "<group>";
 		};
@@ -183,11 +184,15 @@
 		};
 		49E99C0F2D3BE433000F3CE5 /* noseTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = noseTests;
 			sourceTree = "<group>";
 		};
 		49E99C192D3BE433000F3CE5 /* noseUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = noseUITests;
 			sourceTree = "<group>";
 		};
@@ -255,7 +260,7 @@
 				49F87F3E2E64768400C129C4 /* Unity-iPhone.xcodeproj */,
 				49F7C2142E49E254003A3D50 /* UnityLauncher.h */,
 				49F7C2152E49E258003A3D50 /* UnityLauncher.mm */,
-				49A0F1A22EA9B00100F1A2B3 /* nose/Bridging/UnityBridgeShim.m */,
+				49A0F1A22EA9B00100F1A2B3 /* UnityBridgeShim.m */,
 				49B95D8D2E0CE4B8004F2DCD /* .github */,
 				49E99BF82D3BE432000F3CE5 /* nose */,
 				49E99C0F2D3BE433000F3CE5 /* noseTests */,
@@ -528,13 +533,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-nose/Pods-nose-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-nose/Pods-nose-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -613,13 +614,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-nose/Pods-nose-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-nose/Pods-nose-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -663,7 +660,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				49F7C2162E49E258003A3D50 /* UnityLauncher.mm in Sources */,
-				49A0F1A32EA9B00100F1A2B4 /* nose/Bridging/UnityBridgeShim.m in Sources */,
+				49A0F1A32EA9B00100F1A2B4 /* UnityBridgeShim.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -743,7 +740,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareWithNose/ShareWithNose.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 39;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = Y365Z93L4K;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -829,7 +826,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareWithNose/ShareWithNose.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 39;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = Y365Z93L4K;
 				ENABLE_NS_ASSERTIONS = NO;
@@ -908,7 +905,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareWithNose/ShareWithNose.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 39;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = Y365Z93L4K;
 				ENABLE_NS_ASSERTIONS = NO;
@@ -1025,7 +1022,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = nose/nose.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 39;
 				DEVELOPMENT_TEAM = Y365Z93L4K;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				EXCLUDED_ARCHS = "";
@@ -1057,7 +1054,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 39;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "$(PROJECT_DIR)/InfoPlist/Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
@@ -1076,7 +1073,7 @@
 			baseConfigurationReference = A681D490F5372649564E3566 /* Pods-noseUITests.staging.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 39;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "$(PROJECT_DIR)/InfoPlist/Info.plist";
 				MARKETING_VERSION = 1.0;
@@ -1098,7 +1095,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = nose/nose.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 39;
 				DEVELOPMENT_TEAM = Y365Z93L4K;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				EXCLUDED_ARCHS = "";
@@ -1133,7 +1130,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = nose/nose.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 39;
 				DEVELOPMENT_TEAM = Y365Z93L4K;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				EXCLUDED_ARCHS = "";
@@ -1287,7 +1284,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 39;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "$(PROJECT_DIR)/InfoPlist/Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
@@ -1307,7 +1304,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 39;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "$(PROJECT_DIR)/InfoPlist/Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
@@ -1326,7 +1323,7 @@
 			baseConfigurationReference = BCD95B5C5A9D7EA9D4786451 /* Pods-noseUITests.development.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 39;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "$(PROJECT_DIR)/InfoPlist/Info.plist";
 				MARKETING_VERSION = 1.0;
@@ -1344,7 +1341,7 @@
 			baseConfigurationReference = F70C57269CDD874395AE87B2 /* Pods-noseUITests.production.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 39;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "$(PROJECT_DIR)/InfoPlist/Info.plist";
 				MARKETING_VERSION = 1.0;

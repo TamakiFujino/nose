@@ -1,5 +1,5 @@
 import UIKit
-import GoogleMaps
+import MapboxMaps
 import CoreLocation
 import GooglePlaces
 
@@ -11,63 +11,7 @@ final class MarkerFactory {
         static let innerCircleOffset: CGFloat = 10
     }
     
-    // MARK: - Public Methods
-    static func createCurrentLocationMarker(at location: CLLocation) -> GMSMarker {
-        let marker = GMSMarker(position: location.coordinate)
-        marker.iconView = createCurrentLocationMarkerView()
-        marker.groundAnchor = CGPoint(x: 0.5, y: 0.5)
-        return marker
-    }
-    
-    static func createPlaceMarker(for place: GMSPlace) -> GMSMarker {
-        let marker = GMSMarker(position: place.coordinate)
-        marker.iconView = createGlassmorphismMarkerView()
-        marker.title = place.name
-        marker.snippet = place.formattedAddress
-        marker.groundAnchor = CGPoint(x: 0.5, y: 1.0) // Anchor at bottom center (pin tip)
-        return marker
-    }
-    
-    static func createEventMarker(for event: Event) -> GMSMarker {
-        guard let coordinates = event.location.coordinates else {
-            // Fallback to default coordinates if event has no location
-            let marker = GMSMarker(position: CLLocationCoordinate2D(latitude: 0, longitude: 0))
-            return marker
-        }
-        
-        let marker = GMSMarker(position: coordinates)
-        marker.iconView = createEventMarkerView()
-        marker.title = event.title
-        marker.snippet = event.location.name
-        marker.userData = event // Store event data for later retrieval
-        marker.groundAnchor = CGPoint(x: 0.5, y: 1.0) // Anchor at bottom center
-        return marker
-    }
-    
-    static func createCollectionPlaceMarker(for place: GMSPlace, collection: PlaceCollection, zoomLevel: Float? = nil) -> GMSMarker {
-        let marker = GMSMarker(position: place.coordinate)
-        let isZoomedOut = zoomLevel != nil && zoomLevel! < 12 // Smaller when zoomed out below level 12
-        marker.iconView = createCollectionPlaceMarkerView(iconName: collection.iconName, iconUrl: collection.iconUrl, isSmall: isZoomedOut)
-        marker.title = place.name
-        marker.snippet = place.formattedAddress
-        marker.userData = collection // Store collection data for later retrieval
-        marker.groundAnchor = CGPoint(x: 0.5, y: 0.5) // Anchor at center
-        return marker
-    }
-    
-    // Overload: Create marker from Firestore data (no API call needed)
-    static func createCollectionPlaceMarker(coordinate: CLLocationCoordinate2D, title: String, snippet: String, collection: PlaceCollection, zoomLevel: Float? = nil) -> GMSMarker {
-        let marker = GMSMarker(position: coordinate)
-        let isZoomedOut = zoomLevel != nil && zoomLevel! < 12 // Smaller when zoomed out below level 12
-        marker.iconView = createCollectionPlaceMarkerView(iconName: collection.iconName, iconUrl: collection.iconUrl, isSmall: isZoomedOut)
-        marker.title = title
-        marker.snippet = snippet
-        marker.userData = collection // Store collection data for later retrieval
-        marker.groundAnchor = CGPoint(x: 0.5, y: 0.5) // Anchor at center
-        return marker
-    }
-    
-    // MARK: - Private Methods
+    // MARK: - Private Methods (View Creation - used by Mapbox annotations)
     private static func createGlassmorphismMarkerView() -> UIView {
         // Original SVG is 16x20, scale up for visibility
         let scale: CGFloat = 2.5
@@ -425,4 +369,87 @@ final class MarkerFactory {
     }
     
     private static let markerImageCache = NSCache<NSString, UIImage>()
+    
+    // MARK: - Mapbox Annotation Methods
+    static func createCurrentLocationAnnotation(at location: CLLocation) -> PointAnnotation {
+        let view = createCurrentLocationMarkerView()
+        guard let image = viewToImage(view) else {
+            var annotation = PointAnnotation(point: Point(location.coordinate))
+            return annotation
+        }
+        var annotation = PointAnnotation(point: Point(location.coordinate))
+        annotation.image = PointAnnotation.Image(image: image, name: "current-location-marker")
+        annotation.iconAnchor = .center
+        return annotation
+    }
+    
+    static func createPlaceAnnotation(for place: GMSPlace) -> PointAnnotation {
+        let view = createGlassmorphismMarkerView()
+        guard let image = viewToImage(view) else {
+            var annotation = PointAnnotation(point: Point(place.coordinate))
+            return annotation
+        }
+        var annotation = PointAnnotation(point: Point(place.coordinate))
+        annotation.image = PointAnnotation.Image(image: image, name: "place-marker")
+        annotation.iconAnchor = .bottom
+        // Store place name in userInfo for reference
+        annotation.userInfo = ["name": place.name ?? "", "address": place.formattedAddress ?? ""]
+        return annotation
+    }
+    
+    static func createEventAnnotation(for event: Event) -> PointAnnotation {
+        guard let coordinates = event.location.coordinates else {
+            var annotation = PointAnnotation(point: Point(CLLocationCoordinate2D(latitude: 0, longitude: 0)))
+            return annotation
+        }
+        
+        let view = createEventMarkerView()
+        guard let image = viewToImage(view) else {
+            var annotation = PointAnnotation(point: Point(coordinates))
+            return annotation
+        }
+        var annotation = PointAnnotation(point: Point(coordinates))
+        annotation.image = PointAnnotation.Image(image: image, name: "event-marker")
+        annotation.iconAnchor = .bottom
+        // Store event in userInfo for tap handling
+        annotation.userInfo = ["event": event]
+        return annotation
+    }
+    
+    static func createCollectionPlaceAnnotation(for place: GMSPlace, collection: PlaceCollection, zoomLevel: Float? = nil) -> PointAnnotation {
+        let isZoomedOut = zoomLevel != nil && zoomLevel! < 12
+        let view = createCollectionPlaceMarkerView(iconName: collection.iconName, iconUrl: collection.iconUrl, isSmall: isZoomedOut)
+        guard let image = viewToImage(view) else {
+            var annotation = PointAnnotation(point: Point(place.coordinate))
+            return annotation
+        }
+        var annotation = PointAnnotation(point: Point(place.coordinate))
+        annotation.image = PointAnnotation.Image(image: image, name: "collection-place-marker")
+        annotation.iconAnchor = .center
+        annotation.userInfo = ["collection": collection, "name": place.name ?? "", "address": place.formattedAddress ?? ""]
+        return annotation
+    }
+    
+    static func createCollectionPlaceAnnotation(coordinate: CLLocationCoordinate2D, title: String, snippet: String, collection: PlaceCollection, zoomLevel: Float? = nil) -> PointAnnotation {
+        let isZoomedOut = zoomLevel != nil && zoomLevel! < 12
+        let view = createCollectionPlaceMarkerView(iconName: collection.iconName, iconUrl: collection.iconUrl, isSmall: isZoomedOut)
+        guard let image = viewToImage(view) else {
+            var annotation = PointAnnotation(point: Point(coordinate))
+            return annotation
+        }
+        var annotation = PointAnnotation(point: Point(coordinate))
+        annotation.image = PointAnnotation.Image(image: image, name: "collection-place-marker")
+        annotation.iconAnchor = .center
+        annotation.userInfo = ["collection": collection, "name": title, "address": snippet]
+        return annotation
+    }
+    
+    // Helper to convert UIView to UIImage
+    private static func viewToImage(_ view: UIView) -> UIImage? {
+        UIGraphicsBeginImageContextWithOptions(view.bounds.size, false, UIScreen.main.scale)
+        defer { UIGraphicsEndImageContext() }
+        guard let context = UIGraphicsGetCurrentContext() else { return nil }
+        view.layer.render(in: context)
+        return UIGraphicsGetImageFromCurrentImageContext()
+    }
 } 

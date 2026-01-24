@@ -2,7 +2,7 @@ platform :ios, '17.0'
 use_frameworks!
 
 target 'nose' do
-  pod 'GoogleMaps'
+  pod 'MapboxMaps', '~> 11.0'
   pod 'GooglePlaces'
   pod 'Firebase/Core'
   pod 'FirebaseAnalytics'
