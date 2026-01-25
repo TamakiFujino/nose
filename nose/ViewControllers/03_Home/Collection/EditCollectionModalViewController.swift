@@ -79,15 +79,9 @@ class EditCollectionModalViewController: CollectionModalViewController {
         let db = Firestore.firestore()
         
         // Get references to both collections
-        let userCollectionRef = db.collection("users")
-            .document(currentUserId)
-            .collection("collections")
-            .document(collection.id)
+        let userCollectionRef = FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collection.id, db: db)
         
-        let ownerCollectionRef = db.collection("users")
-            .document(collection.userId)
-            .collection("collections")
-            .document(collection.id)
+        let ownerCollectionRef = FirestorePaths.collectionDoc(userId: collection.userId, collectionId: collection.id, db: db)
         
         // Prepare update data
         var updateData: [String: Any] = [:]
@@ -141,14 +135,12 @@ class EditCollectionModalViewController: CollectionModalViewController {
                 self?.saveButton.setTitle("Save", for: .normal)
                 
                 if let error = error {
-                    print("❌ Error updating collection: \(error.localizedDescription)")
+                    Logger.log("Error updating collection: \(error.localizedDescription)", level: .error, category: "Collection")
                     let alert = UIAlertController(title: "Error", message: "Failed to update collection. Please try again.", preferredStyle: .alert)
                     alert.addAction(UIAlertAction(title: "OK", style: .default))
                     self?.present(alert, animated: true)
                     return
                 }
-                
-                print("✅ Successfully updated collection: \(name)")
                 
                 self?.delegate?.editCollectionModalViewController(self!, didUpdateCollection: self!.collection)
                 self?.dismiss(animated: true)

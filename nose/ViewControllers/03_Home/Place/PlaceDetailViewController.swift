@@ -31,13 +31,6 @@ final class PlaceDetailViewController: UIViewController {
         return view
     }()
     
-    private lazy var dragIndicator: UIView = {
-        let view = UIView()
-        view.translatesAutoresizingMaskIntoConstraints = false
-        view.backgroundColor = .thirdColor
-        view.layer.cornerRadius = 2.5
-        return view
-    }()
     
     private lazy var photoCollectionView: UICollectionView = {
         let layout = UICollectionViewFlowLayout()
@@ -168,7 +161,7 @@ final class PlaceDetailViewController: UIViewController {
         self.place = place
         self.isFromCollection = isFromCollection
         super.init(nibName: nil, bundle: nil)
-        modalPresentationStyle = .overCurrentContext
+        modalPresentationStyle = .pageSheet
     }
     
     required init?(coder: NSCoder) {
@@ -178,7 +171,7 @@ final class PlaceDetailViewController: UIViewController {
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
-        print("PlaceDetailViewController - viewDidLoad")
+        configureSheetPresentation()  // Configure sheet early so default detent applies
         setupUI()
         fetchPlaceDetails()
         
@@ -188,12 +181,38 @@ final class PlaceDetailViewController: UIViewController {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        print("PlaceDetailViewController - viewWillAppear")
+    }
+    
+    private func configureSheetPresentation() {
+        guard let sheet = sheetPresentationController else { return }
+        
+        // Small detent (10% - minimized)
+        let smallDetentId = UISheetPresentationController.Detent.Identifier("small")
+        let smallDetent = UISheetPresentationController.Detent.custom(identifier: smallDetentId) { context in
+            return context.maximumDetentValue * 0.1
+        }
+        
+        // Medium detent (60% - default view)
+        let mediumDetentId = UISheetPresentationController.Detent.Identifier("medium")
+        let mediumDetent = UISheetPresentationController.Detent.custom(identifier: mediumDetentId) { context in
+            return context.maximumDetentValue * 0.6
+        }
+        
+        // Large detent (90% - expanded but grabber still reachable)
+        let largeDetentId = UISheetPresentationController.Detent.Identifier("large")
+        let largeDetent = UISheetPresentationController.Detent.custom(identifier: largeDetentId) { context in
+            return context.maximumDetentValue * 0.9
+        }
+        
+        sheet.detents = [smallDetent, mediumDetent, largeDetent]
+        sheet.selectedDetentIdentifier = mediumDetentId  // Start at medium
+        sheet.largestUndimmedDetentIdentifier = smallDetentId  // Map interactive when minimized
+        sheet.prefersGrabberVisible = true
+        sheet.prefersScrollingExpandsWhenScrolledToEdge = true
     }
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        print("PlaceDetailViewController - viewDidAppear")
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -205,18 +224,15 @@ final class PlaceDetailViewController: UIViewController {
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         updateScrollViewContentSize()
-        print("Container view height: \(containerView.frame.height)")
     }
     
     // MARK: - Setup
     private func setupUI() {
-        print("PlaceDetailViewController - setupUI")
         view.backgroundColor = .clear
         
         // Add subviews
         view.addSubview(containerView)
         containerView.addSubview(scrollView)
-        scrollView.addSubview(dragIndicator)
         scrollView.addSubview(photoCollectionView)
         scrollView.addSubview(pageControl)
         scrollView.addSubview(nameLabel)
@@ -228,11 +244,11 @@ final class PlaceDetailViewController: UIViewController {
         
         // Setup constraints
         NSLayoutConstraint.activate([
-            // Container view constraints
+            // Container view constraints - fill entire view since sheet handles sizing
+            containerView.topAnchor.constraint(equalTo: view.topAnchor),
             containerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             containerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             containerView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            containerView.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.6),
             
             // Save button constraints
             saveButton.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
@@ -247,14 +263,8 @@ final class PlaceDetailViewController: UIViewController {
             scrollView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
             scrollView.widthAnchor.constraint(equalTo: containerView.widthAnchor),
             
-            // Drag indicator constraints
-            dragIndicator.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 8),
-            dragIndicator.centerXAnchor.constraint(equalTo: scrollView.centerXAnchor),
-            dragIndicator.widthAnchor.constraint(equalToConstant: 40),
-            dragIndicator.heightAnchor.constraint(equalToConstant: 5),
-            
-            // Photo collection view constraints
-            photoCollectionView.topAnchor.constraint(equalTo: dragIndicator.bottomAnchor, constant: 16),
+            // Photo collection view constraints (native sheet grabber handles the handle)
+            photoCollectionView.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 16),
             photoCollectionView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
             photoCollectionView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
             photoCollectionView.heightAnchor.constraint(equalToConstant: 200),
@@ -292,35 +302,19 @@ final class PlaceDetailViewController: UIViewController {
         // Setup initial name label constraint
         nameLabelTopConstraint = nameLabel.topAnchor.constraint(equalTo: pageControl.bottomAnchor, constant: 16)
         nameLabelTopConstraint?.isActive = true
-        
-        // Add tap gesture to dismiss
-        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
-        tapGesture.delegate = self
-        view.addGestureRecognizer(tapGesture)
-        
-        print("PlaceDetailViewController - UI setup completed")
     }
     
     // MARK: - Helper Methods
     private func fetchPlaceDetails() {
-        print("🔍 Initial place data:")
-        print("🔍 Name: \(place.name ?? "Unknown")")
-        print("🔍 Place ID: \(place.placeID ?? "Unknown")")
-        print("🔍 Has photos: \(place.photos != nil)")
-        print("🔍 Photo count: \(place.photos?.count ?? 0)")
-        print("🔍 Has phone: \(place.phoneNumber != nil)")
-        print("🔍 Has opening hours: \(place.openingHours != nil)")
-        
         // Check if we already have sufficient place data
         if place.phoneNumber != nil && place.openingHours != nil && place.photos != nil {
-            print("✅ Place already has sufficient details, using existing data")
             updateUIWithPlaceDetails(place)
             loadPhotos()
             return
         }
         
         guard let placeID = place.placeID else {
-            print("Error: Place ID is nil")
+            Logger.log("Place ID is nil", level: .error, category: "Place")
             // Use the initial place data since we can't fetch details
             updateUIWithPlaceDetails(place)
             return
@@ -328,7 +322,6 @@ final class PlaceDetailViewController: UIViewController {
         
         // Check cache first
         if let cachedPlace = PlacesCacheManager.shared.getCachedPlace(for: placeID) {
-            print("Using cached place details for: \(placeID)")
             self.detailedPlace = cachedPlace
             DispatchQueue.main.async {
                 self.updateUIWithPlaceDetails(cachedPlace)
@@ -337,14 +330,8 @@ final class PlaceDetailViewController: UIViewController {
             return
         }
         
-        print("🔍 Fetching detailed place information for: \(placeID)")
-        
         PlacesAPIManager.shared.fetchDetailPlaceDetails(placeID: placeID) { [weak self] (fetchedPlace) in
             if let fetchedPlace = fetchedPlace {
-                print("✅ Successfully fetched place details")
-                print("✅ Place name: \(fetchedPlace.name ?? "Unknown")")
-                print("✅ Place has photos: \(fetchedPlace.photos != nil)")
-                print("✅ Number of photos: \(fetchedPlace.photos?.count ?? 0)")
                 self?.detailedPlace = fetchedPlace
                 
                 DispatchQueue.main.async {
@@ -356,7 +343,7 @@ final class PlaceDetailViewController: UIViewController {
                     }
                 }
             } else {
-                print("Failed to fetch place details, using existing data")
+                Logger.log("Failed to fetch place details, using existing data", level: .warn, category: "Place")
                 // Fall back to initial place data
                 DispatchQueue.main.async {
                     if let self = self {
@@ -417,18 +404,13 @@ final class PlaceDetailViewController: UIViewController {
         // Use detailedPlace if available, otherwise fall back to initial place
         let placeToUse = detailedPlace ?? place
         
-        print("🔍 Loading photos for place: \(placeToUse.name ?? "Unknown")")
-        print("🔍 Place has photos: \(placeToUse.photos != nil)")
-        print("🔍 Number of photos: \(placeToUse.photos?.count ?? 0)")
-        
         guard let placePhotos = placeToUse.photos, !placePhotos.isEmpty else {
-            print("❌ No photos available for this place")
             photoCollectionView.isHidden = true
             pageControl.isHidden = true
             
-            // Update name label constraint to be directly below drag indicator when no photos
+            // Update name label constraint to be at top when no photos
             nameLabelTopConstraint?.isActive = false
-            nameLabelTopConstraint = nameLabel.topAnchor.constraint(equalTo: dragIndicator.bottomAnchor, constant: 16)
+            nameLabelTopConstraint = nameLabel.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 16)
             nameLabelTopConstraint?.isActive = true
             
             updateScrollViewContentSize()
@@ -448,8 +430,6 @@ final class PlaceDetailViewController: UIViewController {
         let maxPhotos = 5
         let limitedPhotos = Array(placePhotos.prefix(maxPhotos))
         
-        print("Found \(placePhotos.count) photos, loading first \(limitedPhotos.count)")
-        
         // Show photo collection view immediately with loading placeholders
         photoCollectionView.isHidden = false
         pageControl.isHidden = false
@@ -464,7 +444,6 @@ final class PlaceDetailViewController: UIViewController {
         
         // Load photos one by one with caching
         for (index, photo) in limitedPhotos.enumerated() {
-            print("🔄 Starting to load photo \(index + 1) of \(limitedPhotos.count)")
             loadPhoto(at: index, photo: photo, placeID: placeToUse.placeID ?? "")
         }
         
@@ -477,7 +456,7 @@ final class PlaceDetailViewController: UIViewController {
         var totalHeight: CGFloat = 0
         
         // Add heights of all components
-        totalHeight += dragIndicator.frame.height + 8 // Top padding
+        totalHeight += 16 // Top padding (native sheet grabber handles the handle)
         totalHeight += photoCollectionView.isHidden ? 0 : (photoCollectionView.frame.height + 8)
         totalHeight += pageControl.isHidden ? 0 : (pageControl.frame.height + 16)
         totalHeight += nameLabel.frame.height + 8
@@ -488,15 +467,12 @@ final class PlaceDetailViewController: UIViewController {
         
         // Update scroll view content size
         scrollView.contentSize = CGSize(width: scrollView.frame.width, height: totalHeight)
-        
-        print("📏 Updated scroll view content size: \(scrollView.contentSize)")
     }
     
     private func loadPhoto(at index: Int, photo: GMSPlacePhotoMetadata, placeID: String) {
         // Check cache first
         let photoID = "\(placeID)_\(index)"
         if let cachedImage = PlacesCacheManager.shared.getCachedPhoto(for: photoID) {
-            print("📋 Using cached photo \(index + 1)")
             DispatchQueue.main.async {
                 self.photos[index] = cachedImage
                 self.photoCollectionView.reloadItems(at: [IndexPath(item: index, section: 0)])
@@ -504,36 +480,20 @@ final class PlaceDetailViewController: UIViewController {
             return
         }
         
-        print("🔄 Loading photo \(index + 1) for place: \(placeID)")
-        print("🔄 Photo metadata: \(photo)")
-        
         PlacesAPIManager.shared.loadPlacePhoto(photo: photo, placeID: placeID, photoIndex: index) { [weak self] (image: UIImage?) in
             if let image = image {
-                print("✅ Successfully loaded photo \(index + 1)")
-                print("✅ Image size: \(image.size)")
                 DispatchQueue.main.async {
                     self?.photos[index] = image
                     self?.photoCollectionView.reloadItems(at: [IndexPath(item: index, section: 0)])
                 }
             } else {
-                print("❌ Failed to load photo \(index + 1)")
+                Logger.log("Failed to load photo \(index + 1)", level: .warn, category: "Place")
             }
         }
     }
     
     // MARK: - Actions
-    @objc private func handleTap(_ gesture: UITapGestureRecognizer) {
-        let location = gesture.location(in: view)
-        if location.y < containerView.frame.minY {
-            print("PlaceDetailViewController - Dismissing due to tap outside")
-            // Post notification before dismissing
-            NotificationCenter.default.post(name: NSNotification.Name("PlaceDetailViewControllerWillDismiss"), object: nil)
-            dismiss(animated: true)
-        }
-    }
-    
     @objc private func saveButtonTapped() {
-        print("Save button tapped for place: \(place.name ?? "Unknown")")
         let saveVC = SaveToCollectionViewController(place: place)
         saveVC.delegate = self
         present(saveVC, animated: true)
@@ -544,77 +504,12 @@ final class PlaceDetailViewController: UIViewController {
         let db = Firestore.firestore()
         
         // Get references to both collections
-        _ = db.collection("users")
-            .document(currentUserId)
-            .collection("collections")
-            .document(collection.id)
+        _ = FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collection.id, db: db)
             
-        _ = db.collection("users")
-            .document(collection.userId)  // This is the owner's ID
-            .collection("collections")
-            .document(collection.id)
-        
-        print("📄 Firestore path: users/\(currentUserId)/collections/\(collection.id)")
-        print("📄 Owner path: users/\(collection.userId)/collections/\(collection.id)")
+        _ = FirestorePaths.collectionDoc(userId: collection.userId, collectionId: collection.id, db: db)
         
         // First get the current collection data
         // ... existing code ...
-    }
-}
-
-// MARK: - UIGestureRecognizerDelegate
-extension PlaceDetailViewController: UIGestureRecognizerDelegate {
-    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
-        let location = touch.location(in: view)
-        return location.y < containerView.frame.minY
-    }
-}
-
-// MARK: - UIViewControllerTransitioningDelegate
-extension PlaceDetailViewController: UIViewControllerTransitioningDelegate {
-    func presentationController(forPresented presented: UIViewController, presenting: UIViewController?, source: UIViewController) -> UIPresentationController? {
-        return HalfModalPresentationController(presentedViewController: presented, presenting: presenting)
-    }
-}
-
-// MARK: - HalfModalPresentationController
-class HalfModalPresentationController: UIPresentationController {
-    private let dimmingView: UIView = {
-        let view = UIView()
-        view.backgroundColor = UIColor.clear
-        view.alpha = 0
-        return view
-    }()
-    
-    override var frameOfPresentedViewInContainerView: CGRect {
-        guard let containerView = containerView else { return .zero }
-        return CGRect(x: 0,
-                     y: containerView.bounds.height * 0.4,
-                     width: containerView.bounds.width,
-                     height: containerView.bounds.height * 0.6)
-    }
-    
-    override func presentationTransitionWillBegin() {
-        guard let containerView = containerView else { return }
-        
-        dimmingView.frame = containerView.bounds
-        containerView.addSubview(dimmingView)
-        
-        // Keep background fully visible; no dimming animation
-        presentedViewController.transitionCoordinator?.animate(alongsideTransition: { [weak self] _ in
-            self?.dimmingView.alpha = 0
-        })
-    }
-    
-    override func dismissalTransitionWillBegin() {
-        presentedViewController.transitionCoordinator?.animate(alongsideTransition: { [weak self] _ in
-            self?.dimmingView.alpha = 0
-        })
-    }
-    
-    override func containerViewDidLayoutSubviews() {
-        super.containerViewDidLayoutSubviews()
-        presentedView?.frame = frameOfPresentedViewInContainerView
     }
 }
 
@@ -627,7 +522,6 @@ extension PlaceDetailViewController: UICollectionViewDelegate, UICollectionViewD
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "PhotoCell", for: indexPath) as! PhotoCell
         let image = photos[indexPath.item]
-        print("🖼️ Configuring cell \(indexPath.item) with image: \(image != nil ? "loaded" : "loading")")
         cell.configure(with: image)
         return cell
     }
@@ -712,9 +606,7 @@ class PhotoCell: UICollectionViewCell {
 // MARK: - SaveToCollectionViewControllerDelegate
 extension PlaceDetailViewController: SaveToCollectionViewControllerDelegate {
     func saveToCollectionViewController(_ controller: SaveToCollectionViewController, didSavePlace place: GMSPlace, toCollection collection: PlaceCollection) {
-        print("Saved place '\(place.name ?? "Unknown")' to collection '\(collection.name)'")
-        // TODO: Implement actual saving to your data source
-        // For now, just show a success animation
+        // Show success animation
         UIView.animate(withDuration: 0.2, animations: {
             self.saveButton.transform = CGAffineTransform(scaleX: 1.2, y: 1.2)
         }) { _ in

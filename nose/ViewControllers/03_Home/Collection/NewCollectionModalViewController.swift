@@ -47,10 +47,7 @@ class NewCollectionModalViewController: CollectionModalViewController {
             collectionData["iconUrl"] = iconUrl
         }
         
-        let collectionRef = db.collection("users")
-            .document(currentUserId)
-            .collection("collections")
-            .document(collectionId)
+        let collectionRef = FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collectionId, db: db)
         
         // Show loading indicator
         saveButton.isEnabled = false
@@ -63,14 +60,12 @@ class NewCollectionModalViewController: CollectionModalViewController {
                 self?.saveButton.setTitle(originalTitle, for: .normal)
                 
                 if let error = error {
-                    print("❌ Error creating collection: \(error.localizedDescription)")
+                    Logger.log("Error creating collection: \(error.localizedDescription)", level: .error, category: "Collection")
                     let alert = UIAlertController(title: "Error", message: "Failed to create collection. Please try again.", preferredStyle: .alert)
                     alert.addAction(UIAlertAction(title: "OK", style: .default))
                     self?.present(alert, animated: true)
                     return
                 }
-                
-                print("✅ Successfully created collection: \(self?.collectionName ?? "")")
                 self?.delegate?.newCollectionModalViewController(self!, didCreateCollection: collectionId)
                 self?.dismiss(animated: true)
             }

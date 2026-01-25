@@ -26,6 +26,7 @@ Pods/*GoogleService-Info*.plist
 
 # Local config that may contain secrets
 Config.plist
+serviceAccountKey*.json
 
 # Fastlane/Artifacts
 fastlane/report.xml

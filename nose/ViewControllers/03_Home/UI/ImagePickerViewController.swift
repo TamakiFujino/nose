@@ -248,7 +248,7 @@ class ImagePickerViewController: UIViewController {
                     self?.loadedCategories.insert(categoryLowercase)
                     self?.filterIcons()
                 case .failure(let error):
-                    print("❌ Error fetching collection icons for \(categoryLowercase): \(error.localizedDescription)")
+                    Logger.log("Error fetching collection icons for \(categoryLowercase): \(error.localizedDescription)", level: .error, category: "ImagePicker")
                     // Keep existing icons, just filter
                     self?.filterIcons()
                 }

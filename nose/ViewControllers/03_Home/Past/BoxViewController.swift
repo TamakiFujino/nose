@@ -115,96 +115,28 @@ class BoxViewController: UIViewController {
     
     // MARK: - Data Loading
     private func loadCompletedCollections() {
-        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
-        let db = Firestore.firestore()
-        
-        // Load owned completed collections
-        db.collection("users")
-            .document(currentUserId)
-            .collection("collections")
-            .whereField("isOwner", isEqualTo: true)
-            .whereField("status", isEqualTo: PlaceCollection.Status.completed.rawValue)
-            .getDocuments { [weak self] snapshot, error in
-                if let error = error {
-                    print("Error loading owned completed collections: \(error.localizedDescription)")
-                    return
-                }
-                
-                let collections = snapshot?.documents.compactMap { document -> PlaceCollection? in
-                    var data = document.data()
-                    data["id"] = document.documentID
-                    data["isOwner"] = true
-                    
-                    if let collection = PlaceCollection(dictionary: data) {
-                        // Load member count for this collection
-                        self?.loadMemberCount(for: collection.id, ownerId: collection.userId)
-                        return collection
-                    }
-                    return nil
-                } ?? []
-                
-                self?.ownedCompletedCollections = collections
-                
-                DispatchQueue.main.async {
-                    self?.tableView.reloadData()
-                }
-            }
+        CollectionLoadingService.shared.loadCollections(status: .completed) { [weak self] result in
+            guard let self = self else { return }
             
-        // Load shared completed collections
-        db.collection("users")
-            .document(currentUserId)
-            .collection("collections")
-            .whereField("isOwner", isEqualTo: false)
-            .whereField("status", isEqualTo: PlaceCollection.Status.completed.rawValue)
-            .getDocuments { [weak self] snapshot, error in
-                if let error = error {
-                    print("Error loading shared completed collections: \(error.localizedDescription)")
-                    return
+            switch result {
+            case .success(let loadResult):
+                self.ownedCompletedCollections = loadResult.owned
+                self.sharedCompletedCollections = loadResult.shared
+                
+                // Load member counts for all collections
+                for collection in loadResult.owned {
+                    self.loadMemberCount(for: collection.id, ownerId: collection.userId)
+                }
+                for collection in loadResult.shared {
+                    self.loadMemberCount(for: collection.id, ownerId: collection.userId)
                 }
                 
-                let group = DispatchGroup()
-                var loadedCollections: [PlaceCollection] = []
+                self.tableView.reloadData()
                 
-                snapshot?.documents.forEach { document in
-                    group.enter()
-                    let data = document.data()
-                    
-                    if let ownerId = data["userId"] as? String,
-                       let collectionId = data["id"] as? String {
-                        db.collection("users")
-                            .document(ownerId)
-                            .collection("collections")
-                            .document(collectionId)
-                            .getDocument { snapshot, error in
-                                defer { group.leave() }
-                                
-                                if let error = error {
-                                    print("Error loading original collection: \(error.localizedDescription)")
-                                    return
-                                }
-                                
-                                if let originalData = snapshot?.data() {
-                                    var collectionData = originalData
-                                    collectionData["id"] = collectionId
-                                    collectionData["isOwner"] = false
-                                    
-                                    if let collection = PlaceCollection(dictionary: collectionData) {
-                                        // Load member count for this collection
-                                        self?.loadMemberCount(for: collection.id, ownerId: ownerId)
-                                        loadedCollections.append(collection)
-                                    }
-                                }
-                            }
-                    } else {
-                        group.leave()
-                    }
-                }
-                
-                group.notify(queue: .main) {
-                    self?.sharedCompletedCollections = loadedCollections
-                    self?.tableView.reloadData()
-                }
+            case .failure(let error):
+                Logger.log("Error loading completed collections: \(error.localizedDescription)", level: .error, category: "Box")
             }
+        }
     }
     
     private func showLoadingAlert(title: String) {
@@ -460,17 +392,12 @@ extension BoxViewController: UITableViewDelegate, UITableViewDataSource {
         let db = Firestore.firestore()
         
         // Get blocked users first
-        db.collection("users")
-            .document(currentUserId)
-            .collection("blocked")
+        FirestorePaths.blocked(userId: currentUserId, db: db)
             .getDocuments { [weak self] blockedSnapshot, _ in
                 let blockedUserIds = blockedSnapshot?.documents.map { $0.documentID } ?? []
                 
                 // Get the collection document from owner
-                db.collection("users")
-                    .document(ownerId)
-                    .collection("collections")
-                    .document(collectionId)
+                FirestorePaths.collectionDoc(userId: ownerId, collectionId: collectionId, db: db)
                     .getDocument { snapshot, _ in
                         if let members = snapshot?.data()?["members"] as? [String] {
                             // Filter out blocked users

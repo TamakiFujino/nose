@@ -70,4 +70,4 @@ final class SearchManager: NSObject {
         searchResults = []
         delegate?.searchManager(self, didUpdateResults: searchResults)
     }
-} 
+}

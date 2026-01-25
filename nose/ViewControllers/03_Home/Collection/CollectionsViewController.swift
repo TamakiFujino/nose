@@ -157,7 +157,6 @@ class CollectionsViewController: UIViewController {
         if let defaults = UserDefaults(suiteName: "group.com.tamakifujino.nose") {
             defaults.set(simpleCollections, forKey: "CachedCollections")
             defaults.synchronize()
-            print("💾 Cached \(simpleCollections.count) collections for Share Extension")
         }
     }
     
@@ -165,8 +164,6 @@ class CollectionsViewController: UIViewController {
     private func loadCollections() {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         let db = Firestore.firestore()
-        
-        print("🔍 Loading collections for user: \(currentUserId)")
         
         // Create groups to track loading progress
         let memberCountGroup = DispatchGroup()
@@ -191,21 +188,15 @@ class CollectionsViewController: UIViewController {
         }
         
         // Load owned collections
-        let ownedCollectionsRef = db.collection("users")
-            .document(currentUserId)
-            .collection("collections")
-        
-        print("📂 Loading owned collections from path: \(ownedCollectionsRef.path)")
+        let ownedCollectionsRef = FirestorePaths.collections(userId: currentUserId, db: db)
         
         ownedCollectionsRef.whereField("isOwner", isEqualTo: true).getDocuments { [weak self] snapshot, error in
             if let error = error {
-                print("❌ Error loading owned collections: \(error.localizedDescription)")
+                Logger.log("Error loading owned collections: \(error.localizedDescription)", level: .error, category: "Collections")
                 ownedCollectionsLoaded = true
                 checkAndReload()
                 return
             }
-            
-            print("📄 Found \(snapshot?.documents.count ?? 0) owned collections")
             
             self?.personalCollections = snapshot?.documents.compactMap { document in
                 var data = document.data()
@@ -225,19 +216,16 @@ class CollectionsViewController: UIViewController {
                 }
                 
                 if let collection = PlaceCollection(dictionary: data) {
-                    print("✅ Loaded owned collection: '\(collection.name)' (ID: \(collection.id))")
                     // Load member count for this collection
                     memberCountGroup.enter()
                     self?.loadMemberCount(for: collection.id, ownerId: collection.userId, group: memberCountGroup)
                     return collection
                 }
-                print("❌ Failed to parse owned collection: \(document.documentID)")
                 return nil
             } ?? []
             
             // Filter to only show active collections
             self?.personalCollections = self?.personalCollections.filter { $0.status == .active } ?? []
-            print("🎯 Active owned collections: \(self?.personalCollections.count ?? 0)")
             
             // Preload icons for owned collections
             self?.preloadCollectionIcons()
@@ -247,19 +235,13 @@ class CollectionsViewController: UIViewController {
         }
         
         // Load shared collections
-        let sharedCollectionsRef = db.collection("users")
-            .document(currentUserId)
-            .collection("collections")
-        
-        print("📂 Loading shared collections from path: \(sharedCollectionsRef.path)")
+        let sharedCollectionsRef = FirestorePaths.collections(userId: currentUserId, db: db)
         
         sharedCollectionsRef.whereField("isOwner", isEqualTo: false).getDocuments { [weak self] snapshot, error in
             if let error = error {
-                print("❌ Error loading shared collections: \(error.localizedDescription)")
+                Logger.log("Error loading shared collections: \(error.localizedDescription)", level: .error, category: "Collections")
                 return
             }
-            
-            print("📄 Found \(snapshot?.documents.count ?? 0) shared collections")
             
             let group = DispatchGroup()
             var loadedCollections: [PlaceCollection] = []
@@ -271,12 +253,11 @@ class CollectionsViewController: UIViewController {
                 // Get the original collection data from the owner's collections
                 if let ownerId = data["userId"] as? String,
                    let collectionId = data["id"] as? String {
-                    print("🔍 Loading original collection from owner: \(ownerId), collection: \(collectionId)")
                     
                     // First check if owner account still exists and is not deleted
-                    db.collection("users").document(ownerId).getDocument { [weak self] ownerSnapshot, ownerError in
+                    FirestorePaths.userDoc(ownerId, db: db).getDocument { [weak self] ownerSnapshot, ownerError in
                         if let ownerError = ownerError {
-                            print("❌ Error checking owner: \(ownerError.localizedDescription)")
+                            Logger.log("Error checking owner: \(ownerError.localizedDescription)", level: .error, category: "Collections")
                             group.leave()
                             return
                         }
@@ -286,7 +267,6 @@ class CollectionsViewController: UIViewController {
                         let isOwnerDeleted = ownerData?["isDeleted"] as? Bool ?? false
                         
                         if ownerSnapshot?.exists == false || isOwnerDeleted {
-                            print("🗑️ Owner account deleted or doesn't exist, marking collection as inactive: \(collectionId)")
                             
                             // Mark this collection as inactive in user's database
                             guard let currentUserId = Auth.auth().currentUser?.uid else {
@@ -294,18 +274,13 @@ class CollectionsViewController: UIViewController {
                                 return
                             }
                             
-                            db.collection("users")
-                                .document(currentUserId)
-                                .collection("collections")
-                                .document(collectionId)
+                            FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collectionId, db: db)
                                 .updateData([
                                     "status": "inactive",
                                     "ownerDeleted": true
                                 ]) { error in
                                     if let error = error {
-                                        print("❌ Error marking collection as inactive: \(error.localizedDescription)")
-                                    } else {
-                                        print("✅ Marked stale collection as inactive: \(collectionId)")
+                                        Logger.log("Error marking collection as inactive: \(error.localizedDescription)", level: .error, category: "Collections")
                                     }
                                     group.leave()
                                 }
@@ -313,15 +288,12 @@ class CollectionsViewController: UIViewController {
                         }
                         
                         // Owner exists, proceed to load the collection
-                    db.collection("users")
-                        .document(ownerId)
-                        .collection("collections")
-                        .document(collectionId)
+                    FirestorePaths.collectionDoc(userId: ownerId, collectionId: collectionId, db: db)
                         .getDocument { snapshot, error in
                             defer { group.leave() }
                             
                             if let error = error {
-                                print("❌ Error loading original collection: \(error.localizedDescription)")
+                                Logger.log("Error loading original collection: \(error.localizedDescription)", level: .error, category: "Collections")
                                 return
                             }
                             
@@ -343,28 +315,21 @@ class CollectionsViewController: UIViewController {
                                 }
                                 
                                 if let collection = PlaceCollection(dictionary: collectionData) {
-                                    print("✅ Loaded shared collection: '\(collection.name)' (ID: \(collection.id))")
                                     // Load member count for this collection
                                     memberCountGroup.enter()
                                     self?.loadMemberCount(for: collection.id, ownerId: ownerId, group: memberCountGroup)
                                     loadedCollections.append(collection)
-                                } else {
-                                    print("❌ Failed to parse shared collection: \(collectionId)")
                                 }
-                            } else {
-                                print("❌ No data found for shared collection: \(collectionId)")
-                                }
+                            }
                             }
                         }
                 } else {
-                    print("❌ Invalid shared collection data: \(data)")
                     group.leave()
                 }
             }
             
             group.notify(queue: .main) {
                 self?.sharedCollections = loadedCollections.filter { $0.status == .active }
-                print("🎯 Active shared collections: \(self?.sharedCollections.count ?? 0)")
                 sharedCollectionsLoaded = true
                 // Preload all collection icons
                 self?.preloadCollectionIcons()
@@ -395,17 +360,12 @@ class CollectionsViewController: UIViewController {
         let db = Firestore.firestore()
         
         // Get blocked users first
-        db.collection("users")
-            .document(currentUserId)
-            .collection("blocked")
+        FirestorePaths.blocked(userId: currentUserId, db: db)
             .getDocuments { [weak self] blockedSnapshot, _ in
                 let blockedUserIds = blockedSnapshot?.documents.map { $0.documentID } ?? []
                 
                 // Get the collection document from owner
-                db.collection("users")
-                    .document(ownerId)
-                    .collection("collections")
-                    .document(collectionId)
+                FirestorePaths.collectionDoc(userId: ownerId, collectionId: collectionId, db: db)
                     .getDocument { snapshot, _ in
                         defer { group.leave() }
                         

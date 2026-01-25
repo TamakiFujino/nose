@@ -60,34 +60,113 @@ final class SearchViewController: UIViewController {
         isModalInPresentation = true
     }
     
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        // Update corner radius based on actual frame height for perfect rounded corners
+        let textField = searchBar.searchTextField
+        let actualHeight = textField.frame.height
+        if actualHeight > 0 {
+            textField.layer.cornerRadius = actualHeight / 2
+        }
+    }
+    
     // MARK: - Setup
     private func setupUI() {
         view.backgroundColor = .systemBackground
         
         // Add subviews
         view.addSubview(searchBar)
-        view.addSubview(closeButton)
         view.addSubview(tableView)
         
         // Setup constraints
+        let searchBarHeight: CGFloat = 60
         NSLayoutConstraint.activate([
-            // Close button constraints
-            closeButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
-            closeButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            closeButton.widthAnchor.constraint(equalToConstant: 30),
-            closeButton.heightAnchor.constraint(equalToConstant: 30),
-            
-            // Search bar constraints
-            searchBar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            searchBar.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            searchBar.trailingAnchor.constraint(equalTo: closeButton.leadingAnchor, constant: -8),
+            // Search bar constraints - full width, top aligned
+            searchBar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
+            searchBar.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 8),
+            searchBar.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -8),
+            searchBar.heightAnchor.constraint(equalToConstant: searchBarHeight),
             
             // Table view constraints
-            tableView.topAnchor.constraint(equalTo: searchBar.bottomAnchor),
+            tableView.topAnchor.constraint(equalTo: searchBar.bottomAnchor, constant: 8),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
+        
+        // Configure search bar appearance after layout
+        configureSearchBarAppearance(height: searchBarHeight)
+    }
+    
+    private func configureSearchBarAppearance(height: CGFloat) {
+        // Remove default background
+        searchBar.backgroundImage = UIImage()
+        searchBar.backgroundColor = .clear
+        
+        // Customize search text field for rounded corners
+        let textField = searchBar.searchTextField
+        textField.backgroundColor = UIColor.systemGray6
+        textField.clipsToBounds = true
+        textField.font = .systemFont(ofSize: 16)
+        
+        // Add horizontal padding (12pt on each side)
+        let horizontalPadding: CGFloat = 12
+        
+        // Configure padding and corner radius after layout to ensure correct dimensions
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            let textField = self.searchBar.searchTextField
+            
+            // Set corner radius based on actual frame height for perfect rounded corners
+            let actualHeight = textField.frame.height > 0 ? textField.frame.height : height
+            textField.layer.cornerRadius = actualHeight / 2
+            
+            // Create back button (replaces search icon)
+            let backButton = UIButton(type: .system)
+            backButton.setImage(UIImage(systemName: "chevron.left"), for: .normal)
+            backButton.tintColor = .black
+            backButton.frame = CGRect(x: 0, y: 0, width: 20, height: 20)
+            backButton.addTarget(self, action: #selector(self.closeButtonTapped), for: .touchUpInside)
+            
+            // Create left container with padding + back button
+            let leftContainer = UIView(frame: CGRect(x: 0, y: 0, width: horizontalPadding + 20 + horizontalPadding, height: height))
+            leftContainer.backgroundColor = .clear
+            backButton.center = CGPoint(x: horizontalPadding + 10, y: leftContainer.bounds.midY)
+            leftContainer.addSubview(backButton)
+            
+            textField.leftView = leftContainer
+            textField.leftViewMode = .always
+            
+            // Create clear button with padding
+            let clearButton = UIButton(type: .system)
+            clearButton.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
+            clearButton.tintColor = .systemGray
+            clearButton.frame = CGRect(x: 0, y: 0, width: 20, height: 20)
+            clearButton.addTarget(self, action: #selector(self.clearSearchText), for: .touchUpInside)
+            
+            // Create right container with clear button + padding
+            let rightContainer = UIView(frame: CGRect(x: 0, y: 0, width: 20 + horizontalPadding, height: height))
+            rightContainer.backgroundColor = .clear
+            clearButton.center = CGPoint(x: 10, y: rightContainer.bounds.midY)
+            rightContainer.addSubview(clearButton)
+            
+            // Store reference for clear action
+            self.clearButton = clearButton
+            
+            textField.rightView = rightContainer
+            // Show clear button when editing and text is present
+            textField.rightViewMode = .whileEditing
+        }
+    }
+    
+    private var clearButton: UIButton?
+    
+    @objc private func clearSearchText() {
+        searchBar.text = ""
+        searchBar.searchTextField.text = ""
+        searchBar.searchTextField.resignFirstResponder()
+        searchResults = []
+        tableView.reloadData()
     }
     
     // MARK: - Actions
@@ -140,7 +219,7 @@ final class SearchViewController: UIViewController {
                 }
                 completion(filtered)
             case .failure(let error):
-                print("❌ Error searching events: \(error.localizedDescription)")
+                Logger.log("Error searching events: \(error.localizedDescription)", level: .error, category: "Search")
                 completion([])
             }
         }
@@ -153,13 +232,6 @@ final class SearchViewController: UIViewController {
             fields: PlacesAPIManager.FieldConfig.search
         ) { [weak self] place in
             if let place = place {
-                print("Successfully fetched place: \(place.name ?? "Unknown")")
-                print("Place ID: \(place.placeID ?? "nil")")
-                print("Has photos: \(place.photos?.count ?? 0)")
-                print("Has rating: \(place.rating)")
-                print("Has phone: \(place.phoneNumber != nil)")
-                print("Has opening hours: \(place.openingHours != nil)")
-                
                 DispatchQueue.main.async {
                     guard let strongSelf = self else { return }
                     if let delegate = strongSelf.delegate {
@@ -170,7 +242,7 @@ final class SearchViewController: UIViewController {
                     }
                 }
             } else {
-                print("Failed to fetch place details for: \(prediction.placeID)")
+                Logger.log("Failed to fetch place details for: \(prediction.placeID)", level: .warn, category: "Search")
             }
         }
     }

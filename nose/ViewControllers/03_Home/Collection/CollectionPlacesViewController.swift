@@ -11,8 +11,6 @@ class CollectionPlacesViewController: UIViewController {
     private let collection: PlaceCollection
     private var places: [PlaceCollection.Place] = []
     private var events: [Event] = []
-    private var futureEvents: [Event] = []
-    private var pastEvents: [Event] = []
     private var sessionToken: GMSAutocompleteSessionToken?
     private var sharedFriendsCount: Int = 0
     private var avatarsLoadGeneration: Int = 0
@@ -37,6 +35,8 @@ class CollectionPlacesViewController: UIViewController {
         case events = 1
     }
     private var selectedTab: Tab = .places
+    private var futureEvents: [Event] = []
+    private var pastEvents: [Event] = []
 
     // MARK: - UI Components
 
@@ -236,22 +236,19 @@ class CollectionPlacesViewController: UIViewController {
         let db = Firestore.firestore()
         
         // Reload collection from Firestore to get latest places
-        let collectionRef = db.collection("users")
-            .document(currentUserId)
-            .collection("collections")
-            .document(collection.id)
+        let collectionRef = FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collection.id, db: db)
         
         collectionRef.getDocument { [weak self] snapshot, error in
             guard let self = self else { return }
             
             if let error = error {
-                print("❌ Error refreshing collection: \(error.localizedDescription)")
+                Logger.log("Error refreshing collection: \(error.localizedDescription)", level: .error, category: "Collection")
                 return
             }
             
             guard let data = snapshot?.data(),
                   let updatedCollection = PlaceCollection(dictionary: data) else {
-                print("❌ Failed to parse refreshed collection")
+                Logger.log("Failed to parse refreshed collection", level: .error, category: "Collection")
                 return
             }
             
@@ -259,10 +256,8 @@ class CollectionPlacesViewController: UIViewController {
             // Note: collection is let, so we can't reassign it, but we can update places
             DispatchQueue.main.async {
                 self.places = updatedCollection.places
-                self.categorizeEvents()
                 self.tableView.reloadData()
                 self.updatePlacesCountLabel()
-                print("✅ Refreshed places: \(self.places.count) places")
             }
         }
     }
@@ -302,8 +297,6 @@ class CollectionPlacesViewController: UIViewController {
         view.addSubview(categoryTabScrollView)
         categoryTabScrollView.addSubview(categoryTabStackView)
         view.addSubview(tableView)
-        
-        setupCategoryTabs()
 
         // Hide menu button if user is not the owner
         menuButton.isHidden = !collection.isOwner
@@ -312,6 +305,8 @@ class CollectionPlacesViewController: UIViewController {
         
         // Set initial icon image
         updateCollectionIconDisplay()
+        
+        setupCategoryTabs()
 
         NSLayoutConstraint.activate([
             headerView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
@@ -473,69 +468,6 @@ class CollectionPlacesViewController: UIViewController {
         }
     }
     
-    private func setupCategoryTabs() {
-        let tabs: [(Tab, String)] = [(.places, "Places"), (.events, "Events")]
-        for (index, (tab, title)) in tabs.enumerated() {
-            let button = createTabButton(title: title, tag: index, tab: tab)
-            categoryTabStackView.addArrangedSubview(button)
-        }
-        updateTabButtonStates()
-    }
-    
-    private func createTabButton(title: String, tag: Int, tab: Tab) -> UIButton {
-        let button = UIButton(type: .system)
-        button.setTitle(title, for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 14, weight: .medium)
-        button.setTitleColor(.black, for: .normal)
-        button.backgroundColor = .secondColor
-        button.layer.cornerRadius = 16
-        button.layer.borderWidth = 0
-        button.layer.borderColor = UIColor.clear.cgColor
-        button.layer.masksToBounds = true
-        button.tag = tag
-        button.addTarget(self, action: #selector(categoryTabTapped(_:)), for: .touchUpInside)
-        button.translatesAutoresizingMaskIntoConstraints = false
-        
-        // Padding so text doesn't touch edges
-        button.contentEdgeInsets = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
-        
-        // Set height constraint
-        button.heightAnchor.constraint(equalToConstant: 30).isActive = true
-        
-        // Minimum width for easy tapping, but size to content
-        button.widthAnchor.constraint(greaterThanOrEqualToConstant: 60).isActive = true
-        
-        // Allow button to size to content
-        button.setContentHuggingPriority(.defaultHigh, for: .horizontal)
-        button.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
-        
-        return button
-    }
-    
-    private func updateTabButtonStates() {
-        let tabs: [Tab] = [.places, .events]
-        for (index, tab) in tabs.enumerated() {
-            guard index < categoryTabStackView.arrangedSubviews.count,
-                  let button = categoryTabStackView.arrangedSubviews[index] as? UIButton else { continue }
-            
-            let isSelected = tab == selectedTab
-            // Active tab: darker background with white text
-            // Inactive tab: secondColor background with black text
-            button.backgroundColor = isSelected ? .fourthColor : .secondColor
-            button.setTitleColor(isSelected ? .white : .black, for: .normal)
-            button.layer.cornerRadius = 16
-        }
-    }
-    
-    @objc private func categoryTabTapped(_ sender: UIButton) {
-        guard sender.tag < 2 else { return }
-        let tabs: [Tab] = [.places, .events]
-        let tab = tabs[sender.tag]
-        selectedTab = tab
-        updateTabButtonStates()
-        tableView.reloadData()
-    }
-    
     private func updateCollectionIcon(iconName: String?, iconUrl: String?) {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         let db = Firestore.firestore()
@@ -550,15 +482,9 @@ class CollectionPlacesViewController: UIViewController {
         present(alert, animated: true)
         
         // Get references to both collections (user's copy and owner's copy)
-        let userCollectionRef = db.collection("users")
-            .document(currentUserId)
-            .collection("collections")
-            .document(collection.id)
+        let userCollectionRef = FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collection.id, db: db)
         
-        let ownerCollectionRef = db.collection("users")
-            .document(collection.userId)
-            .collection("collections")
-            .document(collection.id)
+        let ownerCollectionRef = FirestorePaths.collectionDoc(userId: collection.userId, collectionId: collection.id, db: db)
         
         // Create a batch write to update both
         let batch = db.batch()
@@ -594,10 +520,9 @@ class CollectionPlacesViewController: UIViewController {
                     guard let self = self else { return }
                     
                     if let error = error {
-                        print("❌ Error updating collection icon: \(error.localizedDescription)")
+                        Logger.log("Error updating collection icon: \(error.localizedDescription)", level: .error, category: "Collection")
                         ToastManager.showToast(message: "Failed to update icon", type: .error)
                     } else {
-                        print("✅ Successfully updated collection icon")
                         // Update the current icon name/URL and refresh the image view
                         self.currentIconName = iconName
                         self.currentIconUrl = iconUrl
@@ -711,7 +636,72 @@ class CollectionPlacesViewController: UIViewController {
             }
         }
     }
-
+    
+    // MARK: - Tab Management
+    
+    private func setupCategoryTabs() {
+        let tabs: [(Tab, String)] = [(.places, "Places"), (.events, "Events")]
+        for (index, (tab, title)) in tabs.enumerated() {
+            let button = createTabButton(title: title, tag: index, tab: tab)
+            categoryTabStackView.addArrangedSubview(button)
+        }
+        updateTabButtonStates()
+    }
+    
+    private func createTabButton(title: String, tag: Int, tab: Tab) -> UIButton {
+        let button = UIButton(type: .system)
+        button.setTitle(title, for: .normal)
+        button.titleLabel?.font = .systemFont(ofSize: 14, weight: .medium)
+        button.setTitleColor(.black, for: .normal)
+        button.backgroundColor = .secondColor
+        button.layer.cornerRadius = 16
+        button.layer.borderWidth = 0
+        button.layer.borderColor = UIColor.clear.cgColor
+        button.layer.masksToBounds = true
+        button.tag = tag
+        button.addTarget(self, action: #selector(categoryTabTapped(_:)), for: .touchUpInside)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Padding so text doesn't touch edges
+        button.contentEdgeInsets = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
+        
+        // Set height constraint
+        button.heightAnchor.constraint(equalToConstant: 30).isActive = true
+        
+        // Minimum width for easy tapping, but size to content
+        button.widthAnchor.constraint(greaterThanOrEqualToConstant: 60).isActive = true
+        
+        // Allow button to size to content
+        button.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        button.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
+        
+        return button
+    }
+    
+    private func updateTabButtonStates() {
+        let tabs: [Tab] = [.places, .events]
+        for (index, tab) in tabs.enumerated() {
+            guard index < categoryTabStackView.arrangedSubviews.count,
+                  let button = categoryTabStackView.arrangedSubviews[index] as? UIButton else { continue }
+            
+            let isSelected = tab == selectedTab
+            // Active tab: darker background with white text
+            // Inactive tab: secondColor background with black text
+            button.backgroundColor = isSelected ? .fourthColor : .secondColor
+            button.setTitleColor(isSelected ? .white : .black, for: .normal)
+            button.layer.cornerRadius = 16
+        }
+    }
+    
+    @objc private func categoryTabTapped(_ sender: UIButton) {
+        guard sender.tag < 2 else { return }
+        let tabs: [Tab] = [.places, .events]
+        let tab = tabs[sender.tag]
+        selectedTab = tab
+        updateTabButtonStates()
+        tableView.reloadData()
+    }
+    
     // MARK: - Data Loading
 
     private func loadPlaces() {
@@ -719,26 +709,7 @@ class CollectionPlacesViewController: UIViewController {
         loadPlaceHearts()
         loadEvents()
         updatePlacesCountLabel()
-        categorizeEvents()
         tableView.reloadData()
-    }
-    
-    private func categorizeEvents() {
-        let now = Date()
-        futureEvents = events.filter { event in
-            // Future events include current events (events that haven't ended yet)
-            return event.dateTime.endDate >= now
-        }
-        pastEvents = events.filter { event in
-            // Past events are those that have ended
-            return event.dateTime.endDate < now
-        }
-        
-        // Sort future events by start date (earliest first)
-        futureEvents.sort { $0.dateTime.startDate < $1.dateTime.startDate }
-        
-        // Sort past events by end date (most recent first)
-        pastEvents.sort { $0.dateTime.endDate > $1.dateTime.endDate }
     }
     
     private func loadPlaceHearts() {
@@ -746,15 +717,12 @@ class CollectionPlacesViewController: UIViewController {
         
         // Always load hearts from the owner's collection (single source of truth)
         // This ensures all users see the same heart data
-        db.collection("users")
-            .document(collection.userId)
-            .collection("collections")
-            .document(collection.id)
+        FirestorePaths.collectionDoc(userId: collection.userId, collectionId: collection.id, db: db)
             .getDocument { [weak self] snapshot, error in
                 guard let self = self else { return }
                 
                 if let error = error {
-                    print("❌ Error loading place hearts: \(error.localizedDescription)")
+                    Logger.log("Error loading place hearts: \(error.localizedDescription)", level: .error, category: "Collection")
                     return
                 }
                 
@@ -855,15 +823,9 @@ class CollectionPlacesViewController: UIViewController {
         let db = Firestore.firestore()
         
         // Get references to both collections (user's copy and owner's copy)
-        let userCollectionRef = db.collection("users")
-            .document(currentUserId)
-            .collection("collections")
-            .document(collection.id)
+        let userCollectionRef = FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collection.id, db: db)
         
-        let ownerCollectionRef = db.collection("users")
-            .document(collection.userId)
-            .collection("collections")
-            .document(collection.id)
+        let ownerCollectionRef = FirestorePaths.collectionDoc(userId: collection.userId, collectionId: collection.id, db: db)
         
         // Build update data for all pending changes
         var updateData: [String: Any] = [:]
@@ -875,8 +837,6 @@ class CollectionPlacesViewController: UIViewController {
         let changesToWrite = pendingHeartChanges
         pendingHeartChanges.removeAll()
         
-        print("💾 Writing \(changesToWrite.count) heart change(s) to Firestore")
-        
         // Batch write to both documents
         let batch = db.batch()
         batch.updateData(updateData, forDocument: userCollectionRef)
@@ -884,13 +844,11 @@ class CollectionPlacesViewController: UIViewController {
         
         batch.commit { [weak self] error in
             if let error = error {
-                print("❌ Error saving hearts: \(error.localizedDescription)")
+                Logger.log("Error saving hearts: \(error.localizedDescription)", level: .error, category: "Collection")
                 ToastManager.showToast(message: "Failed to save hearts", type: .error)
                 
                 // Revert local state on error
                 self?.loadPlaceHearts()
-            } else {
-                print("✅ Successfully saved \(changesToWrite.count) heart change(s)")
             }
         }
     }
@@ -900,19 +858,15 @@ class CollectionPlacesViewController: UIViewController {
         let db = Firestore.firestore()
         
         // Load events from the collection
-        db.collection("users")
-            .document(currentUserId)
-            .collection("collections")
-            .document(collection.id)
+        FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collection.id, db: db)
             .getDocument { [weak self] snapshot, error in
                 if let error = error {
-                    print("❌ Error loading events: \(error.localizedDescription)")
+                    Logger.log("Error loading events: \(error.localizedDescription)", level: .error, category: "Collection")
                     return
                 }
                 
                 guard let data = snapshot?.data(),
                       let eventsArray = data["events"] as? [[String: Any]] else {
-                    print("📄 No events in collection")
                     DispatchQueue.main.async {
                         self?.events = []
                         self?.updatePlacesCountLabel()
@@ -920,8 +874,6 @@ class CollectionPlacesViewController: UIViewController {
                     }
                     return
                 }
-                
-                print("📄 Found \(eventsArray.count) events in collection")
                 
                 // Use DispatchGroup to verify each event still exists
                 let group = DispatchGroup()
@@ -936,7 +888,7 @@ class CollectionPlacesViewController: UIViewController {
                           let locationName = eventDict["locationName"] as? String,
                           let locationAddress = eventDict["locationAddress"] as? String,
                           let userId = eventDict["userId"] as? String else {
-                        print("⚠️ Skipping event with incomplete data")
+                        Logger.log("Skipping event with incomplete data", level: .warn, category: "Collection")
                         continue
                     }
                     
@@ -946,16 +898,12 @@ class CollectionPlacesViewController: UIViewController {
                     
                     // Verify the event still exists in the user's events collection
                     group.enter()
-                    db.collection("users")
-                        .document(userId)
-                        .collection("events")
-                        .document(eventId)
+                    FirestorePaths.eventDoc(userId: userId, eventId: eventId, db: db)
                         .getDocument { eventSnapshot, eventError in
                             // Check if event exists and is active
                             guard let eventData = eventSnapshot?.data(),
                                   let status = eventData["status"] as? String,
                                   status == "active" else {
-                                print("⚠️ Event \(eventId) no longer exists or is inactive, skipping")
                                 group.leave()
                                 return
                             }
@@ -1009,7 +957,6 @@ class CollectionPlacesViewController: UIViewController {
                 
                 // Wait for all event verifications to complete
                 group.notify(queue: .main) {
-                    print("✅ Loaded \(loadedEvents.count) active events")
                     self?.events = loadedEvents
                     self?.categorizeEvents()
                     self?.updatePlacesCountLabel()
@@ -1017,11 +964,28 @@ class CollectionPlacesViewController: UIViewController {
                     
                     // Clean up deleted events from the collection if count doesn't match
                     if loadedEvents.count != eventsArray.count {
-                        print("🧹 Cleaning up \(eventsArray.count - loadedEvents.count) deleted events from collection")
                         self?.cleanupDeletedEvents(activeEvents: loadedEvents)
                     }
                 }
             }
+    }
+    
+    private func categorizeEvents() {
+        let now = Date()
+        futureEvents = events.filter { event in
+            // Future events include current events (events that haven't ended yet)
+            return event.dateTime.endDate >= now
+        }
+        pastEvents = events.filter { event in
+            // Past events are those that have ended
+            return event.dateTime.endDate < now
+        }
+        
+        // Sort future events by start date (earliest first)
+        futureEvents.sort { $0.dateTime.startDate < $1.dateTime.startDate }
+        
+        // Sort past events by end date (most recent first)
+        pastEvents.sort { $0.dateTime.endDate > $1.dateTime.endDate }
     }
     
     private func cleanupDeletedEvents(activeEvents: [Event]) {
@@ -1032,15 +996,9 @@ class CollectionPlacesViewController: UIViewController {
         let activeEventIds = Set(activeEvents.map { $0.id })
         
         // Get the collection document
-        let userCollectionRef = db.collection("users")
-            .document(currentUserId)
-            .collection("collections")
-            .document(collection.id)
+        let userCollectionRef = FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collection.id, db: db)
         
-        let ownerCollectionRef = db.collection("users")
-            .document(collection.userId)
-            .collection("collections")
-            .document(collection.id)
+        let ownerCollectionRef = FirestorePaths.collectionDoc(userId: collection.userId, collectionId: collection.id, db: db)
         
         userCollectionRef.getDocument { snapshot, error in
             guard let data = snapshot?.data(),
@@ -1062,9 +1020,7 @@ class CollectionPlacesViewController: UIViewController {
                 
                 batch.commit { error in
                     if let error = error {
-                        print("❌ Error cleaning up deleted events: \(error.localizedDescription)")
-                    } else {
-                        print("✅ Successfully cleaned up deleted events from collection")
+                        Logger.log("Error cleaning up deleted events: \(error.localizedDescription)", level: .error, category: "Collection")
                     }
                 }
             }
@@ -1077,12 +1033,10 @@ class CollectionPlacesViewController: UIViewController {
         let db = Firestore.firestore()
         
         // First get the blocked users
-        db.collection("users")
-            .document(currentUserId)
-            .collection("blocked")
+        FirestorePaths.blocked(userId: currentUserId, db: db)
             .getDocuments { [weak self] blockedSnapshot, blockedError in
                 if let blockedError = blockedError {
-                    print("Error loading blocked users: \(blockedError.localizedDescription)")
+                    Logger.log("Error loading blocked users: \(blockedError.localizedDescription)", level: .error, category: "Collection")
                     return
                 }
                 
@@ -1090,14 +1044,11 @@ class CollectionPlacesViewController: UIViewController {
                 let blockedUserIds = blockedSnapshot?.documents.map { $0.documentID } ?? []
                 
                 // Now get the collection data
-                let collectionRef = db.collection("users")
-                    .document(self?.collection.userId ?? "")  // Use the collection owner's ID
-                    .collection("collections")
-                    .document(self?.collection.id ?? "")
+                let collectionRef = FirestorePaths.collectionDoc(userId: self?.collection.userId ?? "", collectionId: self?.collection.id ?? "", db: db)
                 
                 collectionRef.getDocument { [weak self] snapshot, error in
                     if let error = error {
-                        print("Error loading collection: \(error.localizedDescription)")
+                        Logger.log("Error loading collection: \(error.localizedDescription)", level: .error, category: "Collection")
                         return
                     }
                     
@@ -1107,10 +1058,8 @@ class CollectionPlacesViewController: UIViewController {
                             !blockedUserIds.contains($0)
                         }
                         self?.sharedFriendsCount = activeMembers.count
-                        print("📊 Total members (including owner): \(activeMembers.count)")
                     } else {
                         self?.sharedFriendsCount = 0
-                        print("📊 No members found")
                     }
                     self?.updateSharedFriendsLabel()
                 }
@@ -1158,10 +1107,7 @@ class CollectionPlacesViewController: UIViewController {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         let db = Firestore.firestore()
         
-        db.collection("users")
-            .document(currentUserId)
-            .collection("collections")
-            .document(collection.id)
+        FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collection.id, db: db)
             .getDocument { [weak self] snapshot, error in
                 if let isCompleted = snapshot?.data()?["isCompleted"] as? Bool {
                     self?.isCompleted = isCompleted
@@ -1336,14 +1282,13 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
             } else {
                 event = pastEvents[indexPath.row]
             }
-            
             let detailVC = EventDetailViewController(event: event)
             present(detailVC, animated: true)
         }
     }
 
     func tableView(_ tableView: UITableView, accessoryButtonTappedForRowWith indexPath: IndexPath) {
-        // Map icon tapped - only for places tab
+        // Map icon tapped - only available for places
         guard selectedTab == .places, indexPath.row < places.count else { return }
         let place = places[indexPath.row]
         if let cachedPlace = PlacesCacheManager.shared.getCachedPlace(for: place.placeId) {
@@ -1370,10 +1315,7 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
 
         // 2) Try remote URL stored in Firestore
         let db = Firestore.firestore()
-        db.collection("users")
-            .document(collection.userId)
-            .collection("collections")
-            .document(collection.id)
+        FirestorePaths.collectionDoc(userId: collection.userId, collectionId: collection.id, db: db)
             .getDocument { [weak self] snapshot, error in
                 guard let self = self else { return }
                 if var urlString = snapshot?.data()? ["avatarThumbnailURL"] as? String, let baseURL = URL(string: urlString) {
@@ -1511,7 +1453,7 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         }
 
         func loadOne(uid: String, completion: @escaping () -> Void) {
-            db.collection("users").document(uid).collection("collections").document(collectionId).getDocument { snap, _ in
+            FirestorePaths.collectionDoc(userId: uid, collectionId: collectionId, db: db).getDocument { snap, _ in
                 if let urlString = snap?.data()? ["avatarThumbnailURL"] as? String, let url = URL(string: urlString) {
                     self.downloadImage(from: url, ignoreCache: true) { image in
                         DispatchQueue.main.async {
@@ -1529,7 +1471,7 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         }
 
         // Fetch the owner's collection doc to get all members
-        db.collection("users").document(ownerId).collection("collections").document(collectionId).getDocument { snap, _ in
+        FirestorePaths.collectionDoc(userId: ownerId, collectionId: collectionId, db: db).getDocument { snap, _ in
             var orderedIds: [String] = []
             var seen = Set<String>()
             // Owner first
@@ -1818,33 +1760,15 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
     
     // Add swipe actions functionality
     func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
-        switch selectedTab {
-        case .places:
-            // Handle places section
-            guard indexPath.row < places.count else {
+        // Handle events section
+        if indexPath.section == 0 {
+            guard indexPath.row < events.count else {
                 return UISwipeActionsConfiguration(actions: [])
-            }
-            return createPlaceSwipeActions(for: indexPath)
-            
-        case .events:
-            // Handle events section
-            let hasFutureEvents = !futureEvents.isEmpty
-            let event: Event
-            if hasFutureEvents && indexPath.section == 0 {
-                guard indexPath.row < futureEvents.count else {
-                    return UISwipeActionsConfiguration(actions: [])
-                }
-                event = futureEvents[indexPath.row]
-            } else {
-                guard indexPath.row < pastEvents.count else {
-                    return UISwipeActionsConfiguration(actions: [])
-                }
-                event = pastEvents[indexPath.row]
             }
             
             // Delete action for events
             let deleteAction = UIContextualAction(style: .destructive, title: "Delete") { [weak self] (action, view, completion) in
-                self?.confirmDeleteEvent(event: event, at: indexPath)
+                self?.confirmDeleteEvent(at: indexPath)
                 completion(false)
             }
             deleteAction.backgroundColor = .fourthColor
@@ -1852,9 +1776,11 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
             
             return UISwipeActionsConfiguration(actions: [deleteAction])
         }
-    }
-    
-    private func createPlaceSwipeActions(for indexPath: IndexPath) -> UISwipeActionsConfiguration {
+        
+        // Handle places section
+        guard indexPath.row < places.count else {
+            return UISwipeActionsConfiguration(actions: [])
+        }
         
         let place = places[indexPath.row]
         
@@ -1893,7 +1819,9 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         return UISwipeActionsConfiguration(actions: [deleteAction, copyAction, visitedAction, mapAction])
     }
     
-    private func confirmDeleteEvent(event: Event, at indexPath: IndexPath) {
+    private func confirmDeleteEvent(at indexPath: IndexPath) {
+        guard indexPath.row < events.count else { return }
+        let event = events[indexPath.row]
         let alertController = UIAlertController(
             title: "Remove Event",
             message: "Are you sure you want to remove '\(event.title)' from this collection?",
@@ -1902,7 +1830,7 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         
         let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
         let deleteAction = UIAlertAction(title: "Remove", style: .destructive) { [weak self] _ in
-            self?.deleteEvent(event: event, at: indexPath)
+            self?.deleteEvent(at: indexPath)
         }
         
         alertController.addAction(cancelAction)
@@ -1941,15 +1869,13 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         let db = Firestore.firestore()
         
         // Load user's collections
-        db.collection("users")
-            .document(currentUserId)
-            .collection("collections")
+        FirestorePaths.collections(userId: currentUserId, db: db)
             .whereField("status", isEqualTo: "active")
             .getDocuments { [weak self] snapshot, error in
                 guard let self = self else { return }
                 
                 if let error = error {
-                    print("❌ Error loading collections: \(error.localizedDescription)")
+                    Logger.log("Error loading collections: \(error.localizedDescription)", level: .error, category: "Collection")
                     ToastManager.showToast(message: "Failed to load collections", type: .error)
                     return
                 }
@@ -2035,13 +1961,10 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         
         // Get source collection reference (owner's if shared, user's if owned)
         let sourceRef = collection.userId != currentUserId ?
-            db.collection("users").document(collection.userId).collection("collections").document(collection.id) :
-            db.collection("users").document(currentUserId).collection("collections").document(collection.id)
+            FirestorePaths.collectionDoc(userId: collection.userId, collectionId: collection.id, db: db) :
+            FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collection.id, db: db)
         
-        let targetUserRef = db.collection("users")
-            .document(currentUserId)
-            .collection("collections")
-            .document(toCollectionId)
+        let targetUserRef = FirestorePaths.collectionDoc(userId: currentUserId, collectionId: toCollectionId, db: db)
         
         // Step 1: Get place data from source
         sourceRef.getDocument { [weak self] sourceSnapshot, error in
@@ -2136,7 +2059,7 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
             
             // Get the correct target reference
             let targetRefToUpdate = isTargetShared ?
-                db.collection("users").document(targetOwnerId).collection("collections").document(toCollectionId) :
+                FirestorePaths.collectionDoc(userId: targetOwnerId, collectionId: toCollectionId, db: db) :
                 targetUserRef
             
             // For shared collections, verify owner's collection exists
@@ -2173,7 +2096,7 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
                 batch.commit { [weak self] error in
                     self?.dismiss(animated: true) {
                         if let error = error {
-                            print("❌ Error copying place: \(error.localizedDescription)")
+                            Logger.log("Error copying place: \(error.localizedDescription)", level: .error, category: "Collection")
                             ToastManager.showToast(message: "Failed to copy place", type: .error)
                         } else {
                             ToastManager.showToast(message: "Place copied successfully", type: .success)
@@ -2194,7 +2117,7 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         batch.commit { [weak self] error in
             self?.dismiss(animated: true) {
                 if let error = error {
-                    print("❌ Error copying place: \(error.localizedDescription)")
+                    Logger.log("Error copying place: \(error.localizedDescription)", level: .error, category: "Collection")
                     ToastManager.showToast(message: "Failed to copy place", type: .error)
                 } else {
                     ToastManager.showToast(message: "Place copied successfully", type: .success)
@@ -2204,27 +2127,23 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         }
     }
     
-    private func deleteEvent(event: Event, at indexPath: IndexPath) {
+    private func deleteEvent(at indexPath: IndexPath) {
+        guard indexPath.row < events.count else { return }
+        let event = events[indexPath.row]
         showLoadingAlert(title: "Removing Event")
         
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         let db = Firestore.firestore()
         
         // Get references to both collections
-        let userCollectionRef = db.collection("users")
-            .document(currentUserId)
-            .collection("collections")
-            .document(collection.id)
+        let userCollectionRef = FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collection.id, db: db)
             
-        let ownerCollectionRef = db.collection("users")
-            .document(collection.userId)
-            .collection("collections")
-            .document(collection.id)
+        let ownerCollectionRef = FirestorePaths.collectionDoc(userId: collection.userId, collectionId: collection.id, db: db)
         
         // Get current collection data
         userCollectionRef.getDocument { [weak self] snapshot, error in
             if let error = error {
-                print("❌ Error getting collection: \(error.localizedDescription)")
+                Logger.log("Error getting collection: \(error.localizedDescription)", level: .error, category: "Collection")
                 self?.dismiss(animated: true) {
                     ToastManager.showToast(message: "Failed to remove event", type: .error)
                 }
@@ -2233,7 +2152,7 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
             
             guard let data = snapshot?.data(),
                   var eventsArray = data["events"] as? [[String: Any]] else {
-                print("❌ No events array found in collection")
+                Logger.log("No events array found in collection", level: .error, category: "Collection")
                 self?.dismiss(animated: true) {
                     ToastManager.showToast(message: "Failed to remove event", type: .error)
                 }
@@ -2255,14 +2174,11 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
             batch.commit { error in
                 self?.dismiss(animated: true) {
                     if let error = error {
-                        print("❌ Error removing event: \(error.localizedDescription)")
+                        Logger.log("Error removing event: \(error.localizedDescription)", level: .error, category: "Collection")
                         ToastManager.showToast(message: "Failed to remove event", type: .error)
                     } else {
                         // Update local data
-                        if let index = self?.events.firstIndex(where: { $0.id == event.id }) {
-                            self?.events.remove(at: index)
-                        }
-                        self?.categorizeEvents()
+                        self?.events.remove(at: indexPath.row)
                         self?.tableView.deleteRows(at: [indexPath], with: .automatic)
                         self?.updatePlacesCountLabel()
                         ToastManager.showToast(message: "Event removed", type: .success)
@@ -2285,38 +2201,27 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         let db = Firestore.firestore()
         
         // Get references to both collections
-        let userCollectionRef = db.collection("users")
-            .document(currentUserId)
-            .collection("collections")
-            .document(collection.id)
+        let userCollectionRef = FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collection.id, db: db)
             
-        let ownerCollectionRef = db.collection("users")
-            .document(collection.userId)  // This is the owner's ID
-            .collection("collections")
-            .document(collection.id)
-        
-        print("📄 Firestore path: users/\(currentUserId)/collections/\(collection.id)")
-        print("📄 Owner path: users/\(collection.userId)/collections/\(collection.id)")
+        let ownerCollectionRef = FirestorePaths.collectionDoc(userId: collection.userId, collectionId: collection.id, db: db)
         
         // First get the current collection data
         userCollectionRef.getDocument { [weak self] snapshot, error in
             guard let self = self else { return }
             
             if let error = error {
-                print("Error getting collection: \(error.localizedDescription)")
+                Logger.log("Error getting collection: \(error.localizedDescription)", level: .error, category: "Collection")
                 LoadingView.shared.hideAlertLoading()
                     ToastManager.showToast(message: "Failed to update place status", type: .error)
                 return
             }
             
             guard let data = snapshot?.data() else {
-                print("No data found in collection document")
+                Logger.log("No data found in collection document", level: .error, category: "Collection")
                 LoadingView.shared.hideAlertLoading()
                     ToastManager.showToast(message: "Failed to update place status", type: .error)
                 return
             }
-            
-            print("📄 Collection data before update: \(data)")
             
             // Get current places array
             if var places = data["places"] as? [[String: Any]] {
@@ -2342,7 +2247,7 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
                         LoadingView.shared.hideAlertLoading()
                         
                             if let error = error {
-                                print("Error updating place status: \(error.localizedDescription)")
+                                Logger.log("Error updating place status: \(error.localizedDescription)", level: .error, category: "Collection")
                                 ToastManager.showToast(message: "Failed to update place status", type: .error)
                             } else {
                                 // Update local data
@@ -2353,12 +2258,12 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
                         }
                     }
                 } else {
-                    print("Place not found in collection data")
+                    Logger.log("Place not found in collection data", level: .error, category: "Collection")
                     LoadingView.shared.hideAlertLoading()
                         ToastManager.showToast(message: "Failed to update place status", type: .error)
                 }
             } else {
-                print("No places array found in collection data")
+                Logger.log("No places array found in collection data", level: .error, category: "Collection")
                 LoadingView.shared.hideAlertLoading()
                     ToastManager.showToast(message: "Failed to update place status", type: .error)
             }
@@ -2375,23 +2280,14 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
         let db = Firestore.firestore()
         
         // Get references to both collections
-        let userCollectionRef = db.collection("users")
-            .document(currentUserId)
-            .collection("collections")
-            .document(collection.id)
+        let userCollectionRef = FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collection.id, db: db)
             
-        let ownerCollectionRef = db.collection("users")
-            .document(collection.userId)  // This is the owner's ID
-            .collection("collections")
-            .document(collection.id)
-        
-        print("📄 Firestore path: users/\(currentUserId)/collections/\(collection.id)")
-        print("📄 Owner path: users/\(collection.userId)/collections/\(collection.id)")
+        let ownerCollectionRef = FirestorePaths.collectionDoc(userId: collection.userId, collectionId: collection.id, db: db)
         
         // First get the current collection data
         userCollectionRef.getDocument { [weak self] snapshot, error in
             if let error = error {
-                print("Error getting collection: \(error.localizedDescription)")
+                Logger.log("Error getting collection: \(error.localizedDescription)", level: .error, category: "Collection")
                 self?.dismiss(animated: true) {
                     ToastManager.showToast(message: "Failed to remove place", type: .error)
                 }
@@ -2399,14 +2295,12 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
             }
             
             guard let data = snapshot?.data() else {
-                print("No data found in collection document")
+                Logger.log("No data found in collection document", level: .error, category: "Collection")
                 self?.dismiss(animated: true) {
                     ToastManager.showToast(message: "Failed to remove place", type: .error)
                 }
                 return
             }
-            
-            print("📄 Collection data before removal: \(data)")
             
             // Create a mutable copy of the data
             var updatedData = data
@@ -2435,7 +2329,7 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
                 batch.commit { error in
                     self?.dismiss(animated: true) {
                         if let error = error {
-                            print("Error removing place: \(error.localizedDescription)")
+                            Logger.log("Error removing place: \(error.localizedDescription)", level: .error, category: "Collection")
                             ToastManager.showToast(message: "Failed to remove place", type: .error)
                         } else {
                             // Update local data
@@ -2448,7 +2342,7 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
                     }
                 }
             } else {
-                print("No places array found in collection data")
+                Logger.log("No places array found in collection data", level: .error, category: "Collection")
                 self?.dismiss(animated: true) {
                     ToastManager.showToast(message: "Failed to remove place", type: .error)
                 }
@@ -2472,16 +2366,13 @@ extension CollectionPlacesViewController: EditCollectionModalViewControllerDeleg
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         let db = Firestore.firestore()
         
-        db.collection("users")
-            .document(currentUserId)
-            .collection("collections")
-            .document(collection.id)
+        FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collection.id, db: db)
             .getDocument { [weak self] document, error in
                 guard let self = self,
                       let document = document,
                       document.exists,
                       let data = document.data() else {
-                    print("❌ Error fetching updated collection: \(error?.localizedDescription ?? "Unknown error")")
+                    Logger.log("Error fetching updated collection: \(error?.localizedDescription ?? "Unknown error")", level: .error, category: "Collection")
                     return
                 }
                 
@@ -2512,11 +2403,6 @@ extension CollectionPlacesViewController: EditCollectionModalViewControllerDeleg
 // MARK: - ShareCollectionViewControllerDelegate
 extension CollectionPlacesViewController: ShareCollectionViewControllerDelegate {
     func shareCollectionViewController(_ controller: ShareCollectionViewController, didSelectFriends friends: [User]) {
-        print("📤 Received friends in CollectionPlacesViewController:")
-        friends.forEach { friend in
-            print("📤 Friend ID: \(friend.id), Name: \(friend.name)")
-        }
-        
         LoadingView.shared.showOverlayLoading(on: view, message: "Sharing Collection...")
         
         CollectionContainerManager.shared.shareCollection(collection, with: friends) { [weak self] error in
@@ -2524,7 +2410,7 @@ extension CollectionPlacesViewController: ShareCollectionViewControllerDelegate 
                 LoadingView.shared.hideOverlayLoading()
                 
                 if let error = error {
-                    print("❌ Error sharing collection: \(error.localizedDescription)")
+                    Logger.log("Error sharing collection: \(error.localizedDescription)", level: .error, category: "Collection")
                     ToastManager.showToast(message: "Failed to share collection", type: .error)
                 } else {
                     ToastManager.showToast(message: "Collection shared successfully", type: .success)

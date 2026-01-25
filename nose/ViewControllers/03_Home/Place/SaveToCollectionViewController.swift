@@ -198,7 +198,6 @@ class SaveToCollectionViewController: UIViewController {
     private func loadUserCollections() {
         // Prevent concurrent loads
         guard !isLoadingCollections else {
-            print("⚠️ loadUserCollections() already in progress, skipping")
             return
         }
         
@@ -228,14 +227,12 @@ class SaveToCollectionViewController: UIViewController {
         }
         
         // Load owned collections
-        let ownedCollectionsRef = db.collection("users")
-            .document(currentUserId)
-            .collection("collections")
+        let ownedCollectionsRef = FirestorePaths.collections(userId: currentUserId, db: db)
             .whereField("isOwner", isEqualTo: true)
         
         ownedCollectionsRef.getDocuments { [weak self] snapshot, error in
             if let error = error {
-                print("❌ Error loading owned collections: \(error.localizedDescription)")
+                Logger.log("Error loading owned collections: \(error.localizedDescription)", level: .error, category: "Save")
                 self?.isLoadingCollections = false
                 ownedCollectionsLoaded = true
                 checkAndReload()
@@ -248,13 +245,11 @@ class SaveToCollectionViewController: UIViewController {
                 data["isOwner"] = true
                 
                 if let collection = PlaceCollection(dictionary: data) {
-                    print("✅ Loaded owned collection: '\(collection.name)' (ID: \(collection.id))")
                     // Load member count for this collection
                     memberCountGroup.enter()
                     self?.loadMemberCount(for: collection.id, ownerId: collection.userId, group: memberCountGroup)
                     return collection
                 }
-                print("❌ Failed to parse owned collection: \(document.documentID)")
                 return nil
             } ?? []
             
@@ -269,14 +264,12 @@ class SaveToCollectionViewController: UIViewController {
         }
         
         // Load shared collections
-        let sharedCollectionsRef = db.collection("users")
-            .document(currentUserId)
-            .collection("collections")
+        let sharedCollectionsRef = FirestorePaths.collections(userId: currentUserId, db: db)
             .whereField("isOwner", isEqualTo: false)
         
         sharedCollectionsRef.getDocuments { [weak self] snapshot, error in
             if let error = error {
-                print("❌ Error loading shared collections: \(error.localizedDescription)")
+                Logger.log("Error loading shared collections: \(error.localizedDescription)", level: .error, category: "Save")
                 self?.isLoadingCollections = false
                 sharedCollectionsLoaded = true
                 checkAndReload()
@@ -293,12 +286,11 @@ class SaveToCollectionViewController: UIViewController {
                 // Get the original collection data from the owner's collections
                 if let ownerId = data["userId"] as? String,
                    let collectionId = data["id"] as? String {
-                    print("🔍 Loading original collection from owner: \(ownerId), collection: \(collectionId)")
                     
                     // First check if owner account still exists and is not deleted
-                    db.collection("users").document(ownerId).getDocument { [weak self] ownerSnapshot, ownerError in
+                    FirestorePaths.userDoc(ownerId, db: db).getDocument { [weak self] ownerSnapshot, ownerError in
                         if let ownerError = ownerError {
-                            print("❌ Error checking owner: \(ownerError.localizedDescription)")
+                            Logger.log("Error checking owner: \(ownerError.localizedDescription)", level: .error, category: "Save")
                             group.leave()
                             return
                         }
@@ -308,13 +300,9 @@ class SaveToCollectionViewController: UIViewController {
                         let isOwnerDeleted = ownerData?["isDeleted"] as? Bool ?? false
                         
                         if ownerSnapshot?.exists == false || isOwnerDeleted {
-                            print("🗑️ Owner account deleted, skipping collection: \(collectionId)")
                             
                             // Mark this collection as inactive in user's database
-                            db.collection("users")
-                                .document(currentUserId)
-                                .collection("collections")
-                                .document(collectionId)
+                            FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collectionId, db: db)
                                 .updateData([
                                     "status": "inactive",
                                     "ownerDeleted": true
@@ -325,15 +313,12 @@ class SaveToCollectionViewController: UIViewController {
                         }
                         
                         // Owner exists, proceed to load the collection
-                    db.collection("users")
-                        .document(ownerId)
-                        .collection("collections")
-                        .document(collectionId)
+                    FirestorePaths.collectionDoc(userId: ownerId, collectionId: collectionId, db: db)
                         .getDocument { snapshot, error in
                             defer { group.leave() }
                             
                             if let error = error {
-                                print("❌ Error loading original collection: \(error.localizedDescription)")
+                                Logger.log("Error loading original collection: \(error.localizedDescription)", level: .error, category: "Save")
                                 return
                             }
                             
@@ -343,21 +328,15 @@ class SaveToCollectionViewController: UIViewController {
                                 collectionData["isOwner"] = false
                                 
                                 if let collection = PlaceCollection(dictionary: collectionData) {
-                                    print("✅ Loaded shared collection: '\(collection.name)' (ID: \(collection.id))")
                                     // Load member count for this collection
                                     memberCountGroup.enter()
                                     self?.loadMemberCount(for: collection.id, ownerId: ownerId, group: memberCountGroup)
                                     loadedCollections.append(collection)
-                                } else {
-                                    print("❌ Failed to parse shared collection: \(collectionId)")
                                 }
-                            } else {
-                                print("❌ No data found for shared collection: \(collectionId)")
-                                }
+                            }
                             }
                         }
                 } else {
-                    print("❌ Invalid shared collection data: \(data)")
                     group.leave()
                 }
             }
@@ -398,17 +377,12 @@ class SaveToCollectionViewController: UIViewController {
         let db = Firestore.firestore()
         
         // Get blocked users first
-        db.collection("users")
-            .document(currentUserId)
-            .collection("blocked")
+        FirestorePaths.blocked(userId: currentUserId, db: db)
             .getDocuments { [weak self] blockedSnapshot, _ in
                 let blockedUserIds = blockedSnapshot?.documents.map { $0.documentID } ?? []
                 
                 // Get the collection document from owner
-                db.collection("users")
-                    .document(ownerId)
-                    .collection("collections")
-                    .document(collectionId)
+                FirestorePaths.collectionDoc(userId: ownerId, collectionId: collectionId, db: db)
                     .getDocument { snapshot, _ in
                         defer { group.leave() }
                         
@@ -456,12 +430,8 @@ class SaveToCollectionViewController: UIViewController {
     }
     
     private func savePlaceToCollection(place: GMSPlace, collection: PlaceCollection) {
-        print("💾 Saving place '\(place.name ?? "Unknown")' to collection '\(collection.name)'")
-        print("💾 Current places in collection: \(collection.places.count)")
-        
         // Check if place is already in the collection
         if collection.places.contains(where: { $0.placeId == place.placeID }) {
-            print("⚠️ Place is already in this collection")
             showAlert(title: "Already Saved", message: "This place is already saved in this collection.")
             return
         }
@@ -487,22 +457,10 @@ class SaveToCollectionViewController: UIViewController {
         let currentUserId = Auth.auth().currentUser?.uid ?? ""
         
         // Reference to the current user's collection
-        let userCollectionRef = db.collection("users")
-            .document(currentUserId)
-            .collection("collections")
-            .document(collection.id)
-        
-        print("📄 User's collection path: \(userCollectionRef.path)")
+        let userCollectionRef = FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collection.id, db: db)
         
         // If this is a shared collection, also get reference to owner's collection
-        let ownerCollectionRef = collection.isOwner ? nil : db.collection("users")
-            .document(collection.userId)
-            .collection("collections")
-            .document(collection.id)
-        
-        if let ownerRef = ownerCollectionRef {
-            print("📄 Owner's collection path: \(ownerRef.path)")
-        }
+        let ownerCollectionRef = collection.isOwner ? nil : FirestorePaths.collectionDoc(userId: collection.userId, collectionId: collection.id, db: db)
         
         // First, verify both collections exist
         let group = DispatchGroup()
@@ -513,11 +471,10 @@ class SaveToCollectionViewController: UIViewController {
         userCollectionRef.getDocument { snapshot, error in
             defer { group.leave() }
             if let error = error {
-                print("❌ Error checking user collection: \(error.localizedDescription)")
+                Logger.log("Error checking user collection: \(error.localizedDescription)", level: .error, category: "Save")
                 return
             }
             userCollectionExists = snapshot?.exists ?? false
-            print("📄 User collection exists: \(userCollectionExists)")
         }
         
         if let ownerRef = ownerCollectionRef {
@@ -525,11 +482,10 @@ class SaveToCollectionViewController: UIViewController {
             ownerRef.getDocument { snapshot, error in
                 defer { group.leave() }
                 if let error = error {
-                    print("❌ Error checking owner collection: \(error.localizedDescription)")
+                    Logger.log("Error checking owner collection: \(error.localizedDescription)", level: .error, category: "Save")
                     return
                 }
                 ownerCollectionExists = snapshot?.exists ?? false
-                print("📄 Owner collection exists: \(ownerCollectionExists)")
             }
         } else {
             ownerCollectionExists = true // No owner collection to check
@@ -558,8 +514,7 @@ class SaveToCollectionViewController: UIViewController {
                 DispatchQueue.main.async {
                     loadingAlert.dismiss(animated: true) {
                         if let error = error {
-                            print("❌ Error saving place: \(error.localizedDescription)")
-                            print("❌ Error details: \(error)")
+                            Logger.log("Error saving place: \(error.localizedDescription)", level: .error, category: "Save")
                             // Show error alert
                             let errorAlert = UIAlertController(
                                 title: "Error",
@@ -569,7 +524,6 @@ class SaveToCollectionViewController: UIViewController {
                             errorAlert.addAction(UIAlertAction(title: "OK", style: .default))
                             self.present(errorAlert, animated: true)
                         } else {
-                            print("✅ Successfully saved place to collection")
                             // Refresh collections to update the count
                             self.loadCollections()
                             // Post notification to update map immediately
@@ -587,7 +541,6 @@ class SaveToCollectionViewController: UIViewController {
     }
     
     private func saveEventToCollection(event: Event, collection: PlaceCollection) {
-        print("💾 Saving event '\(event.title)' to collection '\(collection.name)'")
         
         // Show loading indicator
         let loadingAlert = UIAlertController(title: "Saving...", message: nil, preferredStyle: .alert)
@@ -612,16 +565,10 @@ class SaveToCollectionViewController: UIViewController {
         let currentUserId = Auth.auth().currentUser?.uid ?? ""
         
         // Reference to the current user's collection
-        let userCollectionRef = db.collection("users")
-            .document(currentUserId)
-            .collection("collections")
-            .document(collection.id)
+        let userCollectionRef = FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collection.id, db: db)
         
         // If this is a shared collection, also get reference to owner's collection
-        let ownerCollectionRef = collection.isOwner ? nil : db.collection("users")
-            .document(collection.userId)
-            .collection("collections")
-            .document(collection.id)
+        let ownerCollectionRef = collection.isOwner ? nil : FirestorePaths.collectionDoc(userId: collection.userId, collectionId: collection.id, db: db)
         
         // Create a batch write
         let batch = db.batch()
@@ -643,7 +590,7 @@ class SaveToCollectionViewController: UIViewController {
             DispatchQueue.main.async {
                 loadingAlert.dismiss(animated: true) {
                     if let error = error {
-                        print("❌ Error saving event: \(error.localizedDescription)")
+                        Logger.log("Error saving event: \(error.localizedDescription)", level: .error, category: "Save")
                         let errorAlert = UIAlertController(
                             title: "Error",
                             message: "Failed to save event. Please try again.",
@@ -652,7 +599,6 @@ class SaveToCollectionViewController: UIViewController {
                         errorAlert.addAction(UIAlertAction(title: "OK", style: .default))
                         self.present(errorAlert, animated: true)
                     } else {
-                        print("✅ Successfully saved event to collection")
                         self.loadCollections()
                         // Post notification to update map immediately
                         NotificationCenter.default.post(name: NSNotification.Name("UpdateMapWithCollections"), object: nil)
@@ -696,7 +642,6 @@ extension SaveToCollectionViewController: UITableViewDelegate, UITableViewDataSo
         let collections = currentTab == .personal ? ownedCollections : sharedCollections
         let collection = collections[indexPath.row]
         
-        print("📱 Configuring cell for collection '\(collection.name)' with \(collection.places.count) places")
         
         var content = cell.defaultContentConfiguration()
         content.text = collection.name
@@ -959,7 +904,6 @@ extension SaveToCollectionViewController: UITableViewDelegate, UITableViewDataSo
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let collections = currentTab == .personal ? ownedCollections : sharedCollections
         selectedCollection = collections[indexPath.row]
-        print("👆 Selected collection '\(selectedCollection?.name ?? "Unknown")' with \(selectedCollection?.places.count ?? 0) places")
         collectionsTableView.reloadData()
         updateSaveButtonState()
     }

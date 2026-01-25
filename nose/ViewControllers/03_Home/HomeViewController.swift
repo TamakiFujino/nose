@@ -460,168 +460,19 @@ final class HomeViewController: UIViewController {
     }
     
     private func loadCollections() {
-        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
-        let db = Firestore.firestore()
-        
-        print("🔍 Loading collections for map: \(currentUserId)")
-        
-        var personalCollections: [PlaceCollection] = []
-        var sharedCollections: [PlaceCollection] = []
-        let group = DispatchGroup()
-        
-        // Load owned collections
-        group.enter()
-        let ownedCollectionsRef = db.collection("users")
-            .document(currentUserId)
-            .collection("collections")
-        
-        ownedCollectionsRef.whereField("isOwner", isEqualTo: true).getDocuments { snapshot, error in
-            defer { group.leave() }
-            
-            if let error = error {
-                print("❌ Error loading owned collections: \(error.localizedDescription)")
-                return
-            }
-            
-            print("📄 Found \(snapshot?.documents.count ?? 0) owned collections")
-            
-            let collections: [PlaceCollection] = snapshot?.documents.compactMap { document in
-                var data = document.data()
-                data["id"] = document.documentID
-                data["isOwner"] = true
-                
-                // If status is missing, treat it as active
-                if data["status"] == nil {
-                    data["status"] = PlaceCollection.Status.active.rawValue
-                }
-                
-                if let collection = PlaceCollection(dictionary: data) {
-                    return collection
-                }
-                return nil
-            } ?? []
-            
-            // Filter to only show active collections
-            personalCollections = collections.filter { $0.status == .active }
-            print("🎯 Active owned collections: \(personalCollections.count)")
-        }
-        
-        // Load shared collections
-        group.enter()
-        let sharedCollectionsRef = db.collection("users")
-            .document(currentUserId)
-            .collection("collections")
-        
-        let sharedGroup = DispatchGroup()
-        var sharedLoadedCollections: [PlaceCollection] = []
-        
-        sharedCollectionsRef.whereField("isOwner", isEqualTo: false).getDocuments { snapshot, error in
-            defer { group.leave() }
-            
-            if let error = error {
-                print("❌ Error loading shared collections: \(error.localizedDescription)")
-                return
-            }
-            
-            print("📄 Found \(snapshot?.documents.count ?? 0) shared collections")
-            
-            guard let documents = snapshot?.documents, !documents.isEmpty else {
-                print("🎯 Active shared collections: 0")
-                // No documents means sharedGroup has no enters, so notify immediately
-                sharedGroup.notify(queue: .main) {
-                    sharedCollections = []
-                }
-                return
-            }
-            
-            documents.forEach { document in
-                sharedGroup.enter()
-                let data = document.data()
-                
-                // Get the original collection data from the owner's collections
-                if let ownerId = data["userId"] as? String,
-                   let collectionId = data["id"] as? String {
-                    
-                    // First check if owner account still exists and is not deleted
-                    db.collection("users").document(ownerId).getDocument { ownerSnapshot, ownerError in
-                        if let ownerError = ownerError {
-                            print("❌ Error checking owner: \(ownerError.localizedDescription)")
-                            sharedGroup.leave()
-                            return
-                        }
-                        
-                        // Check if owner is deleted or doesn't exist
-                        let ownerData = ownerSnapshot?.data()
-                        let isOwnerDeleted = ownerData?["isDeleted"] as? Bool ?? false
-                        
-                        if ownerSnapshot?.exists == false || isOwnerDeleted {
-                            print("🗑️ Owner account deleted, skipping collection: \(collectionId)")
-                            
-                            // Mark this collection as inactive in user's database
-                            db.collection("users")
-                                .document(currentUserId)
-                                .collection("collections")
-                                .document(collectionId)
-                                .updateData([
-                                    "status": "inactive",
-                                    "ownerDeleted": true
-                                ]) { _ in
-                                    sharedGroup.leave()
-                                }
-                            return
-                        }
-                        
-                        // Owner exists, proceed to load the collection
-                    db.collection("users")
-                        .document(ownerId)
-                        .collection("collections")
-                        .document(collectionId)
-                        .getDocument { snapshot, error in
-                            defer { sharedGroup.leave() }
-                            
-                            if let error = error {
-                                print("❌ Error loading original collection: \(error.localizedDescription)")
-                                return
-                            }
-                            
-                            if let originalData = snapshot?.data() {
-                                var collectionData = originalData
-                                collectionData["id"] = collectionId
-                                collectionData["isOwner"] = false
-                                
-                                // If status is missing, treat it as active
-                                if collectionData["status"] == nil {
-                                    collectionData["status"] = PlaceCollection.Status.active.rawValue
-                                }
-                                
-                                if let collection = PlaceCollection(dictionary: collectionData) {
-                                    sharedLoadedCollections.append(collection)
-                                    }
-                                }
-                            }
-                        }
-                } else {
-                    sharedGroup.leave()
-                }
-            }
-        }
-        
-        // When both personal and shared collections queries complete, wait for shared collections details to load
-        group.notify(queue: .main) { [weak self] in
+        CollectionLoadingService.shared.loadCollections(status: .active) { [weak self] result in
             guard let self = self else { return }
             
-            // Wait for shared collections to finish loading, then update map
-            sharedGroup.notify(queue: .main) {
-                // Update sharedCollections with loaded data
-                sharedCollections = sharedLoadedCollections.filter { $0.status == .active }
-                print("🎯 Active shared collections: \(sharedCollections.count)")
-                
+            switch result {
+            case .success(let loadResult):
                 // Combine all collections
-                self.collections = personalCollections + sharedCollections
-                print("✅ Loaded \(self.collections.count) total active collections for map")
+                self.collections = loadResult.owned + loadResult.shared
                 
                 // Show all collection places on the map
                 self.mapManager?.showCollectionPlacesOnMap(self.collections)
+                
+            case .failure(let error):
+                Logger.log("Error loading collections: \(error.localizedDescription)", level: .error, category: "Home")
             }
         }
     }
@@ -660,7 +511,6 @@ final class HomeViewController: UIViewController {
     }
     
     @objc private func refreshCollections() {
-        print("🔄 Refreshing collections on map after update")
         loadCollections()
     }
     
@@ -672,13 +522,11 @@ final class HomeViewController: UIViewController {
             // Don't set camera yet - wait for permission response
         case .restricted, .denied:
             // Location not allowed - show default location if not already set
-            print("Location access denied or restricted - showing default location")
             if !hasSetInitialCamera {
                 setDefaultLocationCamera()
             }
         case .authorizedWhenInUse, .authorizedAlways:
             // Permission granted - wait for current location before setting camera
-            print("Location permission granted - waiting for current location")
             locationManager.startUpdatingLocation()
             // Don't set default camera - wait for location update
         @unknown default:
@@ -789,7 +637,7 @@ final class HomeViewController: UIViewController {
     
     @objc private func newButtonTapped() {
         // TODO: Implement new/create action
-        print("New button tapped")
+        // TODO: Implement new/create action
     }
     
     private func showMessage(title: String, subtitle: String) {
@@ -819,17 +667,15 @@ final class HomeViewController: UIViewController {
     }
     
     private func loadEvents() {
-        print("📍 Loading current and future events for map...")
         EventManager.shared.fetchAllCurrentAndFutureEvents { [weak self] result in
             switch result {
             case .success(let events):
-                print("✅ Loaded \(events.count) events")
                 self?.events = events
                 DispatchQueue.main.async {
                     self?.mapManager?.showEventsOnMap(events)
                 }
             case .failure(let error):
-                print("❌ Failed to load events: \(error.localizedDescription)")
+                Logger.log("Failed to load events: \(error.localizedDescription)", level: .error, category: "Home")
             }
         }
     }
@@ -900,11 +746,13 @@ extension HomeViewController {
 // MARK: - SearchViewControllerDelegate
 extension HomeViewController: SearchViewControllerDelegate {
     func searchViewController(_ controller: SearchViewController, didSelectPlace place: GMSPlace) {
-        mapManager?.showPlaceOnMap(place)
         let detailViewController = PlaceDetailViewController(place: place, isFromCollection: false)
-        // Dismiss the search UI first, then present the detail over current context so the map stays visible
+        // modalPresentationStyle is already set to .pageSheet in PlaceDetailViewController init
+        
+        // Dismiss the search UI first, THEN move camera and present detail
+        // (Camera animation only works when map is visible)
         controller.dismiss(animated: true) {
-            detailViewController.modalPresentationStyle = .overCurrentContext
+            self.mapManager?.showPlaceOnMap(place)
             self.present(detailViewController, animated: true)
         }
     }
@@ -991,7 +839,7 @@ extension HomeViewController: SearchManagerDelegate {
     func searchManager(_ manager: SearchManager, didSelectPlace place: GMSPlace) {
         mapManager?.showPlaceOnMap(place)
         let detailViewController = PlaceDetailViewController(place: place, isFromCollection: false)
-        detailViewController.modalPresentationStyle = .overCurrentContext
+        // modalPresentationStyle is already set to .pageSheet in PlaceDetailViewController init
         // If a SearchViewController is currently presented, dismiss it before presenting details
         if let presented = self.presentedViewController as? SearchViewController {
             presented.dismiss(animated: true) {
@@ -1006,8 +854,6 @@ extension HomeViewController: SearchManagerDelegate {
 // MARK: - CreateEventViewControllerDelegate
 extension HomeViewController: CreateEventViewControllerDelegate {
     func createEventViewController(_ controller: CreateEventViewController, didCreateEvent event: Event) {
-        // Handle the created event
-        print("Event created: \(event.title)")
         // Reload events to show the new one on the map
         loadEvents()
     }
@@ -1016,42 +862,33 @@ extension HomeViewController: CreateEventViewControllerDelegate {
 // MARK: - MapboxMapManagerDelegate
 extension HomeViewController: MapboxMapManagerDelegate {
     func mapboxMapManager(_ manager: MapboxMapManager, didFailWithError error: Error) {
-        // Only log errors that are not common/expected (like permission denied, network issues)
+        // Only log unexpected errors - common location errors are handled silently
         let nsError = error as NSError
         if nsError.domain == "kCLErrorDomain" || (error as? CLError) != nil {
-            // CoreLocation errors - only log if not a common permission/network error
+            // CoreLocation errors - silently handle common permission/network errors
             if let cleError = error as? CLError {
                 switch cleError.code {
-                case .locationUnknown:
-                    // Common when location services are disabled or unavailable
-                    // Don't show error to user - map can still function
-                    print("⚠️ Location unavailable: \(error.localizedDescription)")
-                case .denied, .network:
-                    // Permission denied or network error - user can still use map
-                    print("⚠️ Location access: \(error.localizedDescription)")
+                case .locationUnknown, .denied, .network:
+                    // Common errors - map can still function
+                    break
                 default:
-                    print("❌ Map error: \(error.localizedDescription)")
+                    Logger.log("Map error: \(error.localizedDescription)", level: .error, category: "Home")
                 }
             } else {
                 // Check numeric codes as fallback
                 switch nsError.code {
-                case 0: // kCLErrorLocationUnknown
-                    print("⚠️ Location unavailable: \(error.localizedDescription)")
-                case 1: // kCLErrorDenied
-                    print("⚠️ Location access denied: \(error.localizedDescription)")
-                case 2: // kCLErrorNetwork
-                    print("⚠️ Location network error: \(error.localizedDescription)")
+                case 0, 1, 2: // Common location errors
+                    break
                 default:
-                    print("❌ Map error: \(error.localizedDescription)")
+                    Logger.log("Map error: \(error.localizedDescription)", level: .error, category: "Home")
                 }
             }
         } else {
-            print("❌ Map error: \(error.localizedDescription)")
+            Logger.log("Map error: \(error.localizedDescription)", level: .error, category: "Home")
         }
     }
     
     func mapboxMapManager(_ manager: MapboxMapManager, didTapEventMarker event: Event) {
-        print("🎯 Showing event detail: \(event.title)")
         let eventDetailVC = EventDetailViewController(event: event)
         eventDetailVC.modalPresentationStyle = .overCurrentContext
         eventDetailVC.modalTransitionStyle = .crossDissolve
@@ -1079,11 +916,10 @@ extension HomeViewController: CLLocationManagerDelegate {
     }
     
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        print("Location manager failed with error: \(error.localizedDescription)")
+        Logger.log("Location manager failed: \(error.localizedDescription)", level: .warn, category: "Home")
         
         // If we haven't set initial camera yet and location fails, show default location
         if !hasSetInitialCamera {
-            print("Location failed - falling back to default location")
             setDefaultLocationCamera()
         }
     }

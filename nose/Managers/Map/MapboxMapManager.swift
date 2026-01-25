@@ -94,7 +94,7 @@ final class MapboxMapManager: NSObject {
         
         // Set up map loaded event
         mapView.mapboxMap.onNext(event: .mapLoaded) { [weak self] _ in
-            print("Map style successfully loaded")
+            // Map style loaded
         }
     }
     
@@ -129,7 +129,7 @@ final class MapboxMapManager: NSObject {
             sessionToken: sessionToken
         ) { results, error in
             if let error = error {
-                print("Error searching places: \(error.localizedDescription)")
+                Logger.log("Error searching places: \(error.localizedDescription)", level: .error, category: "Map")
                 return
             }
             
@@ -148,8 +148,6 @@ final class MapboxMapManager: NSObject {
     }
     
     func showPlaceOnMap(_ place: GMSPlace) {
-        Logger.log("showPlaceOnMap: \(place.name ?? "Unknown")", level: .debug, category: "Map")
-        
         // Remove previous search marker if exists
         if let existingAnnotation = searchPlaceAnnotation {
             searchPlaceAnnotationManager?.annotations.removeAll(where: { $0.id == existingAnnotation.id })
@@ -159,31 +157,33 @@ final class MapboxMapManager: NSObject {
         searchPlaceAnnotation = annotation
         searchPlaceAnnotationManager?.annotations.append(annotation)
         
-        // Adjust camera position to account for modal
+        // Calculate offset to position pin above the detail sheet
+        // Shift camera center south so the pin appears in upper 1/3 of screen
         let screenHeight = mapView.bounds.height
-        let modalStartFromTop = 0.6
-        let pinOffsetFromModalTop = 0.3
-        let targetPositionFromTop = modalStartFromTop - pinOffsetFromModalTop
-        let currentPositionFromTop = 0.5
-        let offsetFromTop = screenHeight * (currentPositionFromTop - targetPositionFromTop)
+        let offsetPixels = screenHeight * 0.2  // Move center down by 20% of screen height
         
-        // Calculate latitude offset based on zoom level
+        // Convert pixel offset to latitude offset based on zoom level
         let zoom = Constants.defaultZoom
         let latRad = place.coordinate.latitude * .pi / 180.0
         let metersPerPixel = 156543.03392 * cos(latRad) / pow(2.0, zoom)
-        let offsetMeters = Double(offsetFromTop) * metersPerPixel
+        let offsetMeters = Double(offsetPixels) * metersPerPixel
         let metersPerDegreeLat = 111000.0
-        let offsetLatitude = offsetMeters / metersPerDegreeLat
+        let latitudeOffset = offsetMeters / metersPerDegreeLat
         
-        let adjustedLatitude = place.coordinate.latitude - offsetLatitude
-        
-        let cameraOptions = CameraOptions(
-            center: CLLocationCoordinate2D(latitude: adjustedLatitude, longitude: place.coordinate.longitude),
-            zoom: Constants.defaultZoom
+        // Adjusted center (south of actual location so pin appears higher)
+        let adjustedCenter = CLLocationCoordinate2D(
+            latitude: place.coordinate.latitude - latitudeOffset,
+            longitude: place.coordinate.longitude
         )
-        Logger.log("Animating map to: \(adjustedLatitude), \(place.coordinate.longitude) (adjusted for modal - pin higher)", level: .debug, category: "Map")
-        mapView.camera.ease(to: cameraOptions, duration: 0.5)
         
+        // Move camera with 3D view (pitch) and offset center
+        let cameraOptions = CameraOptions(
+            center: adjustedCenter,
+            zoom: Constants.defaultZoom,
+            pitch: 50  // Enable 3D view for searched places
+        )
+        
+        mapView.camera.fly(to: cameraOptions, duration: 1.0)
         followUserLocation = false
     }
     
@@ -376,7 +376,6 @@ final class MapboxMapManager: NSObject {
             if distance < 30 {
                 if let userInfo = annotation.userInfo,
                    let event = userInfo["event"] as? Event {
-                    print("🎯 Event marker tapped: \(event.title)")
                     delegate?.mapboxMapManager(self, didTapEventMarker: event)
                     return
                 }

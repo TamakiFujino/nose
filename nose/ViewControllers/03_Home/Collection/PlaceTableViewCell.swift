@@ -302,13 +302,11 @@ class PlaceTableViewCell: UITableViewCell {
         
         // Use already loaded image if available
         if !event.images.isEmpty {
-            print("📸 Using loaded event image for: \(event.title)")
             // Verify cell hasn't been reused before setting image
             if currentPlaceId == event.id {
             placeImageView.image = event.images[0]
             }
         } else {
-            print("📥 Need to download event image for: \(event.title)")
             loadEventImage(eventId: event.id, userId: event.userId)
         }
     }
@@ -319,10 +317,7 @@ class PlaceTableViewCell: UITableViewCell {
         placeImageView.tintColor = .thirdColor
         
         let db = Firestore.firestore()
-        db.collection("users")
-            .document(userId)
-            .collection("events")
-            .document(eventId)
+        FirestorePaths.eventDoc(userId: userId, eventId: eventId, db: db)
             .getDocument { [weak self] snapshot, error in
                 guard let self = self else { return }
                 
@@ -330,7 +325,7 @@ class PlaceTableViewCell: UITableViewCell {
                 guard self.currentPlaceId == eventId else { return }
                 
                 if let error = error {
-                    print("❌ Error loading event image: \(error.localizedDescription)")
+                    Logger.log("Error loading event image: \(error.localizedDescription)", level: .error, category: "Collection")
                     return
                 }
                 
@@ -339,7 +334,6 @@ class PlaceTableViewCell: UITableViewCell {
                       let firstImageURL = imageURLs.first,
                       !firstImageURL.isEmpty,
                       let url = URL(string: firstImageURL) else {
-                    print("⚠️ No event image URL found")
                     return
                 }
                 
