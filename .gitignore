@@ -24,6 +24,9 @@ FirebaseConfig/GoogleService-Info-Staging.plist
 FirebaseConfig/GoogleService-Info-Production.plist
 Pods/*GoogleService-Info*.plist
 
+# Firebase CLI cache
+.firebase/
+
 # Local config that may contain secrets
 Config.plist
 serviceAccountKey*.json
@@ -31,9 +34,15 @@ serviceAccountKey*.json
 # Fastlane/Artifacts
 fastlane/report.xml
 fastlane/test_output/
+builds/
+*.ipa
+*.dSYM.zip
 
 # OS files
 .DS_Store
+
+# IDE/Editor files
+.cursor/
 
 # Node/npm caches
 node_modules/

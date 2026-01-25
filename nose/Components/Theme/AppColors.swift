@@ -42,21 +42,24 @@ extension UIColor {
     // Define colors using Hex
     static let firstColor = UIColor(hex: "#FFFFFF") ?? .white
     static let secondColor = UIColor(hex: "#ECEFF4") ?? .lightGray
-    static let thirdColor = UIColor(hex: "#D8DEE9") ?? .lightGray
-    static let fourthColor = UIColor(hex: "#4C566A") ?? .darkGray
-    static let fifthColor = UIColor(hex: "#434C5E") ?? .darkGray
-    static let sixthColor = UIColor(hex: "#3B4252") ?? .black
-    static let redColor = UIColor(hex: "#EE2725") ?? .red
-    static let greenColor = UIColor(hex: "#34c759") ?? .green
-    static let blueColor = UIColor(hex: "#A6B6D3") ?? .blue
-    static let purpleColor = UIColor(hex: "#8E8BBA") ?? .purple
+    static let thirdColor = UIColor(hex: "#ABB0BC") ?? .darkGray
+    static let fourthColor = UIColor(hex: "#3B4252") ?? .black
+    static let redColor = UIColor(hex: "#FF5001") ?? .red
+    static let greenColor = UIColor(hex: "#ABE39C") ?? .green
+    
+    // Theme colors (defined before use in fallbacks)
+    static let themeLightBlue = UIColor(hex: "#BECEFA") ?? .systemBlue
+    static let themeBlue = UIColor(hex: "#6284E6") ?? .systemBlue
+    
+    static let blueColor = UIColor(hex: "#BECEFA") ?? .themeLightBlue
+    static let purpleColor = UIColor(hex: "#6284E6") ?? .themeBlue
 
     // Semantic aliases
     static let backgroundPrimary = UIColor.firstColor
     static let backgroundSecondary = UIColor.secondColor
     static let borderSubtle = UIColor.thirdColor
     static let textSecondary = UIColor.fourthColor
-    static let textPrimary = UIColor.sixthColor
+    static let textPrimary = UIColor.fourthColor
     static let accent = UIColor.blueColor
     static let statusError = UIColor.redColor
     static let statusSuccess = UIColor.greenColor

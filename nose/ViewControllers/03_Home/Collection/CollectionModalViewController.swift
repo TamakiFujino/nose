@@ -84,7 +84,7 @@ class CollectionModalViewController: UIViewController {
         button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
         button.setTitleColor(.systemGray, for: .normal)
         button.backgroundColor = UIColor.systemGray5
-        button.layer.cornerRadius = 8
+        button.layer.cornerRadius = 22 // Perfectly rounded (height 44 / 2)
         button.addTarget(self, action: #selector(cancelButtonTapped), for: .touchUpInside)
         button.translatesAutoresizingMaskIntoConstraints = false
         return button
@@ -96,7 +96,7 @@ class CollectionModalViewController: UIViewController {
         button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
         button.setTitleColor(.white, for: .normal)
         button.backgroundColor = .systemGray4 // Start disabled
-        button.layer.cornerRadius = 8
+        button.layer.cornerRadius = 22 // Perfectly rounded (height 44 / 2)
         button.addTarget(self, action: #selector(saveButtonTapped), for: .touchUpInside)
         button.isEnabled = false
         button.translatesAutoresizingMaskIntoConstraints = false
@@ -291,7 +291,7 @@ class CollectionModalViewController: UIViewController {
     func updateSaveButtonState() {
         let isValid = !collectionName.isEmpty
         saveButton.isEnabled = isValid
-        saveButton.backgroundColor = isValid ? .fourthColor : .systemGray4
+        saveButton.backgroundColor = isValid ? .themeBlue : .systemGray4
     }
     
     func showImagePicker() {

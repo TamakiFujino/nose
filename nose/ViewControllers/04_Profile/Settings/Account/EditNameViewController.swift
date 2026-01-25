@@ -20,11 +20,20 @@ final class EditNameViewController: UIViewController {
         let textField = UITextField()
         textField.translatesAutoresizingMaskIntoConstraints = false
         textField.placeholder = "Enter your name"
-        textField.borderStyle = .roundedRect
+        textField.borderStyle = .none
+        textField.backgroundColor = .secondColor
+        textField.layer.cornerRadius = 8
+        textField.layer.masksToBounds = true
         textField.autocapitalizationType = .words
         textField.returnKeyType = .done
         textField.delegate = self
         textField.addTarget(self, action: #selector(textFieldDidChange), for: .editingChanged)
+        // Add padding for text
+        let paddingView = UIView(frame: CGRect(x: 0, y: 0, width: 12, height: 0))
+        textField.leftView = paddingView
+        textField.leftViewMode = .always
+        textField.rightView = paddingView
+        textField.rightViewMode = .always
         return textField
     }()
     
@@ -39,9 +48,12 @@ final class EditNameViewController: UIViewController {
     }()
     
     private lazy var saveButton: CustomButton = {
-        let button = CustomButton(type: .system)
+        let button = CustomButton()
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setTitle("Save", for: .normal)
+        button.style = .themeBlue
+        button.size = .large
+        button.isPerfectlyRounded = true
         button.addTarget(self, action: #selector(saveButtonTapped), for: .touchUpInside)
         return button
     }()
@@ -75,6 +87,7 @@ final class EditNameViewController: UIViewController {
             nameTextField.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: Constants.standardPadding),
             nameTextField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: Constants.standardPadding),
             nameTextField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -Constants.standardPadding),
+            nameTextField.heightAnchor.constraint(equalToConstant: 56),
             
             characterCountLabel.topAnchor.constraint(equalTo: nameTextField.bottomAnchor, constant: 4),
             characterCountLabel.trailingAnchor.constraint(equalTo: nameTextField.trailingAnchor),

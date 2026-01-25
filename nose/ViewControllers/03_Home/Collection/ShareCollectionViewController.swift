@@ -22,7 +22,7 @@ final class ShareCollectionViewController: UIViewController {
         label.font = .systemFont(ofSize: 14)
         label.textColor = .secondaryLabel
         label.numberOfLines = 0
-        label.text = "Shared users can save spots to this collection, but cannot add friends, delete, or complete the collection."
+        label.text = "Shared users can save spots to this collection, but cannot add friends or delete the collection."
         return label
     }()
     
@@ -36,14 +36,13 @@ final class ShareCollectionViewController: UIViewController {
         return tableView
     }()
     
-    private lazy var shareButton: UIButton = {
-        let button = UIButton(type: .system)
+    private lazy var shareButton: CustomButton = {
+        let button = CustomButton()
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setTitle("Update Sharing", for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
-        button.backgroundColor = .fourthColor
-        button.setTitleColor(.white, for: .normal)
-        button.layer.cornerRadius = 8
+        button.style = .themeBlue
+        button.size = .large
+        button.isPerfectlyRounded = true
         button.addTarget(self, action: #selector(shareButtonTapped), for: .touchUpInside)
         return button
     }()

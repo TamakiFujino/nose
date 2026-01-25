@@ -140,7 +140,7 @@ class ManageEventViewController: UIViewController {
             target: self,
             action: #selector(createEventTapped)
         )
-        addButton.tintColor = .fifthColor
+        addButton.tintColor = .fourthColor
         self.addButton = addButton
         navigationItem.rightBarButtonItem = addButton
         
@@ -237,7 +237,7 @@ class ManageEventViewController: UIViewController {
         if hasUpcomingEvent {
             addButton?.tintColor = .systemGray
         } else {
-            addButton?.tintColor = .fifthColor
+            addButton?.tintColor = .fourthColor
         }
     }
     

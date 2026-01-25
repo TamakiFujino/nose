@@ -53,7 +53,7 @@ final class PlaceDetailViewController: UIViewController {
     private lazy var pageControl: UIPageControl = {
         let pageControl = UIPageControl()
         pageControl.translatesAutoresizingMaskIntoConstraints = false
-        pageControl.currentPageIndicatorTintColor = .fifthColor
+        pageControl.currentPageIndicatorTintColor = .fourthColor
         pageControl.pageIndicatorTintColor = .thirdColor
         return pageControl
     }()
@@ -148,7 +148,7 @@ final class PlaceDetailViewController: UIViewController {
         button.tintColor = .fourthColor
         button.backgroundColor = .white
         button.layer.cornerRadius = 25
-        button.layer.shadowColor = UIColor.sixthColor.cgColor
+        button.layer.shadowColor = UIColor.fourthColor.cgColor
         button.layer.shadowOffset = CGSize(width: 0, height: 2)
         button.layer.shadowRadius = 4
         button.layer.shadowOpacity = 0.2

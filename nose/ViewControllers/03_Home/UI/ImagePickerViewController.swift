@@ -205,9 +205,9 @@ class ImagePickerViewController: UIViewController {
             guard let button = categoryTabStackView.arrangedSubviews[index] as? UIButton else { continue }
             
             let isSelected = category == selectedCategory
-            // Active tab: darker background with white text
+            // Active tab: themeBlue background with white text
             // Inactive tab: secondColor background with black text
-            button.backgroundColor = isSelected ? .fourthColor : .secondColor
+            button.backgroundColor = isSelected ? .themeBlue : .secondColor
             button.setTitleColor(isSelected ? .white : .black, for: .normal)
             button.layer.cornerRadius = 16
         }

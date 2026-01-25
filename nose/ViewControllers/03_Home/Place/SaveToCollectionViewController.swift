@@ -71,13 +71,25 @@ class SaveToCollectionViewController: UIViewController {
         return label
     }()
     
-    private lazy var segmentedControl: UISegmentedControl = {
-        let items = ["Your Collections", "From Friends"]
-        let control = UISegmentedControl(items: items)
-        control.translatesAutoresizingMaskIntoConstraints = false
-        control.selectedSegmentIndex = 0
-        control.addTarget(self, action: #selector(segmentedControlChanged), for: .valueChanged)
-        return control
+    private lazy var categoryTabScrollView: UIScrollView = {
+        let scrollView = UIScrollView()
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.showsHorizontalScrollIndicator = false
+        scrollView.alwaysBounceHorizontal = true
+        scrollView.alwaysBounceVertical = false
+        scrollView.showsVerticalScrollIndicator = false
+        scrollView.isDirectionalLockEnabled = true
+        return scrollView
+    }()
+    
+    private lazy var categoryTabStackView: UIStackView = {
+        let stackView = UIStackView()
+        stackView.axis = .horizontal
+        stackView.spacing = 8
+        stackView.distribution = .fill
+        stackView.alignment = .leading
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        return stackView
     }()
     
     private lazy var collectionsTableView: UITableView = {
@@ -85,6 +97,7 @@ class SaveToCollectionViewController: UIViewController {
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "CollectionCell")
         tableView.delegate = self
         tableView.dataSource = self
+        tableView.separatorStyle = .none
         tableView.translatesAutoresizingMaskIntoConstraints = false
         return tableView
     }()
@@ -104,9 +117,12 @@ class SaveToCollectionViewController: UIViewController {
         return button
     }()
     
-    private lazy var saveButton: UIButton = {
+    private lazy var saveButton: CustomButton = {
         let button = CustomButton()
         button.setTitle("Save", for: .normal)
+        button.style = .themeBlue
+        button.size = .large
+        button.isPerfectlyRounded = true
         button.addTarget(self, action: #selector(saveButtonTapped), for: .touchUpInside)
         button.translatesAutoresizingMaskIntoConstraints = false
         return button
@@ -144,10 +160,14 @@ class SaveToCollectionViewController: UIViewController {
         view.addSubview(closeButton)
         view.addSubview(titleLabel)
         view.addSubview(itemNameLabel)
-        view.addSubview(segmentedControl)
+        view.addSubview(categoryTabScrollView)
+        categoryTabScrollView.addSubview(categoryTabStackView)
         view.addSubview(collectionsTableView)
         view.addSubview(createNewCollectionButton)
         view.addSubview(saveButton)
+        
+        // Setup category tabs
+        setupCategoryTabs()
         
         NSLayoutConstraint.activate([
             // Close button constraints
@@ -165,13 +185,21 @@ class SaveToCollectionViewController: UIViewController {
             itemNameLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             itemNameLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             
-            // Segmented control constraints
-            segmentedControl.topAnchor.constraint(equalTo: itemNameLabel.bottomAnchor, constant: 16),
-            segmentedControl.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            segmentedControl.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            // Category tabs scroll view constraints
+            categoryTabScrollView.topAnchor.constraint(equalTo: itemNameLabel.bottomAnchor, constant: 16),
+            categoryTabScrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            categoryTabScrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            categoryTabScrollView.heightAnchor.constraint(equalToConstant: 30),
+            
+            // Category tabs stack view inside scroll view
+            categoryTabStackView.leadingAnchor.constraint(equalTo: categoryTabScrollView.contentLayoutGuide.leadingAnchor, constant: 16),
+            categoryTabStackView.trailingAnchor.constraint(equalTo: categoryTabScrollView.contentLayoutGuide.trailingAnchor, constant: -16),
+            categoryTabStackView.topAnchor.constraint(equalTo: categoryTabScrollView.contentLayoutGuide.topAnchor),
+            categoryTabStackView.bottomAnchor.constraint(equalTo: categoryTabScrollView.contentLayoutGuide.bottomAnchor),
+            categoryTabStackView.heightAnchor.constraint(equalTo: categoryTabScrollView.frameLayoutGuide.heightAnchor),
             
             // Collections table view constraints
-            collectionsTableView.topAnchor.constraint(equalTo: segmentedControl.bottomAnchor, constant: 16),
+            collectionsTableView.topAnchor.constraint(equalTo: categoryTabScrollView.bottomAnchor, constant: 16),
             collectionsTableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             collectionsTableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             collectionsTableView.bottomAnchor.constraint(equalTo: saveButton.topAnchor, constant: -16),
@@ -367,6 +395,71 @@ class SaveToCollectionViewController: UIViewController {
     
     private func updateSaveButtonState() {
         saveButton.isEnabled = selectedCollection != nil || !newCollectionName.isEmpty
+    }
+    
+    // MARK: - Tab Management
+    private func setupCategoryTabs() {
+        let tabs: [(CollectionTab, String)] = [(.personal, "Your Collections"), (.shared, "From Friends")]
+        for (index, (tab, title)) in tabs.enumerated() {
+            let button = createTabButton(title: title, tag: index, tab: tab)
+            categoryTabStackView.addArrangedSubview(button)
+        }
+        updateTabButtonStates()
+    }
+    
+    private func createTabButton(title: String, tag: Int, tab: CollectionTab) -> UIButton {
+        let button = UIButton(type: .system)
+        button.setTitle(title, for: .normal)
+        button.titleLabel?.font = .systemFont(ofSize: 14, weight: .medium)
+        button.setTitleColor(.black, for: .normal)
+        button.backgroundColor = .secondColor
+        button.layer.cornerRadius = 16
+        button.layer.borderWidth = 0
+        button.layer.borderColor = UIColor.clear.cgColor
+        button.layer.masksToBounds = true
+        button.tag = tag
+        button.addTarget(self, action: #selector(categoryTabTapped(_:)), for: .touchUpInside)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Padding so text doesn't touch edges
+        button.contentEdgeInsets = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
+        
+        // Set height constraint
+        button.heightAnchor.constraint(equalToConstant: 30).isActive = true
+        
+        // Minimum width for easy tapping, but size to content
+        button.widthAnchor.constraint(greaterThanOrEqualToConstant: 60).isActive = true
+        
+        // Allow button to size to content
+        button.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        button.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
+        
+        return button
+    }
+    
+    private func updateTabButtonStates() {
+        let tabs: [CollectionTab] = [.personal, .shared]
+        for (index, tab) in tabs.enumerated() {
+            guard index < categoryTabStackView.arrangedSubviews.count,
+                  let button = categoryTabStackView.arrangedSubviews[index] as? UIButton else { continue }
+            
+            let isSelected = tab == currentTab
+            // Active tab: themeBlue background with white text
+            // Inactive tab: secondColor background with black text
+            button.backgroundColor = isSelected ? .themeBlue : .secondColor
+            button.setTitleColor(isSelected ? .white : .black, for: .normal)
+            button.layer.cornerRadius = 16
+        }
+    }
+    
+    @objc private func categoryTabTapped(_ sender: UIButton) {
+        guard sender.tag < 2 else { return }
+        let tabs: [CollectionTab] = [.personal, .shared]
+        let tab = tabs[sender.tag]
+        currentTab = tab
+        updateTabButtonStates()
+        createNewCollectionButton.isHidden = currentTab == .shared
+        collectionsTableView.reloadData()
     }
     
     private func loadMemberCount(for collectionId: String, ownerId: String, group: DispatchGroup) {
@@ -616,11 +709,6 @@ class SaveToCollectionViewController: UIViewController {
         present(alert, animated: true)
     }
     
-    @objc private func segmentedControlChanged(_ sender: UISegmentedControl) {
-        currentTab = sender.selectedSegmentIndex == 0 ? .personal : .shared
-        createNewCollectionButton.isHidden = currentTab == .shared
-        collectionsTableView.reloadData()
-    }
 }
 
 // MARK: - NewCollectionModalViewControllerDelegate
@@ -675,27 +763,27 @@ extension SaveToCollectionViewController: UITableViewDelegate, UITableViewDataSo
         
         // Places count first
         let placesImageAttachment = NSTextAttachment()
-        placesImageAttachment.image = UIImage(systemName: "bookmark.fill")?.withTintColor(.secondaryLabel)
+        placesImageAttachment.image = UIImage(systemName: "bookmark.fill")?.withTintColor(.thirdColor)
         let placesImageString = NSAttributedString(attachment: placesImageAttachment)
         
         let placesTextString = NSAttributedString(string: " \(placesCount)", attributes: [
-            .foregroundColor: UIColor.secondaryLabel,
+            .foregroundColor: UIColor.thirdColor,
             .font: UIFont.systemFont(ofSize: 14)
         ])
         
         // Member count second
         let memberImageAttachment = NSTextAttachment()
-        memberImageAttachment.image = UIImage(systemName: "person.2.fill")?.withTintColor(.secondaryLabel)
+        memberImageAttachment.image = UIImage(systemName: "person.2.fill")?.withTintColor(.thirdColor)
         let memberImageString = NSAttributedString(attachment: memberImageAttachment)
         
         let memberTextString = NSAttributedString(string: " \(memberCount)", attributes: [
-            .foregroundColor: UIColor.secondaryLabel,
+            .foregroundColor: UIColor.thirdColor,
             .font: UIFont.systemFont(ofSize: 14)
         ])
         
         // No separator between them
         let spaceString = NSAttributedString(string: "  ", attributes: [
-            .foregroundColor: UIColor.secondaryLabel,
+            .foregroundColor: UIColor.thirdColor,
             .font: UIFont.systemFont(ofSize: 14)
         ])
         
@@ -875,6 +963,14 @@ extension SaveToCollectionViewController: UITableViewDelegate, UITableViewDataSo
             SaveToCollectionViewController.imageCache.setObject(image, forKey: urlString as NSString)
             
             DispatchQueue.main.async {
+                // Don't try to reload rows if we're currently loading collections
+                // The full reload will happen when loading completes
+                guard !self.isLoadingCollections else {
+                    // Just update the cache, the table will be reloaded when loading completes
+                    self.loadedIconImages[collectionId] = image
+                    return
+                }
+                
                 // Check if collection still exists in current arrays before updating
                 let collections = self.currentTab == .personal ? self.ownedCollections : self.sharedCollections
                 guard let index = collections.firstIndex(where: { $0.id == collectionId }) else {
@@ -885,7 +981,7 @@ extension SaveToCollectionViewController: UITableViewDelegate, UITableViewDataSo
                 self.loadedIconImages[collectionId] = image
                 
                 // Reload the specific cell if visible and indexPath is valid
-                    let indexPath = IndexPath(row: index, section: 0)
+                let indexPath = IndexPath(row: index, section: 0)
                 let numberOfRows = self.collectionsTableView.numberOfRows(inSection: 0)
                 
                 // Double-check that the indexPath is valid
@@ -896,7 +992,7 @@ extension SaveToCollectionViewController: UITableViewDelegate, UITableViewDataSo
                 }
                 
                 // Safely reload the row
-                        self.collectionsTableView.reloadRows(at: [indexPath], with: .none)
+                self.collectionsTableView.reloadRows(at: [indexPath], with: .none)
             }
         }.resume()
     }

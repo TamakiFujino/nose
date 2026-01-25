@@ -95,14 +95,16 @@ class CollectionPlacesViewController: UIViewController {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = .systemFont(ofSize: 14)
-        label.textColor = .secondaryLabel
+        label.textColor = .thirdColor
         
         // Create attributed string with icon
         let imageAttachment = NSTextAttachment()
-        imageAttachment.image = UIImage(systemName: "person.2.fill")?.withTintColor(.secondaryLabel)
+        imageAttachment.image = UIImage(systemName: "person.2.fill")?.withTintColor(.thirdColor)
         let imageString = NSAttributedString(attachment: imageAttachment)
         
-        let textString = NSAttributedString(string: " 0")
+        let textString = NSAttributedString(string: " 0", attributes: [
+            .foregroundColor: UIColor.thirdColor
+        ])
         let attributedText = NSMutableAttributedString()
         attributedText.append(imageString)
         attributedText.append(textString)
@@ -118,14 +120,16 @@ class CollectionPlacesViewController: UIViewController {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = .systemFont(ofSize: 14)
-        label.textColor = .secondaryLabel
+        label.textColor = .thirdColor
         
         // Create attributed string with icon
         let imageAttachment = NSTextAttachment()
-        imageAttachment.image = UIImage(systemName: "bookmark.fill")?.withTintColor(.secondaryLabel)
+        imageAttachment.image = UIImage(systemName: "bookmark.fill")?.withTintColor(.thirdColor)
         let imageString = NSAttributedString(attachment: imageAttachment)
         
-        let textString = NSAttributedString(string: " 0")
+        let textString = NSAttributedString(string: " 0", attributes: [
+            .foregroundColor: UIColor.thirdColor
+        ])
         let attributedText = NSMutableAttributedString()
         attributedText.append(imageString)
         attributedText.append(textString)
@@ -162,7 +166,7 @@ class CollectionPlacesViewController: UIViewController {
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setTitle("Customize avatar", for: .normal)
         button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
-        button.backgroundColor = .fourthColor
+        button.backgroundColor = .themeBlue
         button.setTitleColor(.white, for: .normal)
         button.layer.cornerRadius = 24 // rounded here only
         button.clipsToBounds = true
@@ -613,9 +617,9 @@ class CollectionPlacesViewController: UIViewController {
                   let button = categoryTabStackView.arrangedSubviews[index] as? UIButton else { continue }
             
             let isSelected = tab == selectedTab
-            // Active tab: darker background with white text
+            // Active tab: themeBlue background with white text
             // Inactive tab: secondColor background with black text
-            button.backgroundColor = isSelected ? .fourthColor : .secondColor
+            button.backgroundColor = isSelected ? .themeBlue : .secondColor
             button.setTitleColor(isSelected ? .white : .black, for: .normal)
             button.layer.cornerRadius = 16
         }
@@ -727,7 +731,7 @@ class CollectionPlacesViewController: UIViewController {
         
         // Update the specific cell directly (without reloading to prevent image flicker)
         if let index = places.firstIndex(where: { $0.placeId == placeId }) {
-            let indexPath = IndexPath(row: index, section: 1)
+            let indexPath = IndexPath(row: index, section: 0)
             if let cell = tableView.cellForRow(at: indexPath) as? PlaceTableViewCell {
                 cell.updateHeartState(isHearted: isHearted, heartCount: currentHearts.count)
             }
@@ -996,10 +1000,12 @@ class CollectionPlacesViewController: UIViewController {
 
     private func updateSharedFriendsLabel() {
         let imageAttachment = NSTextAttachment()
-        imageAttachment.image = UIImage(systemName: "person.2.fill")?.withTintColor(.secondaryLabel)
+        imageAttachment.image = UIImage(systemName: "person.2.fill")?.withTintColor(.thirdColor)
         let imageString = NSAttributedString(attachment: imageAttachment)
         
-        let textString = NSAttributedString(string: " \(sharedFriendsCount)")
+        let textString = NSAttributedString(string: " \(sharedFriendsCount)", attributes: [
+            .foregroundColor: UIColor.thirdColor
+        ])
         
         let attributedText = NSMutableAttributedString()
         attributedText.append(imageString)
@@ -1013,11 +1019,13 @@ class CollectionPlacesViewController: UIViewController {
 
     private func updatePlacesCountLabel() {
         let imageAttachment = NSTextAttachment()
-        imageAttachment.image = UIImage(systemName: "bookmark.fill")?.withTintColor(.secondaryLabel)
+        imageAttachment.image = UIImage(systemName: "bookmark.fill")?.withTintColor(.thirdColor)
         let imageString = NSAttributedString(attachment: imageAttachment)
         
         let totalItems = places.count + events.count
-        let textString = NSAttributedString(string: " \(totalItems)")
+        let textString = NSAttributedString(string: " \(totalItems)", attributes: [
+            .foregroundColor: UIColor.thirdColor
+        ])
         
         let attributedText = NSMutableAttributedString()
         attributedText.append(imageString)
@@ -1117,7 +1125,6 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
             // Place cell
             let cell = tableView.dequeueReusableCell(withIdentifier: "PlaceCell", for: indexPath) as! PlaceTableViewCell
             let place = places[indexPath.row]
-            cell.delegate = self
             
             // Check if current user is a member (can heart spots)
             let currentUserId = Auth.auth().currentUser?.uid ?? ""
@@ -1129,6 +1136,8 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
             let heartCount = heartedUserIds.count
             
             cell.configure(with: place, isHearted: isHearted, heartCount: heartCount, showHeartButton: canHeart)
+            // Set delegate after configure() to ensure placeId is set
+            cell.delegate = self
             return cell
             
         case .events:

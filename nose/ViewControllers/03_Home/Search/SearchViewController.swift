@@ -321,7 +321,7 @@ extension SearchViewController: UITableViewDelegate, UITableViewDataSource {
             let dateString = dateFormatter.string(from: event.dateTime.startDate)
             content.secondaryText = "⚡ \(dateString) • \(event.location.name)"
             content.image = UIImage(systemName: "bolt.fill")
-            content.imageProperties.tintColor = .fifthColor
+            content.imageProperties.tintColor = .fourthColor
         }
         
         cell.contentConfiguration = content

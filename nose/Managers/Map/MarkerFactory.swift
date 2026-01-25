@@ -199,7 +199,7 @@ final class MarkerFactory {
         // Background circle (centered)
         let circleRect = CGRect(x: shadowPadding, y: shadowPadding, width: size, height: size)
         let backgroundCircle = UIView(frame: circleRect)
-        backgroundCircle.backgroundColor = .fifthColor
+        backgroundCircle.backgroundColor = .fourthColor
         backgroundCircle.layer.cornerRadius = size / 2
         backgroundCircle.layer.masksToBounds = true
         backgroundCircle.layer.borderWidth = 3
@@ -228,7 +228,7 @@ final class MarkerFactory {
         
         // Outer circle
         let outerCircle = UIView(frame: CGRect(x: 0, y: 0, width: Constants.markerSize, height: Constants.markerSize))
-        outerCircle.backgroundColor = UIColor.sixthColor.withAlphaComponent(0.3)
+        outerCircle.backgroundColor = UIColor.fourthColor.withAlphaComponent(0.3)
         outerCircle.layer.cornerRadius = Constants.markerSize / 2
         outerCircle.layer.masksToBounds = true
         markerView.addSubview(outerCircle)

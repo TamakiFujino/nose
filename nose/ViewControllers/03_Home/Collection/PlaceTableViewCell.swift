@@ -25,7 +25,7 @@ class PlaceTableViewCell: UITableViewCell {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = .systemFont(ofSize: 16, weight: .medium)
-        label.textColor = .sixthColor
+        label.textColor = .fourthColor
         return label
     }()
 
@@ -180,9 +180,18 @@ class PlaceTableViewCell: UITableViewCell {
     }
     
     @objc private func heartButtonTapped() {
-        guard let placeId = placeId else { return }
+        guard let placeId = placeId else {
+            Logger.log("Heart button tapped but placeId is nil", level: .warn, category: "Collection")
+            return
+        }
+        
+        guard let delegate = delegate else {
+            Logger.log("Heart button tapped but delegate is nil for placeId: \(placeId)", level: .warn, category: "Collection")
+            return
+        }
+        
         let newHeartedState = !isHearted
-        delegate?.placeTableViewCell(self, didTapHeart: placeId, isHearted: newHeartedState)
+        delegate.placeTableViewCell(self, didTapHeart: placeId, isHearted: newHeartedState)
     }
     
     // MARK: - Public Methods
@@ -233,6 +242,7 @@ class PlaceTableViewCell: UITableViewCell {
         
         // Update heart button state and visibility
         heartButton.isSelected = isHearted
+        heartButton.isUserInteractionEnabled = true
         heartCountLabel.text = "\(heartCount)"
         heartContainerView.isHidden = !showHeartButton
         

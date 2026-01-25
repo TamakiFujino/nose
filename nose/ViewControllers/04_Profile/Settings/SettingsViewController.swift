@@ -48,7 +48,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
 
     private func setupNavigationBar() {
         navigationItem.title = "Settings"
-        self.navigationController?.navigationBar.tintColor = .sixthColor
+        self.navigationController?.navigationBar.tintColor = .fourthColor
         
         // Remove any existing right bar button items
         navigationItem.rightBarButtonItems = nil
