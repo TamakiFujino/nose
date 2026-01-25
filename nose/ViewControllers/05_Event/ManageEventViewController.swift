@@ -16,6 +16,7 @@ class ManageEventViewController: UIViewController {
     private var allEvents: [Event] = []
     private var filteredEvents: [Event] = []
     private var isLoading = false
+    private var addButton: UIBarButtonItem?
     
     private enum EventFilter: Int {
         case past = 0
@@ -140,6 +141,7 @@ class ManageEventViewController: UIViewController {
             action: #selector(createEventTapped)
         )
         addButton.tintColor = .fifthColor
+        self.addButton = addButton
         navigationItem.rightBarButtonItem = addButton
         
         // Add subviews
@@ -202,10 +204,12 @@ class ManageEventViewController: UIViewController {
                     self?.allEvents = events.sorted { $0.dateTime.startDate > $1.dateTime.startDate }
                     self?.applyFilter()
                     self?.updateUI()
+                    self?.updateAddButtonState()
                 case .failure(let error):
                     print("❌ Failed to load events: \(error.localizedDescription)")
                     self?.showAlert(title: "Error", message: "Failed to load events. Please try again.")
                     self?.updateUI()
+                    self?.updateAddButtonState()
                 }
             }
         }
@@ -219,6 +223,21 @@ class ManageEventViewController: UIViewController {
             emptyStateView.isHidden = true
             tableView.isHidden = false
             tableView.reloadData()
+        }
+    }
+    
+    private func updateAddButtonState() {
+        let now = Date()
+        // Upcoming events include both current (started but not ended) and future (not started yet) events
+        let upcomingEvents = allEvents.filter { $0.dateTime.endDate >= now }
+        let hasUpcomingEvent = upcomingEvents.count >= 1
+        
+        // Keep button enabled but gray it out to indicate limit is reached
+        // The error message will be shown when tapped
+        if hasUpcomingEvent {
+            addButton?.tintColor = .systemGray
+        } else {
+            addButton?.tintColor = .fifthColor
         }
     }
     
@@ -251,6 +270,17 @@ class ManageEventViewController: UIViewController {
     }
     
     @objc private func createEventTapped() {
+        // Check if user already has an upcoming event
+        let now = Date()
+        let upcomingEvents = allEvents.filter { $0.dateTime.endDate >= now }
+        if upcomingEvents.count >= 1 {
+            showAlert(
+                title: "Event Limit Reached",
+                message: "You can only create one event at a time."
+            )
+            return
+        }
+        
         let createEventVC = CreateEventViewController()
         createEventVC.delegate = self
         let navController = UINavigationController(rootViewController: createEventVC)
@@ -343,6 +373,7 @@ extension ManageEventViewController: UITableViewDelegate, UITableViewDataSource 
                     self?.filteredEvents.remove(at: indexPath.row)
                     self?.tableView.deleteRows(at: [indexPath], with: .automatic)
                     self?.updateUI()
+                    self?.updateAddButtonState()
                     ToastManager.showToast(message: "Event deleted", type: .success)
                 case .failure(let error):
                     print("❌ Failed to delete event: \(error.localizedDescription)")

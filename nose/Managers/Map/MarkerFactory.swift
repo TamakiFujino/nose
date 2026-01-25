@@ -304,25 +304,33 @@ final class MarkerFactory {
         
         markerView.addSubview(backgroundCircle)
         
-        // Priority: iconUrl > iconName
+        // Priority: iconUrl > iconName (with fallback)
+        var iconAdded = false
+        
         if let iconUrl = iconUrl, !iconUrl.isEmpty {
-            // Load custom image from URL, use tighter padding so icon fills the pin
-            let iconSize: CGFloat = size * (isSmall ? 0.55 : 0.7)
-            let iconImageView = UIImageView(frame: CGRect(
-                x: shadowPadding + (size - iconSize) / 2,
-                y: shadowPadding + (size - iconSize) / 2,
-                width: iconSize,
-                height: iconSize
-            ))
-            iconImageView.contentMode = .scaleAspectFit
-            iconImageView.clipsToBounds = false
-            iconImageView.layer.cornerRadius = 0
-            iconImageView.layer.masksToBounds = false
-            markerView.addSubview(iconImageView)
-            
-            // Load image asynchronously
-            loadMarkerIconImage(urlString: iconUrl, imageView: iconImageView)
-        } else if let iconName = iconName, let iconImage = UIImage(systemName: iconName) {
+            // Load custom image from URL synchronously (for annotation creation)
+            // This ensures the image is loaded before the view is converted to an image
+            if let iconImage = loadMarkerIconImageSync(urlString: iconUrl) {
+                let iconSize: CGFloat = size * (isSmall ? 0.55 : 0.7)
+                let iconImageView = UIImageView(frame: CGRect(
+                    x: shadowPadding + (size - iconSize) / 2,
+                    y: shadowPadding + (size - iconSize) / 2,
+                    width: iconSize,
+                    height: iconSize
+                ))
+                iconImageView.image = iconImage
+                iconImageView.contentMode = .scaleAspectFit
+                iconImageView.clipsToBounds = false
+                iconImageView.layer.cornerRadius = 0
+                iconImageView.layer.masksToBounds = false
+                iconImageView.tintColor = nil
+                markerView.addSubview(iconImageView)
+                iconAdded = true
+            }
+        }
+        
+        // Fallback to SF Symbol if iconUrl failed or not available
+        if !iconAdded, let iconName = iconName, let iconImage = UIImage(systemName: iconName) {
             // Use SF Symbol
             let iconSize: CGFloat = size * (isSmall ? 0.55 : 0.7)
             let iconImageView = UIImageView(frame: CGRect(
@@ -366,6 +374,48 @@ final class MarkerFactory {
                 imageView.tintColor = nil
             }
         }.resume()
+    }
+    
+    /// Synchronously loads an image from URL, checking cache first
+    /// Returns the image if available (from cache or downloaded), nil otherwise
+    /// Uses a shorter timeout to avoid long blocking
+    private static func loadMarkerIconImageSync(urlString: String) -> UIImage? {
+        guard let url = URL(string: urlString) else { return nil }
+        
+        // Check cache first (fast path - no blocking)
+        if let cachedImage = MarkerFactory.markerImageCache.object(forKey: urlString as NSString) {
+            return cachedImage
+        }
+        
+        // For uncached images, use a shorter timeout to avoid long blocking
+        // If on main thread, this will block briefly but with a short timeout it's acceptable
+        let semaphore = DispatchSemaphore(value: 0)
+        var loadedImage: UIImage?
+        
+        let request = URLRequest(url: url)
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            defer { semaphore.signal() }
+            
+            guard let data = data,
+                  let image = UIImage(data: data) else {
+                return
+            }
+            
+            // Cache the image
+            MarkerFactory.markerImageCache.setObject(image, forKey: urlString as NSString)
+            loadedImage = image
+        }.resume()
+        
+        // Wait for image to load with shorter timeout (2 seconds instead of 5)
+        // This minimizes blocking time
+        let result = semaphore.wait(timeout: .now() + 2.0)
+        
+        // If timeout occurred, return nil (caller should have fallback)
+        if result == .timedOut {
+            return nil
+        }
+        
+        return loadedImage
     }
     
     private static let markerImageCache = NSCache<NSString, UIImage>()
@@ -421,16 +471,17 @@ final class MarkerFactory {
         let view = createCollectionPlaceMarkerView(iconName: collection.iconName, iconUrl: collection.iconUrl, isSmall: isZoomedOut)
         guard let image = viewToImage(view) else {
             var annotation = PointAnnotation(point: Point(place.coordinate))
+            annotation.userInfo = ["collection": collection, "name": place.name ?? "", "address": place.formattedAddress ?? "", "placeId": place.placeID ?? ""]
             return annotation
         }
         var annotation = PointAnnotation(point: Point(place.coordinate))
         annotation.image = PointAnnotation.Image(image: image, name: "collection-place-marker")
         annotation.iconAnchor = .center
-        annotation.userInfo = ["collection": collection, "name": place.name ?? "", "address": place.formattedAddress ?? ""]
+        annotation.userInfo = ["collection": collection, "name": place.name ?? "", "address": place.formattedAddress ?? "", "placeId": place.placeID ?? ""]
         return annotation
     }
     
-    static func createCollectionPlaceAnnotation(coordinate: CLLocationCoordinate2D, title: String, snippet: String, collection: PlaceCollection, zoomLevel: Float? = nil) -> PointAnnotation {
+    static func createCollectionPlaceAnnotation(coordinate: CLLocationCoordinate2D, title: String, snippet: String, collection: PlaceCollection, placeId: String, zoomLevel: Float? = nil) -> PointAnnotation {
         let isZoomedOut = zoomLevel != nil && zoomLevel! < 12
         let view = createCollectionPlaceMarkerView(iconName: collection.iconName, iconUrl: collection.iconUrl, isSmall: isZoomedOut)
         guard let image = viewToImage(view) else {
@@ -440,7 +491,7 @@ final class MarkerFactory {
         var annotation = PointAnnotation(point: Point(coordinate))
         annotation.image = PointAnnotation.Image(image: image, name: "collection-place-marker")
         annotation.iconAnchor = .center
-        annotation.userInfo = ["collection": collection, "name": title, "address": snippet]
+        annotation.userInfo = ["collection": collection, "name": title, "address": snippet, "placeId": placeId]
         return annotation
     }
     

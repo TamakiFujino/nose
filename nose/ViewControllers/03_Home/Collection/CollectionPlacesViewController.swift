@@ -26,7 +26,6 @@ class CollectionPlacesViewController: UIViewController {
     private var heartDebounceTimer: Timer?
     private let heartDebounceInterval: TimeInterval = 0.8 // Wait 0.8 seconds before writing
     
-    private var isCompleted: Bool = false
     private static let imageCache = NSCache<NSString, UIImage>()
     
     // Tab selection
@@ -218,7 +217,6 @@ class CollectionPlacesViewController: UIViewController {
         preloadCollectionIconIfNeeded()
         loadPlaces()
         loadSharedFriendsCount()
-        checkIfCompleted()
         sessionToken = GMSAutocompleteSessionToken()
 
         // Listen for avatar thumbnail updates
@@ -397,29 +395,12 @@ class CollectionPlacesViewController: UIViewController {
             alertController.addAction(editAction)
         }
         
-        if collection.status == .completed {
-            // Put back collection action
-            let putBackAction = UIAlertAction(title: "Put back collection", style: .default) { [weak self] _ in
-                self?.putBackCollection()
-            }
-            putBackAction.setValue(UIImage(systemName: "arrow.uturn.backward"), forKey: "image")
-            alertController.addAction(putBackAction)
-        } else {
-            // Share with friends action
-            let shareAction = UIAlertAction(title: "Share with Friends", style: .default) { [weak self] _ in
-                self?.shareCollection()
-            }
-            shareAction.setValue(UIImage(systemName: "square.and.arrow.up"), forKey: "image")
-            
-            // Complete collection action
-            let completeAction = UIAlertAction(title: "Complete the Collection", style: .default) { [weak self] _ in
-                self?.completeCollection()
-            }
-            completeAction.setValue(UIImage(systemName: "checkmark.circle"), forKey: "image")
-            
-            alertController.addAction(shareAction)
-            alertController.addAction(completeAction)
+        // Share with friends action
+        let shareAction = UIAlertAction(title: "Share with Friends", style: .default) { [weak self] _ in
+            self?.shareCollection()
         }
+        shareAction.setValue(UIImage(systemName: "square.and.arrow.up"), forKey: "image")
+        alertController.addAction(shareAction)
         
         // Delete collection action
         let deleteAction = UIAlertAction(title: "Delete Collection", style: .destructive) { [weak self] _ in
@@ -543,42 +524,6 @@ class CollectionPlacesViewController: UIViewController {
         present(navController, animated: true)
     }
     
-    private func completeCollection() {
-        let alertController = UIAlertController(
-            title: "Complete Collection",
-            message: "Are you sure you want to mark '\(collection.name)' as completed?",
-            preferredStyle: .alert
-        )
-        
-        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
-        let completeAction = UIAlertAction(title: "Complete", style: .default) { [weak self] _ in
-            self?.markCollectionAsCompleted()
-        }
-        
-        alertController.addAction(cancelAction)
-        alertController.addAction(completeAction)
-        
-        present(alertController, animated: true)
-    }
-    
-    private func markCollectionAsCompleted() {
-        showLoadingAlert(title: "Completing Collection")
-        
-        CollectionContainerManager.shared.completeCollection(collection) { [weak self] error in
-            self?.dismiss(animated: true) {
-                if error != nil {
-                    ToastManager.showToast(message: "Failed to complete collection", type: .error)
-                } else {
-                    ToastManager.showToast(message: "Collection completed", type: .success)
-                    // Dismiss the view controller and post notification
-                    self?.dismiss(animated: true) {
-                        NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
-                    }
-                }
-            }
-        }
-    }
-    
     private func confirmDeleteCollection() {
         // Create a custom alert controller with a more prominent warning
         let alertController = UIAlertController(
@@ -612,23 +557,6 @@ class CollectionPlacesViewController: UIViewController {
                     ToastManager.showToast(message: "Failed to delete collection", type: .error)
                 } else {
                     ToastManager.showToast(message: "Collection deleted", type: .success)
-                    self?.dismiss(animated: true) {
-                        NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
-                    }
-                }
-            }
-        }
-    }
-
-    private func putBackCollection() {
-        showLoadingAlert(title: "Putting back collection")
-        
-        CollectionContainerManager.shared.putBackCollection(collection) { [weak self] error in
-            self?.dismiss(animated: true) {
-                if error != nil {
-                    ToastManager.showToast(message: "Failed to put back collection", type: .error)
-                } else {
-                    ToastManager.showToast(message: "Collection put back", type: .success)
                     self?.dismiss(animated: true) {
                         NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
                     }
@@ -1101,22 +1029,6 @@ class CollectionPlacesViewController: UIViewController {
     
     private func showLoadingAlert(title: String) {
         LoadingView.shared.showAlertLoading(title: title, on: self)
-    }
-
-    private func checkIfCompleted() {
-        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
-        let db = Firestore.firestore()
-        
-        FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collection.id, db: db)
-            .getDocument { [weak self] snapshot, error in
-                if let isCompleted = snapshot?.data()?["isCompleted"] as? Bool {
-                    self?.isCompleted = isCompleted
-                    DispatchQueue.main.async {
-                        // Always show the menu button, but with different actions based on completion status
-                        self?.menuButton.isHidden = false
-                    }
-                }
-            }
     }
 
 //    private func showAvatarCustomization() {

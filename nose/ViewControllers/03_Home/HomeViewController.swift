@@ -21,17 +21,9 @@ final class HomeViewController: UIViewController {
     private var searchResults: [GMSPlace] = []
     private var searchPredictions: [GMSAutocompletePrediction] = []
     private var sessionToken: GMSAutocompleteSessionToken?
-    private var currentDotIndex: Int = 1  // Track current dot index (0: left, 1: middle, 2: right)
     private var collections: [PlaceCollection] = []
     private var events: [Event] = []
     private let locationManager = CLLocationManager()
-    
-    // Add properties to track dots and line
-    private var leftDot: UIView?
-    private var middleDot: UIView?
-    private var rightDot: UIView?
-    private var dotLine: UIView?
-    private var containerView: UIView?
     
     var mapManager: MapboxMapManager?
     private var searchManager: SearchManager?
@@ -41,13 +33,6 @@ final class HomeViewController: UIViewController {
         let view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
         view.backgroundColor = .clear
-        return view
-    }()
-    
-    private lazy var dotSlider: TimelineSliderView = {
-        let view = TimelineSliderView()
-        view.translatesAutoresizingMaskIntoConstraints = false
-        view.delegate = self
         return view
     }()
     
@@ -68,6 +53,16 @@ final class HomeViewController: UIViewController {
             image: UIImage(systemName: "calendar", withConfiguration: footerIconConfig),
             action: #selector(createEventButtonTapped),
             target: self,
+            backgroundColor: .clear,
+            tintColor: .systemGray
+        )
+    }()
+    
+    private lazy var newButton: IconButton = {
+        IconButton(
+            image: UIImage(systemName: "bookmark", withConfiguration: footerIconConfig),
+            action: #selector(newButtonTapped),
+            target: self,
             backgroundColor: .clear
         )
     }()
@@ -76,33 +71,6 @@ final class HomeViewController: UIViewController {
         IconButton(
             image: UIImage(systemName: "magnifyingglass", withConfiguration: footerIconConfig),
             action: #selector(searchButtonTapped),
-            target: self,
-            backgroundColor: .clear
-        )
-    }()
-    
-    private lazy var sparkButton: IconButton = {
-        IconButton(
-            image: UIImage(systemName: "sparkle", withConfiguration: footerIconConfig),
-            action: #selector(sparkButtonTapped),
-            target: self,
-            backgroundColor: .clear
-        )
-    }()
-    
-    private lazy var boxButton: IconButton = {
-        IconButton(
-            image: UIImage(systemName: "archivebox.fill", withConfiguration: footerIconConfig),
-            action: #selector(boxButtonTapped),
-            target: self,
-            backgroundColor: .clear
-        )
-    }()
-    
-    private lazy var newButton: IconButton = {
-        IconButton(
-            image: UIImage(systemName: "flame.fill", withConfiguration: footerIconConfig),
-            action: #selector(newButtonTapped),
             target: self,
             backgroundColor: .clear
         )
@@ -229,13 +197,6 @@ final class HomeViewController: UIViewController {
         return stackView
     }()
     
-    // Container for dynamic buttons (search/spark/box) - they stack in the same position
-    private lazy var dynamicButtonContainer: UIView = {
-        let view = UIView()
-        view.translatesAutoresizingMaskIntoConstraints = false
-        return view
-    }()
-    
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -320,20 +281,12 @@ final class HomeViewController: UIViewController {
         view.backgroundColor = .white
         setupSubviews()
         setupConstraints()
-        
-        // Set initial button visibility based on default selected dot (middle dot, index 1)
-        searchButton.isHidden = false
-        searchButton.alpha = 1
-        sparkButton.isHidden = true
-        sparkButton.alpha = 0
-        boxButton.isHidden = true
-        boxButton.alpha = 0
     }
     
     private func setupSubviews() {
         // Add main views to the view hierarchy
         // Blur overlays are added right after mapView so they're on top of map but below other UI
-        [mapView, topBlurOverlay, bottomBlurOverlay, footerBar, headerView, dotSlider,
+        [mapView, topBlurOverlay, bottomBlurOverlay, footerBar, headerView,
          searchResultsTableView, currentLocationButton, toggle3DButton, messageView].forEach {
             view.addSubview($0)
         }
@@ -341,13 +294,8 @@ final class HomeViewController: UIViewController {
         // Add footer stack view to footer bar
         footerBar.addSubview(footerStackView)
         
-        // Add dynamic buttons to their container (they stack in the same position)
-        [searchButton, sparkButton, boxButton].forEach {
-            dynamicButtonContainer.addSubview($0)
-        }
-        
-        // Add buttons to footer stack view (left to right: profile, event, new, dynamic)
-        [profileButton, createEventButton, newButton, dynamicButtonContainer].forEach {
+        // Add buttons to footer stack view (left to right: profile, event, sparkle, search)
+        [profileButton, createEventButton, newButton, searchButton].forEach {
             footerStackView.addArrangedSubview($0)
         }
         
@@ -380,16 +328,10 @@ final class HomeViewController: UIViewController {
             headerView.topAnchor.constraint(equalTo: view.topAnchor),
             headerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             headerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            headerView.bottomAnchor.constraint(equalTo: dotSlider.bottomAnchor, constant: 16),
-            
-            // Dot slider constraints - just below the status bar (clock/battery area)
-            dotSlider.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            dotSlider.heightAnchor.constraint(equalToConstant: Constants.buttonSize),
-            dotSlider.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            dotSlider.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            headerView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
             
             // Search results table view constraints
-            searchResultsTableView.topAnchor.constraint(equalTo: dotSlider.bottomAnchor, constant: 8),
+            searchResultsTableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
             searchResultsTableView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: Constants.standardPadding),
             searchResultsTableView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -Constants.standardPadding),
             searchResultsTableView.heightAnchor.constraint(equalToConstant: Constants.searchResultsHeight),
@@ -405,18 +347,6 @@ final class HomeViewController: UIViewController {
             footerStackView.trailingAnchor.constraint(equalTo: footerBar.trailingAnchor, constant: -32),
             footerStackView.topAnchor.constraint(equalTo: footerBar.topAnchor, constant: 12),
             footerStackView.heightAnchor.constraint(equalToConstant: Constants.buttonSize),
-            
-            // Dynamic button container constraints - same size as buttons
-            dynamicButtonContainer.widthAnchor.constraint(equalToConstant: Constants.buttonSize),
-            dynamicButtonContainer.heightAnchor.constraint(equalToConstant: Constants.buttonSize),
-            
-            // Dynamic buttons centered in container
-            searchButton.centerXAnchor.constraint(equalTo: dynamicButtonContainer.centerXAnchor),
-            searchButton.centerYAnchor.constraint(equalTo: dynamicButtonContainer.centerYAnchor),
-            sparkButton.centerXAnchor.constraint(equalTo: dynamicButtonContainer.centerXAnchor),
-            sparkButton.centerYAnchor.constraint(equalTo: dynamicButtonContainer.centerYAnchor),
-            boxButton.centerXAnchor.constraint(equalTo: dynamicButtonContainer.centerXAnchor),
-            boxButton.centerYAnchor.constraint(equalTo: dynamicButtonContainer.centerYAnchor),
             
             // Current location button constraints - positioned above footer bar (right side)
             currentLocationButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -Constants.standardPadding),
@@ -601,20 +531,19 @@ final class HomeViewController: UIViewController {
     }
     
     @objc private func createEventButtonTapped() {
-        // Dismiss any open modal first
-        if let presentedVC = presentedViewController {
-            presentedVC.dismiss(animated: true) { [weak self] in
-                let manageEventVC = ManageEventViewController()
-                let navController = UINavigationController(rootViewController: manageEventVC)
-                navController.modalPresentationStyle = .fullScreen
-                self?.present(navController, animated: true)
-            }
-        } else {
-        let manageEventVC = ManageEventViewController()
-        let navController = UINavigationController(rootViewController: manageEventVC)
-        navController.modalPresentationStyle = .fullScreen
-        present(navController, animated: true)
-        }
+        let alertController = UIAlertController(
+            title: "Coming Soon",
+            message: "This feature is coming soon!",
+            preferredStyle: .alert
+        )
+        alertController.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alertController, animated: true)
+    }
+    
+    @objc private func newButtonTapped() {
+        let collectionsVC = CollectionsViewController()
+        collectionsVC.mapManager = mapManager
+        present(collectionsVC, animated: true)
     }
     
     @objc private func searchButtonTapped() {
@@ -622,22 +551,6 @@ final class HomeViewController: UIViewController {
         searchVC.delegate = self
         searchVC.modalPresentationStyle = .fullScreen
         present(searchVC, animated: true)
-    }
-    
-    @objc private func sparkButtonTapped() {
-        let collectionsVC = CollectionsViewController()
-        collectionsVC.mapManager = mapManager
-        present(collectionsVC, animated: true)
-    }
-    
-    @objc private func boxButtonTapped() {
-        let boxVC = BoxViewController()
-        present(boxVC, animated: true)
-    }
-    
-    @objc private func newButtonTapped() {
-        // TODO: Implement new/create action
-        // TODO: Implement new/create action
     }
     
     private func showMessage(title: String, subtitle: String) {
@@ -758,77 +671,6 @@ extension HomeViewController: SearchViewControllerDelegate {
     }
 }
 
-// MARK: - TimelineSliderViewDelegate
-extension HomeViewController: TimelineSliderViewDelegate {
-    func timelineSliderView(_ view: TimelineSliderView, didSelectDotAt index: Int) {
-        // Check if a modal is minimized and should be dismissed
-        if let presentedVC = presentedViewController {
-            // Check if it's a sheet presentation controller
-            if let sheet = presentedVC.sheetPresentationController {
-                // Check if modal is minimized (at small detent, not large)
-                let smallDetentIdentifier = UISheetPresentationController.Detent.Identifier("small")
-                let isMinimized = sheet.selectedDetentIdentifier == smallDetentIdentifier
-                
-                if isMinimized {
-                    // Check which dot corresponds to which modal
-                    let isCollectionsModal = presentedVC is CollectionsViewController && index != 2
-                    let isBoxModal = presentedVC is BoxViewController && index != 0
-                    
-                    // If the new dot selection doesn't match the current modal, dismiss it
-                    if isCollectionsModal || isBoxModal {
-                        presentedVC.dismiss(animated: true, completion: nil)
-                    }
-                }
-            }
-        }
-        
-        currentDotIndex = index
-        
-        // Always show the map view
-        mapView.isHidden = false
-        
-        // Show message based on selected dot
-        switch index {
-        case 0:
-            showMessage(title: "Past", subtitle: "relive the moments")
-        case 1:
-            showMessage(title: "Current", subtitle: "explore what's happening")
-        case 2:
-            showMessage(title: "Future", subtitle: "plan and get ready")
-        default:
-            break
-        }
-        
-        // First hide all buttons
-        searchButton.isHidden = true
-        sparkButton.isHidden = true
-        boxButton.isHidden = true
-        
-        // Then show and animate the appropriate button
-        UIView.animate(withDuration: 0.3, animations: {
-            switch index {
-            case 0: // Left dot - show box
-                self.boxButton.alpha = 1
-                self.boxButton.isHidden = false
-                self.searchButton.alpha = 0
-                self.sparkButton.alpha = 0
-            case 1: // Middle dot - show search
-                self.searchButton.alpha = 1
-                self.searchButton.isHidden = false
-                self.sparkButton.alpha = 0
-                self.boxButton.alpha = 0
-            case 2: // Right dot - show collections
-                self.sparkButton.alpha = 1
-                self.sparkButton.isHidden = false
-                self.searchButton.alpha = 0
-                self.boxButton.alpha = 0
-            default:
-                break
-            }
-        })
-    }
-}
-
 // MARK: - SearchManagerDelegate
 extension HomeViewController: SearchManagerDelegate {
     func searchManager(_ manager: SearchManager, didUpdateResults results: [GMSAutocompletePrediction]) {
@@ -893,6 +735,11 @@ extension HomeViewController: MapboxMapManagerDelegate {
         eventDetailVC.modalPresentationStyle = .overCurrentContext
         eventDetailVC.modalTransitionStyle = .crossDissolve
         present(eventDetailVC, animated: true)
+    }
+    
+    func mapboxMapManager(_ manager: MapboxMapManager, didTapCollectionPlace place: GMSPlace) {
+        let detailVC = PlaceDetailViewController(place: place, isFromCollection: true)
+        present(detailVC, animated: true)
     }
 }
 

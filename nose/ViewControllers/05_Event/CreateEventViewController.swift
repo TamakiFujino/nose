@@ -644,6 +644,37 @@ final class CreateEventViewController: UIViewController {
             return
         }
         
+        // Check if user already has an upcoming event
+        checkUpcomingEventsCount { [weak self] result in
+            guard let self = self else { return }
+            
+            switch result {
+            case .success(let count):
+                if count >= 1 {
+                    DispatchQueue.main.async {
+                        self.showAlert(
+                            title: "Event Limit Reached",
+                            message: "You can only create one event at a time."
+                        )
+                    }
+                    return
+                }
+                
+                // Proceed with event creation
+                DispatchQueue.main.async {
+                    self.proceedWithEventCreation(userId: userId)
+                }
+                
+            case .failure(let error):
+                DispatchQueue.main.async {
+                    self.showAlert(title: "Error", message: "Failed to check existing events. Please try again.")
+                    print("❌ Error checking upcoming events: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+    
+    private func proceedWithEventCreation(userId: String) {
         // Show loading indicator
         showLoadingAlert(title: "Creating Event")
         
@@ -926,6 +957,25 @@ extension CreateEventViewController {
         }
         
         return true
+    }
+    
+    private func checkUpcomingEventsCount(completion: @escaping (Result<Int, Error>) -> Void) {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            completion(.failure(NSError(domain: "CreateEventViewController", code: -1, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])))
+            return
+        }
+        
+        EventManager.shared.fetchEvents(userId: userId) { result in
+            switch result {
+            case .success(let events):
+                let now = Date()
+                // Upcoming events include both current (started but not ended) and future (not started yet) events
+                let upcomingEvents = events.filter { $0.dateTime.endDate >= now }
+                completion(.success(upcomingEvents.count))
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
     }
     
     private func showAlert(title: String, message: String) {

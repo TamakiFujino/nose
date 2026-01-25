@@ -6,6 +6,7 @@ import GooglePlaces
 protocol MapboxMapManagerDelegate: AnyObject {
     func mapboxMapManager(_ manager: MapboxMapManager, didFailWithError error: Error)
     func mapboxMapManager(_ manager: MapboxMapManager, didTapEventMarker event: Event)
+    func mapboxMapManager(_ manager: MapboxMapManager, didTapCollectionPlace place: GMSPlace)
 }
 
 final class MapboxMapManager: NSObject {
@@ -232,6 +233,7 @@ final class MapboxMapManager: NSObject {
                 title: place.name,
                 snippet: place.formattedAddress,
                 collection: collection,
+                placeId: place.placeId,
                 zoomLevel: Float(currentZoom)
             )
             let annotationId = place.placeId
@@ -365,15 +367,10 @@ final class MapboxMapManager: NSObject {
     
     @objc private func handleMapTap(_ gesture: UITapGestureRecognizer) {
         let point = gesture.location(in: mapView)
-        let coordinate = mapView.mapboxMap.coordinate(for: point)
         
         // Check if tap is near any event annotation
         for (_, annotation) in eventAnnotations {
-            let annotationPoint = mapView.mapboxMap.point(for: annotation.point.coordinates)
-            let distance = sqrt(pow(point.x - annotationPoint.x, 2) + pow(point.y - annotationPoint.y, 2))
-            
-            // If tap is within 30 points of annotation
-            if distance < 30 {
+            if isTapNearAnnotation(tapPoint: point, annotation: annotation, tapThreshold: 30) {
                 if let userInfo = annotation.userInfo,
                    let event = userInfo["event"] as? Event {
                     delegate?.mapboxMapManager(self, didTapEventMarker: event)
@@ -381,6 +378,38 @@ final class MapboxMapManager: NSObject {
                 }
             }
         }
+        
+        // Check if tap is near any collection place annotation
+        for (_, annotation) in collectionPlaceAnnotations {
+            if isTapNearAnnotation(tapPoint: point, annotation: annotation, tapThreshold: 30) {
+                if let userInfo = annotation.userInfo,
+                   let placeId = userInfo["placeId"] as? String {
+                    // Fetch place details and notify delegate
+                    PlacesAPIManager.shared.fetchDetailPlaceDetails(placeID: placeId) { [weak self] place in
+                        guard let self = self, let place = place else {
+                            Logger.log("Failed to fetch place details for placeId: \(placeId)", level: .warn, category: "Map")
+                            return
+                        }
+                        DispatchQueue.main.async {
+                            self.delegate?.mapboxMapManager(self, didTapCollectionPlace: place)
+                        }
+                    }
+                    return
+                }
+            }
+        }
+    }
+    
+    /// Checks if a tap point is near an annotation within the specified threshold
+    /// - Parameters:
+    ///   - tapPoint: The tap point in the map view's coordinate system
+    ///   - annotation: The annotation to check
+    ///   - tapThreshold: The maximum distance in points to consider a tap "near" the annotation
+    /// - Returns: True if the tap is within the threshold distance of the annotation
+    private func isTapNearAnnotation(tapPoint: CGPoint, annotation: PointAnnotation, tapThreshold: CGFloat) -> Bool {
+        let annotationPoint = mapView.mapboxMap.point(for: annotation.point.coordinates)
+        let distance = sqrt(pow(tapPoint.x - annotationPoint.x, 2) + pow(tapPoint.y - annotationPoint.y, 2))
+        return distance < tapThreshold
     }
 }
 
