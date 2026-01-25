@@ -8,14 +8,37 @@ import FirebaseAuth
 final class DeepLinkManager {
     static let shared = DeepLinkManager()
     private init() {}
+    
+    // MARK: - Link Generation
+    
+    static func generateCollectionLink(collectionId: String, userId: String) -> String {
+        var components = URLComponents()
+        components.scheme = "nose"
+        components.host = "collection"
+        components.queryItems = [
+            URLQueryItem(name: "collectionId", value: collectionId),
+            URLQueryItem(name: "userId", value: userId)
+        ]
+        return components.url?.absoluteString ?? ""
+    }
 
     func handle(url: URL, in window: UIWindow?) -> Bool {
         Logger.log("Handle URL=\(url.absoluteString)", level: .debug, category: "DeepLink")
         
-        // Simple parsing for nose://open?placeId=...
+        // Simple parsing for nose://open?placeId=... or nose://collection?collectionId=...
         if url.scheme?.lowercased() == "nose" {
             let comps = URLComponents(url: url, resolvingAgainstBaseURL: false)
             if let queryItems = comps?.queryItems {
+                // Check for collection link first
+                if let collectionId = queryItems.first(where: { $0.name == "collectionId" })?.value,
+                   !collectionId.isEmpty,
+                   let userId = queryItems.first(where: { $0.name == "userId" })?.value,
+                   !userId.isEmpty {
+                    Logger.log("Found collectionId=\(collectionId), userId=\(userId)", level: .debug, category: "DeepLink")
+                    openCollectionInApp(collectionId: collectionId, userId: userId, in: window)
+                    return true
+                }
+                // Check for place link
                 if let placeId = queryItems.first(where: { $0.name == "placeId" })?.value, !placeId.isEmpty {
                     Logger.log("Found placeId=\(placeId)", level: .debug, category: "DeepLink")
                     openPlaceInApp(placeId: placeId, in: window)
@@ -380,6 +403,298 @@ final class DeepLinkManager {
         findPlaceAtCoordinates(latitude: latitude, longitude: longitude, in: window)
     }
     
+    private func openCollectionInApp(collectionId: String, userId: String, in window: UIWindow?) {
+        Logger.log("Open collection in app: collectionId=\(collectionId), userId=\(userId)", level: .info, category: "DeepLink")
+        
+        // Ensure user is authenticated
+        guard let currentUserId = Auth.auth().currentUser?.uid else {
+            showAlert(title: "Sign In Required", message: "Please sign in to add this collection.", in: window)
+            return
+        }
+        
+        // Don't allow adding your own collection
+        if currentUserId == userId {
+            showAlert(title: "Already Owned", message: "This is your own collection.", in: window)
+            return
+        }
+        
+        let db = Firestore.firestore()
+        
+        // First, check if the user already has this collection
+        let userCollectionRef = FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collectionId, db: db)
+        
+        userCollectionRef.getDocument { [weak self] userSnapshot, error in
+            guard let self = self else { return }
+            
+            if let error = error {
+                Logger.log("Error checking existing collection: \(error.localizedDescription)", level: .error, category: "DeepLink")
+                self.showAlert(title: "Error", message: "Failed to check collection. Please try again.", in: window)
+                return
+            }
+            
+            // If user already has the collection, just open it
+            if userSnapshot?.exists == true {
+                DispatchQueue.main.async {
+                    self.openCollectionView(collectionId: collectionId, userId: userId, in: window)
+                }
+                return
+            }
+            
+            // Fetch the collection from the owner
+            let ownerCollectionRef = FirestorePaths.collectionDoc(userId: userId, collectionId: collectionId, db: db)
+            
+            ownerCollectionRef.getDocument { [weak self] ownerSnapshot, error in
+                guard let self = self else { return }
+                
+                if let error = error {
+                    Logger.log("Error fetching collection: \(error.localizedDescription)", level: .error, category: "DeepLink")
+                    self.showAlert(title: "Collection Not Found", message: "This collection could not be found.", in: window)
+                    return
+                }
+                
+                guard let ownerData = ownerSnapshot?.data(),
+                      ownerSnapshot?.exists == true else {
+                    self.showAlert(title: "Collection Not Found", message: "This collection could not be found.", in: window)
+                    return
+                }
+                
+                // Parse the collection
+                guard let collection = PlaceCollection(dictionary: ownerData) else {
+                    self.showAlert(title: "Error", message: "Failed to load collection data.", in: window)
+                    return
+                }
+                
+                // Check if collection is active
+                guard collection.status == .active else {
+                    self.showAlert(title: "Collection Unavailable", message: "This collection is no longer available.", in: window)
+                    return
+                }
+                
+                // Check if current user is a friend of the collection owner
+                let friendsRef = db.collection("users")
+                    .document(currentUserId)
+                    .collection("friends")
+                    .document(userId)
+                
+                friendsRef.getDocument { [weak self] friendSnapshot, friendError in
+                    guard let self = self else { return }
+                    
+                    // If not friends, show alert with Add Friend option
+                    if friendSnapshot?.exists != true {
+                        DispatchQueue.main.async {
+                            self.showFriendRequiredAlert(ownerUserId: userId, in: window)
+                        }
+                        return
+                    }
+                    
+                    // If friends, proceed with adding the collection
+                    // Get current members from owner's collection
+                    let currentMembers = ownerData["members"] as? [String] ?? [userId]
+                    
+                    // Create shared collection for current user
+                    // Note: We only create in the current user's path - we cannot update the owner's collection
+                    // because the current user is not yet a member (Firestore permission rules)
+                    var sharedCollectionData: [String: Any] = [
+                        "id": collection.id,
+                        "name": collection.name,
+                        "userId": userId,
+                        "sharedBy": userId,
+                        "createdAt": Timestamp(date: collection.createdAt),
+                        "isOwner": false,
+                        "status": collection.status.rawValue,
+                        "places": collection.places.map { $0.dictionary },
+                        "members": currentMembers + [currentUserId]  // Add current user to members
+                    ]
+                    
+                    // Include iconName if it exists
+                    if let iconName = collection.iconName {
+                        sharedCollectionData["iconName"] = iconName
+                    }
+                    
+                    // Include iconUrl if it exists
+                    if let iconUrl = collection.iconUrl {
+                        sharedCollectionData["iconUrl"] = iconUrl
+                    }
+                    
+                    // Only create the collection in the current user's path
+                    // We cannot update the owner's collection because the current user is not a member yet
+                    // The owner will need to update their collection separately if needed
+                    userCollectionRef.setData(sharedCollectionData) { [weak self] error in
+                        guard let self = self else { return }
+                        
+                        if let error = error {
+                            DispatchQueue.main.async {
+                                Logger.log("Error adding collection: \(error.localizedDescription)", level: .error, category: "DeepLink")
+                                self.showAlert(title: "Error", message: "Failed to add collection. Please try again.", in: window)
+                            }
+                        } else {
+                            Logger.log("Successfully added collection: \(collection.name)", level: .info, category: "DeepLink")
+                            
+                            // Create shared collection object from the data we prepared
+                            guard let sharedCollection = PlaceCollection(dictionary: sharedCollectionData) else {
+                                DispatchQueue.main.async {
+                                    Logger.log("Failed to create shared collection object", level: .error, category: "DeepLink")
+                                    self.showAlert(title: "Error", message: "Failed to open collection. Please try again.", in: window)
+                                }
+                                return
+                            }
+                            
+                            // Fetch owner's name to show in toast
+                            db.collection("users").document(userId).getDocument { [weak self] ownerSnapshot, ownerError in
+                                DispatchQueue.main.async {
+                                    guard let self = self else { return }
+                                    
+                                    let ownerName: String
+                                    if let ownerData = ownerSnapshot?.data(),
+                                       let name = ownerData["name"] as? String {
+                                        ownerName = name
+                                    } else {
+                                        ownerName = "the owner"
+                                    }
+                                    
+                                    // Show toast message
+                                    ToastManager.showToast(
+                                        message: "You joined the collection created by \(ownerName)",
+                                        type: .success
+                                    )
+                                    
+                                    // Post notification to refresh collections
+                                    NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
+                                    
+                                    // Open the collection view directly using the collection we already have
+                                    self.openCollectionViewDirectly(collection: sharedCollection, in: window)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    private func showFriendRequiredAlert(ownerUserId: String, in window: UIWindow?) {
+        // Fetch the owner's user document to get their userId (10-character ID)
+        let db = Firestore.firestore()
+        db.collection("users").document(ownerUserId).getDocument { [weak self] snapshot, error in
+            guard let self = self else { return }
+            
+            let ownerUserIdString: String
+            if let data = snapshot?.data(),
+               let userId = data["userId"] as? String {
+                ownerUserIdString = userId
+            } else {
+                // Fallback to ownerUserId if userId field not found
+                ownerUserIdString = ownerUserId
+            }
+            
+            DispatchQueue.main.async {
+                let alert = UIAlertController(
+                    title: "Friend Required",
+                    message: "To join the collection, you need to be friend with the collection owner.",
+                    preferredStyle: .alert
+                )
+                
+                // OK button
+                alert.addAction(UIAlertAction(title: "OK", style: .default))
+                
+                // Add Friend button
+                alert.addAction(UIAlertAction(title: "Add Friend", style: .default) { [weak self] _ in
+                    self?.navigateToAddFriend(ownerUserId: ownerUserIdString, in: window)
+                })
+                
+                // Present the alert
+                if let root = (window ?? UIApplication.shared.windows.first { $0.isKeyWindow })?.rootViewController {
+                    root.present(alert, animated: true)
+                }
+            }
+        }
+    }
+    
+    private func navigateToAddFriend(ownerUserId: String, in window: UIWindow?) {
+        // Find the current navigation controller or create one
+        guard let rootVC = (window ?? UIApplication.shared.windows.first { $0.isKeyWindow })?.rootViewController else {
+            return
+        }
+        
+        // Try to find existing navigation controller
+        var navController: UINavigationController?
+        
+        if let nav = rootVC as? UINavigationController {
+            navController = nav
+        } else if let tabBar = rootVC as? UITabBarController,
+                  let selectedNav = tabBar.selectedViewController as? UINavigationController {
+            navController = selectedNav
+        } else if let presented = rootVC.presentedViewController as? UINavigationController {
+            navController = presented
+        }
+        
+        // If no navigation controller found, create one
+        if navController == nil {
+            // Find HomeViewController to get its navigation controller
+            if let homeVC = findOrCreateHomeViewController(in: window),
+               let nav = homeVC.navigationController {
+                navController = nav
+            }
+        }
+        
+        // Create and push AddFriendViewController
+        let addFriendVC = AddFriendViewController()
+        
+        // Pre-fill the search bar with the owner's userId
+        addFriendVC.setSearchText(ownerUserId)
+        
+        if let nav = navController {
+            nav.pushViewController(addFriendVC, animated: true)
+        } else {
+            // Fallback: present modally with navigation controller
+            let nav = UINavigationController(rootViewController: addFriendVC)
+            rootVC.present(nav, animated: true)
+        }
+    }
+    
+    private func openCollectionViewDirectly(collection: PlaceCollection, in window: UIWindow?) {
+        DispatchQueue.main.async {
+            // Find or create HomeViewController
+            guard let homeVC = self.findOrCreateHomeViewController(in: window) else {
+                self.showAlert(title: "Error", message: "Could not open the collection.", in: window)
+                return
+            }
+            
+            // Present CollectionPlacesViewController
+            let collectionVC = CollectionPlacesViewController(collection: collection)
+            if let sheet = collectionVC.sheetPresentationController {
+                sheet.detents = [.large()]
+                sheet.prefersGrabberVisible = true
+            }
+            homeVC.present(collectionVC, animated: true)
+        }
+    }
+    
+    private func openCollectionView(collectionId: String, userId: String, in window: UIWindow?) {
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        let db = Firestore.firestore()
+        
+        // Fetch the collection from current user's collections (which may be shared)
+        let userCollectionRef = FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collectionId, db: db)
+        
+        userCollectionRef.getDocument { [weak self] snapshot, error in
+            guard let self = self else { return }
+            
+            if let error = error {
+                Logger.log("Error fetching collection for view: \(error.localizedDescription)", level: .error, category: "DeepLink")
+                return
+            }
+            
+            guard let data = snapshot?.data(),
+                  let collection = PlaceCollection(dictionary: data) else {
+                Logger.log("Failed to parse collection data", level: .error, category: "DeepLink")
+                return
+            }
+            
+            self.openCollectionViewDirectly(collection: collection, in: window)
+        }
+    }
+    
     private func findPlaceAtCoordinates(latitude: Double, longitude: Double, in window: UIWindow?) {
         Logger.log("Finding place at coordinates: \(latitude), \(longitude)", level: .info, category: "DeepLink")
         
@@ -499,11 +814,10 @@ final class DeepLinkManager {
     
     private func showAlert(title: String, message: String, in window: UIWindow?) {
         Logger.log("Alert: \(title) - \(message)", level: .warn, category: "DeepLink")
-        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        let messageModal = MessageModalViewController(title: title, message: message)
         
         if let root = (window ?? UIApplication.shared.windows.first { $0.isKeyWindow })?.rootViewController {
-            root.present(alert, animated: true)
+            root.present(messageModal, animated: true)
         }
     }
 }

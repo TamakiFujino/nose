@@ -531,13 +531,11 @@ final class HomeViewController: UIViewController {
     }
     
     @objc private func createEventButtonTapped() {
-        let alertController = UIAlertController(
+        let messageModal = MessageModalViewController(
             title: "Coming Soon",
-            message: "This feature is coming soon!",
-            preferredStyle: .alert
+            message: "This feature is coming soon!"
         )
-        alertController.addAction(UIAlertAction(title: "OK", style: .default))
-        present(alertController, animated: true)
+        present(messageModal, animated: true)
     }
     
     @objc private func newButtonTapped() {

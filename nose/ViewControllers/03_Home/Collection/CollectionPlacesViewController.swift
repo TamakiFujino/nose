@@ -300,8 +300,8 @@ class CollectionPlacesViewController: UIViewController {
         categoryTabScrollView.addSubview(categoryTabStackView)
         view.addSubview(tableView)
 
-        // Hide menu button if user is not the owner
-        menuButton.isHidden = !collection.isOwner
+        // Show menu button for all collections (owner and shared)
+        menuButton.isHidden = false
         
         // Icon editing is now done through "Edit Collection" menu option, not by tapping icon
         
@@ -390,32 +390,47 @@ class CollectionPlacesViewController: UIViewController {
     @objc private func menuButtonTapped() {
         let alertController = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
         
-        // Edit Collection action (only for owner)
         if collection.isOwner {
+            // Owner menu options
+            // Edit Collection action
             let editAction = UIAlertAction(title: "Edit Collection", style: .default) { [weak self] _ in
                 self?.editCollection()
             }
             editAction.setValue(UIImage(systemName: "pencil"), forKey: "image")
             alertController.addAction(editAction)
+            
+            // Share with friends action
+            let shareAction = UIAlertAction(title: "Share with Friends", style: .default) { [weak self] _ in
+                self?.shareCollection()
+            }
+            shareAction.setValue(UIImage(systemName: "square.and.arrow.up"), forKey: "image")
+            alertController.addAction(shareAction)
+            
+            // Share the link action
+            let shareLinkAction = UIAlertAction(title: "Share the link", style: .default) { [weak self] _ in
+                self?.shareCollectionLink()
+            }
+            shareLinkAction.setValue(UIImage(systemName: "link"), forKey: "image")
+            alertController.addAction(shareLinkAction)
+            
+            // Delete collection action
+            let deleteAction = UIAlertAction(title: "Delete Collection", style: .destructive) { [weak self] _ in
+                self?.confirmDeleteCollection()
+            }
+            deleteAction.setValue(UIImage(systemName: "trash"), forKey: "image")
+            alertController.addAction(deleteAction)
+        } else {
+            // Shared collection menu options
+            // Leave this collection action
+            let leaveAction = UIAlertAction(title: "Leave this collection", style: .destructive) { [weak self] _ in
+                self?.confirmLeaveCollection()
+            }
+            leaveAction.setValue(UIImage(systemName: "rectangle.portrait.and.arrow.right"), forKey: "image")
+            alertController.addAction(leaveAction)
         }
-        
-        // Share with friends action
-        let shareAction = UIAlertAction(title: "Share with Friends", style: .default) { [weak self] _ in
-            self?.shareCollection()
-        }
-        shareAction.setValue(UIImage(systemName: "square.and.arrow.up"), forKey: "image")
-        alertController.addAction(shareAction)
-        
-        // Delete collection action
-        let deleteAction = UIAlertAction(title: "Delete Collection", style: .destructive) { [weak self] _ in
-            self?.confirmDeleteCollection()
-        }
-        deleteAction.setValue(UIImage(systemName: "trash"), forKey: "image")
         
         // Cancel action
         let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
-        
-        alertController.addAction(deleteAction)
         alertController.addAction(cancelAction)
         
         // For iPad support
@@ -528,6 +543,28 @@ class CollectionPlacesViewController: UIViewController {
         present(navController, animated: true)
     }
     
+    private func shareCollectionLink() {
+        // Generate the collection link
+        let link = DeepLinkManager.generateCollectionLink(collectionId: collection.id, userId: collection.userId)
+        
+        // Create share message with collection name
+        let shareText = "Check out this collection: \(collection.name)\n\(link)"
+        
+        // Create activity view controller
+        let activityVC = UIActivityViewController(
+            activityItems: [shareText],
+            applicationActivities: nil
+        )
+        
+        // For iPad support
+        if let popoverController = activityVC.popoverPresentationController {
+            popoverController.sourceView = menuButton
+            popoverController.sourceRect = menuButton.bounds
+        }
+        
+        present(activityVC, animated: true)
+    }
+    
     private func confirmDeleteCollection() {
         // Create a custom alert controller with a more prominent warning
         let alertController = UIAlertController(
@@ -564,6 +601,53 @@ class CollectionPlacesViewController: UIViewController {
                     self?.dismiss(animated: true) {
                         NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
                     }
+                }
+            }
+        }
+    }
+    
+    private func confirmLeaveCollection() {
+        let alertController = UIAlertController(
+            title: "Leave Collection",
+            message: "Are you sure you want to leave '\(collection.name)'? You can rejoin later if you have the link.",
+            preferredStyle: .alert
+        )
+        
+        let leaveAction = UIAlertAction(title: "Leave", style: .destructive) { [weak self] _ in
+            self?.leaveCollection()
+        }
+        
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+        
+        alertController.addAction(leaveAction)
+        alertController.addAction(cancelAction)
+        
+        present(alertController, animated: true)
+    }
+    
+    private func leaveCollection() {
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        let db = Firestore.firestore()
+        
+        // Delete the collection from the current user's collections path only
+        let userCollectionRef = FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collection.id, db: db)
+        
+        userCollectionRef.delete { [weak self] error in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                
+                if let error = error {
+                    Logger.log("Error leaving collection: \(error.localizedDescription)", level: .error, category: "Collection")
+                    ToastManager.showToast(message: "Failed to leave collection", type: .error)
+                } else {
+                    Logger.log("Successfully left collection: \(self.collection.name)", level: .info, category: "Collection")
+                    ToastManager.showToast(message: "You left the collection", type: .success)
+                    
+                    // Post notification to refresh collections
+                    NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
+                    
+                    // Dismiss the view controller
+                    self.dismiss(animated: true)
                 }
             }
         }
@@ -1183,13 +1267,11 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
                 } else {
                     // If we can't fetch the place details, just show a simple alert
                     DispatchQueue.main.async {
-                        let alert = UIAlertController(
+                        let messageModal = MessageModalViewController(
                             title: "Unable to Load Details",
-                            message: "Could not load complete details for \(place.name). Please try again later.",
-                            preferredStyle: .alert
+                            message: "Could not load complete details for \(place.name). Please try again later."
                         )
-                        alert.addAction(UIAlertAction(title: "OK", style: .default))
-                        self?.present(alert, animated: true)
+                        self?.present(messageModal, animated: true)
                     }
                 }
             }

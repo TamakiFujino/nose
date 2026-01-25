@@ -339,9 +339,8 @@ class FriendsViewController: UIViewController {
     }
     
     private func showAlert(title: String, message: String) {
-        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
-        present(alert, animated: true)
+        let messageModal = MessageModalViewController(title: title, message: message)
+        present(messageModal, animated: true)
     }
     
     private func blockUser(_ user: User) {

@@ -609,13 +609,11 @@ class SaveToCollectionViewController: UIViewController {
                         if let error = error {
                             Logger.log("Error saving place: \(error.localizedDescription)", level: .error, category: "Save")
                             // Show error alert
-                            let errorAlert = UIAlertController(
+                            let messageModal = MessageModalViewController(
                                 title: "Error",
-                                message: "Failed to save place. Please try again.",
-                                preferredStyle: .alert
+                                message: "Failed to save place. Please try again."
                             )
-                            errorAlert.addAction(UIAlertAction(title: "OK", style: .default))
-                            self.present(errorAlert, animated: true)
+                            self.present(messageModal, animated: true)
                         } else {
                             // Refresh collections to update the count
                             self.loadCollections()
@@ -684,13 +682,11 @@ class SaveToCollectionViewController: UIViewController {
                 loadingAlert.dismiss(animated: true) {
                     if let error = error {
                         Logger.log("Error saving event: \(error.localizedDescription)", level: .error, category: "Save")
-                        let errorAlert = UIAlertController(
+                        let messageModal = MessageModalViewController(
                             title: "Error",
-                            message: "Failed to save event. Please try again.",
-                            preferredStyle: .alert
+                            message: "Failed to save event. Please try again."
                         )
-                        errorAlert.addAction(UIAlertAction(title: "OK", style: .default))
-                        self.present(errorAlert, animated: true)
+                        self.present(messageModal, animated: true)
                     } else {
                         self.loadCollections()
                         // Post notification to update map immediately
@@ -704,9 +700,8 @@ class SaveToCollectionViewController: UIViewController {
     }
     
     private func showAlert(title: String, message: String) {
-        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
-        present(alert, animated: true)
+        let messageModal = MessageModalViewController(title: title, message: message)
+        present(messageModal, animated: true)
     }
     
 }

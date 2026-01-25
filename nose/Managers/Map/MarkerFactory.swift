@@ -326,6 +326,9 @@ final class MarkerFactory {
                 iconImageView.tintColor = nil
                 markerView.addSubview(iconImageView)
                 iconAdded = true
+                Logger.log("Successfully loaded icon from URL: \(iconUrl)", level: .debug, category: "MarkerFactory")
+            } else {
+                Logger.log("Failed to load icon from URL (timeout or error): \(iconUrl)", level: .warn, category: "MarkerFactory")
             }
         }
         
@@ -343,7 +346,15 @@ final class MarkerFactory {
             iconImageView.tintColor = .systemGray // Darker color since background is light gray
             iconImageView.contentMode = .scaleAspectFit
             markerView.addSubview(iconImageView)
+            iconAdded = true
         }
+        
+        // Ensure view layout is complete before returning
+        markerView.setNeedsLayout()
+        markerView.layoutIfNeeded()
+        
+        // Force a render pass to ensure all subviews are properly rendered
+        markerView.setNeedsDisplay()
         
         return markerView
     }
@@ -406,13 +417,18 @@ final class MarkerFactory {
             loadedImage = image
         }.resume()
         
-        // Wait for image to load with shorter timeout (2 seconds instead of 5)
-        // This minimizes blocking time
-        let result = semaphore.wait(timeout: .now() + 2.0)
+        // Wait for image to load with timeout (3 seconds for better reliability)
+        // This minimizes blocking time while allowing enough time for network requests
+        let result = semaphore.wait(timeout: .now() + 3.0)
         
         // If timeout occurred, return nil (caller should have fallback)
         if result == .timedOut {
+            Logger.log("Image load timeout for URL: \(urlString)", level: .debug, category: "MarkerFactory")
             return nil
+        }
+        
+        if loadedImage == nil {
+            Logger.log("Failed to load image from URL: \(urlString)", level: .debug, category: "MarkerFactory")
         }
         
         return loadedImage
@@ -469,7 +485,13 @@ final class MarkerFactory {
     static func createCollectionPlaceAnnotation(for place: GMSPlace, collection: PlaceCollection, zoomLevel: Float? = nil) -> PointAnnotation {
         let isZoomedOut = zoomLevel != nil && zoomLevel! < 12
         let view = createCollectionPlaceMarkerView(iconName: collection.iconName, iconUrl: collection.iconUrl, isSmall: isZoomedOut)
+        
+        // Ensure view is properly laid out before converting to image
+        view.setNeedsLayout()
+        view.layoutIfNeeded()
+        
         guard let image = viewToImage(view) else {
+            Logger.log("Failed to convert view to image for collection: \(collection.name)", level: .warn, category: "MarkerFactory")
             var annotation = PointAnnotation(point: Point(place.coordinate))
             annotation.userInfo = ["collection": collection, "name": place.name ?? "", "address": place.formattedAddress ?? "", "placeId": place.placeID ?? ""]
             return annotation
@@ -484,7 +506,13 @@ final class MarkerFactory {
     static func createCollectionPlaceAnnotation(coordinate: CLLocationCoordinate2D, title: String, snippet: String, collection: PlaceCollection, placeId: String, zoomLevel: Float? = nil) -> PointAnnotation {
         let isZoomedOut = zoomLevel != nil && zoomLevel! < 12
         let view = createCollectionPlaceMarkerView(iconName: collection.iconName, iconUrl: collection.iconUrl, isSmall: isZoomedOut)
+        
+        // Ensure view is properly laid out before converting to image
+        view.setNeedsLayout()
+        view.layoutIfNeeded()
+        
         guard let image = viewToImage(view) else {
+            Logger.log("Failed to convert view to image for collection: \(collection.name)", level: .warn, category: "MarkerFactory")
             var annotation = PointAnnotation(point: Point(coordinate))
             return annotation
         }
@@ -497,6 +525,29 @@ final class MarkerFactory {
     
     // Helper to convert UIView to UIImage
     private static func viewToImage(_ view: UIView) -> UIImage? {
+        // Ensure view and all subviews are properly laid out
+        view.setNeedsLayout()
+        view.layoutIfNeeded()
+        
+        // Force a render pass
+        view.setNeedsDisplay()
+        
+        // Ensure all image views have their images loaded
+        for subview in view.subviews {
+            if let imageView = subview as? UIImageView {
+                imageView.setNeedsDisplay()
+            }
+            // Recursively check nested subviews
+            for nestedSubview in subview.subviews {
+                if let imageView = nestedSubview as? UIImageView {
+                    imageView.setNeedsDisplay()
+                }
+            }
+        }
+        
+        // Small delay to ensure rendering is complete (runs synchronously on main thread)
+        RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.01))
+        
         UIGraphicsBeginImageContextWithOptions(view.bounds.size, false, UIScreen.main.scale)
         defer { UIGraphicsEndImageContext() }
         guard let context = UIGraphicsGetCurrentContext() else { return nil }

@@ -61,9 +61,11 @@ class NewCollectionModalViewController: CollectionModalViewController {
                 
                 if let error = error {
                     Logger.log("Error creating collection: \(error.localizedDescription)", level: .error, category: "Collection")
-                    let alert = UIAlertController(title: "Error", message: "Failed to create collection. Please try again.", preferredStyle: .alert)
-                    alert.addAction(UIAlertAction(title: "OK", style: .default))
-                    self?.present(alert, animated: true)
+                    let messageModal = MessageModalViewController(
+                        title: "Error",
+                        message: "Failed to create collection. Please try again."
+                    )
+                    self?.present(messageModal, animated: true)
                     return
                 }
                 self?.delegate?.newCollectionModalViewController(self!, didCreateCollection: collectionId)

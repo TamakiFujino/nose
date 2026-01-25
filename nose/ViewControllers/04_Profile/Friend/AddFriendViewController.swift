@@ -112,6 +112,11 @@ class AddFriendViewController: UIViewController {
         loadCurrentUser()
     }
     
+    // MARK: - Public Methods
+    func setSearchText(_ text: String) {
+        searchBar.text = text.uppercased()
+    }
+    
     // MARK: - Setup
     private func setupUI() {
         // set background color
@@ -508,9 +513,13 @@ class AddFriendViewController: UIViewController {
     }
     
     private func showAlert(title: String, message: String, completion: ((UIAlertAction) -> Void)? = nil) {
-        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: completion))
-        present(alert, animated: true)
+        let messageModal = MessageModalViewController(title: title, message: message)
+        if let completion = completion {
+            messageModal.onDismiss = {
+                completion(UIAlertAction())
+            }
+        }
+        present(messageModal, animated: true)
     }
 }
 
