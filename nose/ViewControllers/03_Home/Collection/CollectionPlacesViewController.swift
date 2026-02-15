@@ -55,6 +55,8 @@ class CollectionPlacesViewController: UIViewController {
         button.setImage(UIImage(systemName: "ellipsis"), for: .normal)
         button.tintColor = .fourthColor
         button.addTarget(self, action: #selector(menuButtonTapped), for: .touchUpInside)
+        button.accessibilityIdentifier = "more_button"
+        button.accessibilityLabel = "More"
         return button
     }()
 

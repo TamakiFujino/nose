@@ -37,4 +37,12 @@ post_install do |installer|
       end
     end
   end
+
+  # UI tests run as a separate process and only need XCTest — strip pod linker flags
+  Dir.glob('Pods/Target Support Files/Pods-noseUITests/*.xcconfig') do |xcconfig_path|
+    xcconfig = File.read(xcconfig_path)
+    xcconfig.gsub!(/^OTHER_LDFLAGS\s*=.*$/, 'OTHER_LDFLAGS = $(inherited)')
+    File.write(xcconfig_path, xcconfig)
+    puts "✅ Stripped OTHER_LDFLAGS from #{File.basename(xcconfig_path)}"
+  end
 end

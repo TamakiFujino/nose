@@ -40,12 +40,15 @@ final class HomeViewController: UIViewController {
     private let footerIconConfig = UIImage.SymbolConfiguration(pointSize: 22, weight: .medium)
     
     private lazy var profileButton: IconButton = {
-        IconButton(
+        let button = IconButton(
             image: UIImage(systemName: "person.fill", withConfiguration: footerIconConfig),
             action: #selector(profileButtonTapped),
             target: self,
             backgroundColor: .clear
         )
+        button.accessibilityIdentifier = "personal_library"
+        button.accessibilityLabel = "Personal Library"
+        return button
     }()
     
     private lazy var createEventButton: IconButton = {
@@ -59,21 +62,27 @@ final class HomeViewController: UIViewController {
     }()
     
     private lazy var newButton: IconButton = {
-        IconButton(
+        let button = IconButton(
             image: UIImage(systemName: "bookmark", withConfiguration: footerIconConfig),
             action: #selector(newButtonTapped),
             target: self,
             backgroundColor: .clear
         )
+        button.accessibilityIdentifier = "sparkle"
+        button.accessibilityLabel = "Collections"
+        return button
     }()
     
     private lazy var searchButton: IconButton = {
-        IconButton(
+        let button = IconButton(
             image: UIImage(systemName: "magnifyingglass", withConfiguration: footerIconConfig),
             action: #selector(searchButtonTapped),
             target: self,
             backgroundColor: .clear
         )
+        button.accessibilityIdentifier = "search_button"
+        button.accessibilityLabel = "Search"
+        return button
     }()
     
     private lazy var mapView: MapView = {

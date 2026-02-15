@@ -37,6 +37,8 @@ final class ViewController: UIViewController {
         setupSocialButton(button: button, iconName: "applelogo", title: "Continue with Apple")
         button.addTarget(self, action: #selector(appleButtonTapped), for: .touchUpInside)
         button.alpha = 0 // Initially invisible
+        button.accessibilityIdentifier = "continue_with_apple"
+        button.accessibilityLabel = "Continue with Apple"
         return button
     }()
     
@@ -46,6 +48,8 @@ final class ViewController: UIViewController {
         setupSocialButton(button: button, iconName: "google_logo", title: "Continue with Google")
         button.addTarget(self, action: #selector(googleButtonTapped), for: .touchUpInside)
         button.alpha = 0 // Initially invisible
+        button.accessibilityIdentifier = "continue_with_google"
+        button.accessibilityLabel = "Continue with Google"
         return button
     }()
     
