@@ -6,27 +6,19 @@ protocol TimelineSliderViewDelegate: AnyObject {
 
 final class TimelineSliderView: UIView {
     // MARK: - Properties
-    private var leftDot: UIView? {
-        didSet {
-            leftDot?.accessibilityIdentifier = "left_dot"
-        }
-    }
-
-    private var middleDot: UIView? {
-        didSet {
-            middleDot?.accessibilityIdentifier = "middle_dot"
-        }
-    }
-
-    private var rightDot: UIView? {
-        didSet {
-            rightDot?.accessibilityIdentifier = "right_dot"
-        }
-    }
-
+    private var leftDot: UIView?
+    private var middleDot: UIView?
+    private var rightDot: UIView?
     private var dotLine: UIView?
     private var containerView: UIView?
+    private var selectionRing: UIView?
+    
     private var currentDotIndex: Int = 1  // Track current dot index (0: left, 1: middle, 2: right)
+    
+    // Constraint for animating the selection ring
+    private var ringCenterXToLeft: NSLayoutConstraint?
+    private var ringCenterXToMiddle: NSLayoutConstraint?
+    private var ringCenterXToRight: NSLayoutConstraint?
     
     weak var delegate: TimelineSliderViewDelegate?
     
@@ -49,7 +41,7 @@ final class TimelineSliderView: UIView {
         let container = UIView()
         container.translatesAutoresizingMaskIntoConstraints = false
         container.backgroundColor = UIColor.fourthColor.withAlphaComponent(0.3)
-        container.layer.cornerRadius = 27.5  // Half of height for perfect round
+        container.layer.cornerRadius = 27.5
         addSubview(container)
         self.containerView = container
         
@@ -60,30 +52,42 @@ final class TimelineSliderView: UIView {
         container.addSubview(line)
         self.dotLine = line
         
-        // Create the dots - middle one selected by default
-        let dot1 = createDot(isSelected: false)
-        let dot2 = createDot(isSelected: true)  // Middle dot selected
-        let dot3 = createDot(isSelected: false)
+        // Create the dots
+        let dot1 = createDot()
+        let dot2 = createDot()
+        let dot3 = createDot()
         
-        // Add tap gestures to individual dots
-        let tap1 = UITapGestureRecognizer(target: self, action: #selector(dotTapped(_:)))
-        let tap2 = UITapGestureRecognizer(target: self, action: #selector(dotTapped(_:)))
-        let tap3 = UITapGestureRecognizer(target: self, action: #selector(dotTapped(_:)))
-        
-        dot1.addGestureRecognizer(tap1)
-        dot2.addGestureRecognizer(tap2)
-        dot3.addGestureRecognizer(tap3)
+        dot1.accessibilityIdentifier = "left_dot"
+        dot2.accessibilityIdentifier = "middle_dot"
+        dot3.accessibilityIdentifier = "right_dot"
         
         container.addSubview(dot1)
         container.addSubview(dot2)
         container.addSubview(dot3)
         
-        // Store references to dots
         self.leftDot = dot1
         self.middleDot = dot2
         self.rightDot = dot3
         
-        // Add swipe gesture recognizers
+        // Create the selection ring (sits on top of dots)
+        let ring = UIView()
+        ring.translatesAutoresizingMaskIntoConstraints = false
+        ring.backgroundColor = .clear
+        ring.layer.borderWidth = 2
+        ring.layer.borderColor = UIColor.firstColor.cgColor
+        ring.layer.cornerRadius = 15
+        ring.isUserInteractionEnabled = false
+        container.addSubview(ring)
+        self.selectionRing = ring
+        
+        // Add tap gestures to dots
+        [dot1, dot2, dot3].enumerated().forEach { index, dot in
+            let tap = UITapGestureRecognizer(target: self, action: #selector(dotTapped(_:)))
+            dot.tag = index
+            dot.addGestureRecognizer(tap)
+        }
+        
+        // Add swipe gestures to container
         let leftSwipe = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipe(_:)))
         leftSwipe.direction = .left
         container.addGestureRecognizer(leftSwipe)
@@ -100,30 +104,43 @@ final class TimelineSliderView: UIView {
             container.heightAnchor.constraint(equalToConstant: 55),
             
             // Line constraints
-            dotLine!.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            dotLine!.leadingAnchor.constraint(equalTo: leftDot!.centerXAnchor),
-            dotLine!.trailingAnchor.constraint(equalTo: rightDot!.centerXAnchor),
-            dotLine!.heightAnchor.constraint(equalToConstant: 2),
+            line.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            line.leadingAnchor.constraint(equalTo: dot1.centerXAnchor),
+            line.trailingAnchor.constraint(equalTo: dot3.centerXAnchor),
+            line.heightAnchor.constraint(equalToConstant: 2),
             
             // Dot constraints
-            leftDot!.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            leftDot!.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 16),
-            leftDot!.widthAnchor.constraint(equalToConstant: 30),
-            leftDot!.heightAnchor.constraint(equalToConstant: 30),
+            dot1.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            dot1.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 16),
+            dot1.widthAnchor.constraint(equalToConstant: 30),
+            dot1.heightAnchor.constraint(equalToConstant: 30),
             
-            middleDot!.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            middleDot!.centerXAnchor.constraint(equalTo: container.centerXAnchor),
-            middleDot!.widthAnchor.constraint(equalToConstant: 30),
-            middleDot!.heightAnchor.constraint(equalToConstant: 30),
+            dot2.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            dot2.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            dot2.widthAnchor.constraint(equalToConstant: 30),
+            dot2.heightAnchor.constraint(equalToConstant: 30),
             
-            rightDot!.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            rightDot!.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -16),
-            rightDot!.widthAnchor.constraint(equalToConstant: 30),
-            rightDot!.heightAnchor.constraint(equalToConstant: 30)
+            dot3.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            dot3.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -16),
+            dot3.widthAnchor.constraint(equalToConstant: 30),
+            dot3.heightAnchor.constraint(equalToConstant: 30),
+            
+            // Selection ring constraints (size and Y position)
+            ring.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            ring.widthAnchor.constraint(equalToConstant: 30),
+            ring.heightAnchor.constraint(equalToConstant: 30)
         ])
+        
+        // Create X position constraints for the ring (one for each dot)
+        ringCenterXToLeft = ring.centerXAnchor.constraint(equalTo: dot1.centerXAnchor)
+        ringCenterXToMiddle = ring.centerXAnchor.constraint(equalTo: dot2.centerXAnchor)
+        ringCenterXToRight = ring.centerXAnchor.constraint(equalTo: dot3.centerXAnchor)
+        
+        // Start with middle dot selected
+        ringCenterXToMiddle?.isActive = true
     }
     
-    private func createDot(isSelected: Bool) -> UIView {
+    private func createDot() -> UIView {
         let container = UIView()
         container.translatesAutoresizingMaskIntoConstraints = false
         container.backgroundColor = .clear
@@ -133,11 +150,10 @@ final class TimelineSliderView: UIView {
         dot.translatesAutoresizingMaskIntoConstraints = false
         dot.backgroundColor = .firstColor
         dot.layer.cornerRadius = 8
-        dot.isUserInteractionEnabled = true
+        dot.isUserInteractionEnabled = false
         
         container.addSubview(dot)
         
-        // Setup constraints
         NSLayoutConstraint.activate([
             dot.centerXAnchor.constraint(equalTo: container.centerXAnchor),
             dot.centerYAnchor.constraint(equalTo: container.centerYAnchor),
@@ -145,54 +161,13 @@ final class TimelineSliderView: UIView {
             dot.heightAnchor.constraint(equalToConstant: 16)
         ])
         
-        if isSelected {
-            container.layer.borderWidth = 2
-            container.layer.borderColor = UIColor.firstColor.cgColor
-            container.layer.cornerRadius = 15
-        }
-        
         return container
     }
     
     // MARK: - Actions
     @objc private func dotTapped(_ gesture: UITapGestureRecognizer) {
         guard let dot = gesture.view else { return }
-        
-        // Determine which dot was tapped
-        let segment: Int
-        if dot == leftDot {
-            segment = 0
-        } else if dot == middleDot {
-            segment = 1
-        } else if dot == rightDot {
-            segment = 2
-        } else {
-            return
-        }
-        
-        // Add haptic feedback
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.prepare()
-        generator.impactOccurred()
-        
-        // Update current index
-        currentDotIndex = segment
-        
-        // Update dots using stored references
-        leftDot?.layer.borderWidth = segment == 0 ? 2 : 0
-        leftDot?.layer.borderColor = segment == 0 ? UIColor.firstColor.cgColor : nil
-        leftDot?.layer.cornerRadius = segment == 0 ? 15 : 0
-        
-        middleDot?.layer.borderWidth = segment == 1 ? 2 : 0
-        middleDot?.layer.borderColor = segment == 1 ? UIColor.firstColor.cgColor : nil
-        middleDot?.layer.cornerRadius = segment == 1 ? 15 : 0
-        
-        rightDot?.layer.borderWidth = segment == 2 ? 2 : 0
-        rightDot?.layer.borderColor = segment == 2 ? UIColor.firstColor.cgColor : nil
-        rightDot?.layer.cornerRadius = segment == 2 ? 15 : 0
-        
-        // Notify delegate
-        delegate?.timelineSliderView(self, didSelectDotAt: segment)
+        selectDot(at: dot.tag, animated: true)
     }
     
     @objc private func handleSwipe(_ gesture: UISwipeGestureRecognizer) {
@@ -208,25 +183,44 @@ final class TimelineSliderView: UIView {
         }
         
         if newIndex != currentDotIndex {
-            // Simulate tap on the new dot
-            let dot: UIView?
-            switch newIndex {
-            case 0: dot = leftDot
-            case 1: dot = middleDot
-            case 2: dot = rightDot
-            default: return
-            }
-            
-            if dot != nil {
-                dotTapped(UITapGestureRecognizer(target: self, action: #selector(dotTapped(_:))))
-            }
+            selectDot(at: newIndex, animated: true)
         }
     }
-}
-
-// MARK: - Array Extension
-private extension Array {
-    subscript(safe index: Int) -> Element? {
-        indices.contains(index) ? self[index] : nil
+    
+    private func selectDot(at index: Int, animated: Bool) {
+        guard index >= 0 && index <= 2, index != currentDotIndex else { return }
+        
+        // Deactivate all X constraints
+        ringCenterXToLeft?.isActive = false
+        ringCenterXToMiddle?.isActive = false
+        ringCenterXToRight?.isActive = false
+        
+        // Activate the correct constraint
+        switch index {
+        case 0:
+            ringCenterXToLeft?.isActive = true
+        case 1:
+            ringCenterXToMiddle?.isActive = true
+        case 2:
+            ringCenterXToRight?.isActive = true
+        default:
+            break
+        }
+        
+        // Haptic feedback
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.prepare()
+        generator.impactOccurred()
+        
+        // Animate the change
+        if animated {
+            UIView.animate(withDuration: 0.3, delay: 0, usingSpringWithDamping: 0.7, initialSpringVelocity: 0.5, options: .curveEaseOut) {
+                self.layoutIfNeeded()
+            }
+        }
+        
+        // Update state and notify delegate
+        currentDotIndex = index
+        delegate?.timelineSliderView(self, didSelectDotAt: index)
     }
-} 
+}

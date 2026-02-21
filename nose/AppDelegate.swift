@@ -1,7 +1,7 @@
 import UIKit
 import FirebaseCore
 import GoogleSignIn
-import GoogleMaps
+import MapboxMaps
 import GooglePlaces
 import Firebase
 
@@ -43,13 +43,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Get API keys from Config.plist
         guard let filePath = Bundle.main.path(forResource: "Config", ofType: "plist"),
               let plistDict = NSDictionary(contentsOfFile: filePath) as? [String: Any],
-              let mapsAPIKey = plistDict["GoogleMapsAPIKey"] as? String,
+              let mapboxAccessToken = plistDict["MapboxAccessToken"] as? String,
               let placesAPIKey = plistDict["GooglePlacesAPIKey"] as? String else {
             fatalError("Couldn't find API keys in Config.plist")
         }
         
-        // Configure Google Maps and Places
-        GMSServices.provideAPIKey(mapsAPIKey)
+        // Configure Mapbox - set access token as environment variable
+        // Mapbox Maps SDK v11 will automatically read from environment variable
+        setenv("MAPBOX_ACCESS_TOKEN", mapboxAccessToken, 1)
+        
+        // Configure Google Places (still using Google Places API)
         GMSPlacesClient.provideAPIKey(placesAPIKey)
         
         // Bridge Unity notification fallback (when UnityBridgeShim posts from UnityFramework)

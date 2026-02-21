@@ -65,8 +65,7 @@ class ToSViewController: UIViewController, WKNavigationDelegate {
         loadingView.isHidden = true
         activityIndicator.stopAnimating()
         // Show error alert
-        let alert = UIAlertController(title: "Error", message: "Failed to load content. Please try again.", preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
-        present(alert, animated: true)
+        let messageModal = MessageModalViewController(title: "Error", message: "Failed to load content. Please try again.")
+        present(messageModal, animated: true)
     }
 }

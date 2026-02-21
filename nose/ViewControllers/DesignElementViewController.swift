@@ -193,7 +193,7 @@ final class DesignElementViewController: UIViewController {
             ("first", .firstColor), ("second", .secondColor), ("third", .thirdColor)
         ]))
         inner.addArrangedSubview(colorRow([
-            ("fourth", .fourthColor), ("fifth", .fifthColor), ("sixth", .sixthColor)
+            ("fourth", .fourthColor)
         ]))
         inner.addArrangedSubview(colorRow([
             ("textPrimary", .textPrimary), ("textSecondary", .textSecondary), ("accent", .accent)

@@ -9,14 +9,31 @@ class FriendsViewController: UIViewController {
     private var blockedUsers: [User] = []
     private var currentSegment: Int = 0
     
+    private enum Tab: Int {
+        case friends = 0
+        case blocked = 1
+    }
+    
     // MARK: - UI Components
-    private lazy var segmentedControl: UISegmentedControl = {
-        let items = ["Friends", "Blocked"]
-        let control = UISegmentedControl(items: items)
-        control.translatesAutoresizingMaskIntoConstraints = false
-        control.selectedSegmentIndex = 0
-        control.addTarget(self, action: #selector(segmentChanged(_:)), for: .valueChanged)
-        return control
+    private lazy var categoryTabScrollView: UIScrollView = {
+        let scrollView = UIScrollView()
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.showsHorizontalScrollIndicator = false
+        scrollView.alwaysBounceHorizontal = true
+        scrollView.alwaysBounceVertical = false
+        scrollView.showsVerticalScrollIndicator = false
+        scrollView.isDirectionalLockEnabled = true
+        return scrollView
+    }()
+    
+    private lazy var categoryTabStackView: UIStackView = {
+        let stackView = UIStackView()
+        stackView.axis = .horizontal
+        stackView.spacing = 8
+        stackView.distribution = .fill
+        stackView.alignment = .leading
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        return stackView
     }()
     
     private lazy var tableView: UITableView = {
@@ -49,16 +66,29 @@ class FriendsViewController: UIViewController {
         navigationItem.largeTitleDisplayMode = .never
         
         // Add subviews
-        view.addSubview(segmentedControl)
+        view.addSubview(categoryTabScrollView)
+        categoryTabScrollView.addSubview(categoryTabStackView)
         view.addSubview(tableView)
+        
+        // Setup category tabs
+        setupCategoryTabs()
         
         // Setup constraints
         NSLayoutConstraint.activate([
-            segmentedControl.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
-            segmentedControl.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            segmentedControl.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            // Category tabs scroll view
+            categoryTabScrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
+            categoryTabScrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            categoryTabScrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            categoryTabScrollView.heightAnchor.constraint(equalToConstant: 30),
             
-            tableView.topAnchor.constraint(equalTo: segmentedControl.bottomAnchor, constant: 16),
+            // Category tabs stack view inside scroll view
+            categoryTabStackView.leadingAnchor.constraint(equalTo: categoryTabScrollView.contentLayoutGuide.leadingAnchor, constant: 16),
+            categoryTabStackView.trailingAnchor.constraint(equalTo: categoryTabScrollView.contentLayoutGuide.trailingAnchor, constant: -16),
+            categoryTabStackView.topAnchor.constraint(equalTo: categoryTabScrollView.contentLayoutGuide.topAnchor),
+            categoryTabStackView.bottomAnchor.constraint(equalTo: categoryTabScrollView.contentLayoutGuide.bottomAnchor),
+            categoryTabStackView.heightAnchor.constraint(equalTo: categoryTabScrollView.frameLayoutGuide.heightAnchor),
+            
+            tableView.topAnchor.constraint(equalTo: categoryTabScrollView.bottomAnchor, constant: 16),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
@@ -169,8 +199,68 @@ class FriendsViewController: UIViewController {
     }
     
     // MARK: - Actions
-    @objc private func segmentChanged(_ sender: UISegmentedControl) {
-        currentSegment = sender.selectedSegmentIndex
+    // MARK: - Tab Management
+    private func setupCategoryTabs() {
+        let tabs: [(Tab, String)] = [(.friends, "Friends"), (.blocked, "Blocked")]
+        for (index, (tab, title)) in tabs.enumerated() {
+            let button = createTabButton(title: title, tag: index, tab: tab)
+            categoryTabStackView.addArrangedSubview(button)
+        }
+        updateTabButtonStates()
+    }
+    
+    private func createTabButton(title: String, tag: Int, tab: Tab) -> UIButton {
+        let button = UIButton(type: .system)
+        button.setTitle(title, for: .normal)
+        button.titleLabel?.font = .systemFont(ofSize: 14, weight: .medium)
+        button.setTitleColor(.black, for: .normal)
+        button.backgroundColor = .secondColor
+        button.layer.cornerRadius = 16
+        button.layer.borderWidth = 0
+        button.layer.borderColor = UIColor.clear.cgColor
+        button.layer.masksToBounds = true
+        button.tag = tag
+        button.addTarget(self, action: #selector(categoryTabTapped(_:)), for: .touchUpInside)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Padding so text doesn't touch edges
+        button.contentEdgeInsets = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
+        
+        // Set height constraint
+        button.heightAnchor.constraint(equalToConstant: 30).isActive = true
+        
+        // Minimum width for easy tapping, but size to content
+        button.widthAnchor.constraint(greaterThanOrEqualToConstant: 60).isActive = true
+        
+        // Allow button to size to content
+        button.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        button.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
+        
+        return button
+    }
+    
+    private func updateTabButtonStates() {
+        let tabs: [Tab] = [.friends, .blocked]
+        for (index, tab) in tabs.enumerated() {
+            guard index < categoryTabStackView.arrangedSubviews.count,
+                  let button = categoryTabStackView.arrangedSubviews[index] as? UIButton else { continue }
+            
+            let isSelected = (tab.rawValue == currentSegment)
+            // Active tab: themeBlue background with white text
+            // Inactive tab: secondColor background with black text
+            button.backgroundColor = isSelected ? .themeBlue : .secondColor
+            button.setTitleColor(isSelected ? .white : .black, for: .normal)
+            button.layer.cornerRadius = 16
+        }
+    }
+    
+    // MARK: - Actions
+    @objc private func categoryTabTapped(_ sender: UIButton) {
+        guard sender.tag < 2 else { return }
+        let tabs: [Tab] = [.friends, .blocked]
+        let tab = tabs[sender.tag]
+        currentSegment = tab.rawValue
+        updateTabButtonStates()
         tableView.reloadData()
     }
     
@@ -249,9 +339,8 @@ class FriendsViewController: UIViewController {
     }
     
     private func showAlert(title: String, message: String) {
-        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
-        present(alert, animated: true)
+        let messageModal = MessageModalViewController(title: title, message: message)
+        present(messageModal, animated: true)
     }
     
     private func blockUser(_ user: User) {

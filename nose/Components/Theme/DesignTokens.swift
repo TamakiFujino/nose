@@ -18,7 +18,7 @@ enum DesignTokens {
     }
 
     enum Shadow {
-        static let color: CGColor = UIColor.sixthColor.withAlphaComponent(0.2).cgColor
+        static let color: CGColor = UIColor.fourthColor.withAlphaComponent(0.2).cgColor
         static let offset: CGSize = CGSize(width: 0, height: 2)
         static let radius: CGFloat = 4
         static let opacity: Float = 1.0

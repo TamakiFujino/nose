@@ -1,5 +1,5 @@
 import UIKit
-import GoogleMaps
+import MapboxMaps
 import CoreLocation
 import GooglePlaces
 import FirebaseFirestore
@@ -14,25 +14,18 @@ final class HomeViewController: UIViewController {
         static let searchResultsHeight: CGFloat = 200
         static let messageViewPadding: CGFloat = 24
         static let messageViewSpacing: CGFloat = 8
+        static let footerBarHeight: CGFloat = 80
     }
     
     // MARK: - Properties
     private var searchResults: [GMSPlace] = []
     private var searchPredictions: [GMSAutocompletePrediction] = []
     private var sessionToken: GMSAutocompleteSessionToken?
-    private var currentDotIndex: Int = 1  // Track current dot index (0: left, 1: middle, 2: right)
     private var collections: [PlaceCollection] = []
     private var events: [Event] = []
     private let locationManager = CLLocationManager()
     
-    // Add properties to track dots and line
-    private var leftDot: UIView?
-    private var middleDot: UIView?
-    private var rightDot: UIView?
-    private var dotLine: UIView?
-    private var containerView: UIView?
-    
-    var mapManager: GoogleMapManager?
+    var mapManager: MapboxMapManager?
     private var searchManager: SearchManager?
     
     // MARK: - UI Components
@@ -43,67 +36,79 @@ final class HomeViewController: UIViewController {
         return view
     }()
     
-    private lazy var dotSlider: TimelineSliderView = {
-        let view = TimelineSliderView()
-        view.translatesAutoresizingMaskIntoConstraints = false
-        view.delegate = self
-        return view
-    }()
+    // Larger icon configuration for footer buttons (1.2x)
+    private let footerIconConfig = UIImage.SymbolConfiguration(pointSize: 22, weight: .medium)
     
     private lazy var profileButton: IconButton = {
-        IconButton(
-            image: UIImage(systemName: "person.fill"),
+        let button = IconButton(
+            image: UIImage(systemName: "person.fill", withConfiguration: footerIconConfig),
             action: #selector(profileButtonTapped),
-            target: self
+            target: self,
+            backgroundColor: .clear
         )
+        button.accessibilityIdentifier = "personal_library"
+        button.accessibilityLabel = "Personal Library"
+        return button
     }()
     
     private lazy var createEventButton: IconButton = {
         IconButton(
-            image: UIImage(systemName: "calendar"),
+            image: UIImage(systemName: "calendar", withConfiguration: footerIconConfig),
             action: #selector(createEventButtonTapped),
-            target: self
+            target: self,
+            backgroundColor: .clear,
+            tintColor: .systemGray
         )
+    }()
+    
+    private lazy var newButton: IconButton = {
+        let button = IconButton(
+            image: UIImage(systemName: "bookmark", withConfiguration: footerIconConfig),
+            action: #selector(newButtonTapped),
+            target: self,
+            backgroundColor: .clear
+        )
+        button.accessibilityIdentifier = "sparkle"
+        button.accessibilityLabel = "Collections"
+        return button
     }()
     
     private lazy var searchButton: IconButton = {
-        IconButton(
-            image: UIImage(systemName: "magnifyingglass"),
+        let button = IconButton(
+            image: UIImage(systemName: "magnifyingglass", withConfiguration: footerIconConfig),
             action: #selector(searchButtonTapped),
-            target: self
+            target: self,
+            backgroundColor: .clear
         )
+        button.accessibilityIdentifier = "search_button"
+        button.accessibilityLabel = "Search"
+        return button
     }()
     
-    private lazy var sparkButton: IconButton = {
-        IconButton(
-            image: UIImage(systemName: "sparkle"),
-            action: #selector(sparkButtonTapped),
-            target: self
-        )
-    }()
-    
-    private lazy var boxButton: IconButton = {
-        IconButton(
-            image: UIImage(systemName: "archivebox.fill"),
-            action: #selector(boxButtonTapped),
-            target: self
-        )
-    }()
-    
-    private lazy var mapView: GMSMapView = {
-        // Don't set default camera here - we'll set it based on location permission
-        // Create map options with Map ID
-        let mapOptions = GMSMapViewOptions()
-        mapOptions.frame = .zero
-        mapOptions.mapID = GMSMapID(identifier: "7f9a1d61a6b1809f")
-        
-        let mapView = GMSMapView(options: mapOptions)
+    private lazy var mapView: MapView = {
+        // Create map view with default style
+        // Mapbox access token is set in AppDelegate as environment variable
+        let mapView = MapView(frame: .zero, mapInitOptions: MapInitOptions())
         mapView.translatesAutoresizingMaskIntoConstraints = false
-        mapView.settings.myLocationButton = false  // Disable default location button
-        mapView.settings.compassButton = true
-        mapView.settings.zoomGestures = true
-        mapView.delegate = self
+        mapView.ornaments.options.compass.visibility = .hidden
+        mapView.ornaments.options.scaleBar.visibility = .hidden
+        // Zoom gestures are enabled by default in Mapbox
         return mapView
+    }()
+    
+    // Blur overlays for focus lens effect
+    private lazy var topBlurOverlay: UIVisualEffectView = {
+        let blurView = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
+        blurView.translatesAutoresizingMaskIntoConstraints = false
+        blurView.isUserInteractionEnabled = false
+        return blurView
+    }()
+    
+    private lazy var bottomBlurOverlay: UIVisualEffectView = {
+        let blurView = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
+        blurView.translatesAutoresizingMaskIntoConstraints = false
+        blurView.isUserInteractionEnabled = false
+        return blurView
     }()
     
     private var hasSetInitialCamera = false
@@ -128,6 +133,17 @@ final class HomeViewController: UIViewController {
             size: Constants.buttonSize
         )
     }()
+    
+    private lazy var toggle3DButton: IconButton = {
+        IconButton(
+            image: UIImage(systemName: "cube.fill"),
+            action: #selector(toggle3DButtonTapped),
+            target: self,
+            size: Constants.buttonSize
+        )
+    }()
+    
+    private var is3DViewEnabled = false
     
     private lazy var messageView: UIView = {
         let view = UIView()
@@ -159,6 +175,35 @@ final class HomeViewController: UIViewController {
         label.font = .systemFont(ofSize: 16, weight: .regular)
         label.textAlignment = .center
         return label
+    }()
+    
+    private lazy var footerBar: UIView = {
+        // Semi-transparent view matching button style
+        let containerView = UIView()
+        containerView.translatesAutoresizingMaskIntoConstraints = false
+        containerView.backgroundColor = UIColor.fourthColor.withAlphaComponent(0.3)
+        
+        // Shadow
+        containerView.layer.shadowColor = UIColor.black.cgColor
+        containerView.layer.shadowOffset = CGSize(width: 0, height: -2)
+        containerView.layer.shadowRadius = 10
+        containerView.layer.shadowOpacity = 0.1
+        
+        // Corner radius - top corners only
+        containerView.layer.cornerRadius = 20
+        containerView.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
+        containerView.layer.masksToBounds = true
+        
+        return containerView
+    }()
+    
+    private lazy var footerStackView: UIStackView = {
+        let stackView = UIStackView()
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        stackView.axis = .horizontal
+        stackView.distribution = .equalSpacing
+        stackView.alignment = .center
+        return stackView
     }()
     
     // MARK: - Lifecycle
@@ -202,8 +247,42 @@ final class HomeViewController: UIViewController {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        // Hide navigation bar on this screen
+        navigationController?.setNavigationBarHidden(true, animated: animated)
         // Refresh events when view appears
         loadEvents()
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        // Show navigation bar for other screens (so they have the back button)
+        navigationController?.setNavigationBarHidden(false, animated: animated)
+    }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        // Apply gradient masks to blur overlays for focus lens effect
+        applyBlurGradientMasks()
+    }
+    
+    private func applyBlurGradientMasks() {
+        // Top blur: opaque at top, transparent toward bottom
+        let topGradient = CAGradientLayer()
+        topGradient.frame = topBlurOverlay.bounds
+        topGradient.colors = [UIColor.black.cgColor, UIColor.clear.cgColor]
+        topGradient.locations = [0.0, 1.0]
+        topGradient.startPoint = CGPoint(x: 0.5, y: 0.0)
+        topGradient.endPoint = CGPoint(x: 0.5, y: 1.0)
+        topBlurOverlay.layer.mask = topGradient
+        
+        // Bottom blur: opaque at bottom, transparent toward top
+        let bottomGradient = CAGradientLayer()
+        bottomGradient.frame = bottomBlurOverlay.bounds
+        bottomGradient.colors = [UIColor.clear.cgColor, UIColor.black.cgColor]
+        bottomGradient.locations = [0.0, 1.0]
+        bottomGradient.startPoint = CGPoint(x: 0.5, y: 0.0)
+        bottomGradient.endPoint = CGPoint(x: 0.5, y: 1.0)
+        bottomBlurOverlay.layer.mask = bottomGradient
     }
     
     // MARK: - Setup
@@ -211,20 +290,22 @@ final class HomeViewController: UIViewController {
         view.backgroundColor = .white
         setupSubviews()
         setupConstraints()
-        
-        // Set initial button visibility based on default selected dot (middle dot, index 1)
-        searchButton.isHidden = false
-        searchButton.alpha = 1
-        sparkButton.isHidden = true
-        sparkButton.alpha = 0
-        boxButton.isHidden = true
-        boxButton.alpha = 0
     }
     
     private func setupSubviews() {
-        [mapView, headerView, dotSlider, searchButton, sparkButton, boxButton,
-         searchResultsTableView, currentLocationButton, profileButton, createEventButton, messageView].forEach {
+        // Add main views to the view hierarchy
+        // Blur overlays are added right after mapView so they're on top of map but below other UI
+        [mapView, topBlurOverlay, bottomBlurOverlay, footerBar, headerView,
+         searchResultsTableView, currentLocationButton, toggle3DButton, messageView].forEach {
             view.addSubview($0)
+        }
+        
+        // Add footer stack view to footer bar
+        footerBar.addSubview(footerStackView)
+        
+        // Add buttons to footer stack view (left to right: profile, event, sparkle, search)
+        [profileButton, createEventButton, newButton, searchButton].forEach {
+            footerStackView.addArrangedSubview($0)
         }
         
         [titleLabel, subtitleLabel].forEach {
@@ -240,59 +321,53 @@ final class HomeViewController: UIViewController {
             mapView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             mapView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             
+            // Top blur overlay constraints (focus lens effect)
+            topBlurOverlay.topAnchor.constraint(equalTo: view.topAnchor),
+            topBlurOverlay.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            topBlurOverlay.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            topBlurOverlay.heightAnchor.constraint(equalToConstant: 250),
+            
+            // Bottom blur overlay constraints (focus lens effect) - extends under footer
+            bottomBlurOverlay.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            bottomBlurOverlay.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            bottomBlurOverlay.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            bottomBlurOverlay.heightAnchor.constraint(equalToConstant: 250),
+            
             // Header view constraints
             headerView.topAnchor.constraint(equalTo: view.topAnchor),
             headerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             headerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            headerView.bottomAnchor.constraint(equalTo: dotSlider.bottomAnchor, constant: 16),
-            
-            // Dot slider constraints
-            dotSlider.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            dotSlider.heightAnchor.constraint(equalToConstant: Constants.buttonSize),
-            dotSlider.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            dotSlider.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            
-            // Profile button constraints
-            profileButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 65),
-            profileButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: Constants.standardPadding),
-            profileButton.widthAnchor.constraint(equalToConstant: Constants.buttonSize),
-            profileButton.heightAnchor.constraint(equalToConstant: Constants.buttonSize),
-            
-            // Create event button constraints
-            createEventButton.topAnchor.constraint(equalTo: profileButton.bottomAnchor, constant: 12),
-            createEventButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: Constants.standardPadding),
-            createEventButton.widthAnchor.constraint(equalToConstant: Constants.buttonSize),
-            createEventButton.heightAnchor.constraint(equalToConstant: Constants.buttonSize),
-            
-            // Search button constraints
-            searchButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 65),
-            searchButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -Constants.standardPadding),
-            searchButton.widthAnchor.constraint(equalToConstant: Constants.buttonSize),
-            searchButton.heightAnchor.constraint(equalToConstant: Constants.buttonSize),
-            
-            // Box button constraints
-            boxButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 65),
-            boxButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -Constants.standardPadding),
-            boxButton.widthAnchor.constraint(equalToConstant: Constants.buttonSize),
-            boxButton.heightAnchor.constraint(equalToConstant: Constants.buttonSize),
-            
-            // Spark button constraints
-            sparkButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 65),
-            sparkButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -Constants.standardPadding),
-            sparkButton.widthAnchor.constraint(equalToConstant: Constants.buttonSize),
-            sparkButton.heightAnchor.constraint(equalToConstant: Constants.buttonSize),
+            headerView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
             
             // Search results table view constraints
-            searchResultsTableView.topAnchor.constraint(equalTo: searchButton.bottomAnchor),
+            searchResultsTableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
             searchResultsTableView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: Constants.standardPadding),
             searchResultsTableView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -Constants.standardPadding),
             searchResultsTableView.heightAnchor.constraint(equalToConstant: Constants.searchResultsHeight),
             
-            // Current location button constraints
+            // Footer bar constraints - full width, extends to bottom edge
+            footerBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            footerBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            footerBar.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            footerBar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -Constants.footerBarHeight),
+            
+            // Footer stack view constraints - inside footer bar with padding
+            footerStackView.leadingAnchor.constraint(equalTo: footerBar.leadingAnchor, constant: 32),
+            footerStackView.trailingAnchor.constraint(equalTo: footerBar.trailingAnchor, constant: -32),
+            footerStackView.topAnchor.constraint(equalTo: footerBar.topAnchor, constant: 12),
+            footerStackView.heightAnchor.constraint(equalToConstant: Constants.buttonSize),
+            
+            // Current location button constraints - positioned above footer bar (right side)
             currentLocationButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -Constants.standardPadding),
-            currentLocationButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -Constants.standardPadding),
+            currentLocationButton.bottomAnchor.constraint(equalTo: footerBar.topAnchor, constant: -Constants.standardPadding),
             currentLocationButton.widthAnchor.constraint(equalToConstant: Constants.buttonSize),
             currentLocationButton.heightAnchor.constraint(equalToConstant: Constants.buttonSize),
+            
+            // 3D view toggle button constraints - positioned above footer bar (left side)
+            toggle3DButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: Constants.standardPadding),
+            toggle3DButton.bottomAnchor.constraint(equalTo: footerBar.topAnchor, constant: -Constants.standardPadding),
+            toggle3DButton.widthAnchor.constraint(equalToConstant: Constants.buttonSize),
+            toggle3DButton.heightAnchor.constraint(equalToConstant: Constants.buttonSize),
             
             // Message view constraints
             messageView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -314,7 +389,7 @@ final class HomeViewController: UIViewController {
     
     private func setupManagers() {
         sessionToken = GMSAutocompleteSessionToken()
-        mapManager = GoogleMapManager(mapView: mapView)
+        mapManager = MapboxMapManager(mapView: mapView)
         mapManager?.delegate = self
         searchManager = SearchManager()
         searchManager?.delegate = self
@@ -324,168 +399,19 @@ final class HomeViewController: UIViewController {
     }
     
     private func loadCollections() {
-        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
-        let db = Firestore.firestore()
-        
-        print("🔍 Loading collections for map: \(currentUserId)")
-        
-        var personalCollections: [PlaceCollection] = []
-        var sharedCollections: [PlaceCollection] = []
-        let group = DispatchGroup()
-        
-        // Load owned collections
-        group.enter()
-        let ownedCollectionsRef = db.collection("users")
-            .document(currentUserId)
-            .collection("collections")
-        
-        ownedCollectionsRef.whereField("isOwner", isEqualTo: true).getDocuments { snapshot, error in
-            defer { group.leave() }
-            
-            if let error = error {
-                print("❌ Error loading owned collections: \(error.localizedDescription)")
-                return
-            }
-            
-            print("📄 Found \(snapshot?.documents.count ?? 0) owned collections")
-            
-            let collections: [PlaceCollection] = snapshot?.documents.compactMap { document in
-                var data = document.data()
-                data["id"] = document.documentID
-                data["isOwner"] = true
-                
-                // If status is missing, treat it as active
-                if data["status"] == nil {
-                    data["status"] = PlaceCollection.Status.active.rawValue
-                }
-                
-                if let collection = PlaceCollection(dictionary: data) {
-                    return collection
-                }
-                return nil
-            } ?? []
-            
-            // Filter to only show active collections
-            personalCollections = collections.filter { $0.status == .active }
-            print("🎯 Active owned collections: \(personalCollections.count)")
-        }
-        
-        // Load shared collections
-        group.enter()
-        let sharedCollectionsRef = db.collection("users")
-            .document(currentUserId)
-            .collection("collections")
-        
-        let sharedGroup = DispatchGroup()
-        var sharedLoadedCollections: [PlaceCollection] = []
-        
-        sharedCollectionsRef.whereField("isOwner", isEqualTo: false).getDocuments { snapshot, error in
-            defer { group.leave() }
-            
-            if let error = error {
-                print("❌ Error loading shared collections: \(error.localizedDescription)")
-                return
-            }
-            
-            print("📄 Found \(snapshot?.documents.count ?? 0) shared collections")
-            
-            guard let documents = snapshot?.documents, !documents.isEmpty else {
-                print("🎯 Active shared collections: 0")
-                // No documents means sharedGroup has no enters, so notify immediately
-                sharedGroup.notify(queue: .main) {
-                    sharedCollections = []
-                }
-                return
-            }
-            
-            documents.forEach { document in
-                sharedGroup.enter()
-                let data = document.data()
-                
-                // Get the original collection data from the owner's collections
-                if let ownerId = data["userId"] as? String,
-                   let collectionId = data["id"] as? String {
-                    
-                    // First check if owner account still exists and is not deleted
-                    db.collection("users").document(ownerId).getDocument { ownerSnapshot, ownerError in
-                        if let ownerError = ownerError {
-                            print("❌ Error checking owner: \(ownerError.localizedDescription)")
-                            sharedGroup.leave()
-                            return
-                        }
-                        
-                        // Check if owner is deleted or doesn't exist
-                        let ownerData = ownerSnapshot?.data()
-                        let isOwnerDeleted = ownerData?["isDeleted"] as? Bool ?? false
-                        
-                        if ownerSnapshot?.exists == false || isOwnerDeleted {
-                            print("🗑️ Owner account deleted, skipping collection: \(collectionId)")
-                            
-                            // Mark this collection as inactive in user's database
-                            db.collection("users")
-                                .document(currentUserId)
-                                .collection("collections")
-                                .document(collectionId)
-                                .updateData([
-                                    "status": "inactive",
-                                    "ownerDeleted": true
-                                ]) { _ in
-                                    sharedGroup.leave()
-                                }
-                            return
-                        }
-                        
-                        // Owner exists, proceed to load the collection
-                    db.collection("users")
-                        .document(ownerId)
-                        .collection("collections")
-                        .document(collectionId)
-                        .getDocument { snapshot, error in
-                            defer { sharedGroup.leave() }
-                            
-                            if let error = error {
-                                print("❌ Error loading original collection: \(error.localizedDescription)")
-                                return
-                            }
-                            
-                            if let originalData = snapshot?.data() {
-                                var collectionData = originalData
-                                collectionData["id"] = collectionId
-                                collectionData["isOwner"] = false
-                                
-                                // If status is missing, treat it as active
-                                if collectionData["status"] == nil {
-                                    collectionData["status"] = PlaceCollection.Status.active.rawValue
-                                }
-                                
-                                if let collection = PlaceCollection(dictionary: collectionData) {
-                                    sharedLoadedCollections.append(collection)
-                                    }
-                                }
-                            }
-                        }
-                } else {
-                    sharedGroup.leave()
-                }
-            }
-        }
-        
-        // When both personal and shared collections queries complete, wait for shared collections details to load
-        group.notify(queue: .main) { [weak self] in
+        CollectionLoadingService.shared.loadCollections(status: .active) { [weak self] result in
             guard let self = self else { return }
             
-            // Wait for shared collections to finish loading, then update map
-            sharedGroup.notify(queue: .main) {
-                // Update sharedCollections with loaded data
-                sharedCollections = sharedLoadedCollections.filter { $0.status == .active }
-                print("🎯 Active shared collections: \(sharedCollections.count)")
-                
+            switch result {
+            case .success(let loadResult):
                 // Combine all collections
-                self.collections = personalCollections + sharedCollections
-                print("✅ Loaded \(self.collections.count) total active collections for map")
+                self.collections = loadResult.owned + loadResult.shared
                 
                 // Show all collection places on the map
                 self.mapManager?.showCollectionPlacesOnMap(self.collections)
+                
+            case .failure(let error):
+                Logger.log("Error loading collections: \(error.localizedDescription)", level: .error, category: "Home")
             }
         }
     }
@@ -524,7 +450,6 @@ final class HomeViewController: UIViewController {
     }
     
     @objc private func refreshCollections() {
-        print("🔄 Refreshing collections on map after update")
         loadCollections()
     }
     
@@ -536,13 +461,11 @@ final class HomeViewController: UIViewController {
             // Don't set camera yet - wait for permission response
         case .restricted, .denied:
             // Location not allowed - show default location if not already set
-            print("Location access denied or restricted - showing default location")
             if !hasSetInitialCamera {
                 setDefaultLocationCamera()
             }
         case .authorizedWhenInUse, .authorizedAlways:
             // Permission granted - wait for current location before setting camera
-            print("Location permission granted - waiting for current location")
             locationManager.startUpdatingLocation()
             // Don't set default camera - wait for location update
         @unknown default:
@@ -558,12 +481,11 @@ final class HomeViewController: UIViewController {
         guard !hasSetInitialCamera else { return }
         hasSetInitialCamera = true
         
-        let camera = GMSCameraPosition.camera(
-            withLatitude: 35.6812,  // Tokyo coordinates as default
-            longitude: 139.7671,
+        let cameraOptions = CameraOptions(
+            center: CLLocationCoordinate2D(latitude: 35.6812, longitude: 139.7671),  // Tokyo coordinates as default
             zoom: 15
         )
-        mapView.camera = camera
+        mapView.camera.ease(to: cameraOptions, duration: 0.0)
     }
     
     @objc private func currentLocationButtonTapped() {
@@ -580,6 +502,30 @@ final class HomeViewController: UIViewController {
         }
     }
     
+    @objc private func toggle3DButtonTapped() {
+        is3DViewEnabled.toggle()
+        
+        // Get current camera state
+        let currentCenter = mapView.mapboxMap.cameraState.center
+        let currentZoom = mapView.mapboxMap.cameraState.zoom
+        
+        // Set pitch: 0 for 2D, 50 for 3D view
+        let targetPitch: CGFloat = is3DViewEnabled ? 50 : 0
+        
+        let cameraOptions = CameraOptions(
+            center: currentCenter,
+            zoom: currentZoom,
+            pitch: targetPitch
+        )
+        
+        // Animate the camera transition
+        mapView.camera.ease(to: cameraOptions, duration: 0.5)
+        
+        // Update button appearance to show current state
+        let iconName = is3DViewEnabled ? "cube.fill" : "cube"
+        toggle3DButton.setImage(UIImage(systemName: iconName), for: .normal)
+    }
+    
     @objc private func profileButtonTapped() {
         // Dismiss any open modal first
         if let presentedVC = presentedViewController {
@@ -594,20 +540,17 @@ final class HomeViewController: UIViewController {
     }
     
     @objc private func createEventButtonTapped() {
-        // Dismiss any open modal first
-        if let presentedVC = presentedViewController {
-            presentedVC.dismiss(animated: true) { [weak self] in
-                let manageEventVC = ManageEventViewController()
-                let navController = UINavigationController(rootViewController: manageEventVC)
-                navController.modalPresentationStyle = .fullScreen
-                self?.present(navController, animated: true)
-            }
-        } else {
-        let manageEventVC = ManageEventViewController()
-        let navController = UINavigationController(rootViewController: manageEventVC)
-        navController.modalPresentationStyle = .fullScreen
-        present(navController, animated: true)
-        }
+        let messageModal = MessageModalViewController(
+            title: "Coming Soon",
+            message: "This feature is coming soon!"
+        )
+        present(messageModal, animated: true)
+    }
+    
+    @objc private func newButtonTapped() {
+        let collectionsVC = CollectionsViewController()
+        collectionsVC.mapManager = mapManager
+        present(collectionsVC, animated: true)
     }
     
     @objc private func searchButtonTapped() {
@@ -615,17 +558,6 @@ final class HomeViewController: UIViewController {
         searchVC.delegate = self
         searchVC.modalPresentationStyle = .fullScreen
         present(searchVC, animated: true)
-    }
-    
-    @objc private func sparkButtonTapped() {
-        let collectionsVC = CollectionsViewController()
-        collectionsVC.mapManager = mapManager
-        present(collectionsVC, animated: true)
-    }
-    
-    @objc private func boxButtonTapped() {
-        let boxVC = BoxViewController()
-        present(boxVC, animated: true)
     }
     
     private func showMessage(title: String, subtitle: String) {
@@ -655,17 +587,15 @@ final class HomeViewController: UIViewController {
     }
     
     private func loadEvents() {
-        print("📍 Loading current and future events for map...")
         EventManager.shared.fetchAllCurrentAndFutureEvents { [weak self] result in
             switch result {
             case .success(let events):
-                print("✅ Loaded \(events.count) events")
                 self?.events = events
                 DispatchQueue.main.async {
                     self?.mapManager?.showEventsOnMap(events)
                 }
             case .failure(let error):
-                print("❌ Failed to load events: \(error.localizedDescription)")
+                Logger.log("Failed to load events: \(error.localizedDescription)", level: .error, category: "Home")
             }
         }
     }
@@ -723,99 +653,28 @@ extension HomeViewController: UITableViewDelegate, UITableViewDataSource {
     }
 }
 
-// MARK: - GMSMapViewDelegate
-extension HomeViewController: GMSMapViewDelegate {
-    func mapView(_ mapView: GMSMapView, didTapAt coordinate: CLLocationCoordinate2D) {
-        // Hide search results when tapping on the map
-        searchResultsTableView.isHidden = true
-    }
-    
-    func mapViewDidFinishTileRendering(_ mapView: GMSMapView) {
-        print("Map style successfully loaded")
+// MARK: - Mapbox Map Handling
+extension HomeViewController {
+    // Handle map taps to hide search results
+    // This can be set up via gesture recognizers if needed
+    func setupMapTapHandling() {
+        // Mapbox handles taps through annotation managers
+        // Search results hiding can be handled elsewhere if needed
     }
 }
 
 // MARK: - SearchViewControllerDelegate
 extension HomeViewController: SearchViewControllerDelegate {
     func searchViewController(_ controller: SearchViewController, didSelectPlace place: GMSPlace) {
-        mapManager?.showPlaceOnMap(place)
         let detailViewController = PlaceDetailViewController(place: place, isFromCollection: false)
-        // Dismiss the search UI first, then present the detail over current context so the map stays visible
+        // modalPresentationStyle is already set to .pageSheet in PlaceDetailViewController init
+        
+        // Dismiss the search UI first, THEN move camera and present detail
+        // (Camera animation only works when map is visible)
         controller.dismiss(animated: true) {
-            detailViewController.modalPresentationStyle = .overCurrentContext
+            self.mapManager?.showPlaceOnMap(place)
             self.present(detailViewController, animated: true)
         }
-    }
-}
-
-// MARK: - TimelineSliderViewDelegate
-extension HomeViewController: TimelineSliderViewDelegate {
-    func timelineSliderView(_ view: TimelineSliderView, didSelectDotAt index: Int) {
-        // Check if a modal is minimized and should be dismissed
-        if let presentedVC = presentedViewController {
-            // Check if it's a sheet presentation controller
-            if let sheet = presentedVC.sheetPresentationController {
-                // Check if modal is minimized (at small detent, not large)
-                let smallDetentIdentifier = UISheetPresentationController.Detent.Identifier("small")
-                let isMinimized = sheet.selectedDetentIdentifier == smallDetentIdentifier
-                
-                if isMinimized {
-                    // Check which dot corresponds to which modal
-                    let isCollectionsModal = presentedVC is CollectionsViewController && index != 2
-                    let isBoxModal = presentedVC is BoxViewController && index != 0
-                    
-                    // If the new dot selection doesn't match the current modal, dismiss it
-                    if isCollectionsModal || isBoxModal {
-                        presentedVC.dismiss(animated: true, completion: nil)
-                    }
-                }
-            }
-        }
-        
-        currentDotIndex = index
-        
-        // Always show the map view
-        mapView.isHidden = false
-        
-        // Show message based on selected dot
-        switch index {
-        case 0:
-            showMessage(title: "Past", subtitle: "relive the moments")
-        case 1:
-            showMessage(title: "Current", subtitle: "explore what's happening")
-        case 2:
-            showMessage(title: "Future", subtitle: "plan and get ready")
-        default:
-            break
-        }
-        
-        // First hide all buttons
-        searchButton.isHidden = true
-        sparkButton.isHidden = true
-        boxButton.isHidden = true
-        
-        // Then show and animate the appropriate button
-        UIView.animate(withDuration: 0.3, animations: {
-            switch index {
-            case 0: // Left dot - show box
-                self.boxButton.alpha = 1
-                self.boxButton.isHidden = false
-                self.searchButton.alpha = 0
-                self.sparkButton.alpha = 0
-            case 1: // Middle dot - show search
-                self.searchButton.alpha = 1
-                self.searchButton.isHidden = false
-                self.sparkButton.alpha = 0
-                self.boxButton.alpha = 0
-            case 2: // Right dot - show collections
-                self.sparkButton.alpha = 1
-                self.sparkButton.isHidden = false
-                self.searchButton.alpha = 0
-                self.boxButton.alpha = 0
-            default:
-                break
-            }
-        })
     }
 }
 
@@ -829,7 +688,7 @@ extension HomeViewController: SearchManagerDelegate {
     func searchManager(_ manager: SearchManager, didSelectPlace place: GMSPlace) {
         mapManager?.showPlaceOnMap(place)
         let detailViewController = PlaceDetailViewController(place: place, isFromCollection: false)
-        detailViewController.modalPresentationStyle = .overCurrentContext
+        // modalPresentationStyle is already set to .pageSheet in PlaceDetailViewController init
         // If a SearchViewController is currently presented, dismiss it before presenting details
         if let presented = self.presentedViewController as? SearchViewController {
             presented.dismiss(animated: true) {
@@ -844,56 +703,50 @@ extension HomeViewController: SearchManagerDelegate {
 // MARK: - CreateEventViewControllerDelegate
 extension HomeViewController: CreateEventViewControllerDelegate {
     func createEventViewController(_ controller: CreateEventViewController, didCreateEvent event: Event) {
-        // Handle the created event
-        print("Event created: \(event.title)")
         // Reload events to show the new one on the map
         loadEvents()
     }
 }
 
-// MARK: - GoogleMapManagerDelegate
-extension HomeViewController: GoogleMapManagerDelegate {
-    func googleMapManager(_ manager: GoogleMapManager, didFailWithError error: Error) {
-        // Only log errors that are not common/expected (like permission denied, network issues)
+// MARK: - MapboxMapManagerDelegate
+extension HomeViewController: MapboxMapManagerDelegate {
+    func mapboxMapManager(_ manager: MapboxMapManager, didFailWithError error: Error) {
+        // Only log unexpected errors - common location errors are handled silently
         let nsError = error as NSError
         if nsError.domain == "kCLErrorDomain" || (error as? CLError) != nil {
-            // CoreLocation errors - only log if not a common permission/network error
+            // CoreLocation errors - silently handle common permission/network errors
             if let cleError = error as? CLError {
                 switch cleError.code {
-                case .locationUnknown:
-                    // Common when location services are disabled or unavailable
-                    // Don't show error to user - map can still function
-                    print("⚠️ Location unavailable: \(error.localizedDescription)")
-                case .denied, .network:
-                    // Permission denied or network error - user can still use map
-                    print("⚠️ Location access: \(error.localizedDescription)")
+                case .locationUnknown, .denied, .network:
+                    // Common errors - map can still function
+                    break
                 default:
-                    print("❌ Map error: \(error.localizedDescription)")
+                    Logger.log("Map error: \(error.localizedDescription)", level: .error, category: "Home")
                 }
             } else {
                 // Check numeric codes as fallback
                 switch nsError.code {
-                case 0: // kCLErrorLocationUnknown
-                    print("⚠️ Location unavailable: \(error.localizedDescription)")
-                case 1: // kCLErrorDenied
-                    print("⚠️ Location access denied: \(error.localizedDescription)")
-                case 2: // kCLErrorNetwork
-                    print("⚠️ Location network error: \(error.localizedDescription)")
+                case 0, 1, 2: // Common location errors
+                    break
                 default:
-                    print("❌ Map error: \(error.localizedDescription)")
+                    Logger.log("Map error: \(error.localizedDescription)", level: .error, category: "Home")
                 }
             }
         } else {
-            print("❌ Map error: \(error.localizedDescription)")
+            Logger.log("Map error: \(error.localizedDescription)", level: .error, category: "Home")
         }
     }
     
-    func googleMapManager(_ manager: GoogleMapManager, didTapEventMarker event: Event) {
-        print("🎯 Showing event detail: \(event.title)")
+    func mapboxMapManager(_ manager: MapboxMapManager, didTapEventMarker event: Event) {
         let eventDetailVC = EventDetailViewController(event: event)
         eventDetailVC.modalPresentationStyle = .overCurrentContext
         eventDetailVC.modalTransitionStyle = .crossDissolve
         present(eventDetailVC, animated: true)
+    }
+    
+    func mapboxMapManager(_ manager: MapboxMapManager, didTapCollectionPlace place: GMSPlace) {
+        let detailVC = PlaceDetailViewController(place: place, isFromCollection: true)
+        present(detailVC, animated: true)
     }
 }
 
@@ -917,11 +770,10 @@ extension HomeViewController: CLLocationManagerDelegate {
     }
     
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        print("Location manager failed with error: \(error.localizedDescription)")
+        Logger.log("Location manager failed: \(error.localizedDescription)", level: .warn, category: "Home")
         
         // If we haven't set initial camera yet and location fails, show default location
         if !hasSetInitialCamera {
-            print("Location failed - falling back to default location")
             setDefaultLocationCamera()
         }
     }

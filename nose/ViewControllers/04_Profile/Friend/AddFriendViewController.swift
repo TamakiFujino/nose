@@ -25,6 +25,7 @@ class AddFriendViewController: UIViewController {
         searchBar.delegate = self
         searchBar.searchBarStyle = .minimal
         searchBar.autocapitalizationType = .allCharacters
+        searchBar.accessibilityIdentifier = "search_by_user_id"
         return searchBar
     }()
     
@@ -50,6 +51,7 @@ class AddFriendViewController: UIViewController {
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = .systemFont(ofSize: 14, weight: .medium)
         label.textColor = .secondaryLabel
+        label.accessibilityIdentifier = "user_id_value"
         return label
     }()
     
@@ -59,6 +61,8 @@ class AddFriendViewController: UIViewController {
         button.setImage(UIImage(systemName: "doc.on.doc"), for: .normal)
         button.tintColor = .secondaryLabel
         button.addTarget(self, action: #selector(copyButtonTapped), for: .touchUpInside)
+        button.accessibilityIdentifier = "copy_button"
+        button.accessibilityLabel = "copy"
         return button
     }()
     
@@ -110,6 +114,11 @@ class AddFriendViewController: UIViewController {
         super.viewDidLoad()
         setupUI()
         loadCurrentUser()
+    }
+    
+    // MARK: - Public Methods
+    func setSearchText(_ text: String) {
+        searchBar.text = text.uppercased()
     }
     
     // MARK: - Setup
@@ -508,9 +517,13 @@ class AddFriendViewController: UIViewController {
     }
     
     private func showAlert(title: String, message: String, completion: ((UIAlertAction) -> Void)? = nil) {
-        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: completion))
-        present(alert, animated: true)
+        let messageModal = MessageModalViewController(title: title, message: message)
+        if let completion = completion {
+            messageModal.onDismiss = {
+                completion(UIAlertAction())
+            }
+        }
+        present(messageModal, animated: true)
     }
 }
 

@@ -97,7 +97,7 @@ final class EventDetailViewController: UIViewController {
         button.tintColor = .fourthColor
         button.backgroundColor = .white
         button.layer.cornerRadius = 25
-        button.layer.shadowColor = UIColor.sixthColor.cgColor
+        button.layer.shadowColor = UIColor.fourthColor.cgColor
         button.layer.shadowOffset = CGSize(width: 0, height: 2)
         button.layer.shadowRadius = 4
         button.layer.shadowOpacity = 0.2
@@ -242,22 +242,17 @@ final class EventDetailViewController: UIViewController {
     private func loadEventImage() {
         // Always prioritize event uploaded image if available
         if !event.images.isEmpty {
-            print("🖼️ Using event uploaded image")
             eventImageView.image = event.images[0]
             return
         }
         
         // If no images loaded yet, try to load from Firestore imageURLs
-        print("🔍 Loading event image from Firestore for event: \(event.id)")
         let db = Firestore.firestore()
         
-        db.collection("users")
-            .document(event.userId)
-            .collection("events")
-            .document(event.id)
+        FirestorePaths.eventDoc(userId: event.userId, eventId: event.id, db: db)
             .getDocument { [weak self] snapshot, error in
                 if let error = error {
-                    print("❌ Error loading event: \(error.localizedDescription)")
+                    Logger.log("Error loading event: \(error.localizedDescription)", level: .error, category: "Event")
                     DispatchQueue.main.async {
                         self?.eventImageView.image = UIImage(systemName: "photo")
                         self?.eventImageView.tintColor = .systemGray3
@@ -270,7 +265,6 @@ final class EventDetailViewController: UIViewController {
                       let firstImageURL = imageURLs.first,
                       !firstImageURL.isEmpty,
                       let url = URL(string: firstImageURL) else {
-                    print("⚠️ No event image URL found")
                     DispatchQueue.main.async {
                         self?.eventImageView.image = UIImage(systemName: "photo")
                         self?.eventImageView.tintColor = .systemGray3
@@ -278,17 +272,14 @@ final class EventDetailViewController: UIViewController {
                     return
                 }
                 
-                print("📥 Downloading event image from: \(firstImageURL)")
-                
                 // Download the event image
                 URLSession.shared.dataTask(with: url) { data, response, error in
                     if let data = data, let image = UIImage(data: data) {
-                        print("✅ Successfully loaded event image")
                         DispatchQueue.main.async {
                             self?.eventImageView.image = image
                         }
                     } else {
-                        print("❌ Failed to load event image")
+                        Logger.log("Failed to load event image", level: .warn, category: "Event")
                         DispatchQueue.main.async {
                             self?.eventImageView.image = UIImage(systemName: "photo")
                             self?.eventImageView.tintColor = .systemGray3
@@ -304,13 +295,10 @@ final class EventDetailViewController: UIViewController {
         avatarImageView.tintColor = .systemGray3
         
         let db = Firestore.firestore()
-        db.collection("users")
-            .document(event.userId)
-            .collection("events")
-            .document(event.id)
+        FirestorePaths.eventDoc(userId: event.userId, eventId: event.id, db: db)
             .getDocument { [weak self] snapshot, error in
                 if let error = error {
-                    print("❌ Error loading avatar image: \(error.localizedDescription)")
+                    Logger.log("Error loading avatar image: \(error.localizedDescription)", level: .error, category: "Event")
                     return
                 }
                 
@@ -318,7 +306,6 @@ final class EventDetailViewController: UIViewController {
                       let avatarImageURL = data["avatarImageURL"] as? String,
                       !avatarImageURL.isEmpty,
                       let url = URL(string: avatarImageURL) else {
-                    print("⚠️ No avatar image URL found for event")
                     return
                 }
                 
@@ -343,7 +330,6 @@ final class EventDetailViewController: UIViewController {
     }
     
     @objc private func saveButtonTapped() {
-        print("💾 Save event to collection: \(event.title)")
         let saveVC = SaveToCollectionViewController(event: event)
         saveVC.delegate = self
         present(saveVC, animated: true)
@@ -361,7 +347,6 @@ extension EventDetailViewController: UIGestureRecognizerDelegate {
 // MARK: - SaveToCollectionViewControllerDelegate
 extension EventDetailViewController: SaveToCollectionViewControllerDelegate {
     func saveToCollectionViewController(_ controller: SaveToCollectionViewController, didSaveEvent event: Event, toCollection collection: PlaceCollection) {
-        print("✅ Saved event '\(event.title)' to collection '\(collection.name)'")
         
         // Animate the save button
         UIView.animate(withDuration: 0.2, animations: {

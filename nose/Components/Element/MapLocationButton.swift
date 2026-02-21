@@ -17,7 +17,7 @@ class MapLocationButton: UIButton {
         setImage(UIImage(systemName: "location.fill"), for: .normal)
         backgroundColor = .backgroundPrimary
         layer.cornerRadius = 25
-        layer.shadowColor = UIColor.sixthColor.cgColor
+        layer.shadowColor = UIColor.fourthColor.cgColor
         layer.shadowOffset = CGSize(width: 0, height: 2)
         layer.shadowRadius = 4
         layer.shadowOpacity = 0.2
