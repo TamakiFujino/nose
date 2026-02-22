@@ -3,7 +3,7 @@
 #
 # Required secrets for build: CI_ENV_FILE (.env contents), and optionally
 # GOOGLE_SERVICE_INFO_DEVELOPMENT_PLIST, _STAGING_PLIST, _PRODUCTION_PLIST (Firebase plist contents).
-# unity-build/ must be restored from cache (populate by building Unity once on a runner that has it).
+# Unity is excluded from E2E builds via EXCLUDE_UNITY flag + pbxproj patching.
 name: PR Checks
 
 on:
@@ -18,21 +18,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Restore unity-build
-        uses: actions/cache@v4
-        with:
-          path: unity-build
-          key: unity-build-${{ hashFiles('nose-unity/Packages/manifest.json', 'nose-unity/Assets/**/*.meta') }}
-          restore-keys: unity-build-
-
-      - name: Fail if unity-build missing
-        run: |
-          if [ ! -d "unity-build/Unity-iPhone.xcodeproj" ]; then
-            echo "::error::unity-build/ is missing. The app depends on Unity (UnityFramework). Either:"
-            echo "  1) Populate cache by running this workflow on a self-hosted runner that has unity-build, or"
-            echo "  2) Build Unity locally and upload unity-build as a cache/artifact (see .github/README.md)."
-            exit 1
-          fi
+      - name: Patch project to exclude Unity
+        run: bash scripts/patch_project_exclude_unity.sh
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -94,7 +81,8 @@ jobs:
             -scheme nose-staging \
             -configuration Development \
             -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=18.2' \
-            -derivedDataPath ./builds
+            -derivedDataPath ./builds \
+            GCC_PREPROCESSOR_DEFINITIONS='$(inherited) EXCLUDE_UNITY=1'
 
       - name: Start Appium server
         run: |
