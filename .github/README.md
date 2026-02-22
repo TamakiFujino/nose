@@ -1,6 +1,6 @@
 # iOS CI/CD Pipeline
 
-This repository uses GitHub Actions to automatically build and upload iOS apps to TestFlight.
+This repository uses GitHub Actions for PR-gated E2E, Firebase rule deploys, and automated TestFlight/App Store uploads. (chore: test CI)
 
 ## Workflow Triggers
 
