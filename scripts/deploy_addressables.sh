@@ -130,7 +130,7 @@ if [[ "$deploy_choice" =~ ^[Yy]$ ]]; then
         if [ "$target" == "dev" ]; then
             echo "  Dev: https://nose-a2309.web.app/addressables/iOS/"
         else
-            echo "  Staging: https://nose-a2309.web.app/addressables/iOS/"
+            echo "  Staging: https://nose-staging.web.app/addressables/iOS/"
         fi
     done
 else
