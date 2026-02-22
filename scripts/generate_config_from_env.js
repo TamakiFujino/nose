@@ -126,12 +126,17 @@ const testUserBEmail = get('TEST_USER_B_EMAIL', false);
 const testHelpersDir = path.join(repoRoot, 'noseUITests', 'Helpers');
 const generatedPath = path.join(testHelpersDir, 'TestConfig.generated.swift');
 
+// Escape for Swift double-quoted string: backslashes first, then quotes
+function escapeSwiftString(s) {
+  return String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
 const generatedSwift = `// Generated from .env by scripts/generate_config_from_env.js - do not edit
 import Foundation
 
 enum TestConfigGenerated {
-    static let userAEmail = "${(testUserAEmail || '').replace(/"/g, '\\"')}"
-    static let userBEmail = "${(testUserBEmail || '').replace(/"/g, '\\"')}"
+    static let userAEmail = "${escapeSwiftString(testUserAEmail || '')}"
+    static let userBEmail = "${escapeSwiftString(testUserBEmail || '')}"
 }
 `;
 fs.mkdirSync(testHelpersDir, { recursive: true });

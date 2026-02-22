@@ -36,6 +36,16 @@ enum FirestorePaths {
     static func blocked(userId: String, db: Firestore = Firestore.firestore()) -> CollectionReference {
         return userDoc(userId, db: db).collection("blocked")
     }
+
+    /// Incoming friend requests: users/{receiverId}/friendRequests/{requesterId}
+    static func friendRequests(userId: String, db: Firestore = Firestore.firestore()) -> CollectionReference {
+        return userDoc(userId, db: db).collection("friendRequests")
+    }
+
+    /// Outgoing friend requests: users/{requesterId}/sentFriendRequests/{receiverId}
+    static func sentFriendRequests(userId: String, db: Firestore = Firestore.firestore()) -> CollectionReference {
+        return userDoc(userId, db: db).collection("sentFriendRequests")
+    }
     
     // MARK: - Collection Members
     static func members(ownerId: String, collectionId: String, db: Firestore = Firestore.firestore()) -> CollectionReference {

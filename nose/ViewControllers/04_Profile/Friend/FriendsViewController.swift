@@ -7,11 +7,21 @@ class FriendsViewController: UIViewController {
     // MARK: - Properties
     private var friends: [User] = []
     private var blockedUsers: [User] = []
+    /// Received requests (others requested me); show with Approve/Reject
+    private var pendingReceived: [User] = []
+    /// Sent requests (I requested others); show as "Name requested"
+    private var pendingSent: [User] = []
     private var currentSegment: Int = 0
     
     private enum Tab: Int {
         case friends = 0
-        case blocked = 1
+        case pending = 1
+        case blocked = 2
+    }
+    
+    private enum PendingSection: Int {
+        case received = 0
+        case sent = 1
     }
     
     // MARK: - UI Components
@@ -42,6 +52,7 @@ class FriendsViewController: UIViewController {
         tableView.delegate = self
         tableView.dataSource = self
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "UserCell")
+        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "PendingReceivedCell")
         tableView.backgroundColor = .clear
         tableView.separatorStyle = .none
         return tableView
@@ -145,7 +156,7 @@ class FriendsViewController: UIViewController {
                 group.notify(queue: .main) {
                     print("DEBUG: All friends loaded, total: \(loadedFriends.count)")
                     self?.friends = loadedFriends
-                    if self?.currentSegment == 0 {
+                    if self?.currentSegment == Tab.friends.rawValue {
                         self?.tableView.reloadData()
                     }
                 }
@@ -191,19 +202,79 @@ class FriendsViewController: UIViewController {
                 group.notify(queue: .main) {
                     print("DEBUG: All blocked users loaded, total: \(loadedBlockedUsers.count)")
                     self?.blockedUsers = loadedBlockedUsers
-                    if self?.currentSegment == 1 {
+                    if self?.currentSegment == Tab.blocked.rawValue {
                         self?.tableView.reloadData()
                     }
                 }
             }
+        
+        loadPending()
+    }
+    
+    private func loadPending() {
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        let db = Firestore.firestore()
+        
+        // Load received requests: users/currentUser/friendRequests (doc IDs = requester IDs)
+        FirestorePaths.friendRequests(userId: currentUserId, db: db).getDocuments { [weak self] snapshot, error in
+            if let error = error {
+                print("DEBUG: Error loading received friend requests: \(error.localizedDescription)")
+                return
+            }
+            let group = DispatchGroup()
+            var received: [User] = []
+            snapshot?.documents.forEach { doc in
+                let requesterId = doc.documentID
+                group.enter()
+                db.collection("users").document(requesterId).getDocument { userSnapshot, userError in
+                    defer { group.leave() }
+                    guard let userSnapshot = userSnapshot, let user = User.fromFirestore(userSnapshot) else { return }
+                    received.append(user)
+                }
+            }
+            group.notify(queue: .main) {
+                self?.pendingReceived = received
+                if self?.currentSegment == Tab.pending.rawValue {
+                    self?.tableView.reloadData()
+                }
+            }
+        }
+        
+        // Load sent requests: users/currentUser/sentFriendRequests (doc IDs = receiver IDs)
+        FirestorePaths.sentFriendRequests(userId: currentUserId, db: db).getDocuments { [weak self] snapshot, error in
+            if let error = error {
+                print("DEBUG: Error loading sent friend requests: \(error.localizedDescription)")
+                return
+            }
+            let group = DispatchGroup()
+            var sent: [User] = []
+            snapshot?.documents.forEach { doc in
+                let receiverId = doc.documentID
+                group.enter()
+                db.collection("users").document(receiverId).getDocument { userSnapshot, userError in
+                    defer { group.leave() }
+                    guard let userSnapshot = userSnapshot, let user = User.fromFirestore(userSnapshot) else { return }
+                    sent.append(user)
+                }
+            }
+            group.notify(queue: .main) {
+                self?.pendingSent = sent
+                if self?.currentSegment == Tab.pending.rawValue {
+                    self?.tableView.reloadData()
+                }
+            }
+        }
     }
     
     // MARK: - Actions
     // MARK: - Tab Management
     private func setupCategoryTabs() {
-        let tabs: [(Tab, String)] = [(.friends, "Friends"), (.blocked, "Blocked")]
+        let tabs: [(Tab, String)] = [(.friends, "Friends"), (.pending, "Pending"), (.blocked, "Blocked")]
         for (index, (tab, title)) in tabs.enumerated() {
             let button = createTabButton(title: title, tag: index, tab: tab)
+            if tab == .pending {
+                button.accessibilityIdentifier = "Pending"
+            }
             categoryTabStackView.addArrangedSubview(button)
         }
         updateTabButtonStates()
@@ -240,14 +311,12 @@ class FriendsViewController: UIViewController {
     }
     
     private func updateTabButtonStates() {
-        let tabs: [Tab] = [.friends, .blocked]
+        let tabs: [Tab] = [.friends, .pending, .blocked]
         for (index, tab) in tabs.enumerated() {
             guard index < categoryTabStackView.arrangedSubviews.count,
                   let button = categoryTabStackView.arrangedSubviews[index] as? UIButton else { continue }
             
             let isSelected = (tab.rawValue == currentSegment)
-            // Active tab: themeBlue background with white text
-            // Inactive tab: secondColor background with black text
             button.backgroundColor = isSelected ? .themeBlue : .secondColor
             button.setTitleColor(isSelected ? .white : .black, for: .normal)
             button.layer.cornerRadius = 16
@@ -256,8 +325,8 @@ class FriendsViewController: UIViewController {
     
     // MARK: - Actions
     @objc private func categoryTabTapped(_ sender: UIButton) {
-        guard sender.tag < 2 else { return }
-        let tabs: [Tab] = [.friends, .blocked]
+        guard sender.tag < 3 else { return }
+        let tabs: [Tab] = [.friends, .pending, .blocked]
         let tab = tabs[sender.tag]
         currentSegment = tab.rawValue
         updateTabButtonStates()
@@ -418,55 +487,140 @@ class FriendsViewController: UIViewController {
 
 // MARK: - UITableViewDelegate & UITableViewDataSource
 extension FriendsViewController: UITableViewDelegate, UITableViewDataSource {
+    func numberOfSections(in tableView: UITableView) -> Int {
+        if currentSegment == Tab.pending.rawValue {
+            return 2 // Received, Sent
+        }
+        return 1
+    }
+    
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        let count = currentSegment == 0 ? friends.count : blockedUsers.count
-        print("DEBUG: numberOfRowsInSection called. Current segment: \(currentSegment), count: \(count)")
-        return count
+        if currentSegment == Tab.pending.rawValue {
+            return section == PendingSection.received.rawValue ? pendingReceived.count : pendingSent.count
+        }
+        if currentSegment == Tab.friends.rawValue { return friends.count }
+        return blockedUsers.count
+    }
+    
+    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        if currentSegment == Tab.pending.rawValue {
+            return section == PendingSection.received.rawValue ? "Received" : "Sent"
+        }
+        return nil
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        print("DEBUG: cellForRowAt called for index: \(indexPath.row)")
+        if currentSegment == Tab.pending.rawValue {
+            if indexPath.section == PendingSection.received.rawValue {
+                let cell = tableView.dequeueReusableCell(withIdentifier: "PendingReceivedCell", for: indexPath)
+                let user = pendingReceived[indexPath.row]
+                var content = cell.defaultContentConfiguration()
+                content.text = user.name
+                content.textProperties.color = .label
+                content.textProperties.font = .systemFont(ofSize: 17, weight: .medium)
+                cell.contentConfiguration = content
+                cell.backgroundColor = .clear
+                cell.selectionStyle = .default
+                cell.backgroundView = UIView()
+                let selectedBg = UIView()
+                selectedBg.backgroundColor = UIColor.white.withAlphaComponent(0.2)
+                cell.selectedBackgroundView = selectedBg
+                // Approve / Reject buttons as accessory
+                let approve = UIButton(type: .system)
+                approve.setTitle("Approve", for: .normal)
+                approve.tag = indexPath.row
+                approve.accessibilityIdentifier = "Approve"
+                approve.addTarget(self, action: #selector(pendingApproveTapped(_:)), for: .touchUpInside)
+                let reject = UIButton(type: .system)
+                reject.setTitle("Reject", for: .normal)
+                reject.tag = indexPath.row
+                reject.accessibilityIdentifier = "Reject"
+                reject.addTarget(self, action: #selector(pendingRejectTapped(_:)), for: .touchUpInside)
+                let stack = UIStackView(arrangedSubviews: [approve, reject])
+                stack.axis = .horizontal
+                stack.spacing = 8
+                cell.accessoryView = stack
+                return cell
+            } else {
+                let cell = tableView.dequeueReusableCell(withIdentifier: "UserCell", for: indexPath)
+                let user = pendingSent[indexPath.row]
+                var content = cell.defaultContentConfiguration()
+                content.text = "\(user.name) requested"
+                content.textProperties.color = .label
+                content.textProperties.font = .systemFont(ofSize: 17, weight: .medium)
+                cell.contentConfiguration = content
+                cell.accessoryView = nil
+                cell.backgroundColor = .clear
+                cell.selectionStyle = .none
+                cell.backgroundView = UIView()
+                let selectedBg = UIView()
+                selectedBg.backgroundColor = UIColor.white.withAlphaComponent(0.2)
+                cell.selectedBackgroundView = selectedBg
+                return cell
+            }
+        }
+        
         let cell = tableView.dequeueReusableCell(withIdentifier: "UserCell", for: indexPath)
-        let user = currentSegment == 0 ? friends[indexPath.row] : blockedUsers[indexPath.row]
-        
-        print("DEBUG: User data - name: \(user.name), id: \(user.id)")
-        
+        let user = currentSegment == Tab.friends.rawValue ? friends[indexPath.row] : blockedUsers[indexPath.row]
         var content = cell.defaultContentConfiguration()
         content.text = user.name
         content.textProperties.color = .label
         content.textProperties.font = .systemFont(ofSize: 17, weight: .medium)
-        
-        // Configure cell background
+        cell.contentConfiguration = content
+        cell.accessoryView = nil
         cell.backgroundColor = .clear
         cell.selectionStyle = .none
-        
-        // Add a custom background view for the cell
-        let backgroundView = UIView()
-        cell.backgroundView = backgroundView
-        
-        // Add a custom selected background view
-        let selectedBackgroundView = UIView()
-        selectedBackgroundView.backgroundColor = UIColor.white.withAlphaComponent(0.2)
-        cell.selectedBackgroundView = selectedBackgroundView
-        
-        cell.contentConfiguration = content
-        
-        // Debug the cell's content after configuration
-        if let configuredContent = cell.contentConfiguration as? UIListContentConfiguration {
-            print("DEBUG: Cell configured with text: \(configuredContent.text ?? "nil")")
-            print("DEBUG: Cell text color: \(configuredContent.textProperties.color)")
-        }
-        
+        cell.backgroundView = UIView()
+        let selectedBg = UIView()
+        selectedBg.backgroundColor = UIColor.white.withAlphaComponent(0.2)
+        cell.selectedBackgroundView = selectedBg
         return cell
+    }
+    
+    @objc private func pendingApproveTapped(_ sender: UIButton) {
+        let row = sender.tag
+        guard row < pendingReceived.count else { return }
+        let user = pendingReceived[row]
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        UserManager.shared.approveFriendRequest(receiverId: currentUserId, requesterId: user.id) { [weak self] result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success:
+                    self?.loadFriends()
+                    self?.loadPending()
+                    self?.showAlert(title: "Success", message: "Friend request approved.")
+                case .failure(let error):
+                    self?.showAlert(title: "Error", message: error.localizedDescription)
+                }
+            }
+        }
+    }
+    
+    @objc private func pendingRejectTapped(_ sender: UIButton) {
+        let row = sender.tag
+        guard row < pendingReceived.count else { return }
+        let user = pendingReceived[row]
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
+        UserManager.shared.rejectFriendRequest(receiverId: currentUserId, requesterId: user.id) { [weak self] result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success:
+                    self?.loadPending()
+                case .failure(let error):
+                    self?.showAlert(title: "Error", message: error.localizedDescription)
+                }
+            }
+        }
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        let user = currentSegment == 0 ? friends[indexPath.row] : blockedUsers[indexPath.row]
-        
+        if currentSegment == Tab.pending.rawValue {
+            return // Approve/Reject handled by buttons; sent rows have no action
+        }
+        let user = currentSegment == Tab.friends.rawValue ? friends[indexPath.row] : blockedUsers[indexPath.row]
         let alert = UIAlertController(title: user.name, message: nil, preferredStyle: .actionSheet)
-        
-        if currentSegment == 0 {
+        if currentSegment == Tab.friends.rawValue {
             alert.addAction(UIAlertAction(title: "Block User", style: .destructive) { [weak self] _ in
                 self?.blockUser(user)
             })
@@ -475,7 +629,6 @@ extension FriendsViewController: UITableViewDelegate, UITableViewDataSource {
                 self?.unblockUser(user)
             })
         }
-        
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
         present(alert, animated: true)
     }

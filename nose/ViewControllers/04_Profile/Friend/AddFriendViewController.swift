@@ -95,7 +95,7 @@ class AddFriendViewController: UIViewController {
     private lazy var addFriendButton: CustomButton = {
         let button = CustomButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.setTitle("Add Friend", for: .normal)
+        button.setTitle("Send Request", for: .normal)
         button.addTarget(self, action: #selector(addFriendButtonTapped), for: .touchUpInside)
         button.accessibilityIdentifier = "add_friend_button"
         button.isHidden = true // Initially hidden
@@ -239,7 +239,7 @@ class AddFriendViewController: UIViewController {
     
     @objc private func addFriendButtonTapped() {
         guard let user = searchResults.first else { return }
-        addFriend(user)
+        sendFriendRequest(user)
     }
     
     private func searchUsers(withUserId userId: String) {
@@ -371,14 +371,42 @@ class AddFriendViewController: UIViewController {
                                             return
                                         }
                                         
-                                        // If not blocked and not friends, show the result
-                                        DispatchQueue.main.async {
-                                            print("DEBUG: Showing result for user: \(foundUser.name)")
-                                            self.resultNameLabel.text = foundUser.name
-                                            self.loadProfileImage(for: foundUser)
-                                            self.resultContainer.isHidden = false
-                                            self.addFriendButton.isHidden = false
-                                        }
+                                        // Check for existing pending request (received from this user)
+                                        db.collection("users").document(currentUserId)
+                                            .collection("friendRequests").document(foundUser.id).getDocument { [weak self] receivedSnapshot, _ in
+                                                guard let self = self else { return }
+                                                if receivedSnapshot?.exists == true {
+                                                    self.isSearching = false
+                                                    self.activityIndicator.stopAnimating()
+                                                    self.searchResults = []
+                                                    self.resultContainer.isHidden = true
+                                                    self.addFriendButton.isHidden = true
+                                                    self.showAlert(title: "Request Pending", message: "This user has already sent you a friend request. Check the Pending tab to approve or reject.")
+                                                    return
+                                                }
+                                                // Check for existing sent request to this user
+                                                db.collection("users").document(currentUserId)
+                                                    .collection("sentFriendRequests").document(foundUser.id).getDocument { [weak self] sentSnapshot, _ in
+                                                        guard let self = self else { return }
+                                                        if sentSnapshot?.exists == true {
+                                                            self.isSearching = false
+                                                            self.activityIndicator.stopAnimating()
+                                                            self.searchResults = []
+                                                            self.resultContainer.isHidden = true
+                                                            self.addFriendButton.isHidden = true
+                                                            self.showAlert(title: "Request Already Sent", message: "You have already sent a friend request to this user. Check the Pending tab.")
+                                                            return
+                                                        }
+                                                        // If not blocked, not friends, and no pending request, show the result
+                                                        DispatchQueue.main.async {
+                                                            print("DEBUG: Showing result for user: \(foundUser.name)")
+                                                            self.resultNameLabel.text = foundUser.name
+                                                            self.loadProfileImage(for: foundUser)
+                                                            self.resultContainer.isHidden = false
+                                                            self.addFriendButton.isHidden = false
+                                                        }
+                                                    }
+                                            }
                                     }
                             }
                     }
@@ -393,55 +421,27 @@ class AddFriendViewController: UIViewController {
         }
     }
     
-    private func addFriend(_ user: User) {
-        print("DEBUG: Attempting to add friend: \(user.name) with userId: \(user.userId)")
+    private func sendFriendRequest(_ user: User) {
+        print("DEBUG: Sending friend request to: \(user.name) with userId: \(user.userId)")
         guard let currentUserId = Auth.auth().currentUser?.uid else {
             print("DEBUG: No current user found")
             return
         }
         
-        let db = Firestore.firestore()
-        print("DEBUG: Adding friend relationship to Firestore")
-        
-        // Create a batch write
-        let batch = db.batch()
-        
-        // Add friend relationship for current user
-        let currentUserFriendRef = db.collection("users")
-            .document(currentUserId)
-            .collection("friends")
-            .document(user.id)
-        
-        // Add friend relationship for the other user
-        let otherUserFriendRef = db.collection("users")
-            .document(user.id)
-            .collection("friends")
-            .document(currentUserId)
-        
-        // Add data to both documents
-        batch.setData([
-            "addedAt": FieldValue.serverTimestamp()
-        ], forDocument: currentUserFriendRef)
-        
-        batch.setData([
-            "addedAt": FieldValue.serverTimestamp()
-        ], forDocument: otherUserFriendRef)
-        
-        // Commit the batch
-        batch.commit { [weak self] error in
-            if let error = error {
-                print("DEBUG: Error adding friend: \(error.localizedDescription)")
-                return
-            }
-            
-            print("DEBUG: Friend added successfully for both users")
+        UserManager.shared.sendFriendRequest(requesterId: currentUserId, receiverId: user.id) { [weak self] result in
             DispatchQueue.main.async {
-                self?.showAlert(title: "Success", message: "Friend added successfully") { _ in
-                    // Clear the search field and result container
-                    self?.searchBar.text = ""
-                    self?.resultContainer.isHidden = true
-                    self?.addFriendButton.isHidden = true
-                    self?.searchResults = []
+                switch result {
+                case .success:
+                    print("DEBUG: Friend request sent successfully")
+                    self?.showAlert(title: "Success", message: "Friend request sent.") { _ in
+                        self?.searchBar.text = ""
+                        self?.resultContainer.isHidden = true
+                        self?.addFriendButton.isHidden = true
+                        self?.searchResults = []
+                    }
+                case .failure(let error):
+                    print("DEBUG: Error sending friend request: \(error.localizedDescription)")
+                    self?.showAlert(title: "Error", message: "Failed to send friend request. Please try again.")
                 }
             }
         }
