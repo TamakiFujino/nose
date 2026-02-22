@@ -29,7 +29,8 @@ If icons are missing, you can copy them using the existing Python script:
 
 ```bash
 # Install dependencies (if not already installed)
-cd /Users/tamakifujino/Documents/nose/scripts
+# From repo root:
+cd scripts
 source venv/bin/activate
 pip install firebase-admin google-cloud-storage
 
