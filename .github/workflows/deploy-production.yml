@@ -1,4 +1,5 @@
-# On merge (push) to main: deploy Firebase to production, optionally run smoke E2E, then build and upload to TestFlight/App Store.
+# On merge (push) to main: deploy Firebase to production, run smoke E2E, then build and upload to TestFlight/App Store.
+# Smoke E2E must pass before the build proceeds. Use skip_smoke_e2e to bypass if needed.
 name: Deploy Production
 
 on:
@@ -8,9 +9,9 @@ on:
   workflow_dispatch:
     inputs:
       skip_smoke_e2e:
-        description: 'Skip optional smoke E2E against production'
+        description: 'Skip smoke E2E against production'
         required: false
-        default: true
+        default: false
         type: boolean
 
 jobs:
@@ -38,7 +39,6 @@ jobs:
     name: Smoke E2E (production)
     needs: deploy-firebase-production
     if: github.event.inputs.skip_smoke_e2e != 'true' || github.event_name == 'push'
-    continue-on-error: true
     uses: ./.github/workflows/e2e-reusable.yml
     with:
       scheme: nose-production
@@ -46,7 +46,8 @@ jobs:
 
   build-and-upload-production:
     name: Build and upload to TestFlight (production)
-    needs: deploy-firebase-production
+    needs: [deploy-firebase-production, smoke-e2e]
+    if: always() && needs.deploy-firebase-production.result == 'success' && (needs.smoke-e2e.result == 'success' || needs.smoke-e2e.result == 'skipped')
     runs-on: macos-14
     steps:
       - name: Checkout code
@@ -57,6 +58,36 @@ jobs:
         with:
           path: unity-build
           key: unity-build-${{ hashFiles('nose-unity/Packages/manifest.json', 'nose-unity/Assets/**/*.meta') }}
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate config from env (xcconfig, Config.plist)
+        env:
+          CI_ENV_FILE: ${{ secrets.CI_ENV_FILE }}
+        run: |
+          if [ -z "$CI_ENV_FILE" ]; then
+            echo "::error::Secret CI_ENV_FILE is not set."
+            exit 1
+          fi
+          printf '%s' "$CI_ENV_FILE" > .env
+          node scripts/generate_config_from_env.js
+
+      - name: Write Firebase GoogleService-Info plists
+        env:
+          GOOGLE_SERVICE_INFO_DEVELOPMENT_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_DEVELOPMENT_PLIST }}
+          GOOGLE_SERVICE_INFO_STAGING_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_STAGING_PLIST }}
+          GOOGLE_SERVICE_INFO_PRODUCTION_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PRODUCTION_PLIST }}
+        run: |
+          mkdir -p FirebaseConfig
+          printf '%s' "$GOOGLE_SERVICE_INFO_DEVELOPMENT_PLIST" > FirebaseConfig/GoogleService-Info-Development.plist
+          printf '%s' "$GOOGLE_SERVICE_INFO_STAGING_PLIST" > FirebaseConfig/GoogleService-Info-Staging.plist
+          printf '%s' "$GOOGLE_SERVICE_INFO_PRODUCTION_PLIST" > FirebaseConfig/GoogleService-Info-Production.plist
+          for f in FirebaseConfig/GoogleService-Info-Development.plist FirebaseConfig/GoogleService-Info-Staging.plist FirebaseConfig/GoogleService-Info-Production.plist; do
+            [ -s "$f" ] || { echo "::error::Missing or empty plist: $f"; exit 1; }
+          done
 
       - name: Select Xcode version
         run: sudo xcode-select -s /Applications/Xcode_16.2.app
