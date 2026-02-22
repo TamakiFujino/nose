@@ -345,6 +345,63 @@ final class UserManager {
                     }
             }
     }
+
+    // MARK: - Friend Requests
+
+    /// Send a friend request from requester to receiver. Creates docs in receiver's friendRequests and requester's sentFriendRequests.
+    func sendFriendRequest(requesterId: String, receiverId: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        let batch = db.batch()
+        let receiverRequestsRef = FirestorePaths.friendRequests(userId: receiverId, db: db).document(requesterId)
+        let requesterSentRef = FirestorePaths.sentFriendRequests(userId: requesterId, db: db).document(receiverId)
+        batch.setData(["createdAt": FieldValue.serverTimestamp()], forDocument: receiverRequestsRef)
+        batch.setData(["createdAt": FieldValue.serverTimestamp()], forDocument: requesterSentRef)
+        batch.commit { error in
+            if let error = error {
+                completion(.failure(error))
+            } else {
+                completion(.success(()))
+            }
+        }
+    }
+
+    /// Approve a received friend request: remove request docs and add mutual friends.
+    func approveFriendRequest(receiverId: String, requesterId: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        let batch = db.batch()
+        let receiverRequestsRef = FirestorePaths.friendRequests(userId: receiverId, db: db).document(requesterId)
+        let requesterSentRef = FirestorePaths.sentFriendRequests(userId: requesterId, db: db).document(receiverId)
+        batch.deleteDocument(receiverRequestsRef)
+        batch.deleteDocument(requesterSentRef)
+        batch.setData(["addedAt": FieldValue.serverTimestamp()], forDocument: FirestorePaths.friends(userId: receiverId, db: db).document(requesterId))
+        batch.setData(["addedAt": FieldValue.serverTimestamp()], forDocument: FirestorePaths.friends(userId: requesterId, db: db).document(receiverId))
+        batch.commit { error in
+            if let error = error {
+                completion(.failure(error))
+            } else {
+                completion(.success(()))
+            }
+        }
+    }
+
+    /// Reject a received friend request: remove both request docs only.
+    func rejectFriendRequest(receiverId: String, requesterId: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        let batch = db.batch()
+        let receiverRequestsRef = FirestorePaths.friendRequests(userId: receiverId, db: db).document(requesterId)
+        let requesterSentRef = FirestorePaths.sentFriendRequests(userId: requesterId, db: db).document(receiverId)
+        batch.deleteDocument(receiverRequestsRef)
+        batch.deleteDocument(requesterSentRef)
+        batch.commit { error in
+            if let error = error {
+                completion(.failure(error))
+            } else {
+                completion(.success(()))
+            }
+        }
+    }
+
+    /// Cancel a sent friend request: remove both request docs.
+    func cancelFriendRequest(requesterId: String, receiverId: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        rejectFriendRequest(receiverId: receiverId, requesterId: requesterId, completion: completion)
+    }
     
     func blockUser(currentUserId: String, blockedUserId: String, completion: @escaping (Result<Void, Error>) -> Void) {
         print("🔒 Starting block operation:")

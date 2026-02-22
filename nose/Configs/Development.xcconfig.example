@@ -1,0 +1,14 @@
+//
+//  Config.xcconfig
+//  nose
+//
+//  Created by Tamaki Fujino on 2025/06/28.
+//
+
+// Configuration settings file format documentation can be found at:
+// https://developer.apple.com/documentation/xcode/adding-a-build-configuration-file-to-your-project
+
+#include "Pods/Target Support Files/Pods-nose/Pods-nose.development.xcconfig"
+
+GOOGLE_REVERSED_CLIENT_ID = ${GOOGLE_REVERSED_CLIENT_ID_DEVELOPMENT}
+GOOGLE_CLIENT_ID = ${GOOGLE_CLIENT_ID_DEVELOPMENT}

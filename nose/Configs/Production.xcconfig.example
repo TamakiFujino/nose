@@ -1,0 +1,21 @@
+//
+//  Config.xcconfig
+//  nose
+//
+//  Created by Tamaki Fujino on 2025/06/28.
+//
+
+// Configuration settings file format documentation can be found at:
+// https://developer.apple.com/documentation/xcode/adding-a-build-configuration-file-to-your-project
+
+#include "Pods/Target Support Files/Pods-nose/Pods-nose.production.xcconfig"
+
+// Bundle Identifier - unique per configuration
+PRODUCT_BUNDLE_IDENTIFIER = com.tamakifujino.nose
+
+// Display Name - to distinguish between different configurations on device
+INFOPLIST_KEY_CFBundleDisplayName = nose
+
+// Google Client IDs
+GOOGLE_REVERSED_CLIENT_ID = ${GOOGLE_REVERSED_CLIENT_ID_PRODUCTION}
+GOOGLE_CLIENT_ID = ${GOOGLE_CLIENT_ID_PRODUCTION}

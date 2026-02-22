@@ -1,0 +1,27 @@
+{
+  "name": "nose-migration-scripts",
+  "version": "1.0.0",
+  "description": "Migration scripts for Nose app",
+  "main": "migrate_collection_icons.js",
+  "scripts": {
+    "migrate-icons": "node migrate_collection_icons.js",
+    "migrate-icons:dev": "node migrate_collection_icons.js dev",
+    "migrate-icons:staging": "node migrate_collection_icons.js staging",
+    "migrate-icons:production": "node migrate_collection_icons.js production",
+    "generate-config": "node generate_config_from_env.js"
+  },
+  "keywords": [
+    "firebase",
+    "migration",
+    "firestore",
+    "storage"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.0.0",
+    "firebase-admin": "^12.0.0"
+  }
+}
+
+
