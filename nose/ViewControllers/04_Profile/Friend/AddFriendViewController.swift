@@ -201,7 +201,7 @@ class AddFriendViewController: UIViewController {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         let db = Firestore.firestore()
         
-        db.collection("users").document(currentUserId).getDocument { [weak self] snapshot, error in
+        FirestorePaths.userDoc(currentUserId, db: db).getDocument { [weak self] snapshot, error in
             if let error = error {
                 print("Error loading current user: \(error.localizedDescription)")
                 return
@@ -243,11 +243,8 @@ class AddFriendViewController: UIViewController {
     }
     
     private func searchUsers(withUserId userId: String) {
-        print("DEBUG: Starting search with userId: \(userId)")
-        print("DEBUG: userId length: \(userId.count)")
         
         guard !userId.isEmpty else {
-            print("DEBUG: UserId is empty")
             searchResults = []
             resultContainer.isHidden = true
             addFriendButton.isHidden = true
@@ -258,7 +255,6 @@ class AddFriendViewController: UIViewController {
         // Validate user ID format (10 alphanumeric characters)
         let userIdRegex = "^[A-Z0-9]{10}$"
         guard userId.range(of: userIdRegex, options: .regularExpression) != nil else {
-            print("DEBUG: Invalid userId format - must be 10 alphanumeric characters")
             searchResults = []
             resultContainer.isHidden = true
             addFriendButton.isHidden = true
@@ -268,7 +264,6 @@ class AddFriendViewController: UIViewController {
         
         // Check if user is searching their own ID
         if userId == currentUser?.userId {
-            print("DEBUG: User searched their own ID")
             searchResults = []
             resultContainer.isHidden = true
             addFriendButton.isHidden = true
@@ -281,36 +276,29 @@ class AddFriendViewController: UIViewController {
         resultContainer.isHidden = true
         addFriendButton.isHidden = true
         
-        print("DEBUG: Querying Firestore for user with userId: \(userId)")
         let db = Firestore.firestore()
         
         // First check if the user is already a friend
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         
         // First search for the user
-        db.collection("users").whereField("userId", isEqualTo: userId).getDocuments { [weak self] snapshot, error in
+        FirestorePaths.users(db).whereField("userId", isEqualTo: userId).getDocuments { [weak self] snapshot, error in
             guard let self = self else {
-                print("DEBUG: Self was deallocated")
                 return
             }
             
             if let error = error {
-                print("DEBUG: Firestore error: \(error.localizedDescription)")
                 self.isSearching = false
                 self.activityIndicator.stopAnimating()
                 self.showAlert(title: "Error", message: "An error occurred while searching. Please try again.")
                 return
             }
             
-            print("DEBUG: Firestore query completed")
-            print("DEBUG: Number of documents found: \(snapshot?.documents.count ?? 0)")
             
             self.searchResults = snapshot?.documents.compactMap { document in
                 if let user = User.fromFirestore(document) {
-                    print("DEBUG: Successfully parsed user: \(user.name) with userId: \(user.userId)")
                     return user
                 } else {
-                    print("DEBUG: Failed to parse user from document")
                     return nil
                 }
             } ?? []
@@ -318,7 +306,6 @@ class AddFriendViewController: UIViewController {
             if let foundUser = self.searchResults.first {
                 // Check if the user is deleted
                 if foundUser.isDeleted {
-                    print("DEBUG: Found user is deleted")
                     self.searchResults = []
                     self.resultContainer.isHidden = true
                     self.addFriendButton.isHidden = true
@@ -327,15 +314,13 @@ class AddFriendViewController: UIViewController {
                 }
                 
                 // Check if the current user has blocked the found user
-                db.collection("users").document(currentUserId)
-                    .collection("blocked").document(foundUser.id).getDocument { [weak self] blockedSnapshot, blockedError in
+                FirestorePaths.blocked(userId: currentUserId, db: db).document(foundUser.id).getDocument { [weak self] blockedSnapshot, blockedError in
                         guard let self = self else { return }
                         
                         self.isSearching = false
                         self.activityIndicator.stopAnimating()
                         
                         if blockedSnapshot?.exists == true {
-                            print("DEBUG: Current user has blocked the found user")
                             self.searchResults = []
                             self.resultContainer.isHidden = true
                             self.addFriendButton.isHidden = true
@@ -344,12 +329,10 @@ class AddFriendViewController: UIViewController {
                         }
                         
                         // Check if the found user has blocked the current user
-                        db.collection("users").document(foundUser.id)
-                            .collection("blocked").document(currentUserId).getDocument { [weak self] blockedSnapshot, blockedError in
+                        FirestorePaths.blocked(userId: foundUser.id, db: db).document(currentUserId).getDocument { [weak self] blockedSnapshot, blockedError in
                                 guard let self = self else { return }
                                 
                                 if blockedSnapshot?.exists == true {
-                                    print("DEBUG: Current user is blocked by the found user")
                                     self.searchResults = []
                                     self.resultContainer.isHidden = true
                                     self.addFriendButton.isHidden = true
@@ -358,12 +341,10 @@ class AddFriendViewController: UIViewController {
                                 }
                                 
                                 // Check if already friends
-                                db.collection("users").document(currentUserId)
-                                    .collection("friends").document(foundUser.id).getDocument { [weak self] friendSnapshot, friendError in
+                                FirestorePaths.friends(userId: currentUserId, db: db).document(foundUser.id).getDocument { [weak self] friendSnapshot, friendError in
                                         guard let self = self else { return }
                                         
                                         if friendSnapshot?.exists == true {
-                                            print("DEBUG: User is already a friend")
                                             self.searchResults = []
                                             self.resultContainer.isHidden = true
                                             self.addFriendButton.isHidden = true
@@ -372,8 +353,7 @@ class AddFriendViewController: UIViewController {
                                         }
                                         
                                         // Check for existing pending request (received from this user)
-                                        db.collection("users").document(currentUserId)
-                                            .collection("friendRequests").document(foundUser.id).getDocument { [weak self] receivedSnapshot, _ in
+                                        FirestorePaths.friendRequests(userId: currentUserId, db: db).document(foundUser.id).getDocument { [weak self] receivedSnapshot, _ in
                                                 guard let self = self else { return }
                                                 if receivedSnapshot?.exists == true {
                                                     self.isSearching = false
@@ -385,8 +365,7 @@ class AddFriendViewController: UIViewController {
                                                     return
                                                 }
                                                 // Check for existing sent request to this user
-                                                db.collection("users").document(currentUserId)
-                                                    .collection("sentFriendRequests").document(foundUser.id).getDocument { [weak self] sentSnapshot, _ in
+                                                FirestorePaths.sentFriendRequests(userId: currentUserId, db: db).document(foundUser.id).getDocument { [weak self] sentSnapshot, _ in
                                                         guard let self = self else { return }
                                                         if sentSnapshot?.exists == true {
                                                             self.isSearching = false
@@ -399,7 +378,6 @@ class AddFriendViewController: UIViewController {
                                                         }
                                                         // If not blocked, not friends, and no pending request, show the result
                                                         DispatchQueue.main.async {
-                                                            print("DEBUG: Showing result for user: \(foundUser.name)")
                                                             self.resultNameLabel.text = foundUser.name
                                                             self.loadProfileImage(for: foundUser)
                                                             self.resultContainer.isHidden = false
@@ -411,7 +389,6 @@ class AddFriendViewController: UIViewController {
                             }
                     }
             } else {
-                print("DEBUG: No user found, hiding result container")
                 self.isSearching = false
                 self.activityIndicator.stopAnimating()
                 self.resultContainer.isHidden = true
@@ -422,25 +399,19 @@ class AddFriendViewController: UIViewController {
     }
     
     private func sendFriendRequest(_ user: User) {
-        print("DEBUG: Sending friend request to: \(user.name) with userId: \(user.userId)")
-        guard let currentUserId = Auth.auth().currentUser?.uid else {
-            print("DEBUG: No current user found")
-            return
-        }
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         
         UserManager.shared.sendFriendRequest(requesterId: currentUserId, receiverId: user.id) { [weak self] result in
             DispatchQueue.main.async {
                 switch result {
                 case .success:
-                    print("DEBUG: Friend request sent successfully")
-                    self?.showAlert(title: "Success", message: "Friend request sent.") { _ in
+                    self?.showAlert(title: "Request Sent!", message: "Wait for the friend to approve the request.") { _ in
                         self?.searchBar.text = ""
                         self?.resultContainer.isHidden = true
                         self?.addFriendButton.isHidden = true
                         self?.searchResults = []
                     }
                 case .failure(let error):
-                    print("DEBUG: Error sending friend request: \(error.localizedDescription)")
                     self?.showAlert(title: "Error", message: "Failed to send friend request. Please try again.")
                 }
             }
@@ -452,9 +423,7 @@ class AddFriendViewController: UIViewController {
         
         // First, get the saved profile image collection ID from the user's document
         let db = Firestore.firestore()
-        db.collection("users")
-            .document(user.id)
-            .getDocument { [weak self] snapshot, error in
+        FirestorePaths.userDoc(user.id, db: db).getDocument { [weak self] snapshot, error in
                 guard let self = self else { return }
                 
                 if let error = error {

@@ -119,16 +119,16 @@
 		66F62A629F4C446FA75834F2 /* Pods-nose.staging.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-nose.staging.xcconfig"; path = "Target Support Files/Pods-nose/Pods-nose.staging.xcconfig"; sourceTree = "<group>"; };
 		6BAD938A99764361A6E14FC3 /* Pods-nose-metadata.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "Pods-nose-metadata.plist"; sourceTree = "<group>"; };
 		76DC80AC657D4235EC30D629 /* Pods-nose-noseUITests-metadata.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "Pods-nose-noseUITests-metadata.plist"; sourceTree = "<group>"; };
+		7A8B9C0D1E2F304152637485 /* Development.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Development.xcconfig; sourceTree = "<group>"; };
 		8647834D7F90BEF7D75988DF /* Pods-nose.production.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-nose.production.xcconfig"; path = "Target Support Files/Pods-nose/Pods-nose.production.xcconfig"; sourceTree = "<group>"; };
+		8B9C0D1E2F30415263748596 /* Staging.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Staging.xcconfig; sourceTree = "<group>"; };
 		98801FC8B919E9684CEDD75B /* Pods-noseUITests.development.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseUITests.development.xcconfig"; path = "Target Support Files/Pods-noseUITests/Pods-noseUITests.development.xcconfig"; sourceTree = "<group>"; };
+		9C0D1E2F30415263748596A7 /* Production.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Production.xcconfig; sourceTree = "<group>"; };
 		A853DF619778C6D6C921099B /* Pods-noseTests.staging.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseTests.staging.xcconfig"; path = "Target Support Files/Pods-noseTests/Pods-noseTests.staging.xcconfig"; sourceTree = "<group>"; };
 		B6B6B0585B899D3EF0BF8CF5 /* Pods-noseUITests.production.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseUITests.production.xcconfig"; path = "Target Support Files/Pods-noseUITests/Pods-noseUITests.production.xcconfig"; sourceTree = "<group>"; };
 		C55712635655362963A503F5 /* Pods-noseTests.production.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseTests.production.xcconfig"; path = "Target Support Files/Pods-noseTests/Pods-noseTests.production.xcconfig"; sourceTree = "<group>"; };
 		E5CEC1BD423A9880A1F53123 /* Pods-noseUITests.staging.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-noseUITests.staging.xcconfig"; path = "Target Support Files/Pods-noseUITests/Pods-noseUITests.staging.xcconfig"; sourceTree = "<group>"; };
 		F23C16B756E43F653CDBFDD4 /* Pods_noseUITests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_noseUITests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		7A8B9C0D1E2F304152637485 /* Development.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Development.xcconfig; sourceTree = "<group>"; };
-		8B9C0D1E2F30415263748596 /* Staging.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Staging.xcconfig; sourceTree = "<group>"; };
-		9C0D1E2F30415263748596A7 /* Production.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Production.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -260,7 +260,7 @@
 		49E99BED2D3BE432000F3CE5 = {
 			isa = PBXGroup;
 			children = (
-				7A8B9C0E1E2F304152637486 /* Configs */,
+				7A8B9C0E1E2F304152637486 /* nose/Configs */,
 				4915172A2E9A01C800D5C35F /* FirebaseConfig */,
 				49F87F512E6476DD00C129C4 /* Data */,
 				49F87F3E2E64768400C129C4 /* Unity-iPhone.xcodeproj */,
@@ -300,16 +300,6 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		7A8B9C0E1E2F304152637486 /* Configs */ = {
-			isa = PBXGroup;
-			children = (
-				7A8B9C0D1E2F304152637485 /* Development.xcconfig */,
-				8B9C0D1E2F30415263748596 /* Staging.xcconfig */,
-				9C0D1E2F30415263748596A7 /* Production.xcconfig */,
-			);
-			path = nose/Configs;
-			sourceTree = "<group>";
-		};
 		50579441D3777C7C7B70948F /* Pods */ = {
 			isa = PBXGroup;
 			children = (
@@ -326,6 +316,16 @@
 				B6B6B0585B899D3EF0BF8CF5 /* Pods-noseUITests.production.xcconfig */,
 			);
 			path = Pods;
+			sourceTree = "<group>";
+		};
+		7A8B9C0E1E2F304152637486 /* nose/Configs */ = {
+			isa = PBXGroup;
+			children = (
+				7A8B9C0D1E2F304152637485 /* Development.xcconfig */,
+				8B9C0D1E2F30415263748596 /* Staging.xcconfig */,
+				9C0D1E2F30415263748596A7 /* Production.xcconfig */,
+			);
+			path = nose/Configs;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
