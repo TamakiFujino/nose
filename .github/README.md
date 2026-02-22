@@ -1,61 +1,65 @@
 # iOS CI/CD Pipeline
-
 This repository uses GitHub Actions for PR-gated E2E, Firebase rule deploys, and automated TestFlight/App Store uploads. (chore: test CI)
 
-## Workflow Triggers
+## Workflows
 
-The CI/CD pipeline is triggered in the following scenarios:
+### 1. PR Checks (`pr-checks.yml`)
+- **Trigger**: Pull requests targeting the `staging` branch
+- **Action**: Runs Appium E2E tests (and optionally lint when configured). Merge is allowed only when these pass (see Branch Protection).
+- **Use Case**: Ensure changes are tested before merging to staging.
 
-### 1. Direct Push to Staging Branch
-- **Trigger**: Any push to the `staging` branch
-- **Action**: Builds and uploads to TestFlight using the staging scheme
-- **Use Case**: Quick testing of features in development
+### 2. Deploy Staging (`deploy-staging.yml`)
+- **Trigger**: Push to the `staging` branch (e.g. after merging a PR)
+- **Action**: (1) Deploys Firestore and Storage rules to the **staging** Firebase project. (2) Builds and uploads to TestFlight using the staging scheme (`fastlane beta`).
+- **Use Case**: Staging environment is updated with latest code and rules.
 
-### 2. Pull Request Merge to Main/Production
-- **Trigger**: When a pull request is merged to `main` or `production` branches
-- **Action**: Builds and uploads to TestFlight using the production scheme
-- **Use Case**: Production releases after code review
+### 3. Deploy Production (`deploy-production.yml`)
+- **Trigger**: Push to the `main` branch, or manual workflow dispatch
+- **Action**: (1) Deploys Firestore and Storage rules to the **production** Firebase project. (2) Optionally runs smoke E2E against the production app. (3) Builds and uploads to TestFlight/App Store using the production scheme (`fastlane production`).
+- **Use Case**: Production release with rules and app in sync.
 
-### 3. Manual Trigger
-- **Trigger**: Manual workflow dispatch from GitHub Actions tab
-- **Action**: Allows you to choose between staging or production deployment
-- **Use Case**: Emergency deployments or testing
-
-## Environment Configuration
-
-### Staging Environment
-- **Scheme**: `nose-staging`
-- **Configuration**: Staging
-- **Purpose**: Development and testing
-
-### Production Environment
-- **Scheme**: `nose-production`
-- **Configuration**: Production
-- **Purpose**: Production releases
+### 4. AI PR Review (`ai-pr-review.yml`) — optional
+- **Trigger**: Pull requests opened or updated targeting `staging` or `main`
+- **Action**: Posts an AI-generated code review comment on the PR. Requires `OPENAI_API_KEY` in secrets. Fails gracefully if the secret is missing (does not block merge).
+- **Use Case**: Solo developer: get automated review feedback without a second human reviewer.
 
 ## Required Secrets
 
-Make sure the following secrets are configured in your GitHub repository settings:
+Configure these in **Settings → Secrets and variables → Actions**:
 
+### App Store Connect / Fastlane (for TestFlight uploads)
 - `APP_STORE_CONNECT_API_KEY`: App Store Connect API Key (JSON content)
+- `APP_STORE_CONNECT_API_KEY_ID`: API Key ID
+- `APP_STORE_CONNECT_API_KEY_ISSUER_ID`: Issuer ID
 - `FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD`: App-specific password for Apple ID
 - `FASTLANE_PASSWORD`: Apple ID password
 - `FASTLANE_USER`: Apple ID email
+
+### Firebase (for rule deploys)
+- `FIREBASE_SERVICE_ACCOUNT_STAGING`: Service account JSON (full file contents) for the **staging** Firebase project (`nose-staging`). Used by `deploy-staging.yml`. Create in Firebase Console → Project settings → Service accounts → Generate new private key.
+- `FIREBASE_SERVICE_ACCOUNT_PRODUCTION`: Service account JSON for the **production** Firebase project (`nose-production`). Used by `deploy-production.yml`.
+
+### Optional: AI PR review
+- `OPENAI_API_KEY`: OpenAI API key for the optional **AI PR Review** workflow (`ai-pr-review.yml`). When set, the workflow posts an AI-generated code review comment on pull requests to `staging` and `main`. The job uses `continue-on-error: true`, so missing or invalid key does not block merges.
 
 ## Branch Strategy
 
 ### Recommended Workflow
 
-1. **Development**: Work on feature branches
-2. **Staging**: Merge feature branches to `staging` for testing
-3. **Production**: Create pull requests from `staging` to `main` or `production`
+1. **Development**: Work on feature branches; open a PR to `staging`.
+2. **Staging**: After PR checks (E2E) pass, merge to `staging`. CI deploys Firebase to staging and uploads to TestFlight (staging).
+3. **Production**: Open a PR from `staging` to `main`. After merge, CI deploys Firebase to production and uploads to TestFlight/App Store (production).
 
 ### Branch Protection Rules
 
-Consider setting up branch protection rules for:
-- `main` and `production` branches
-- Require pull request reviews
-- Require status checks to pass
+Configure in **Settings → Branches → Branch protection rules**:
+
+- **`staging`**: Require status check **E2E** (from "PR Checks" workflow) to pass before merge. Optionally require **Lint** if you add a lint job.
+- **`main`**: Require a pull request from `staging`, and require status checks if you run checks on the PR; or require at least one review if you prefer manual gate.
+
+## Test Updates
+
+Update tests in the **same PR** that changes app behavior. E2E tests live in `AppiumTests/`. When you add or change a feature, add or update the relevant test cases in that PR so the PR Checks workflow runs against the new behavior.
 
 ## Fastlane Lanes
 
@@ -75,49 +79,4 @@ Consider setting up branch protection rules for:
 
 ## Troubleshooting
 
-### Common Issues
-
-1. **Build Failures**
-   - Check Xcode scheme configuration
-   - Verify signing certificates
-   - Ensure all dependencies are properly installed
-
-2. **Upload Failures**
-   - Verify App Store Connect API key
-   - Check Apple ID credentials
-   - Ensure app is properly configured in App Store Connect
-
-3. **Version Conflicts**
-   - Fastlane automatically increments build numbers
-   - Check for duplicate build numbers in App Store Connect
-
-### Debugging
-
-- Check GitHub Actions logs for detailed error messages
-- Use the manual trigger to test specific environments
-- Verify secrets are properly configured
-
-## Local Development
-
-To test the build process locally:
-
-```bash
-# Install dependencies
-bundle install
-
-# Run staging build
-bundle exec fastlane beta
-
-# Run production build
-bundle exec fastlane production
-
-# Build only (no upload)
-bundle exec fastlane build
-```
-
-## Security Notes
-
-- Never commit API keys or passwords to the repository
-- Use GitHub Secrets for all sensitive information
-- Regularly rotate App Store Connect API keys
-- Use app-specific passwords for Apple ID authentication 
+See the main repository README or SETUP.md for build and environment issues. For CI: check GitHub Actions logs, verify secrets, and ensure branch protection status check names match the job names (e.g. **E2E**).
