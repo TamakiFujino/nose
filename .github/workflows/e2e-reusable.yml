@@ -28,6 +28,7 @@ jobs:
         with:
           path: unity-build
           key: unity-build-${{ hashFiles('nose-unity/Packages/manifest.json', 'nose-unity/Assets/**/*.meta') }}
+          restore-keys: unity-build-
 
       - name: Fail if unity-build missing
         run: |
