@@ -56,4 +56,5 @@ node_modules/
 
 # Addressables cache states
 nose-unity/Assets/AddressableAssetsData/*/*.bin
+# OpenInNose extension: generated or local override
 OpenInNose/Info.plist
