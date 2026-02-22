@@ -1,0 +1,48 @@
+# Build Unity (iOS export) and cache unity-build/ so PR Checks can restore it.
+# Runs when nose-unity/ changes (push to staging) or on manual trigger.
+# Personal: UNITY_LICENSE + UNITY_EMAIL + UNITY_PASSWORD. Pro: UNITY_SERIAL + UNITY_EMAIL + UNITY_PASSWORD.
+name: Build Unity and cache
+
+on:
+  push:
+    branches: [staging]
+    paths:
+      - 'nose-unity/**'
+  workflow_dispatch:
+
+jobs:
+  build-unity:
+    name: Build Unity (iOS) and cache
+    runs-on: macos-14
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Build Unity project for iOS
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          targetPlatform: iOS
+          projectPath: nose-unity
+          unityVersion: 2022.3.58f1
+          buildsPath: unity-build
+          buildName: Unity-iPhone
+
+      - name: Ensure unity-build structure
+        run: |
+          if [ -d "unity-build/Unity-iPhone" ] && [ ! -d "unity-build/Unity-iPhone.xcodeproj" ]; then
+            mv unity-build/Unity-iPhone/* unity-build/
+            rmdir unity-build/Unity-iPhone
+          fi
+          [ -d "unity-build/Unity-iPhone.xcodeproj" ] || (echo "::error::Unity build did not produce Unity-iPhone.xcodeproj"; exit 1)
+
+      - name: Cache unity-build
+        uses: actions/cache@v4
+        with:
+          path: unity-build
+          key: unity-build-${{ hashFiles('nose-unity/Packages/manifest.json', 'nose-unity/Assets/**/*.meta') }}
