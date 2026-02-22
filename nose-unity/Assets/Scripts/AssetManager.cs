@@ -46,6 +46,9 @@ public class AssetManager : MonoBehaviour
     // Pending colors to apply once a slot's asset is loaded
     private readonly Dictionary<string, string> slotKeyToPendingColor = new Dictionary<string, string>();
 
+    // Last applied face (base skin) color — used to boost Blush/Eyeshadow visibility on light skin
+    private Color? lastAppliedFaceColor;
+
     private bool addressablesInitialized = false;
 
     [Header("Remote Catalog (Firebase Hosting)")]
@@ -1316,6 +1319,10 @@ public class AssetManager : MonoBehaviour
         bool isBlush = sub == "blush";
         bool isEyeshadow = sub == "eyeshadow";
 
+        // On light skin, multiply blending makes Blush/Eyeshadow almost invisible. Boost color (darken/saturate) so it shows.
+        if (isBlush || isEyeshadow)
+            color = BoostMakeupForSkinTone(color, lastAppliedFaceColor);
+
         // Candidate property names to support different Shader Graph setups
         // NOTE: Shader Graph "Reference" names often start with "_" (e.g. _BlushColor),
         // but they can also be custom without it (e.g. BlushColor). Support both.
@@ -1395,6 +1402,8 @@ public class AssetManager : MonoBehaviour
             return;
         }
 
+        lastAppliedFaceColor = color;
+
         var tex = GetOrCreateSolidTexture(color);
         var renderers = avatarRoot.GetComponentsInChildren<Renderer>(true);
         int materialsTouched = 0;
@@ -1433,6 +1442,33 @@ public class AssetManager : MonoBehaviour
         {
             Debug.Log($"ApplyFaceBaseSkinColor: Updated {materialsTouched} material(s).");
         }
+    }
+
+    // Boosts Blush/Eyeshadow color so it stays visible on light skin (shader uses multiply blend).
+    // Light skin = high luminance → we darken the makeup color so the multiply has a stronger effect.
+    private static Color BoostMakeupForSkinTone(Color makeupColor, Color? faceColor)
+    {
+        float luminance = 0.75f; // when unknown, assume light skin so makeup is visible by default
+        if (faceColor.HasValue)
+        {
+            Color c = faceColor.Value;
+            luminance = 0.2126f * c.linear.r + 0.7152f * c.linear.g + 0.0722f * c.linear.b;
+        }
+        // Light skin: luminance roughly > 0.5. Boost makeup so it's visible.
+        const float lightSkinThreshold = 0.5f;
+        if (luminance <= lightSkinThreshold)
+            return makeupColor; // dark skin: no change
+
+        // Strength of boost (0 = no change, 1 = full darken). Stronger for lighter skin.
+        float t = Mathf.Clamp01((luminance - lightSkinThreshold) / 0.4f);
+        float darken = 0.55f + 0.2f * (1f - t); // target multiplier ~0.55–0.75
+        Color boosted = new Color(
+            makeupColor.r * darken,
+            makeupColor.g * darken,
+            makeupColor.b * darken,
+            makeupColor.a
+        );
+        return Color.Lerp(makeupColor, boosted, 0.5f * t);
     }
 
     private static bool TryParseHexColor(string hex, out Color color)
