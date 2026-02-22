@@ -28,7 +28,6 @@ class NewCollectionModalViewController: CollectionModalViewController {
         
         // Create new collection in Firestore
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
-        let db = Firestore.firestore()
         let collectionId = UUID().uuidString
         
         var collectionData: [String: Any] = [
@@ -47,7 +46,7 @@ class NewCollectionModalViewController: CollectionModalViewController {
             collectionData["iconUrl"] = iconUrl
         }
         
-        let collectionRef = FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collectionId, db: db)
+        let collectionRef = FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collectionId)
         
         // Show loading indicator
         saveButton.isEnabled = false

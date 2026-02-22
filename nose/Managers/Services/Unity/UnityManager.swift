@@ -207,12 +207,12 @@ final class UnityManager {
     
     /// Handle response from Unity
     func handleUnityResponse(_ response: String) {
-        print("📱 UnityManager: Received response from Unity: \(response)")
+        Logger.log("UnityManager: Received response from Unity: \(response)", level: .debug, category: "Unity")
         
         guard let data = response.data(using: .utf8),
               let responseData = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let callbackId = responseData["callbackId"] as? String else {
-            print("❌ Invalid Unity response format")
+            Logger.log("Invalid Unity response format", level: .error, category: "Unity")
             return
         }
         
@@ -228,7 +228,7 @@ final class UnityManager {
     // MARK: - Private Methods
     
     private func performCategoryLoad() async throws {
-        print("🔄 UnityManager: Loading categories from Unity via UnityBridge...")
+        Logger.log("UnityManager: Loading categories from Unity via UnityBridge...", level: .debug, category: "Unity")
         
         // Wait for Unity to be ready and get categories
         let categoriesJson = await getCategoriesFromUnity()
@@ -242,9 +242,9 @@ final class UnityManager {
         isLoaded = true
         loadingTask = nil
         
-        print("✅ UnityManager: Categories loaded successfully from Unity:")
-        print("   Main categories: \(getMainCategories())")
-        print("   Category groups: \(categoryGroups)")
+        Logger.log("UnityManager: Categories loaded successfully from Unity:", level: .info, category: "Unity")
+        Logger.log("   Main categories: \(getMainCategories())", level: .debug, category: "Unity")
+        Logger.log("   Category groups: \(categoryGroups)", level: .debug, category: "Unity")
     }
     
     private func getCategoriesFromUnity() async -> String {
@@ -252,7 +252,7 @@ final class UnityManager {
         let isReady = await isAssetCatalogLoaded()
         
         if !isReady {
-            print("⚠️ Unity not ready, proceeding anyway")
+            Logger.log("Unity not ready, proceeding anyway", level: .warn, category: "Unity")
         }
         
         // Get categories from Unity
@@ -305,10 +305,10 @@ final class UnityManager {
                     }
                     
                     categoryModels[subcategory] = modelNames
-                    print("✅ UnityManager: Loaded \(modelNames.count) models for \(category)/\(subcategory)")
+                    Logger.log("UnityManager: Loaded \(modelNames.count) models for \(category)/\(subcategory)", level: .info, category: "Unity")
                 } else {
                     categoryModels[subcategory] = []
-                    print("⚠️ UnityManager: No models found for \(category)/\(subcategory)")
+                    Logger.log("UnityManager: No models found for \(category)/\(subcategory)", level: .warn, category: "Unity")
                 }
             }
             
@@ -319,7 +319,7 @@ final class UnityManager {
         cachedCategories = allCategories
         mainCategories = Array(allCategories.keys).sorted()
         
-        print("✅ UnityManager: Successfully parsed categories from Unity: \(allCategories.count) main categories")
+        Logger.log("UnityManager: Successfully parsed categories from Unity: \(allCategories.count) main categories", level: .info, category: "Unity")
     }
     
     private func buildCategoryGroups() {
@@ -329,7 +329,7 @@ final class UnityManager {
             categoryGroups[mainCategory] = Array(subcategories.keys)
         }
         
-        print("🏗️ UnityManager: Built category groups: \(categoryGroups)")
+        Logger.log("UnityManager: Built category groups: \(categoryGroups)", level: .debug, category: "Unity")
     }
     
     private func generateCallbackId() -> String {
@@ -349,7 +349,7 @@ final class UnityManager {
             if let completion = self.pendingCallbacks.removeValue(forKey: callbackId) {
                 completion(data)
             } else {
-                print("⚠️ UnityManager: No callback found for ID: \(callbackId)")
+                Logger.log("UnityManager: No callback found for ID: \(callbackId)", level: .warn, category: "Unity")
             }
         }
     }

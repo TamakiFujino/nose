@@ -326,8 +326,7 @@ class PlaceTableViewCell: UITableViewCell {
         placeImageView.image = UIImage(systemName: "photo")
         placeImageView.tintColor = .thirdColor
         
-        let db = Firestore.firestore()
-        FirestorePaths.eventDoc(userId: userId, eventId: eventId, db: db)
+        FirestorePaths.eventDoc(userId: userId, eventId: eventId)
             .getDocument { [weak self] snapshot, error in
                 guard let self = self else { return }
                 

@@ -75,12 +75,10 @@ class EditCollectionModalViewController: CollectionModalViewController {
             return
         }
         
-        let db = Firestore.firestore()
-        
         // Get references to both collections
-        let userCollectionRef = FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collection.id, db: db)
-        
-        let ownerCollectionRef = FirestorePaths.collectionDoc(userId: collection.userId, collectionId: collection.id, db: db)
+        let userCollectionRef = FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collection.id)
+
+        let ownerCollectionRef = FirestorePaths.collectionDoc(userId: collection.userId, collectionId: collection.id)
         
         // Prepare update data
         var updateData: [String: Any] = [:]
@@ -123,7 +121,7 @@ class EditCollectionModalViewController: CollectionModalViewController {
         }
         
         // Create a batch to update both collections
-        let batch = db.batch()
+        let batch = Firestore.firestore().batch()
         batch.updateData(updateData, forDocument: userCollectionRef)
         batch.updateData(updateData, forDocument: ownerCollectionRef)
         

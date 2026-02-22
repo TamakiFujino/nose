@@ -146,17 +146,6 @@
 			);
 			target = 49E99BF52D3BE432000F3CE5 /* nose */;
 		};
-		49DCFB422EA05FE5007B51F7 /* Exceptions for "nose" folder in "nose" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Managers/MarkerFactory.swift,
-				Managers/PlacesAPIManager.swift,
-				Managers/PlacesCacheManager.swift,
-				Managers/Services/Avatar/AvatarResourceManager.swift,
-				Managers/Services/Avatar/DynamicCategoryManager.swift,
-			);
-			target = 49E99BF52D3BE432000F3CE5 /* nose */;
-		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -175,9 +164,6 @@
 		};
 		49E99BF82D3BE432000F3CE5 /* nose */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				49DCFB422EA05FE5007B51F7 /* Exceptions for "nose" folder in "nose" target */,
-			);
 			path = nose;
 			sourceTree = "<group>";
 		};

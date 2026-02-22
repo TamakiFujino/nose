@@ -116,7 +116,7 @@ class PlacesAPIManager {
     private func canMakeRequest() -> Bool {
         // Check daily limit
         if dailyRequestCount >= Config.maxDailyRequests {
-            print("⚠️ Daily API request limit reached (\(Config.maxDailyRequests))")
+            Logger.log("Daily API request limit reached (\(Config.maxDailyRequests))", level: .warn, category: "PlacesAPI")
             return false
         }
         
@@ -126,7 +126,7 @@ class PlacesAPIManager {
         
         // Check rate limiting with sliding window
         if recentRequestTimes.count >= Config.maxRequestsPerMinute {
-            print("⚠️ Rate limit exceeded (\(recentRequestTimes.count) requests in last minute)")
+            Logger.log("Rate limit exceeded (\(recentRequestTimes.count) requests in last minute)", level: .warn, category: "PlacesAPI")
             return false
         }
         
@@ -191,14 +191,14 @@ class PlacesAPIManager {
     func fetchPlaceDetails(placeID: String, fields: GMSPlaceField, completion: @escaping (GMSPlace?) -> Void) {
         // Check cache first
         if let cachedPlace = PlacesCacheManager.shared.getCachedPlace(for: placeID) {
-            print("📋 Using cached place details for: \(placeID)")
+            Logger.log("Using cached place details for: \(placeID)", level: .debug, category: "PlacesAPI")
             completion(cachedPlace)
             return
         }
         
         // Check rate limiting
         guard canMakeRequest() else {
-            print("⚠️ Cannot fetch place details due to rate limiting")
+            Logger.log("Cannot fetch place details due to rate limiting", level: .warn, category: "PlacesAPI")
             completion(nil)
             return
         }
@@ -256,14 +256,14 @@ class PlacesAPIManager {
         // For user interactions, we're more lenient with rate limiting
         // Check cache first
         if let cachedPlace = PlacesCacheManager.shared.getCachedPlace(for: placeID) {
-            print("📋 Using cached place details for user interaction: \(placeID)")
+            Logger.log("Using cached place details for user interaction: \(placeID)", level: .debug, category: "PlacesAPI")
             completion(cachedPlace)
             return
         }
         
         // Check daily limit only (more lenient for user interactions)
         if dailyRequestCount >= Config.maxDailyRequests {
-            print("⚠️ Daily API request limit reached (\(Config.maxDailyRequests))")
+            Logger.log("Daily API request limit reached (\(Config.maxDailyRequests))", level: .warn, category: "PlacesAPI")
             completion(nil)
             return
         }
@@ -277,7 +277,7 @@ class PlacesAPIManager {
         
         // Check rate limiting with higher limit for user interactions
         if recentRequestTimes.count >= userInteractionLimit {
-            print("⚠️ Rate limit exceeded for user interaction (\(recentRequestTimes.count) requests in last minute)")
+            Logger.log("Rate limit exceeded for user interaction (\(recentRequestTimes.count) requests in last minute)", level: .warn, category: "PlacesAPI")
             completion(nil)
             return
         }
@@ -313,14 +313,14 @@ class PlacesAPIManager {
         
         // Check cache first
         if let cachedImage = PlacesCacheManager.shared.getCachedPhoto(for: photoID) {
-            print("📋 Using cached photo for: \(photoID)")
+            Logger.log("Using cached photo for: \(photoID)", level: .debug, category: "PlacesAPI")
             completion(cachedImage)
             return
         }
         
         // Check rate limiting
         guard canMakeRequest() else {
-            print("⚠️ Cannot load photo due to rate limiting")
+            Logger.log("Cannot load photo due to rate limiting", level: .warn, category: "PlacesAPI")
             completion(nil)
             return
         }
@@ -362,7 +362,7 @@ class PlacesAPIManager {
         dailyRequestCount = 0
         UserDefaults.standard.set(dailyRequestCount, forKey: "dailyAPICount")
         UserDefaults.standard.set(dateFormatter.string(from: Date()), forKey: "lastAPICountReset")
-        print("🔄 API usage statistics reset")
+        Logger.log("API usage statistics reset", level: .debug, category: "PlacesAPI")
     }
     
     // MARK: - Cleanup

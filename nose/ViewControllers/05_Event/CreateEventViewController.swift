@@ -1,64 +1,23 @@
 import UIKit
 import GooglePlaces
 import FirebaseAuth
-import FirebaseFirestore
-
 protocol CreateEventViewControllerDelegate: AnyObject {
     func createEventViewController(_ controller: CreateEventViewController, didCreateEvent event: Event)
-}
-
-struct Event {
-    let id: String
-    let title: String
-    let dateTime: EventDateTime
-    let location: EventLocation
-    let details: String
-    let images: [UIImage]
-    let createdAt: Date
-    let userId: String
-}
-
-struct EventDateTime {
-    let startDate: Date
-    let endDate: Date
-    
-    var duration: TimeInterval {
-        return endDate.timeIntervalSince(startDate)
-    }
-    
-    var formattedDuration: String {
-        let hours = Int(duration / 3600)
-        let minutes = Int((duration.truncatingRemainder(dividingBy: 3600)) / 60)
-        
-        if hours > 0 && minutes > 0 {
-            return "\(hours)h \(minutes)m"
-        } else if hours > 0 {
-            return "\(hours)h"
-        } else {
-            return "\(minutes)m"
-        }
-    }
-}
-
-struct EventLocation {
-    let name: String
-    let address: String
-    let coordinates: CLLocationCoordinate2D?
 }
 
 final class CreateEventViewController: UIViewController {
     
     // MARK: - Properties
     weak var delegate: CreateEventViewControllerDelegate?
-    private var selectedLocation: EventLocation?
-    private var selectedImages: [UIImage] = []
+    var selectedLocation: EventLocation?
+    var selectedImages: [UIImage] = []
     private var sessionToken: GMSAutocompleteSessionToken?
-    private var selectedStartDate: Date = Date()
-    private var selectedEndDate: Date = Calendar.current.date(byAdding: .hour, value: 1, to: Date()) ?? Date()
-    private var locationPredictions: [GMSAutocompletePrediction] = []
-    private var avatarData: CollectionAvatar.AvatarData?
-    private let tempAvatarCollectionId = "temp_event_avatar"
-    private let tempAvatarDataKey = "temp_event_avatar_data"
+    var selectedStartDate: Date = Date()
+    var selectedEndDate: Date = Calendar.current.date(byAdding: .hour, value: 1, to: Date()) ?? Date()
+    var locationPredictions: [GMSAutocompletePrediction] = []
+    var avatarData: CollectionAvatar.AvatarData?
+    let tempAvatarCollectionId = "temp_event_avatar"
+    let tempAvatarDataKey = "temp_event_avatar_data"
     
     // Editing mode
     private var eventToEdit: Event?
@@ -87,7 +46,7 @@ final class CreateEventViewController: UIViewController {
     }()
     
     // Avatar Section
-    private lazy var avatarImageView: UIImageView = {
+    lazy var avatarImageView: UIImageView = {
         let imageView = UIImageView()
         imageView.translatesAutoresizingMaskIntoConstraints = false
         imageView.contentMode = .scaleAspectFit
@@ -123,7 +82,7 @@ final class CreateEventViewController: UIViewController {
         return label
     }()
     
-    private lazy var titleTextField: UITextField = {
+    lazy var titleTextField: UITextField = {
         let textField = UITextField()
         textField.translatesAutoresizingMaskIntoConstraints = false
         textField.placeholder = "Enter title (max 25 characters)"
@@ -133,7 +92,7 @@ final class CreateEventViewController: UIViewController {
         return textField
     }()
     
-    private lazy var titleCharCountLabel: UILabel = {
+    lazy var titleCharCountLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
         label.text = "0/25"
@@ -223,7 +182,7 @@ final class CreateEventViewController: UIViewController {
         return label
     }()
     
-    private lazy var locationTextField: UITextField = {
+    lazy var locationTextField: UITextField = {
         let textField = UITextField()
         textField.translatesAutoresizingMaskIntoConstraints = false
         textField.placeholder = "Search for location"
@@ -233,7 +192,7 @@ final class CreateEventViewController: UIViewController {
         return textField
     }()
     
-    private lazy var locationTableView: UITableView = {
+    lazy var locationTableView: UITableView = {
         let tableView = UITableView()
         tableView.translatesAutoresizingMaskIntoConstraints = false
         tableView.delegate = self
@@ -259,7 +218,7 @@ final class CreateEventViewController: UIViewController {
         return label
     }()
     
-    private lazy var detailsTextView: UITextView = {
+    lazy var detailsTextView: UITextView = {
         let textView = UITextView()
         textView.translatesAutoresizingMaskIntoConstraints = false
         textView.font = .systemFont(ofSize: 16)
@@ -271,7 +230,7 @@ final class CreateEventViewController: UIViewController {
         return textView
     }()
     
-    private lazy var detailsPlaceholderLabel: UILabel = {
+    lazy var detailsPlaceholderLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
         label.text = "Describe the event... (max 1000 characters)"
@@ -280,7 +239,7 @@ final class CreateEventViewController: UIViewController {
         return label
     }()
     
-    private lazy var detailsCharCountLabel: UILabel = {
+    lazy var detailsCharCountLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
         label.text = "0/1000"
@@ -309,7 +268,7 @@ final class CreateEventViewController: UIViewController {
         return label
     }()
     
-    private lazy var imagesCollectionView: UICollectionView = {
+    lazy var imagesCollectionView: UICollectionView = {
         let layout = UICollectionViewFlowLayout()
         layout.scrollDirection = .horizontal
         layout.itemSize = CGSize(width: 100, height: 100)
@@ -579,46 +538,42 @@ final class CreateEventViewController: UIViewController {
     private func loadEventAvatarImage() {
         guard let event = eventToEdit,
               let userId = Auth.auth().currentUser?.uid else { return }
-        
-        // Load avatar image and avatar data from Firebase Storage
-        let db = Firestore.firestore()
-        db.collection("users")
-            .document(userId)
-            .collection("events")
-            .document(event.id)
-            .getDocument { [weak self] snapshot, error in
-                if let data = snapshot?.data() {
-                    // Load avatar customization data if available
-                    if let avatarDataDict = data["avatarData"] as? [String: Any] {
-                        print("🎨 Loading saved avatar data for editing")
-                        self?.avatarData = CollectionAvatar.AvatarData.fromFirestoreDict(avatarDataDict, version: .v1)
-                        
-                        // Save avatar data locally for ContentViewController
-                        if let avatarData = self?.avatarData {
-                            self?.saveAvatarDataLocally(avatarData)
-                        }
-                    }
-                    
-                    // Load avatar image if available
-                    if let avatarImageURL = data["avatarImageURL"] as? String,
-                       !avatarImageURL.isEmpty,
-                       let url = URL(string: avatarImageURL) {
-                        
-                        // Download the avatar image
-                        URLSession.shared.dataTask(with: url) { imageData, response, error in
-                            if let imageData = imageData, let image = UIImage(data: imageData) {
-                                DispatchQueue.main.async {
-                                    self?.avatarImageView.image = image
-                                    self?.avatarImageView.contentMode = .scaleAspectFit
-                                    
-                                    // Save the avatar image locally for editing
-                                    self?.saveTemporaryAvatarImage(image)
-                                }
-                            }
-                        }.resume()
+
+        EventManager.shared.fetchEventEditData(userId: userId, eventId: event.id) { [weak self] result in
+            guard let self = self else { return }
+
+            switch result {
+            case .success(let editData):
+                // Load avatar customization data if available
+                if let avatarDataDict = editData.avatarData {
+                    Logger.log("Loading saved avatar data for editing", level: .debug, category: "CreateEvent")
+                    self.avatarData = CollectionAvatar.AvatarData.fromFirestoreDict(avatarDataDict, version: .v1)
+
+                    // Save avatar data locally for ContentViewController
+                    if let avatarData = self.avatarData {
+                        self.saveAvatarDataLocally(avatarData)
                     }
                 }
+
+                // Load avatar image if available
+                if let avatarImageURL = editData.avatarImageURL,
+                   !avatarImageURL.isEmpty,
+                   let url = URL(string: avatarImageURL) {
+
+                    URLSession.shared.dataTask(with: url) { imageData, response, error in
+                        if let imageData = imageData, let image = UIImage(data: imageData) {
+                            DispatchQueue.main.async {
+                                self.avatarImageView.image = image
+                                self.avatarImageView.contentMode = .scaleAspectFit
+                                self.saveTemporaryAvatarImage(image)
+                            }
+                        }
+                    }.resume()
+                }
+            case .failure(let error):
+                Logger.log("Error loading event avatar data: \(error.localizedDescription)", level: .error, category: "CreateEvent")
             }
+        }
     }
     
     // MARK: - Actions
@@ -668,7 +623,7 @@ final class CreateEventViewController: UIViewController {
             case .failure(let error):
                 DispatchQueue.main.async {
                     self.showAlert(title: "Error", message: "Failed to check existing events. Please try again.")
-                    print("❌ Error checking upcoming events: \(error.localizedDescription)")
+                    Logger.log("Error checking upcoming events: \(error.localizedDescription)", level: .error, category: "CreateEvent")
                 }
             }
         }
@@ -692,9 +647,9 @@ final class CreateEventViewController: UIViewController {
         
         // Debug: Log avatar data if present
         if let avatarData = avatarData {
-            print("🎭 Saving event with avatar data: \(avatarData.selections.count) categories")
+            Logger.log("Saving event with avatar data: \(avatarData.selections.count) categories", level: .debug, category: "CreateEvent")
         } else {
-            print("🎭 Saving event without avatar data")
+            Logger.log("Saving event without avatar data", level: .debug, category: "CreateEvent")
         }
         
         // Save event to Firebase
@@ -702,14 +657,14 @@ final class CreateEventViewController: UIViewController {
             DispatchQueue.main.async {
                 switch result {
                 case .success(let eventId):
-                    print("✅ Event created successfully with ID: \(eventId)")
+                    Logger.log("Event created successfully with ID: \(eventId)", level: .info, category: "CreateEvent")
                     self?.clearTemporaryAvatarState()
                     if let self = self {
                         self.delegate?.createEventViewController(self, didCreateEvent: event)
                         self.dismissSelf()
                     }
                 case .failure(let error):
-                    print("❌ Failed to create event: \(error.localizedDescription)")
+                    Logger.log("Failed to create event: \(error.localizedDescription)", level: .error, category: "CreateEvent")
                     self?.dismiss(animated: true) {
                         self?.showAlert(title: "Error", message: "Failed to create event. Please try again.")
                     }
@@ -741,14 +696,14 @@ final class CreateEventViewController: UIViewController {
             DispatchQueue.main.async {
                 switch result {
                 case .success:
-                    print("✅ Event updated successfully")
+                    Logger.log("Event updated successfully", level: .info, category: "CreateEvent")
                     self?.clearTemporaryAvatarState()
                     if let self = self {
                         self.delegate?.createEventViewController(self, didCreateEvent: updatedEvent)
                         self.dismissSelf()
                     }
                 case .failure(let error):
-                    print("❌ Failed to update event: \(error.localizedDescription)")
+                    Logger.log("Failed to update event: \(error.localizedDescription)", level: .error, category: "CreateEvent")
                     self?.dismiss(animated: true) {
                         self?.showAlert(title: "Error", message: "Failed to update event. Please try again.")
                     }
@@ -783,7 +738,7 @@ final class CreateEventViewController: UIViewController {
         // This ensures ContentViewController can load it if needed
         if let existingAvatarData = avatarData {
             saveAvatarDataLocally(existingAvatarData)
-            print("✅ Saved existing avatar data locally before customization")
+            Logger.log("Saved existing avatar data locally before customization", level: .info, category: "CreateEvent")
                     }
                     
         // Navigate to ContentViewController (no Firestore operations)
@@ -864,7 +819,7 @@ final class CreateEventViewController: UIViewController {
         durationDisplayLabel.text = "Duration: \(eventDateTime.formattedDuration)"
     }
     
-    private func searchLocations(query: String) {
+    func searchLocations(query: String) {
         guard !query.isEmpty else {
             locationPredictions = []
             locationTableView.isHidden = true
@@ -892,7 +847,7 @@ final class CreateEventViewController: UIViewController {
         ) { [weak self] predictions, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    print("Error searching locations: \(error.localizedDescription)")
+                    Logger.log("Error searching locations: \(error.localizedDescription)", level: .error, category: "CreateEvent")
                     return
                 }
                 
@@ -1001,10 +956,10 @@ extension CreateEventViewController {
     // MARK: - Avatar Data Handling
     func updateAvatarData(_ avatarData: CollectionAvatar.AvatarData) {
         self.avatarData = avatarData
-        print("✅ Avatar data updated for event creation: \(avatarData.selections.count) selections")
+        Logger.log("Avatar data updated for event creation: \(avatarData.selections.count) selections", level: .info, category: "CreateEvent")
     }
     
-    private func updateAvatarImageView() {
+    func updateAvatarImageView() {
         // Update the avatar image view to show the actual customized avatar
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
@@ -1012,451 +967,9 @@ extension CreateEventViewController {
             // Load and display the temporary avatar image
             self.loadTemporaryAvatarImage()
             
-            print("🎨 Avatar image view updated with actual avatar")
+            Logger.log("Avatar image view updated with actual avatar", level: .debug, category: "CreateEvent")
         }
     }
     
 }
 
-// MARK: - UITextFieldDelegate
-extension CreateEventViewController: UITextFieldDelegate {
-    func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
-        if textField == titleTextField {
-            let currentText = textField.text ?? ""
-            let newText = (currentText as NSString).replacingCharacters(in: range, with: string)
-            
-            if newText.count <= 25 {
-                titleCharCountLabel.text = "\(newText.count)/25"
-                titleCharCountLabel.textColor = newText.count > 20 ? .systemRed : .secondaryLabel
-                return true
-            }
-            return false
-        }
-        
-        if textField == locationTextField {
-            let currentText = textField.text ?? ""
-            let newText = (currentText as NSString).replacingCharacters(in: range, with: string)
-            
-            // Debounce the search to reduce API calls
-            NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(performLocationSearch), object: nil)
-            perform(#selector(performLocationSearch), with: newText, afterDelay: 0.5)
-            
-            return true
-        }
-        
-        return true
-    }
-    
-    @objc private func performLocationSearch(_ query: String) {
-        searchLocations(query: query)
-    }
-    
-    func textFieldDidBeginEditing(_ textField: UITextField) {
-        if textField == locationTextField && !locationPredictions.isEmpty {
-            locationTableView.isHidden = false
-        }
-    }
-    
-    func textFieldDidEndEditing(_ textField: UITextField) {
-        if textField == locationTextField {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                self.locationTableView.isHidden = true
-            }
-        }
-    }
-    
-}
-
-// MARK: - UITextViewDelegate
-extension CreateEventViewController: UITextViewDelegate {
-    func textViewDidChange(_ textView: UITextView) {
-        detailsPlaceholderLabel.isHidden = !textView.text.isEmpty
-        
-        let count = textView.text.count
-        detailsCharCountLabel.text = "\(count)/1000"
-        detailsCharCountLabel.textColor = count > 900 ? .systemRed : .secondaryLabel
-        
-        if count > 1000 {
-            textView.text = String(textView.text.prefix(1000))
-        }
-    }
-}
-
-// MARK: - UITableViewDelegate & UITableViewDataSource
-extension CreateEventViewController: UITableViewDelegate, UITableViewDataSource {
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return locationPredictions.count
-    }
-    
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "LocationCell", for: indexPath)
-        
-        // Safety check to prevent index out of bounds crash
-        guard indexPath.row < locationPredictions.count else {
-            var content = cell.defaultContentConfiguration()
-            content.text = "Loading..."
-            cell.contentConfiguration = content
-            return cell
-        }
-        
-        let prediction = locationPredictions[indexPath.row]
-        
-        // Use the attributed text directly to preserve Google's formatting (bold matching parts)
-        let primaryAttributedString = prediction.attributedPrimaryText
-        let secondaryAttributedString = prediction.attributedSecondaryText
-        
-        var content = cell.defaultContentConfiguration()
-        
-        // Create a mutable attributed string for the primary text
-        let mutablePrimary = NSMutableAttributedString(attributedString: primaryAttributedString)
-        mutablePrimary.addAttribute(.font, value: UIFont.systemFont(ofSize: 16, weight: .medium), range: NSRange(location: 0, length: mutablePrimary.length))
-        content.attributedText = mutablePrimary
-        
-        // Add secondary text if available
-        if let secondary = secondaryAttributedString {
-            let mutableSecondary = NSMutableAttributedString(attributedString: secondary)
-            mutableSecondary.addAttribute(.font, value: UIFont.systemFont(ofSize: 14), range: NSRange(location: 0, length: mutableSecondary.length))
-            mutableSecondary.addAttribute(.foregroundColor, value: UIColor.secondaryLabel, range: NSRange(location: 0, length: mutableSecondary.length))
-            content.secondaryAttributedText = mutableSecondary
-        }
-        
-        cell.contentConfiguration = content
-        
-        return cell
-    }
-    
-    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        // Safety check to prevent index out of bounds crash
-        guard indexPath.row < locationPredictions.count else {
-            return
-        }
-        
-        let prediction = locationPredictions[indexPath.row]
-        
-        // Fetch place details
-        PlacesAPIManager.shared.fetchPlaceDetailsForUserInteraction(
-            placeID: prediction.placeID,
-            fields: PlacesAPIManager.FieldConfig.search
-        ) { [weak self] place in
-            DispatchQueue.main.async {
-                if let place = place {
-                    self?.selectedLocation = EventLocation(
-                        name: place.name ?? "",
-                        address: place.formattedAddress ?? "",
-                        coordinates: place.coordinate
-                    )
-                    self?.locationTextField.text = place.name
-                    self?.locationTableView.isHidden = true
-                }
-            }
-        }
-    }
-}
-
-// MARK: - UICollectionViewDelegate & UICollectionViewDataSource
-extension CreateEventViewController: UICollectionViewDelegate, UICollectionViewDataSource {
-    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        // Show add button only if we have fewer than 1 image
-        return selectedImages.count < 1 ? selectedImages.count + 1 : selectedImages.count
-    }
-    
-    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "ImageCell", for: indexPath) as! ImageCollectionViewCell
-        
-        if indexPath.item < selectedImages.count {
-            cell.configure(with: selectedImages[indexPath.item])
-            cell.isAddButton = false
-        } else {
-            // This is the add button (only shown when selectedImages.count < 1)
-            cell.configureAddButton()
-            cell.isAddButton = true
-        }
-        
-        cell.delegate = self
-        cell.indexPath = indexPath
-        
-        return cell
-    }
-}
-
-// MARK: - ImageCollectionViewCellDelegate
-extension CreateEventViewController: ImageCollectionViewCellDelegate {
-    func imageCollectionViewCell(_ cell: ImageCollectionViewCell, didTapAddButtonAt indexPath: IndexPath) {
-        let imagePicker = UIImagePickerController()
-        imagePicker.delegate = self
-        imagePicker.sourceType = .photoLibrary
-        imagePicker.allowsEditing = true
-        present(imagePicker, animated: true)
-    }
-    
-    func imageCollectionViewCell(_ cell: ImageCollectionViewCell, didTapRemoveButtonAt indexPath: IndexPath) {
-        selectedImages.remove(at: indexPath.item)
-        imagesCollectionView.reloadData()
-    }
-}
-
-// MARK: - UIImagePickerControllerDelegate & UINavigationControllerDelegate
-extension CreateEventViewController: UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-        picker.dismiss(animated: true)
-        
-        if let editedImage = info[.editedImage] as? UIImage {
-            selectedImages.append(editedImage)
-        } else if let originalImage = info[.originalImage] as? UIImage {
-            selectedImages.append(originalImage)
-        }
-        
-        imagesCollectionView.reloadData()
-    }
-    
-    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-        picker.dismiss(animated: true)
-    }
-}
-
-// MARK: - ImageCollectionViewCell
-protocol ImageCollectionViewCellDelegate: AnyObject {
-    func imageCollectionViewCell(_ cell: ImageCollectionViewCell, didTapAddButtonAt indexPath: IndexPath)
-    func imageCollectionViewCell(_ cell: ImageCollectionViewCell, didTapRemoveButtonAt indexPath: IndexPath)
-}
-
-class ImageCollectionViewCell: UICollectionViewCell {
-    weak var delegate: ImageCollectionViewCellDelegate?
-    var indexPath: IndexPath?
-    var isAddButton: Bool = false
-    
-    private let imageView: UIImageView = {
-        let imageView = UIImageView()
-        imageView.translatesAutoresizingMaskIntoConstraints = false
-        imageView.contentMode = .scaleAspectFill
-        imageView.clipsToBounds = true
-        imageView.layer.cornerRadius = 8
-        imageView.backgroundColor = .systemGray6
-        return imageView
-    }()
-    
-    private let addButton: UIButton = {
-        let button = UIButton(type: .system)
-        button.translatesAutoresizingMaskIntoConstraints = false
-        button.setImage(UIImage(systemName: "plus"), for: .normal)
-        button.tintColor = .fourthColor
-        button.backgroundColor = .systemGray6
-        button.layer.cornerRadius = 8
-        return button
-    }()
-    
-    private let removeButton: UIButton = {
-        let button = UIButton(type: .system)
-        button.translatesAutoresizingMaskIntoConstraints = false
-        button.setImage(UIImage(systemName: "xmark"), for: .normal)
-        button.tintColor = .firstColor
-        button.backgroundColor = .fourthColor
-        button.layer.cornerRadius = 10
-        button.layer.borderWidth = 0
-        button.contentEdgeInsets = UIEdgeInsets(top: 4, left: 4, bottom: 4, right: 4)
-        return button
-    }()
-    
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        setupUI()
-    }
-    
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-    
-    private func setupUI() {
-        contentView.addSubview(imageView)
-        contentView.addSubview(addButton)
-        contentView.addSubview(removeButton)
-        
-        NSLayoutConstraint.activate([
-            imageView.topAnchor.constraint(equalTo: contentView.topAnchor),
-            imageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
-            imageView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            imageView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
-            
-            addButton.topAnchor.constraint(equalTo: contentView.topAnchor),
-            addButton.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
-            addButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            addButton.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
-            
-            removeButton.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 3),
-            removeButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -3),
-            removeButton.widthAnchor.constraint(equalToConstant: 20),
-            removeButton.heightAnchor.constraint(equalToConstant: 20)
-        ])
-        
-        addButton.addTarget(self, action: #selector(addButtonTapped), for: .touchUpInside)
-        removeButton.addTarget(self, action: #selector(removeButtonTapped), for: .touchUpInside)
-    }
-    
-    func configure(with image: UIImage) {
-        imageView.image = image
-        imageView.isHidden = false
-        addButton.isHidden = true
-        removeButton.isHidden = false
-    }
-    
-    func configureAddButton() {
-        imageView.isHidden = true
-        addButton.isHidden = false
-        removeButton.isHidden = true
-    }
-    
-    @objc private func addButtonTapped() {
-        guard let indexPath = indexPath else { return }
-        delegate?.imageCollectionViewCell(self, didTapAddButtonAt: indexPath)
-    }
-    
-    @objc private func removeButtonTapped() {
-        guard let indexPath = indexPath else { return }
-        delegate?.imageCollectionViewCell(self, didTapRemoveButtonAt: indexPath)
-    }
-}
-
-// MARK: - Avatar Data Handling (Simplified Approach)
-extension CreateEventViewController {
-    // For now, we'll use a simple approach where avatar customization
-    // data is stored in the temporary collection and we'll read it back
-    // when the user returns to this screen
-    
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        
-        // Check if we have avatar data from the temporary collection
-        checkForAvatarData()
-    }
-    
-    private func checkForAvatarData() {
-        // Check if we have avatar data stored locally from a previous customization session
-        if let savedData = UserDefaults.standard.data(forKey: tempAvatarDataKey),
-           let avatarData = try? JSONDecoder().decode(CollectionAvatar.AvatarData.self, from: savedData) {
-            self.avatarData = avatarData
-            
-            // Load and display the temporary avatar image if it exists
-            DispatchQueue.main.async { [weak self] in
-                self?.loadTemporaryAvatarImage()
-            }
-            
-            print("✅ Retrieved saved avatar data for event: \(avatarData.selections.count) categories")
-        } else {
-            print("📝 No saved avatar data found - user can customize avatar")
-        }
-    }
-    
-    private func saveAvatarDataLocally(_ avatarData: CollectionAvatar.AvatarData) {
-        // Save avatar data locally so it persists across app sessions
-        if let data = try? JSONEncoder().encode(avatarData) {
-            UserDefaults.standard.set(data, forKey: tempAvatarDataKey)
-            print("💾 Saved avatar data locally")
-        }
-    }
-    
-    // MARK: - Temporary Avatar Image Storage
-    
-    private func loadTemporaryAvatarImage() {
-        // Try to load the temporary avatar image from local storage
-        let tempImagePath = getTemporaryAvatarImagePath()
-        
-        if FileManager.default.fileExists(atPath: tempImagePath.path),
-           let image = UIImage(contentsOfFile: tempImagePath.path) {
-            // Display the temporary avatar image
-            avatarImageView.image = image
-            avatarImageView.contentMode = .scaleAspectFit
-            print("🖼️ Loaded temporary avatar image from local storage")
-        } else {
-            // Fallback to default avatar if no temporary image exists
-            avatarImageView.image = UIImage(named: "avatar") ?? UIImage(systemName: "person.crop.circle")
-            print("🖼️ No temporary avatar image found, using default")
-        }
-    }
-    
-    private func saveTemporaryAvatarImage(_ image: UIImage) {
-        // Save the avatar image temporarily to local storage
-        let tempImagePath = getTemporaryAvatarImagePath()
-        
-        // Create directory if it doesn't exist
-        let directory = tempImagePath.deletingLastPathComponent()
-        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: nil)
-        
-        // Save image as PNG to preserve quality
-        if let imageData = image.pngData() {
-            do {
-                try imageData.write(to: tempImagePath)
-                print("💾 Saved temporary avatar image to: \(tempImagePath.path)")
-            } catch {
-                print("❌ Failed to save temporary avatar image: \(error.localizedDescription)")
-            }
-        }
-    }
-    
-    private func getTemporaryAvatarImagePath() -> URL {
-        // Create a unique path for the temporary event avatar image
-        let cachesDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
-        return cachesDirectory.appendingPathComponent("temp_event_avatar.png")
-    }
-    
-    private func deleteTemporaryAvatarImage() {
-        // Delete the temporary avatar image file
-        let tempImagePath = getTemporaryAvatarImagePath()
-        try? FileManager.default.removeItem(at: tempImagePath)
-        print("🗑️ Deleted temporary avatar image")
-    }
-
-    private func clearTemporaryAvatarState() {
-        // Reset in-memory avatar
-        avatarData = nil
-        
-        // Remove any locally saved avatar data
-        UserDefaults.standard.removeObject(forKey: tempAvatarDataKey)
-        print("🗑️ Cleared saved temporary avatar data")
-        
-        // Delete the temporary avatar image file
-        deleteTemporaryAvatarImage()
-        
-        // No Firestore cleanup needed - we never create a collection there
-    }
-
-    private func dismissSelf() {
-        if let nav = navigationController {
-            nav.dismiss(animated: true)
-        } else {
-            dismiss(animated: true)
-        }
-    }
-    
-    private func setupNotifications() {
-        // Listen for avatar data updates from ContentViewController
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(avatarDataUpdated(_:)),
-            name: NSNotification.Name("AvatarDataUpdated"),
-            object: nil
-        )
-    }
-    
-    @objc private func avatarDataUpdated(_ notification: Notification) {
-        // Handle avatar data update from ContentViewController
-        guard let userInfo = notification.userInfo,
-              let selections = userInfo["selections"] as? [String: [String: String]] else {
-            return
-        }
-        
-        let avatarData = CollectionAvatar.AvatarData(
-            selections: selections,
-            customizations: [:],
-            lastCustomizedAt: Date(),
-            customizationVersion: 1
-        )
-        
-        updateAvatarData(avatarData)
-        saveAvatarDataLocally(avatarData)
-        
-        // Update the avatar image view to reflect the new avatar
-        updateAvatarImageView()
-        
-        print("✅ Avatar data updated via notification: \(selections.count) categories")
-    }
-}
