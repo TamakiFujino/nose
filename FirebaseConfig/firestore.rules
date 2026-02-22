@@ -1,0 +1,337 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    // Check if the user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Check if the user is the owner of the document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Check if the user is friends with the document owner
+    function isFriend(userId) {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)/friends/$(userId));
+    }
+    
+    // Check if the user is a member of the collection
+    function isMember(collectionData) {
+      return isAuthenticated() && 
+        collectionData.members is list &&
+        request.auth.uid in collectionData.members;
+    }
+    
+    // Check if the user is a member of the existing collection
+    function isMemberOfExisting() {
+      return isAuthenticated() && 
+        resource.data.members is list &&
+        request.auth.uid in resource.data.members;
+    }
+    
+    // Check if the user is a member of the new collection data
+    function isMemberOfNew() {
+      return isAuthenticated() && 
+        request.resource.data.members is list &&
+        request.auth.uid in request.resource.data.members;
+    }
+    
+    // Check if the collection is shared with the current user
+    function isSharedWith(userId) {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(userId)/collections/$(request.auth.uid));
+    }
+    
+    // Check if a specific collection is shared with the current user
+    function isCollectionSharedWithMe(collectionId) {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)/collections/$(collectionId));
+    }
+    
+    // Check if the user has a shared copy of a collection
+    function hasSharedCopy(collectionId) {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)/collections/$(collectionId));
+    }
+    
+    // Check if this is a collection sharing operation (owner sharing with another user)
+    function isCollectionSharing() {
+      return isAuthenticated() && 
+        request.resource.data.isOwner == false &&
+        request.resource.data.sharedBy is string &&
+        request.resource.data.sharedBy == request.auth.uid &&
+        request.resource.data.userId is string &&
+        request.resource.data.userId == request.auth.uid;
+    }
+    
+    // Check if this is a valid member removal operation
+    function isValidMemberRemoval() {
+      return isAuthenticated() && 
+        request.resource.data.keys().hasOnly(['members']) &&
+        request.resource.data.members is list &&
+        // Ensure the current user is either the owner or a member
+        (request.auth.uid == resource.data.userId || isMemberOfExisting());
+    }
+    
+    // Validate place data structure
+    function isValidPlaceData() {
+      return request.resource.data.keys().hasAll(['name', 'placeId', 'rating', 'latitude', 'longitude']) &&
+        request.resource.data.name is string &&
+        request.resource.data.placeId is string &&
+        request.resource.data.rating is number &&
+        request.resource.data.latitude is number &&
+        request.resource.data.longitude is number;
+    }
+    
+    // Validate collection data structure
+    function isValidCollectionData() {
+      return request.resource.data.name is string &&
+        request.resource.data.userId is string &&
+        request.resource.data.createdAt is timestamp &&
+        request.resource.data.isOwner is bool &&
+        request.resource.data.places is list &&
+        request.resource.data.members is list;
+    }
+    
+    // Validate collection update (allows partial updates)
+    function isValidCollectionUpdate() {
+      return request.resource.data.name is string &&
+        request.resource.data.userId is string &&
+        request.resource.data.createdAt is timestamp &&
+        request.resource.data.isOwner is bool &&
+        request.resource.data.places is list &&
+        request.resource.data.members is list;
+    }
+    
+    // Validate shared collection data structure
+    function isValidSharedCollectionData() {
+      return request.resource.data.keys().hasAll(['id', 'name', 'userId', 'createdAt', 'isOwner', 'status', 'sharedBy', 'places', 'members']) &&
+        request.resource.data.id is string &&
+        request.resource.data.name is string &&
+        request.resource.data.userId is string &&
+        request.resource.data.createdAt is timestamp &&
+        request.resource.data.isOwner is bool &&
+        request.resource.data.status is number &&
+        request.resource.data.sharedBy is string &&
+        request.resource.data.places is list &&
+        request.resource.data.members is list;
+    }
+    
+    // Validate avatar data structure
+    function isValidAvatarData() {
+      return request.resource.data.keys().hasAll(['avatarData', 'createdAt', 'isOwner']) &&
+        request.resource.data.avatarData is map &&
+        request.resource.data.createdAt is timestamp &&
+        request.resource.data.isOwner is bool;
+    }
+    
+    // Validate profile avatar data structure
+    function isValidProfileAvatarData() {
+      return request.resource.data.keys().hasAll(['avatarData', 'updatedAt']) &&
+        request.resource.data.avatarData is map &&
+        request.resource.data.updatedAt is timestamp;
+    }
+    
+    // Validate event data structure
+    function isValidEventData() {
+      return request.resource.data.keys().hasAll(['id', 'title', 'startDate', 'endDate', 'location', 'details', 'imageURLs', 'createdAt', 'userId', 'status']) &&
+        request.resource.data.id is string &&
+        request.resource.data.title is string &&
+        request.resource.data.startDate is timestamp &&
+        request.resource.data.endDate is timestamp &&
+        request.resource.data.location is map &&
+        request.resource.data.details is string &&
+        request.resource.data.imageURLs is list &&
+        request.resource.data.createdAt is timestamp &&
+        request.resource.data.userId is string &&
+        request.resource.data.status is string;
+    }
+    
+    // Validate event update (allows partial updates)
+    function isValidEventUpdate() {
+      return (request.resource.data.title is string) &&
+        (request.resource.data.startDate is timestamp) &&
+        (request.resource.data.endDate is timestamp) &&
+        (request.resource.data.location is map) &&
+        (request.resource.data.details is string) &&
+        (request.resource.data.imageURLs is list) &&
+        (request.resource.data.userId is string) &&
+        (request.resource.data.status is string);
+    }
+    
+    // User document rules
+    match /users/{userId} {
+      // Anyone can read user documents
+      allow read: if isAuthenticated();
+      // Only the user can write to their own document
+      allow write: if isOwner(userId);
+      
+      // Friends subcollection rules
+      match /friends/{friendId} {
+        // Anyone can read friends list
+        allow read: if isAuthenticated();
+        // Allow writes if:
+        // 1. User is the owner of the document (can add/remove friends)
+        // 2. User is the friend being added/removed (for mutual friend operations)
+        allow create, update, delete: if isAuthenticated() && (
+          request.auth.uid == userId || 
+          request.auth.uid == friendId
+        );
+      }
+      
+      // Blocked users subcollection rules
+      match /blocked/{blockedId} {
+        // Anyone can read blocked users list
+        allow read: if isAuthenticated();
+        // Only the user can modify their blocked users list
+        allow write: if isAuthenticated() && request.auth.uid == userId;
+      }
+
+      // Incoming friend requests: users/{userId}/friendRequests/{requesterId}
+      // Receiver sees received requests; requester can read to check status or cancel
+      match /friendRequests/{requesterId} {
+        allow create: if isAuthenticated() && request.auth.uid == requesterId;
+        allow read: if isAuthenticated() && (request.auth.uid == userId || request.auth.uid == requesterId);
+        allow delete: if isAuthenticated() && (request.auth.uid == userId || request.auth.uid == requesterId);
+        allow update: if false;
+      }
+
+      // Outgoing friend requests: users/{userId}/sentFriendRequests/{receiverId}
+      // Requester (userId) creates/deletes; receiver can delete when approving/rejecting
+      match /sentFriendRequests/{receiverId} {
+        allow create, read: if isAuthenticated() && request.auth.uid == userId;
+        allow delete: if isAuthenticated() && (request.auth.uid == userId || request.auth.uid == receiverId);
+        allow update: if false;
+      }
+      
+      // Collections subcollection rules
+      match /collections/{collectionId} {
+        // Anyone can read collections
+        allow read: if isAuthenticated();
+        // Allow create if:
+        // 1. User is authenticated and creating their own collection, OR
+        // 2. This is a collection sharing operation (owner sharing with another user), OR
+        // 3. This is a temporary collection for event avatar customization
+        allow create: if isAuthenticated() && (
+          (request.auth.uid == userId) ||
+          (request.resource.data.isOwner == false && 
+           request.resource.data.sharedBy is string && 
+           request.resource.data.sharedBy == request.auth.uid) ||
+          (collectionId == "temp_event_avatar" && request.auth.uid == userId)
+        );
+        // Allow update if:
+        // 1. User is the owner of the collection OR a member of the existing collection
+        // 2. The update is valid
+        // 3. This is a temporary collection for event avatar customization
+        allow update: if isAuthenticated() && (
+          (request.auth.uid == resource.data.userId || isMemberOfExisting()) && (
+            // Allow member removal operations
+            isValidMemberRemoval() ||
+            // Allow status-only updates
+            (request.resource.data.keys().hasOnly(['status']) && 
+             request.resource.data.status is number) ||
+            // Allow avatar-only updates
+            (request.resource.data.keys().hasOnly(['avatarData']) && 
+             request.resource.data.avatarData is map) ||
+            // Allow full collection updates
+            isValidCollectionUpdate()
+          ) ||
+          // Allow updates to temporary event avatar collections
+          (collectionId == "temp_event_avatar" && request.auth.uid == userId && 
+           request.resource.data.keys().hasOnly(['avatarData']) && 
+           request.resource.data.avatarData is map)
+        );
+        // Allow delete if:
+        // 1. User is the owner of the collection, OR
+        // 2. User is deleting from their own collections path (for shared collections)
+        allow delete: if isAuthenticated() && (
+          request.auth.uid == resource.data.userId ||
+          request.auth.uid == userId
+        );
+      }
+      
+      // User's places subcollection
+      match /places/{placeId} {
+        allow read: if isAuthenticated();
+        allow write: if isOwner(userId) && isValidPlaceData();
+      }
+      
+      // User's events subcollection
+      match /events/{eventId} {
+        // Anyone can read events (for now - you might want to restrict this later)
+        allow read: if isAuthenticated();
+        // Allow create if:
+        // 1. User is the owner and the event data is valid
+        allow create: if isAuthenticated() && 
+          request.auth.uid == userId && 
+          isValidEventData();
+        // Allow update if:
+        // 1. User is the owner of the event
+        // 2. The update is valid (allows partial updates)
+        allow update: if isAuthenticated() && 
+          request.auth.uid == resource.data.userId && (
+            // Allow status-only updates (for soft delete)
+            (request.resource.data.keys().hasOnly(['status', 'deletedAt']) && 
+             request.resource.data.status is string) ||
+            // Allow avatar-only updates
+            (request.resource.data.keys().hasOnly(['avatarData', 'updatedAt']) && 
+             request.resource.data.avatarData is map) ||
+            // Allow full event updates
+            isValidEventUpdate()
+          );
+        // Allow delete if:
+        // 1. User is the owner of the event, OR
+        // 2. User is deleting from their own events path
+        allow delete: if isAuthenticated() && (
+          request.auth.uid == resource.data.userId ||
+          request.auth.uid == userId
+        );
+      }
+    }
+
+    // Root-level collections (shared or public collections)
+    match /collections/{collectionId} {
+      allow read: if isAuthenticated();
+      // Allow create if the user is owner
+      allow create: if isAuthenticated() && 
+        request.auth.uid == request.resource.data.userId && 
+        isValidCollectionData();
+      // Allow update if the user is owner, and either only avatarData is being changed, or the basic data is valid
+      allow update: if isAuthenticated() && 
+        request.auth.uid == resource.data.userId && (
+          // Allow updating only avatarData (and any other allowed fields you specify)
+          (request.resource.data.keys().hasOnly(['avatarData', 'isOwner']) && 
+           request.resource.data.avatarData is map && 
+           request.resource.data.isOwner is bool) ||
+          isValidCollectionData()
+        );
+      // Allow delete if the user is owner
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    // Public collections (if any)
+    match /publicCollections/{collectionId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Only allow writes through admin SDK
+    }
+    
+    // Collection group rules for events (allows querying across all users)
+    match /{path=**}/events/{eventId} {
+      // Allow any authenticated user to read active events
+      allow read: if isAuthenticated();
+    }
+    
+    // Collection icons (public read-only collection for all authenticated users)
+    match /collection_icons/{iconId} {
+      // Allow any authenticated user to read collection icons
+      allow read: if isAuthenticated();
+      // Only allow writes through admin SDK
+      allow write: if false;
+    }
+  }
+}
+
