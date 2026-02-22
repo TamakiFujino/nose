@@ -1,7 +1,7 @@
 import UIKit
 import FirebaseCore
 import GoogleSignIn
-import GoogleMaps
+import MapboxMaps
 import GooglePlaces
 import Firebase
 
@@ -22,20 +22,50 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             print("Project ID: \(options.projectID ?? "nil")")
             print("Google App ID: \(options.googleAppID)")
             print("Database URL: \(options.databaseURL ?? "nil")")
+            print("Client ID: \(options.clientID)")
+        }
+        
+        // Configure Google Sign-In
+        guard let clientID = FirebaseApp.app()?.options.clientID else {
+            fatalError("No client ID found in Firebase configuration")
+        }
+        
+        if let path = Bundle.main.path(forResource: "GoogleService-Info-Development", ofType: "plist"),
+           let plist = NSDictionary(contentsOfFile: path),
+           let reversedClientID = plist["REVERSED_CLIENT_ID"] as? String {
+            print("✅ Google Sign-In Config:")
+            print("Client ID: \(clientID)")
+            print("Reversed Client ID: \(reversedClientID)")
+        } else {
+            print("⚠️ Could not find GoogleService-Info-Development.plist")
         }
         
         // Get API keys from Config.plist
         guard let filePath = Bundle.main.path(forResource: "Config", ofType: "plist"),
               let plistDict = NSDictionary(contentsOfFile: filePath) as? [String: Any],
-              let mapsAPIKey = plistDict["GoogleMapsAPIKey"] as? String,
+              let mapboxAccessToken = plistDict["MapboxAccessToken"] as? String,
               let placesAPIKey = plistDict["GooglePlacesAPIKey"] as? String else {
             fatalError("Couldn't find API keys in Config.plist")
         }
         
-        // Configure Google Maps and Places
-        GMSServices.provideAPIKey(mapsAPIKey)
+        // Configure Mapbox - set access token as environment variable
+        // Mapbox Maps SDK v11 will automatically read from environment variable
+        setenv("MAPBOX_ACCESS_TOKEN", mapboxAccessToken, 1)
+        
+        // Configure Google Places (still using Google Places API)
         GMSPlacesClient.provideAPIKey(placesAPIKey)
         
+        // Bridge Unity notification fallback (when UnityBridgeShim posts from UnityFramework)
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("NoseUnityResponseNotification"),
+            object: nil,
+            queue: .main
+        ) { notification in
+            if let json = notification.userInfo?["json"] as? String {
+                UnityResponseHandler.handleUnityResponseStatic(json)
+            }
+        }
+
         return true
     }
     
@@ -45,7 +75,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         open url: URL,
         options: [UIApplication.OpenURLOptionsKey: Any] = [:]
     ) -> Bool {
-        return GIDSignIn.sharedInstance.handle(url)
+        if GIDSignIn.sharedInstance.handle(url) { return true }
+        return DeepLinkManager.shared.handle(url: url, in: window)
     }
 
     // MARK: UISceneSession Lifecycle (used for iOS 13+)

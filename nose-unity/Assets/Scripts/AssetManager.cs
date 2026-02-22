@@ -38,15 +38,25 @@ public class AssetManager : MonoBehaviour
 
     // Store all available assets discovered from Addressables
     private readonly Dictionary<string, List<AssetItem>> availableAssets = new Dictionary<string, List<AssetItem>>();
+    // Fast lookup from address -> AssetItem we created
+    private readonly Dictionary<string, AssetItem> addressToAssetItem = new Dictionary<string, AssetItem>(StringComparer.Ordinal);
+    // Track per-asset region masks derived from labels/config so we can recompute mask on remove
+    private readonly Dictionary<string, int> assetIdToRegionMask = new Dictionary<string, int>();
 
     // Pending colors to apply once a slot's asset is loaded
     private readonly Dictionary<string, string> slotKeyToPendingColor = new Dictionary<string, string>();
+
+    // Last applied face (base skin) color — used to boost Blush/Eyeshadow visibility on light skin
+    private Color? lastAppliedFaceColor;
 
     private bool addressablesInitialized = false;
 
     [Header("Remote Catalog (Firebase Hosting)")]
     [Tooltip("Base URL where addressables are hosted (without trailing slash)")]
     public string remoteCatalogBaseUrl = "https://nose-a2309.web.app/addressables";
+
+    [Tooltip("If set, use this full catalog URL directly instead of composing from base + platform + version")]
+    public string remoteCatalogOverrideUrl = "";
 
     [Tooltip("Platform folder name under the hosting path (usually iOS or Android)")]
     public string platformFolderOverride = ""; // leave empty to auto-detect
@@ -76,12 +86,53 @@ public class AssetManager : MonoBehaviour
     private bool bodyAnimatorDisabledForAPose = false;
     private string currentPoseName = null;
 
+    // Cache solid-color textures (used to tint face base map)
+    private readonly Dictionary<int, Texture2D> solidColorTextureCache = new Dictionary<int, Texture2D>();
+
+    [Header("Debug")]
+    public bool verboseLogs = false;
+    public bool verboseDiscoveryLogs = false;
+
+    // Hidden item unload management
+    private const float hiddenUnloadDelaySeconds = 15f;
+    private readonly Dictionary<string, Coroutine> pendingUnloadBySlot = new Dictionary<string, Coroutine>();
+
+    [Header("Region Mask Labels")] 
+    [Tooltip("Prefix for Addressables labels that hide body regions, like 'hide:chest', 'hide:shoulder'.")]
+    public string hideLabelPrefix = "hide:";
+
+    [System.Serializable]
+    public class RegionDef { public string name; public int id; }
+
+    [Tooltip("Map region names to integer IDs used by the body region shader. Configure to match your Blender paint.")]
+    public List<RegionDef> regionDefs = new List<RegionDef>
+    {
+        new RegionDef{ name = "chest", id = 1},
+        new RegionDef{ name = "shoulder", id = 2},
+        new RegionDef{ name = "stomach", id = 3},
+        new RegionDef{ name = "upperarm_l", id = 4},
+        new RegionDef{ name = "upperarm_r", id = 5},
+        new RegionDef{ name = "forearm_l", id = 6},
+        new RegionDef{ name = "forearm_r", id = 7},
+        new RegionDef{ name = "hand_l", id = 8},
+        new RegionDef{ name = "hand_r", id = 9},
+        new RegionDef{ name = "torso", id = 10},
+        new RegionDef{ name = "hip", id = 11},
+        new RegionDef{ name = "thigh_l", id = 12},
+        new RegionDef{ name = "thigh_r", id = 13},
+        new RegionDef{ name = "calf_l", id = 14},
+        // add or adjust as needed
+    };
+
+    [Header("Region Mask Group Config")]
+    public RegionMaskConfig regionMaskConfig;
+
     private void Start()
     {
         EnsureAvatarRoot();
         SetupUnityBridge();
         StartCoroutine(InitializeAddressables());
-        Debug.Log("AssetManager: Ready to receive asset data from iOS");
+        if (verboseLogs) Debug.Log("AssetManager: Ready to receive asset data from iOS");
     }
 
     private void EnsureAvatarRoot()
@@ -245,6 +296,64 @@ public class AssetManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Public method to rebind all skinned meshes under avatarRoot to the body skeleton.
+    /// Call this after separating face/body models to ensure they follow poses.
+    /// Also parents static meshes (like face models) to the head bone if they're not skinned.
+    /// </summary>
+    public void RebindAllSkinnedMeshes()
+    {
+        if (avatarRoot == null) return;
+        
+        var animator = GetBodyAnimator();
+        var headBone = animator != null ? animator.GetBoneTransform(HumanBodyBones.Head) : null;
+        
+        foreach (var child in avatarRoot.GetComponentsInChildren<Transform>(true))
+        {
+            if (child == avatarRoot) continue;
+            var go = child.gameObject;
+            
+            // Skip if this is the body model itself (to avoid rebinding it to itself)
+            var bodySmr = GetBodySkinnedMesh();
+            if (bodySmr != null && go == bodySmr.gameObject) continue;
+            
+            // Rebind skinned meshes
+            RebindSkinnedMeshesToBody(go);
+            
+            // If this GameObject has a MeshRenderer (static mesh) but no SkinnedMeshRenderer,
+            // and it's not already parented to a bone, parent it to the head bone
+            var meshRenderer = go.GetComponent<MeshRenderer>();
+            var skinnedMeshRenderer = go.GetComponent<SkinnedMeshRenderer>();
+            if (meshRenderer != null && skinnedMeshRenderer == null && headBone != null)
+            {
+                // Check if it's already parented to a bone in the skeleton
+                var skeletonRoot = GetSkeletonRoot();
+                bool isParentedToBone = false;
+                if (skeletonRoot != null)
+                {
+                    var current = go.transform.parent;
+                    while (current != null && current != avatarRoot)
+                    {
+                        if (IsUnder(current, skeletonRoot))
+                        {
+                            isParentedToBone = true;
+                            break;
+                        }
+                        current = current.parent;
+                    }
+                }
+                
+                // If not parented to a bone, parent to head bone
+                if (!isParentedToBone && go.transform.parent != headBone)
+                {
+                    go.transform.SetParent(headBone, true);
+                    Debug.Log($"RebindAllSkinnedMeshes: Parented static mesh '{go.name}' to head bone");
+                }
+            }
+        }
+        Debug.Log("RebindAllSkinnedMeshes: Rebound all skinned meshes to body skeleton");
+    }
+
     private string GetPlatformFolder()
     {
         if (!string.IsNullOrEmpty(platformFolderOverride)) return platformFolderOverride;
@@ -270,46 +379,80 @@ public class AssetManager : MonoBehaviour
         {
             var update = Addressables.UpdateCatalogs(catalogs);
             yield return update;
-            Debug.Log("Addressables: Updated existing catalogs");
+            if (verboseLogs) Debug.Log("Addressables: Updated existing catalogs");
         }
         else
         {
-            Debug.Log("Addressables: No existing catalogs to update");
+            if (verboseLogs) Debug.Log("Addressables: No existing catalogs to update");
         }
 
         // Explicitly load remote catalog from Firebase Hosting (in case no local bootstrap exists)
         yield return TryLoadRemoteCatalog();
 
+        // Attempt to load RegionMaskConfig from Addressables if not assigned in the Inspector
+        yield return LoadRegionMaskConfigIfNeeded();
+
         addressablesInitialized = true;
-        Debug.Log("AssetManager: Addressables initialized");
+        if (verboseLogs) Debug.Log("AssetManager: Addressables initialized");
 
         // Discover available assets from Addressables
         yield return DiscoverAvailableAssets();
+    }
+
+    private IEnumerator LoadRegionMaskConfigIfNeeded()
+    {
+        if (regionMaskConfig != null)
+        {
+            yield break;
+        }
+        // Addressables entry added at: Assets/RegionMaskConfig.asset
+        var handle = Addressables.LoadAssetAsync<RegionMaskConfig>("Assets/RegionMaskConfig.asset");
+        yield return handle;
+        if (handle.Status == AsyncOperationStatus.Succeeded && handle.Result != null)
+        {
+            regionMaskConfig = handle.Result;
+            Debug.Log("RegionMaskConfig loaded from Addressables.");
+        }
+        else
+        {
+            Debug.LogWarning("RegionMaskConfig not assigned and couldn't be loaded from Addressables. Region masking will be skipped.");
+        }
+        if (handle.IsValid()) Addressables.Release(handle);
     }
 
     private IEnumerator TryLoadRemoteCatalog()
     {
         string platform = GetPlatformFolder();
         string version = Application.version; // matches PlayerSettings.bundleVersion (e.g., 0.1)
-        string catalogUrl = $"{remoteCatalogBaseUrl}/{platform}/catalog_{version}.json";
+        string catalogUrl = !string.IsNullOrEmpty(remoteCatalogOverrideUrl)
+            ? remoteCatalogOverrideUrl
+            : $"{remoteCatalogBaseUrl}/{platform}/catalog_{version}.json";
 
         Debug.Log($"Addressables: Attempting to load remote catalog at {catalogUrl}");
         var loadCatalogHandle = Addressables.LoadContentCatalogAsync(catalogUrl, true);
         yield return loadCatalogHandle;
 
-        if (loadCatalogHandle.Status == AsyncOperationStatus.Succeeded)
+        if (loadCatalogHandle.IsValid())
         {
-            Debug.Log("Addressables: Remote catalog loaded successfully");
+            if (loadCatalogHandle.Status == AsyncOperationStatus.Succeeded)
+            {
+                Debug.Log("Addressables: Remote catalog loaded successfully");
+            }
+            else
+            {
+                Debug.LogWarning("Addressables: Failed to load remote catalog (will proceed with whatever is available)");
+            }
+            Addressables.Release(loadCatalogHandle);
         }
         else
         {
-            Debug.LogWarning("Addressables: Failed to load remote catalog (will proceed with whatever is available)");
+            Debug.LogWarning("Addressables: LoadContentCatalogAsync returned an invalid handle; skipping");
         }
     }
 
     private IEnumerator DiscoverAvailableAssets()
     {
-        Debug.Log("🔍 Discovering Addressables by catalog keys (no labels)...");
+        if (verboseDiscoveryLogs) Debug.Log("🔍 Discovering Addressables by catalog keys (no labels)...");
 
         int discovered = 0;
         var seenKeys = new HashSet<string>();
@@ -344,12 +487,15 @@ public class AssetManager : MonoBehaviour
             }
         }
 
-        Debug.Log($"🔍 Catalog key scan discovered {discovered} assets under 'Models/'");
+        if (verboseDiscoveryLogs) Debug.Log($"🔍 Catalog key scan discovered {discovered} assets under 'Models/'");
 
-        Debug.Log($"✅ Asset discovery complete. Total categories: {availableAssets.Count}");
-        foreach (var kvp in availableAssets)
+        if (verboseDiscoveryLogs)
         {
-            Debug.Log($"  📁 {kvp.Key}: {kvp.Value.Count} assets");
+            Debug.Log($"✅ Asset discovery complete. Total categories: {availableAssets.Count}");
+            foreach (var kvp in availableAssets)
+            {
+                Debug.Log($"  📁 {kvp.Key}: {kvp.Value.Count} assets");
+            }
         }
 
         OnAssetsCatalogLoaded?.Invoke();
@@ -385,11 +531,13 @@ public class AssetManager : MonoBehaviour
         // e.g., Thumbs/Clothes/Tops/02_tops_tight_half
         string thumbnailAddress = $"Thumbs/{category}/{subcategory}/{assetName}";
 
+        // Prefer internal id for loading to avoid InvalidKeyException on primary address
+        string internalIdForLoad = $"Assets/Models/{category}/{subcategory}/{assetName}.prefab";
         var assetItem = new AssetItem
         {
             id = $"{category}_{subcategory}_{assetName}",
             name = assetName,
-            modelPath = address,
+            modelPath = internalIdForLoad,
             thumbnailPath = thumbnailAddress,
             category = category,
             subcategory = subcategory,
@@ -401,6 +549,7 @@ public class AssetManager : MonoBehaviour
         if (!availableAssets.ContainsKey(key)) availableAssets[key] = new List<AssetItem>();
         availableAssets[key].Add(assetItem);
 
+        addressToAssetItem[address] = assetItem;
         Debug.Log($"  ✅ Added: {address} → {key} (thumb: {thumbnailAddress})");
     }
 
@@ -444,6 +593,26 @@ public class AssetManager : MonoBehaviour
         currentCategory = asset.category;
         currentSubcategory = asset.subcategory;
         currentAssetId = asset.id;
+
+        // Early-out if same asset already active for this slot to avoid redundant loads
+        string slotKey = $"{asset.category}:{asset.subcategory}";
+        if (slotKeyToActiveAssetId.TryGetValue(slotKey, out string activeId) &&
+            !string.IsNullOrEmpty(activeId) && string.Equals(activeId, asset.id, StringComparison.Ordinal))
+        {
+            // Ensure any pending color is applied even if we skip reload
+            if (slotKeyToPendingColor.TryGetValue(slotKey, out string pendingHex) &&
+                loadedAssets.TryGetValue(activeId, out GameObject existingGo) && existingGo != null)
+            {
+                if (TryParseHexColor(pendingHex, out Color pendingColor))
+                {
+                    ApplyColorToObject(existingGo, pendingColor, true);
+                    slotKeyToPendingColor.Remove(slotKey);
+                }
+            }
+            OnAssetChanged?.Invoke(asset);
+            OnCategoryChanged?.Invoke(asset.category, asset.subcategory);
+            return;
+        }
 
         // For Base/Body, apply pose instead of loading an addressable prefab
         if (string.Equals(asset.category, "Base", StringComparison.OrdinalIgnoreCase) &&
@@ -497,16 +666,14 @@ public class AssetManager : MonoBehaviour
             yield break;
         }
 
-        // Try primary address first (e.g., "Models/Clothes/Tops/02_tops_tight_half")
+        // Try the provided address first (can be internal id or address)
         var handle = Addressables.LoadAssetAsync<GameObject>(address);
         yield return handle;
 
         if (!(handle.Status == AsyncOperationStatus.Succeeded && handle.Result != null))
         {
-            Debug.LogWarning($"Addressables: primary address failed '{address}', trying internal id fallback...");
-            if (handle.IsValid()) Addressables.Release(handle);
-
             // Fallback to internal id path used in catalog m_InternalIds: Assets/Models/.../{name}.prefab
+            if (handle.IsValid()) Addressables.Release(handle);
             string internalId = $"Assets/Models/{asset.category}/{asset.subcategory}/{asset.name}.prefab";
             var fallback = Addressables.LoadAssetAsync<GameObject>(internalId);
             yield return fallback;
@@ -518,8 +685,7 @@ public class AssetManager : MonoBehaviour
             }
             else
             {
-                string err = $"Addressables: failed to load '{asset.name}' via both address ('{address}') and internal id ('{internalId}')";
-                Debug.LogError(err);
+                Debug.LogError($"Addressables: failed to load '{asset.name}'");
                 if (fallback.IsValid()) Addressables.Release(fallback);
                 yield break;
             }
@@ -550,8 +716,15 @@ public class AssetManager : MonoBehaviour
         assetInstance.transform.localRotation = Quaternion.identity;
         assetInstance.transform.localScale = Vector3.one;
 
+        // Ensure the instantiated item's layer matches the avatarRoot layer so
+        // cameras (e.g., ThumbnailCamera) with culling masks include it
+        SetLayerRecursively(assetInstance, avatarRoot.gameObject.layer);
+
         // Rebind skinned meshes to the body skeleton so pose/rotation matches
         RebindSkinnedMeshesToBody(assetInstance);
+
+		// Enforce a stable render order to reduce z-fighting at garment overlaps
+		ApplyStableRenderOrder(asset.category, asset.subcategory, assetInstance);
 
         // Track new instance and handle
         loadedAssets[asset.id] = assetInstance;
@@ -559,6 +732,9 @@ public class AssetManager : MonoBehaviour
         slotKeyToHandle[slotKey] = handle;
 
         Debug.Log($"Asset loaded via Addressables: {asset.name} (address/internalId: {address})");
+
+        // Apply region hide mask based on Addressables labels (via RegionMaskConfig); store per-asset and apply union
+        TryApplyRegionMaskFromLabels(address, asset.id);
 
         // Apply pending color for this slot if any
         if (slotKeyToPendingColor.TryGetValue(slotKey, out string pendingHex))
@@ -572,6 +748,119 @@ public class AssetManager : MonoBehaviour
         }
     }
 
+    private void TryApplyRegionMaskFromLabels(string address, string assetId)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(address)) return;
+            if (string.IsNullOrEmpty(assetId)) return;
+            // Build a set of possible keys that could identify this asset in the catalog
+            var possibleKeys = new System.Collections.Generic.HashSet<string>(System.StringComparer.Ordinal);
+            possibleKeys.Add(address);
+            // If address is Assets/Models/.../Name.prefab add Models/.../Name
+            const string assetsModels = "Assets/Models/";
+            const string models = "Models/";
+            if (address.StartsWith(assetsModels, System.StringComparison.Ordinal))
+            {
+                string noExt = address.EndsWith(".prefab", System.StringComparison.OrdinalIgnoreCase)
+                    ? address.Substring(0, address.Length - ".prefab".Length)
+                    : address;
+                string asAddress = noExt.Substring("Assets/".Length); // Models/.../Name
+                possibleKeys.Add(asAddress);
+            }
+            else if (address.StartsWith(models, System.StringComparison.Ordinal))
+            {
+                // If address is Models/.../Name add Assets/Models/.../Name.prefab
+                possibleKeys.Add("Assets/" + address + ".prefab");
+            }
+
+            // Discover labels by scanning resource locators' keys and checking which labels contain this address
+            var labels = new System.Collections.Generic.HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+            foreach (var locator in Addressables.ResourceLocators)
+            {
+                foreach (var keyObj in locator.Keys)
+                {
+                    if (!(keyObj is string lbl)) continue;
+                    // Only consider potential hide/group labels to keep it fast
+                    bool consider = false;
+                    if (!string.IsNullOrEmpty(hideLabelPrefix) && lbl.StartsWith(hideLabelPrefix, System.StringComparison.OrdinalIgnoreCase)) consider = true;
+                    if (!consider && regionMaskConfig != null)
+                    {
+                        // Quick membership check against configured group labels
+                        if (regionMaskConfig.groups.Exists(g => string.Equals(g.label, lbl, System.StringComparison.OrdinalIgnoreCase))) consider = true;
+                    }
+                    if (!consider) continue;
+
+                    if (locator.Locate(lbl, typeof(GameObject), out var labelLocs))
+                    {
+                        foreach (var l in labelLocs)
+                        {
+                            if (l != null && possibleKeys.Contains(l.PrimaryKey))
+                            {
+                                labels.Add(lbl);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            int mask = 0;
+            foreach (var label in labels)
+            {
+                // Only use RegionMaskConfig groups (hide:* legacy removed)
+            }
+
+            // Also support predefined group labels via RegionMaskConfig (e.g., 'top-short')
+            if (regionMaskConfig != null)
+            {
+                foreach (var label in labels)
+                {
+                    int groupMask = regionMaskConfig.BuildMaskForLabel(label, (regionName) =>
+                    {
+                        var def = regionDefs.Find(r => string.Equals(r.name, regionName, System.StringComparison.OrdinalIgnoreCase));
+                        return def != null ? (int?)def.id : null;
+                    });
+                    if (groupMask != 0) mask |= groupMask;
+                }
+            }
+            if (mask != 0)
+            {
+                // Do not apply yet; we'll store per-asset and then apply the UNION across all active items
+            }
+
+            // Store mask per active asset to support recomputation on removal
+            assetIdToRegionMask[assetId] = mask;
+
+            // Recompute union mask across all currently active items and apply
+            int unionMask = 0;
+            foreach (var kv in slotKeyToActiveAssetId)
+            {
+                if (!string.IsNullOrEmpty(kv.Value) && assetIdToRegionMask.TryGetValue(kv.Value, out int m))
+                {
+                    unionMask |= m;
+                }
+            }
+            SetBodyRegionMask(unionMask);
+            Debug.Log($"Applied region mask union from labels ({string.Join(",", labels)}): 0x{unionMask:X}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"TryApplyRegionMaskFromLabels error: {e.Message}");
+        }
+    }
+
+    private void SetLayerRecursively(GameObject obj, int layer)
+    {
+        if (obj == null) return;
+        obj.layer = layer;
+        foreach (Transform t in obj.GetComponentsInChildren<Transform>(true))
+        {
+            if (t == null || t.gameObject == obj) continue;
+            t.gameObject.layer = layer;
+        }
+    }
+
     private void SetAssetActive(string assetId, bool active)
     {
         if (loadedAssets.ContainsKey(assetId))
@@ -580,15 +869,76 @@ public class AssetManager : MonoBehaviour
         }
     }
 
+	// Ensure deterministic rendering order among categories/subcategories to minimize edge artifacts
+	private void ApplyStableRenderOrder(string category, string subcategory, GameObject root)
+	{
+		if (root == null) return;
+		// Base queues: Opaque ~2000; keep within opaque/cutout range
+		int baseQueue = 2000;
+		int offset = 0;
+		// Body draws first
+		if (string.Equals(category, "Base", StringComparison.OrdinalIgnoreCase))
+		{
+			offset = 0; // Body
+		}
+		else if (string.Equals(category, "Clothes", StringComparison.OrdinalIgnoreCase))
+		{
+			// For stencil masking: jacket (stencil writer) must render BEFORE inner clothing (mask testers)
+			// Order (low to high): Jacket < Bottoms < Tops; socks lowest among clothes if needed
+			if (string.Equals(subcategory, "Socks", StringComparison.OrdinalIgnoreCase)) offset = 2;     // earliest within clothes
+			else if (string.Equals(subcategory, "Jacket", StringComparison.OrdinalIgnoreCase)) offset = 8; // render before other clothes
+			else if (string.Equals(subcategory, "Bottoms", StringComparison.OrdinalIgnoreCase)) offset = 12;
+			else if (string.Equals(subcategory, "Tops", StringComparison.OrdinalIgnoreCase)) offset = 20;  // render after jacket so stencil is set
+			else offset = 25;
+		}
+		else if (string.Equals(category, "Hair", StringComparison.OrdinalIgnoreCase))
+		{
+			offset = 40;
+		}
+		else
+		{
+			offset = 50; // accessories and others
+		}
+
+		int desiredQueue = baseQueue + offset;
+		foreach (var r in root.GetComponentsInChildren<Renderer>(true))
+		{
+			if (r == null) continue;
+			var mats = r.materials;
+			if (mats == null) continue;
+			for (int i = 0; i < mats.Length; i++)
+			{
+				var m = mats[i];
+				if (m == null) continue;
+				// Only adjust if currently in opaque/cutout range to avoid breaking transparents
+				if (m.renderQueue <= 2450)
+				{
+					m.renderQueue = desiredQueue;
+				}
+			}
+		}
+	}
+
     public void RemoveAssetForSlot(string category, string subcategory)
     {
         string slotKey = $"{category}:{subcategory}";
+        // Recompute mask from remaining items (excluding this slot)
+        int recomputedMask = 0;
+        foreach (var kv in slotKeyToActiveAssetId)
+        {
+            if (kv.Key == slotKey) continue;
+            if (!string.IsNullOrEmpty(kv.Value) && assetIdToRegionMask.TryGetValue(kv.Value, out int m))
+            {
+                recomputedMask |= m;
+            }
+        }
         if (slotKeyToActiveAssetId.TryGetValue(slotKey, out string activeAssetId))
         {
             if (!string.IsNullOrEmpty(activeAssetId) && loadedAssets.TryGetValue(activeAssetId, out GameObject existing))
             {
                 if (existing != null) Destroy(existing);
                 loadedAssets.Remove(activeAssetId);
+                assetIdToRegionMask.Remove(activeAssetId);
             }
             slotKeyToActiveAssetId.Remove(slotKey);
         }
@@ -600,7 +950,71 @@ public class AssetManager : MonoBehaviour
             slotKeyToHandle.Remove(slotKey);
         }
 
-        Debug.Log($"Removed asset for slot {slotKey}");
+        // Apply new union mask
+        SetBodyRegionMask(recomputedMask);
+        Debug.Log($"Removed asset for slot {slotKey}. Recomputed mask=0x{recomputedMask:X}");
+    }
+
+    // Toggle visibility for a category/subcategory without changing mask bookkeeping or unloading
+    public void SetVisibilityForSlot(string category, string subcategory, bool visible)
+    {
+        string slotKey = $"{category}:{subcategory}";
+        if (slotKeyToActiveAssetId.TryGetValue(slotKey, out string activeAssetId))
+        {
+            if (!string.IsNullOrEmpty(activeAssetId))
+            {
+                SetAssetActive(activeAssetId, visible);
+                if (verboseLogs) Debug.Log($"Set visibility for slot {slotKey} → {visible}");
+
+                // Schedule unload when hidden, cancel if shown again
+                if (!visible)
+                {
+                    if (pendingUnloadBySlot.TryGetValue(slotKey, out var co) && co != null)
+                    {
+                        StopCoroutine(co);
+                        pendingUnloadBySlot.Remove(slotKey);
+                    }
+                    var routine = StartCoroutine(UnloadHiddenAfterDelay(slotKey, activeAssetId));
+                    pendingUnloadBySlot[slotKey] = routine;
+                }
+                else
+                {
+                    if (pendingUnloadBySlot.TryGetValue(slotKey, out var co) && co != null)
+                    {
+                        StopCoroutine(co);
+                        pendingUnloadBySlot.Remove(slotKey);
+                    }
+                }
+            }
+        }
+    }
+
+    private IEnumerator UnloadHiddenAfterDelay(string slotKey, string assetId)
+    {
+        yield return new WaitForSeconds(hiddenUnloadDelaySeconds);
+        // If still hidden, unload to free memory
+        if (!slotKeyToActiveAssetId.TryGetValue(slotKey, out string currentId) || currentId != assetId)
+        {
+            yield break; // slot changed; ignore
+        }
+        if (!loadedAssets.TryGetValue(assetId, out GameObject go) || go == null)
+        {
+            yield break; // already gone
+        }
+        if (go.activeSelf)
+        {
+            yield break; // became visible; don't unload
+        }
+        // Destroy instance and release handle, keep mask bookkeeping so union remains correct
+        if (verboseLogs) Debug.Log($"Unloading hidden asset for slot {slotKey} after delay");
+        Destroy(go);
+        loadedAssets.Remove(assetId);
+        if (slotKeyToHandle.TryGetValue(slotKey, out var handle))
+        {
+            if (handle.IsValid()) Addressables.Release(handle);
+            slotKeyToHandle.Remove(slotKey);
+        }
+        pendingUnloadBySlot.Remove(slotKey);
     }
 
     [Serializable]
@@ -660,6 +1074,9 @@ public class AssetManager : MonoBehaviour
         poseGraph.Play();
         animator.Update(0f);
         currentPoseName = poseName;
+
+        // Ensure face model and other separated models are rebinded to follow poses
+        RebindAllSkinnedMeshes();
 
         Debug.Log($"ApplyBodyPose: Applied pose '{poseName}'");
     }
@@ -769,6 +1186,32 @@ public class AssetManager : MonoBehaviour
             if (payload == null) { Debug.LogWarning("Color payload null"); return; }
             string slotKey = $"{payload.category}:{payload.subcategory}";
 
+            // Special case: Face makeup shader (Base/Face, Base/Blush, Base/Eyeshadow)
+            if (string.Equals(payload.category, "Base", System.StringComparison.OrdinalIgnoreCase))
+            {
+                var sub = payload.subcategory ?? string.Empty;
+                if (string.Equals(sub, "Face", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    if (TryParseHexColor(payload.colorHex, out Color faceColor))
+                    {
+                        // Face base skin color is driven via the BaseColorMap texture in the shader graph.
+                        ApplyFaceBaseSkinColor(faceColor);
+                        return;
+                    }
+                    Debug.LogWarning($"Failed to parse face color {payload.colorHex}");
+                }
+                if (string.Equals(sub, "Blush", System.StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(sub, "Eyeshadow", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    if (TryParseHexColor(payload.colorHex, out Color faceColor))
+                    {
+                        ApplyFaceMakeupColor(sub, faceColor);
+                        return;
+                    }
+                    Debug.LogWarning($"Failed to parse face/makeup color {payload.colorHex}");
+                }
+            }
+
             // Special case: Base/Body → color the body mesh instead of items
             if (string.Equals(payload.category, "Base", System.StringComparison.OrdinalIgnoreCase) &&
                 string.Equals(payload.subcategory, "Body", System.StringComparison.OrdinalIgnoreCase))
@@ -779,11 +1222,15 @@ public class AssetManager : MonoBehaviour
                     if (bodySmr != null)
                     {
                         ApplyColorToObject(bodySmr.gameObject, bodyColor, false);
+                        // Also apply to face base skin (shader graph uses BaseColorMap texture)
+                        ApplyFaceBaseSkinColor(bodyColor);
                         return;
                     }
                     // Fallback to avatarRoot if body SMR not assigned/found
                     if (avatarRoot != null) {
                         ApplyColorToObject(avatarRoot.gameObject, bodyColor, false);
+                        // Also apply to face base skin (shader graph uses BaseColorMap texture)
+                        ApplyFaceBaseSkinColor(bodyColor);
                         return;
                     }
                 }
@@ -823,6 +1270,205 @@ public class AssetManager : MonoBehaviour
         {
             Debug.LogError($"Error handling color change: {e.Message}");
         }
+    }
+
+    private static bool NameContains(Transform t, string needleLower)
+    {
+        if (t == null) return false;
+        var n = t.name;
+        return !string.IsNullOrEmpty(n) && n.ToLowerInvariant().Contains(needleLower);
+    }
+
+    private static bool MaterialHasAny(Material m, params string[] props)
+    {
+        if (m == null) return false;
+        for (int i = 0; i < props.Length; i++)
+        {
+            if (m.HasProperty(props[i])) return true;
+        }
+        return false;
+    }
+
+    private static bool TrySetFirst(Material m, Color c, params string[] props)
+    {
+        if (m == null) return false;
+        for (int i = 0; i < props.Length; i++)
+        {
+            var p = props[i];
+            if (m.HasProperty(p))
+            {
+                m.SetColor(p, c);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Applies color to face shader graph properties (base skin, blush, eyeshadow).
+    // We intentionally target renderers that look like "face" OR materials that expose makeup properties.
+    private void ApplyFaceMakeupColor(string subcategory, Color color)
+    {
+        if (avatarRoot == null)
+        {
+            Debug.LogWarning("ApplyFaceMakeupColor: avatarRoot is null");
+            return;
+        }
+
+        string sub = (subcategory ?? string.Empty).ToLowerInvariant();
+        bool isFace = sub == "face";
+        bool isBlush = sub == "blush";
+        bool isEyeshadow = sub == "eyeshadow";
+
+        // On light skin, multiply blending makes Blush/Eyeshadow almost invisible. Boost color (darken/saturate) so it shows.
+        if (isBlush || isEyeshadow)
+            color = BoostMakeupForSkinTone(color, lastAppliedFaceColor);
+
+        // Candidate property names to support different Shader Graph setups
+        // NOTE: Shader Graph "Reference" names often start with "_" (e.g. _BlushColor),
+        // but they can also be custom without it (e.g. BlushColor). Support both.
+        string[] faceProps = new[] { "_BaseColorTint", "BaseColorTint", "_FaceColor", "FaceColor", "_SkinColor", "SkinColor", "_BaseColor", "_Color" };
+        string[] blushProps = new[] { "_BlushColor", "BlushColor", "_BlushTint", "BlushTint" };
+        string[] eyeshadowProps = new[] { "_EyeshadowColor", "EyeshadowColor", "_EyeshadowTint", "EyeshadowTint" };
+
+        var renderers = avatarRoot.GetComponentsInChildren<Renderer>(true);
+        int materialsTouched = 0;
+
+        foreach (var r in renderers)
+        {
+            if (r == null) continue;
+
+            bool looksLikeFaceObject = NameContains(r.transform, "face");
+            var mats = r.materials;
+            if (mats == null || mats.Length == 0) continue;
+
+            for (int i = 0; i < mats.Length; i++)
+            {
+                var m = mats[i];
+                if (m == null) continue;
+
+                bool hasMakeupProps = MaterialHasAny(
+                    m,
+                    "_BlushColor", "BlushColor",
+                    "_EyeshadowColor", "EyeshadowColor",
+                    "_BaseColorTint", "BaseColorTint",
+                    "_FaceColor", "FaceColor",
+                    "_SkinColor", "SkinColor"
+                );
+                if (!looksLikeFaceObject && !hasMakeupProps) continue;
+
+                bool changed = false;
+                if (isFace) changed = TrySetFirst(m, color, faceProps);
+                else if (isBlush) changed = TrySetFirst(m, color, blushProps);
+                else if (isEyeshadow) changed = TrySetFirst(m, color, eyeshadowProps);
+
+                if (changed) materialsTouched++;
+            }
+        }
+
+        if (materialsTouched == 0)
+        {
+            Debug.LogWarning($"ApplyFaceMakeupColor: No materials updated for '{subcategory}'. Check shader property names and face renderer naming.");
+        }
+        else
+        {
+            Debug.Log($"ApplyFaceMakeupColor: Updated {materialsTouched} material(s) for '{subcategory}'.");
+        }
+    }
+
+    private Texture2D GetOrCreateSolidTexture(Color color)
+    {
+        var c32 = (Color32)color;
+        int key = (c32.r << 24) | (c32.g << 16) | (c32.b << 8) | c32.a;
+        if (solidColorTextureCache.TryGetValue(key, out var tex) && tex != null) return tex;
+
+        tex = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+        tex.name = $"SolidColor_{c32.r:X2}{c32.g:X2}{c32.b:X2}{c32.a:X2}";
+        tex.wrapMode = TextureWrapMode.Clamp;
+        tex.filterMode = FilterMode.Bilinear;
+        tex.SetPixel(0, 0, color);
+        tex.Apply(false, false);
+
+        solidColorTextureCache[key] = tex;
+        return tex;
+    }
+
+    // FaceMakeup.shadergraph drives base skin via _BaseColorMap (Texture2D).
+    // To "set base color" we assign a 1x1 solid texture of the chosen skin color.
+    private void ApplyFaceBaseSkinColor(Color color)
+    {
+        if (avatarRoot == null)
+        {
+            Debug.LogWarning("ApplyFaceBaseSkinColor: avatarRoot is null");
+            return;
+        }
+
+        lastAppliedFaceColor = color;
+
+        var tex = GetOrCreateSolidTexture(color);
+        var renderers = avatarRoot.GetComponentsInChildren<Renderer>(true);
+        int materialsTouched = 0;
+
+        foreach (var r in renderers)
+        {
+            if (r == null) continue;
+
+            bool looksLikeFaceObject = NameContains(r.transform, "face");
+            var mats = r.materials;
+            if (mats == null || mats.Length == 0) continue;
+
+            for (int i = 0; i < mats.Length; i++)
+            {
+                var m = mats[i];
+                if (m == null) continue;
+
+                // Prefer explicit base-color-map property used by the shader graph
+                bool hasBaseMap = m.HasProperty("_BaseColorMap") || m.HasProperty("BaseColorMap");
+                bool hasMakeup = MaterialHasAny(m, "_BlushColor", "BlushColor", "_EyeshadowColor", "EyeshadowColor");
+                if (!looksLikeFaceObject && !hasBaseMap && !hasMakeup) continue;
+
+                if (m.HasProperty("_BaseColorMap")) { m.SetTexture("_BaseColorMap", tex); materialsTouched++; continue; }
+                if (m.HasProperty("BaseColorMap")) { m.SetTexture("BaseColorMap", tex); materialsTouched++; continue; }
+
+                // Fallback: if the graph was authored differently, try common base color properties
+                if (TrySetFirst(m, color, "_BaseColor", "_Color")) { materialsTouched++; }
+            }
+        }
+
+        if (materialsTouched == 0)
+        {
+            Debug.LogWarning("ApplyFaceBaseSkinColor: No materials updated. Ensure face material uses FaceMakeup shader and has _BaseColorMap.");
+        }
+        else
+        {
+            Debug.Log($"ApplyFaceBaseSkinColor: Updated {materialsTouched} material(s).");
+        }
+    }
+
+    // Boosts Blush/Eyeshadow color so it stays visible on light skin (shader uses multiply blend).
+    // Light skin = high luminance → we darken the makeup color so the multiply has a stronger effect.
+    private static Color BoostMakeupForSkinTone(Color makeupColor, Color? faceColor)
+    {
+        float luminance = 0.75f; // when unknown, assume light skin so makeup is visible by default
+        if (faceColor.HasValue)
+        {
+            Color c = faceColor.Value;
+            luminance = 0.2126f * c.linear.r + 0.7152f * c.linear.g + 0.0722f * c.linear.b;
+        }
+        // Light skin: luminance roughly > 0.5. Boost makeup so it's visible.
+        const float lightSkinThreshold = 0.5f;
+        if (luminance <= lightSkinThreshold)
+            return makeupColor; // dark skin: no change
+
+        // Strength of boost (0 = no change, 1 = full darken). Stronger for lighter skin.
+        float t = Mathf.Clamp01((luminance - lightSkinThreshold) / 0.4f);
+        float darken = 0.55f + 0.2f * (1f - t); // target multiplier ~0.55–0.75
+        Color boosted = new Color(
+            makeupColor.r * darken,
+            makeupColor.g * darken,
+            makeupColor.b * darken,
+            makeupColor.a
+        );
+        return Color.Lerp(makeupColor, boosted, 0.5f * t);
     }
 
     private static bool TryParseHexColor(string hex, out Color color)
@@ -882,5 +1528,19 @@ public class AssetManager : MonoBehaviour
         if (mat0 == null) return;
         if (mat0.HasProperty("_BaseColor")) mat0.SetColor("_BaseColor", color);
         else if (mat0.HasProperty("_Color")) mat0.SetColor("_Color", color);
+    }
+
+    // Helper: allow external systems (e.g., native bridge) to set body region mask by integer bitmask
+    public void SetBodyRegionMask(int mask)
+    {
+        var smr = GetBodySkinnedMesh();
+        if (smr != null)
+        {
+            int id = Shader.PropertyToID("_RegionHideMask");
+            foreach (var m in smr.materials)
+            {
+                if (m != null && m.HasProperty(id)) m.SetInt(id, mask);
+            }
+        }
     }
 }

@@ -1,0 +1,57 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d6d80f257c5c441a9884fd0b8631a971, type: 3}
+  m_Name: RegionMaskConfig
+  m_EditorClassIdentifier: 
+  groups:
+  - label: tops-nosleeve-cropped
+    regionNames: []
+    regionIds: 01000000
+  - label: tops-nosleeve
+    regionNames: []
+    regionIds: 0100000002000000
+  - label: tops-short-cropped
+    regionNames: []
+    regionIds: 0100000003000000
+  - label: tops-short
+    regionNames: []
+    regionIds: 010000000200000003000000
+  - label: tops-half-cropped
+    regionNames: []
+    regionIds: 010000000300000004000000
+  - label: tops-half
+    regionNames: []
+    regionIds: 01000000020000000300000004000000
+  - label: tops-seven-cropped
+    regionNames: []
+    regionIds: 01000000030000000400000005000000
+  - label: tops-seven
+    regionNames: []
+    regionIds: 0100000002000000030000000400000005000000
+  - label: tops-long-cropped
+    regionNames: []
+    regionIds: 0100000003000000040000000500000006000000
+  - label: tops-long
+    regionNames: []
+    regionIds: 010000000200000003000000040000000500000006000000
+  - label: bottoms-short
+    regionNames: []
+    regionIds: 07000000
+  - label: bottoms-half
+    regionNames: []
+    regionIds: 0700000008000000
+  - label: bottoms-med
+    regionNames: []
+    regionIds: 070000000800000009000000
+  - label: bottoms-long
+    regionNames: []
+    regionIds: 0700000008000000090000000a000000

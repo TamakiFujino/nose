@@ -1,0 +1,60 @@
+# CocoaPods
+Pods/
+
+# Xcode user data
+*.xcuserstate
+*.xcuserdata/
+DerivedData/
+
+# Unity
+nose-unity/Library/
+nose-unity/Temp/
+nose-unity/Logs/
+nose-unity/obj/
+nose-unity/Build*/
+nose-unity/UserSettings/
+
+# Unity generated server/build outputs
+unity-build/
+nose-unity/ServerData/
+
+# Firebase sensitive plists
+FirebaseConfig/GoogleService-Info-Development.plist
+FirebaseConfig/GoogleService-Info-Staging.plist
+FirebaseConfig/GoogleService-Info-Production.plist
+Pods/*GoogleService-Info*.plist
+
+# Firebase CLI cache
+.firebase/
+
+# Local config that may contain secrets
+.env
+Config.plist
+serviceAccountKey*.json
+
+# Generated from .env (do not commit)
+nose/Configs/Development.xcconfig
+nose/Configs/Staging.xcconfig
+nose/Configs/Production.xcconfig
+noseUITests/Helpers/TestConfig.generated.swift
+
+# Fastlane/Artifacts
+fastlane/report.xml
+fastlane/test_output/
+builds/
+*.ipa
+*.dSYM.zip
+
+# OS files
+.DS_Store
+
+# IDE/Editor files
+.cursor/
+
+# Node/npm caches
+node_modules/
+
+# Addressables cache states
+nose-unity/Assets/AddressableAssetsData/*/*.bin
+# OpenInNose extension: generated or local override
+OpenInNose/Info.plist

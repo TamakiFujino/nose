@@ -1,8 +1,24 @@
 import UIKit
+import FirebaseAuth
+import FirebaseStorage
+import FirebaseFirestore
 
 class SettingsViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
 
     let tableView = UITableView()
+    private let storage = Storage.storage()
+    private let db = Firestore.firestore()
+    
+    // Avatar image view for profile picture
+    private lazy var avatarImageView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.contentMode = .scaleAspectFit
+        imageView.backgroundColor = .secondColor
+        imageView.clipsToBounds = true
+        imageView.layer.cornerRadius = 8
+        imageView.isUserInteractionEnabled = true
+        return imageView
+    }()
 
     // Define setting categories and items
     var settingsData: [(category: String, items: [String])] = [
@@ -20,11 +36,19 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         setupNavigationBar()
 
         setupTableView()
+        setupAvatarHeader()
+        loadProfileImage()
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        // Reload profile image when returning from ProfileImageViewController
+        loadProfileImage()
     }
 
     private func setupNavigationBar() {
         navigationItem.title = "Settings"
-        self.navigationController?.navigationBar.tintColor = .black
+        self.navigationController?.navigationBar.tintColor = .fourthColor
         
         // Remove any existing right bar button items
         navigationItem.rightBarButtonItems = nil
@@ -47,6 +71,116 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
+    }
+    
+    func setupAvatarHeader() {
+        // Create a container view for the header
+        let avatarWidth = UIScreen.main.bounds.width * 0.75 // Same as ProfileImageViewController
+        let avatarHeight = avatarWidth * 1.5
+        let headerHeight = avatarHeight + 32 // Add padding top and bottom
+        
+        let headerView = UIView(frame: CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width, height: headerHeight))
+        headerView.backgroundColor = .clear
+        
+        // Add avatar image view to header
+        avatarImageView.frame = CGRect(
+            x: (UIScreen.main.bounds.width - avatarWidth) / 2,
+            y: 16,
+            width: avatarWidth,
+            height: avatarHeight
+        )
+        headerView.addSubview(avatarImageView)
+        
+        // Add tap gesture to navigate to ProfileImageViewController
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(avatarTapped))
+        avatarImageView.addGestureRecognizer(tapGesture)
+        
+        // Set as table header view
+        tableView.tableHeaderView = headerView
+    }
+    
+    @objc private func avatarTapped() {
+        print("🖼️ Avatar tapped - navigating to ProfileImageViewController")
+        let profileImageVC = ProfileImageViewController()
+        
+        // Set callback to receive selected image
+        profileImageVC.onImageSelected = { [weak self] selectedImage in
+            self?.avatarImageView.image = selectedImage
+        }
+        
+        navigationController?.pushViewController(profileImageVC, animated: true)
+    }
+    
+    private func loadProfileImage() {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            print("❌ User not authenticated")
+            showDefaultAvatar()
+            return
+        }
+        
+        print("🔍 Loading saved profile image for user: \(userId)")
+        
+        // Get the saved profile image collection ID from Firestore
+        db.collection("users")
+            .document(userId)
+            .getDocument { [weak self] snapshot, error in
+                guard let self = self else { return }
+                
+                if let error = error {
+                    print("❌ Error fetching user data: \(error.localizedDescription)")
+                    self.showDefaultAvatar()
+                    return
+                }
+                
+                guard let data = snapshot?.data(),
+                      let collectionId = data["profileImageCollectionId"] as? String else {
+                    print("⚠️ No profile image set, showing default")
+                    self.showDefaultAvatar()
+                    return
+                }
+                
+                print("✅ Found profile image collection ID: \(collectionId)")
+                
+                if collectionId == "default" {
+                    self.showDefaultAvatar()
+                } else {
+                    self.loadImageFromStorage(userId: userId, collectionId: collectionId)
+                }
+            }
+    }
+    
+    private func showDefaultAvatar() {
+        if let defaultImage = UIImage(named: "avatar") {
+            DispatchQueue.main.async {
+                self.avatarImageView.image = defaultImage
+            }
+            print("✅ Showing default avatar")
+        } else {
+            print("❌ Could not load default avatar image")
+        }
+    }
+    
+    private func loadImageFromStorage(userId: String, collectionId: String) {
+        let imageRef = storage.reference()
+            .child("collection_avatars/\(userId)/\(collectionId)/avatar.png")
+        
+        print("🔍 Loading image from: collection_avatars/\(userId)/\(collectionId)/avatar.png")
+        
+        imageRef.getData(maxSize: 5 * 1024 * 1024) { [weak self] data, error in
+            if let error = error {
+                print("❌ Error loading profile image: \(error.localizedDescription)")
+                return
+            }
+            
+            if let data = data, let image = UIImage(data: data) {
+                print("✅ Successfully loaded profile image")
+                DispatchQueue.main.async {
+                    self?.avatarImageView.image = image
+                }
+            } else {
+                print("❌ Could not create image from data")
+            }
+        }
     }
 
     // MARK: - TableView DataSource
@@ -80,7 +214,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             print("  - Info dictionary keys: \(Bundle.main.infoDictionary?.keys.joined(separator: ", ") ?? "None")")
             
             cell.detailTextLabel?.text = fullVersion
-            cell.detailTextLabel?.textColor = .secondaryLabel
+            cell.detailTextLabel?.textColor = .fourthColor
             cell.detailTextLabel?.accessibilityIdentifier = "app_version_text"
             cell.selectionStyle = .none  // Disable selection for app version cell
         } else {

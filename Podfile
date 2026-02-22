@@ -2,7 +2,7 @@ platform :ios, '17.0'
 use_frameworks!
 
 target 'nose' do
-  pod 'GoogleMaps'
+  pod 'MapboxMaps', '~> 11.0'
   pod 'GooglePlaces'
   pod 'Firebase/Core'
   pod 'FirebaseAnalytics'
@@ -36,5 +36,13 @@ post_install do |installer|
         config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '17.0'
       end
     end
+  end
+
+  # UI tests run as a separate process and only need XCTest — strip pod linker flags
+  Dir.glob('Pods/Target Support Files/Pods-noseUITests/*.xcconfig') do |xcconfig_path|
+    xcconfig = File.read(xcconfig_path)
+    xcconfig.gsub!(/^OTHER_LDFLAGS\s*=.*$/, 'OTHER_LDFLAGS = $(inherited)')
+    File.write(xcconfig_path, xcconfig)
+    puts "✅ Stripped OTHER_LDFLAGS from #{File.basename(xcconfig_path)}"
   end
 end

@@ -6,48 +6,83 @@
 //
 
 import UIKit
+import GoogleSignIn
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     var window: UIWindow?
+    private var pendingDeepLinkURL: URL?
 
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         guard let windowScene = (scene as? UIWindowScene) else { return }
 
         window = UIWindow(windowScene: windowScene)
         
-        // Simply show the ViewController - it will handle authentication checking internally
-        let viewController = ViewController()
-        window?.rootViewController = viewController
+        // Always start with login/auth check screen
+        let loginVC = ViewController()
+        loginVC.sceneDelegate = self
+        let nav = UINavigationController(rootViewController: loginVC)
+        window?.rootViewController = nav
         window?.makeKeyAndVisible()
+
+        // Store any URL that launched the app to handle after auth
+        if let url = connectionOptions.urlContexts.first?.url {
+            pendingDeepLinkURL = url
+        }
+    }
+
+    func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+        guard let url = URLContexts.first?.url else { return }
+        
+        // Handle Google Sign-In URL first
+        if GIDSignIn.sharedInstance.handle(url) {
+            return
+        }
+        
+        // If user is authenticated and home is showing, handle immediately
+        if let nav = window?.rootViewController as? UINavigationController,
+           nav.viewControllers.first is HomeViewController {
+            _ = DeepLinkManager.shared.handle(url: url, in: window)
+        } else {
+            // Store for later (auth flow is still in progress)
+            pendingDeepLinkURL = url
+        }
+    }
+    
+    func didFinishAuthentication() {
+        // Called by ViewController after successful auth transition to HomeViewController
+        
+        // 1. Handle Deep Links
+        if let url = pendingDeepLinkURL {
+            pendingDeepLinkURL = nil
+            // Small delay to ensure HomeViewController is fully loaded
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                _ = DeepLinkManager.shared.handle(url: url, in: self.window)
+            }
+        }
+        
+        // 2. Handle Share Inbox (from Extension)
+        // We call this here to ensure Auth is ready
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            DeepLinkManager.shared.processShareInbox(in: self.window)
+        }
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {
-        // Called as the scene is being released by the system.
-        // This occurs shortly after the scene enters the background, or when its session is discarded.
-        // Release any resources associated with this scene that can be re-created the next time the scene connects.
-        // The scene may re-connect later, as its session was not necessarily discarded (see `application:didDiscardSceneSessions` instead).
     }
 
     func sceneDidBecomeActive(_ scene: UIScene) {
-        // Called when the scene has moved from an inactive state to an active state.
-        // Use this method to restart any tasks that were paused (or not yet started) when the scene was inactive.
+        // Process any pending items in the Share Inbox (from Share Extension)
+        DeepLinkManager.shared.processShareInbox(in: window)
     }
 
     func sceneWillResignActive(_ scene: UIScene) {
-        // Called when the scene will move from an active state to an inactive state.
-        // This may occur due to temporary interruptions (ex. an incoming phone call).
     }
 
     func sceneWillEnterForeground(_ scene: UIScene) {
-        // Called as the scene transitions from the background to the foreground.
-        // Use this method to undo the changes made on entering the background.
     }
 
     func sceneDidEnterBackground(_ scene: UIScene) {
-        // Called as the scene transitions from the foreground to the background.
-        // Use this method to save data, release shared resources, and store enough scene-specific state information
-        // to restore the scene back to its current state.
     }
 
 }

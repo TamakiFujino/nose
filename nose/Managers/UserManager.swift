@@ -145,16 +145,61 @@ final class UserManager {
                     batch.deleteDocument(document.reference)
                 }
                 
-                // 4. Delete user's collections
+                // 4. Get user's collections and mark shared copies as inactive
                 let collectionsRef = userRef.collection("collections")
                 collectionsRef.getDocuments { [weak self] snapshot, error in
-                    guard self != nil else { return }
+                    guard let self = self else { return }
                     
                     if let error = error {
                         completion(.failure(error))
                         return
                     }
                     
+                    // Find collections owned by this user that have been shared with others
+                    let sharedCollections = snapshot?.documents.filter { doc in
+                        let data = doc.data()
+                        let isOwner = data["isOwner"] as? Bool ?? false
+                        let members = data["members"] as? [String] ?? []
+                        // Collection is shared if user is owner and has other members
+                        return isOwner && members.contains(where: { $0 != userId })
+                    } ?? []
+                    
+                    print("🗑️ Found \(sharedCollections.count) shared collections to mark inactive in friends' databases")
+                    
+                    // Mark shared copies as inactive in friends' databases
+                    let group = DispatchGroup()
+                    
+                    for collectionDoc in sharedCollections {
+                        let data = collectionDoc.data()
+                        let collectionId = collectionDoc.documentID
+                        let members = data["members"] as? [String] ?? []
+                        
+                        // Update each friend's copy of this collection
+                        for memberId in members where memberId != userId {
+                            group.enter()
+                            let friendCollectionRef = self.db.collection("users")
+                                .document(memberId)
+                                .collection("collections")
+                                .document(collectionId)
+                            
+                            friendCollectionRef.updateData([
+                                "status": "inactive",
+                                "ownerDeleted": true,
+                                "ownerDeletedAt": FieldValue.serverTimestamp()
+                            ]) { error in
+                                if let error = error {
+                                    print("❌ Error marking shared collection as inactive for user \(memberId): \(error.localizedDescription)")
+                                } else {
+                                    print("✅ Marked collection \(collectionId) as inactive for user \(memberId)")
+                                }
+                                group.leave()
+                            }
+                        }
+                    }
+                    
+                    // Wait for all shared collection updates to complete
+                    group.notify(queue: .main) {
+                        // Delete user's own collections
                     snapshot?.documents.forEach { document in
                         batch.deleteDocument(document.reference)
                     }
@@ -170,6 +215,7 @@ final class UserManager {
                                     completion(.failure(error))
                                 } else {
                                     completion(.success(()))
+                                    }
                                 }
                             }
                         }
@@ -298,6 +344,63 @@ final class UserManager {
                             }
                     }
             }
+    }
+
+    // MARK: - Friend Requests
+
+    /// Send a friend request from requester to receiver. Creates docs in receiver's friendRequests and requester's sentFriendRequests.
+    func sendFriendRequest(requesterId: String, receiverId: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        let batch = db.batch()
+        let receiverRequestsRef = FirestorePaths.friendRequests(userId: receiverId, db: db).document(requesterId)
+        let requesterSentRef = FirestorePaths.sentFriendRequests(userId: requesterId, db: db).document(receiverId)
+        batch.setData(["createdAt": FieldValue.serverTimestamp()], forDocument: receiverRequestsRef)
+        batch.setData(["createdAt": FieldValue.serverTimestamp()], forDocument: requesterSentRef)
+        batch.commit { error in
+            if let error = error {
+                completion(.failure(error))
+            } else {
+                completion(.success(()))
+            }
+        }
+    }
+
+    /// Approve a received friend request: remove request docs and add mutual friends.
+    func approveFriendRequest(receiverId: String, requesterId: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        let batch = db.batch()
+        let receiverRequestsRef = FirestorePaths.friendRequests(userId: receiverId, db: db).document(requesterId)
+        let requesterSentRef = FirestorePaths.sentFriendRequests(userId: requesterId, db: db).document(receiverId)
+        batch.deleteDocument(receiverRequestsRef)
+        batch.deleteDocument(requesterSentRef)
+        batch.setData(["addedAt": FieldValue.serverTimestamp()], forDocument: FirestorePaths.friends(userId: receiverId, db: db).document(requesterId))
+        batch.setData(["addedAt": FieldValue.serverTimestamp()], forDocument: FirestorePaths.friends(userId: requesterId, db: db).document(receiverId))
+        batch.commit { error in
+            if let error = error {
+                completion(.failure(error))
+            } else {
+                completion(.success(()))
+            }
+        }
+    }
+
+    /// Reject a received friend request: remove both request docs only.
+    func rejectFriendRequest(receiverId: String, requesterId: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        let batch = db.batch()
+        let receiverRequestsRef = FirestorePaths.friendRequests(userId: receiverId, db: db).document(requesterId)
+        let requesterSentRef = FirestorePaths.sentFriendRequests(userId: requesterId, db: db).document(receiverId)
+        batch.deleteDocument(receiverRequestsRef)
+        batch.deleteDocument(requesterSentRef)
+        batch.commit { error in
+            if let error = error {
+                completion(.failure(error))
+            } else {
+                completion(.success(()))
+            }
+        }
+    }
+
+    /// Cancel a sent friend request: remove both request docs.
+    func cancelFriendRequest(requesterId: String, receiverId: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        rejectFriendRequest(receiverId: receiverId, requesterId: requesterId, completion: completion)
     }
     
     func blockUser(currentUserId: String, blockedUserId: String, completion: @escaping (Result<Void, Error>) -> Void) {

@@ -34,6 +34,7 @@ final class NameRegistrationViewController: UIViewController {
         textField.returnKeyType = .done
         textField.delegate = self
         textField.addTarget(self, action: #selector(textFieldDidChange), for: .editingChanged)
+        textField.accessibilityIdentifier = "name_text_field"
         return textField
     }()
     

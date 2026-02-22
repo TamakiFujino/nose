@@ -1,6 +1,7 @@
 import UIKit
 import FirebaseAuth
 import FirebaseFirestore
+import FirebaseStorage
 
 class AddFriendViewController: UIViewController {
     
@@ -8,6 +9,7 @@ class AddFriendViewController: UIViewController {
     private var searchResults: [User] = []
     private var isSearching = false
     private var currentUser: User?
+    private let storage = Storage.storage()
     
     // MARK: - UI Components
     private lazy var searchContainer: UIView = {
@@ -23,6 +25,7 @@ class AddFriendViewController: UIViewController {
         searchBar.delegate = self
         searchBar.searchBarStyle = .minimal
         searchBar.autocapitalizationType = .allCharacters
+        searchBar.accessibilityIdentifier = "search_by_user_id"
         return searchBar
     }()
     
@@ -48,6 +51,7 @@ class AddFriendViewController: UIViewController {
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = .systemFont(ofSize: 14, weight: .medium)
         label.textColor = .secondaryLabel
+        label.accessibilityIdentifier = "user_id_value"
         return label
     }()
     
@@ -57,6 +61,8 @@ class AddFriendViewController: UIViewController {
         button.setImage(UIImage(systemName: "doc.on.doc"), for: .normal)
         button.tintColor = .secondaryLabel
         button.addTarget(self, action: #selector(copyButtonTapped), for: .touchUpInside)
+        button.accessibilityIdentifier = "copy_button"
+        button.accessibilityLabel = "copy"
         return button
     }()
     
@@ -66,6 +72,16 @@ class AddFriendViewController: UIViewController {
         view.backgroundColor = .clear
         view.isHidden = true
         return view
+    }()
+    
+    private lazy var resultProfileImageView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.contentMode = .scaleAspectFit
+        imageView.backgroundColor = .secondColor
+        imageView.clipsToBounds = true
+        imageView.layer.cornerRadius = 8
+        return imageView
     }()
     
     private lazy var resultNameLabel: UILabel = {
@@ -79,9 +95,10 @@ class AddFriendViewController: UIViewController {
     private lazy var addFriendButton: CustomButton = {
         let button = CustomButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.setTitle("Add Friend", for: .normal)
+        button.setTitle("Send Request", for: .normal)
         button.addTarget(self, action: #selector(addFriendButtonTapped), for: .touchUpInside)
         button.accessibilityIdentifier = "add_friend_button"
+        button.isHidden = true // Initially hidden
         return button
     }()
     
@@ -97,6 +114,11 @@ class AddFriendViewController: UIViewController {
         super.viewDidLoad()
         setupUI()
         loadCurrentUser()
+    }
+    
+    // MARK: - Public Methods
+    func setSearchText(_ text: String) {
+        searchBar.text = text.uppercased()
     }
     
     // MARK: - Setup
@@ -118,8 +140,9 @@ class AddFriendViewController: UIViewController {
         userIdContainer.addSubview(userIdValueLabel)
         userIdContainer.addSubview(copyButton)
         view.addSubview(resultContainer)
+        resultContainer.addSubview(resultProfileImageView)
         resultContainer.addSubview(resultNameLabel)
-        resultContainer.addSubview(addFriendButton)
+        view.addSubview(addFriendButton)
         view.addSubview(activityIndicator)
         
         // Setup constraints
@@ -154,15 +177,20 @@ class AddFriendViewController: UIViewController {
             resultContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             resultContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             
-            resultNameLabel.topAnchor.constraint(equalTo: resultContainer.topAnchor),
+            resultProfileImageView.topAnchor.constraint(equalTo: resultContainer.topAnchor),
+            resultProfileImageView.centerXAnchor.constraint(equalTo: resultContainer.centerXAnchor),
+            resultProfileImageView.widthAnchor.constraint(equalToConstant: 200), // Same as preview size
+            resultProfileImageView.heightAnchor.constraint(equalToConstant: 300), // 1.5x width for portrait
+            
+            resultNameLabel.topAnchor.constraint(equalTo: resultProfileImageView.bottomAnchor, constant: 16),
             resultNameLabel.leadingAnchor.constraint(equalTo: resultContainer.leadingAnchor, constant: 16),
             resultNameLabel.trailingAnchor.constraint(equalTo: resultContainer.trailingAnchor, constant: -16),
+            resultNameLabel.bottomAnchor.constraint(equalTo: resultContainer.bottomAnchor),
             
-            addFriendButton.topAnchor.constraint(equalTo: resultNameLabel.bottomAnchor, constant: 24),
-            addFriendButton.leadingAnchor.constraint(equalTo: resultContainer.leadingAnchor, constant: 16),
-            addFriendButton.trailingAnchor.constraint(equalTo: resultContainer.trailingAnchor, constant: -16),
+            addFriendButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            addFriendButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            addFriendButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
             addFriendButton.heightAnchor.constraint(equalToConstant: 50),
-            addFriendButton.bottomAnchor.constraint(equalTo: resultContainer.bottomAnchor),
             
             activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor)
@@ -173,7 +201,7 @@ class AddFriendViewController: UIViewController {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         let db = Firestore.firestore()
         
-        db.collection("users").document(currentUserId).getDocument { [weak self] snapshot, error in
+        FirestorePaths.userDoc(currentUserId, db: db).getDocument { [weak self] snapshot, error in
             if let error = error {
                 print("Error loading current user: \(error.localizedDescription)")
                 return
@@ -211,17 +239,15 @@ class AddFriendViewController: UIViewController {
     
     @objc private func addFriendButtonTapped() {
         guard let user = searchResults.first else { return }
-        addFriend(user)
+        sendFriendRequest(user)
     }
     
     private func searchUsers(withUserId userId: String) {
-        print("DEBUG: Starting search with userId: \(userId)")
-        print("DEBUG: userId length: \(userId.count)")
         
         guard !userId.isEmpty else {
-            print("DEBUG: UserId is empty")
             searchResults = []
             resultContainer.isHidden = true
+            addFriendButton.isHidden = true
             showAlert(title: "Invalid Input", message: "Please enter a User ID to search")
             return
         }
@@ -229,18 +255,18 @@ class AddFriendViewController: UIViewController {
         // Validate user ID format (10 alphanumeric characters)
         let userIdRegex = "^[A-Z0-9]{10}$"
         guard userId.range(of: userIdRegex, options: .regularExpression) != nil else {
-            print("DEBUG: Invalid userId format - must be 10 alphanumeric characters")
             searchResults = []
             resultContainer.isHidden = true
+            addFriendButton.isHidden = true
             showAlert(title: "Invalid User ID", message: "User ID must be exactly 10 characters (letters and numbers)")
             return
         }
         
         // Check if user is searching their own ID
         if userId == currentUser?.userId {
-            print("DEBUG: User searched their own ID")
             searchResults = []
             resultContainer.isHidden = true
+            addFriendButton.isHidden = true
             showAlert(title: "Cannot Add Yourself", message: "You cannot add yourself as a friend")
             return
         }
@@ -248,37 +274,31 @@ class AddFriendViewController: UIViewController {
         isSearching = true
         activityIndicator.startAnimating()
         resultContainer.isHidden = true
+        addFriendButton.isHidden = true
         
-        print("DEBUG: Querying Firestore for user with userId: \(userId)")
         let db = Firestore.firestore()
         
         // First check if the user is already a friend
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         
         // First search for the user
-        db.collection("users").whereField("userId", isEqualTo: userId).getDocuments { [weak self] snapshot, error in
+        FirestorePaths.users(db).whereField("userId", isEqualTo: userId).getDocuments { [weak self] snapshot, error in
             guard let self = self else {
-                print("DEBUG: Self was deallocated")
                 return
             }
             
             if let error = error {
-                print("DEBUG: Firestore error: \(error.localizedDescription)")
                 self.isSearching = false
                 self.activityIndicator.stopAnimating()
                 self.showAlert(title: "Error", message: "An error occurred while searching. Please try again.")
                 return
             }
             
-            print("DEBUG: Firestore query completed")
-            print("DEBUG: Number of documents found: \(snapshot?.documents.count ?? 0)")
             
             self.searchResults = snapshot?.documents.compactMap { document in
                 if let user = User.fromFirestore(document) {
-                    print("DEBUG: Successfully parsed user: \(user.name) with userId: \(user.userId)")
                     return user
                 } else {
-                    print("DEBUG: Failed to parse user from document")
                     return nil
                 }
             } ?? []
@@ -286,131 +306,193 @@ class AddFriendViewController: UIViewController {
             if let foundUser = self.searchResults.first {
                 // Check if the user is deleted
                 if foundUser.isDeleted {
-                    print("DEBUG: Found user is deleted")
                     self.searchResults = []
                     self.resultContainer.isHidden = true
+                    self.addFriendButton.isHidden = true
                     self.showAlert(title: "User Not Found", message: "No user found with this User ID. Please check the ID and try again.")
                     return
                 }
                 
                 // Check if the current user has blocked the found user
-                db.collection("users").document(currentUserId)
-                    .collection("blocked").document(foundUser.id).getDocument { [weak self] blockedSnapshot, blockedError in
+                FirestorePaths.blocked(userId: currentUserId, db: db).document(foundUser.id).getDocument { [weak self] blockedSnapshot, blockedError in
                         guard let self = self else { return }
                         
                         self.isSearching = false
                         self.activityIndicator.stopAnimating()
                         
                         if blockedSnapshot?.exists == true {
-                            print("DEBUG: Current user has blocked the found user")
                             self.searchResults = []
                             self.resultContainer.isHidden = true
+                            self.addFriendButton.isHidden = true
                             self.showAlert(title: "Cannot Add Friend", message: "You have blocked this user. Please unblock them first to add them as a friend.")
                             return
                         }
                         
                         // Check if the found user has blocked the current user
-                        db.collection("users").document(foundUser.id)
-                            .collection("blocked").document(currentUserId).getDocument { [weak self] blockedSnapshot, blockedError in
+                        FirestorePaths.blocked(userId: foundUser.id, db: db).document(currentUserId).getDocument { [weak self] blockedSnapshot, blockedError in
                                 guard let self = self else { return }
                                 
                                 if blockedSnapshot?.exists == true {
-                                    print("DEBUG: Current user is blocked by the found user")
                                     self.searchResults = []
                                     self.resultContainer.isHidden = true
+                                    self.addFriendButton.isHidden = true
                                     self.showAlert(title: "User Not Found", message: "No user found with this User ID. Please check the ID and try again.")
                                     return
                                 }
                                 
                                 // Check if already friends
-                                db.collection("users").document(currentUserId)
-                                    .collection("friends").document(foundUser.id).getDocument { [weak self] friendSnapshot, friendError in
+                                FirestorePaths.friends(userId: currentUserId, db: db).document(foundUser.id).getDocument { [weak self] friendSnapshot, friendError in
                                         guard let self = self else { return }
                                         
                                         if friendSnapshot?.exists == true {
-                                            print("DEBUG: User is already a friend")
                                             self.searchResults = []
                                             self.resultContainer.isHidden = true
+                                            self.addFriendButton.isHidden = true
                                             self.showAlert(title: "Already Friends", message: "This user is already in your friends list")
                                             return
                                         }
                                         
-                                        // If not blocked and not friends, show the result
-                                        DispatchQueue.main.async {
-                                            print("DEBUG: Showing result for user: \(foundUser.name)")
-                                            self.resultNameLabel.text = foundUser.name
-                                            self.resultContainer.isHidden = false
-                                        }
+                                        // Check for existing pending request (received from this user)
+                                        FirestorePaths.friendRequests(userId: currentUserId, db: db).document(foundUser.id).getDocument { [weak self] receivedSnapshot, _ in
+                                                guard let self = self else { return }
+                                                if receivedSnapshot?.exists == true {
+                                                    self.isSearching = false
+                                                    self.activityIndicator.stopAnimating()
+                                                    self.searchResults = []
+                                                    self.resultContainer.isHidden = true
+                                                    self.addFriendButton.isHidden = true
+                                                    self.showAlert(title: "Request Pending", message: "This user has already sent you a friend request. Check the Pending tab to approve or reject.")
+                                                    return
+                                                }
+                                                // Check for existing sent request to this user
+                                                FirestorePaths.sentFriendRequests(userId: currentUserId, db: db).document(foundUser.id).getDocument { [weak self] sentSnapshot, _ in
+                                                        guard let self = self else { return }
+                                                        if sentSnapshot?.exists == true {
+                                                            self.isSearching = false
+                                                            self.activityIndicator.stopAnimating()
+                                                            self.searchResults = []
+                                                            self.resultContainer.isHidden = true
+                                                            self.addFriendButton.isHidden = true
+                                                            self.showAlert(title: "Request Already Sent", message: "You have already sent a friend request to this user. Check the Pending tab.")
+                                                            return
+                                                        }
+                                                        // If not blocked, not friends, and no pending request, show the result
+                                                        DispatchQueue.main.async {
+                                                            self.resultNameLabel.text = foundUser.name
+                                                            self.loadProfileImage(for: foundUser)
+                                                            self.resultContainer.isHidden = false
+                                                            self.addFriendButton.isHidden = false
+                                                        }
+                                                    }
+                                            }
                                     }
                             }
                     }
             } else {
-                print("DEBUG: No user found, hiding result container")
                 self.isSearching = false
                 self.activityIndicator.stopAnimating()
                 self.resultContainer.isHidden = true
+                self.addFriendButton.isHidden = true
                 self.showAlert(title: "User Not Found", message: "No user found with this User ID. Please check the ID and try again.")
             }
         }
     }
     
-    private func addFriend(_ user: User) {
-        print("DEBUG: Attempting to add friend: \(user.name) with userId: \(user.userId)")
-        guard let currentUserId = Auth.auth().currentUser?.uid else {
-            print("DEBUG: No current user found")
-            return
-        }
+    private func sendFriendRequest(_ user: User) {
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         
-        let db = Firestore.firestore()
-        print("DEBUG: Adding friend relationship to Firestore")
-        
-        // Create a batch write
-        let batch = db.batch()
-        
-        // Add friend relationship for current user
-        let currentUserFriendRef = db.collection("users")
-            .document(currentUserId)
-            .collection("friends")
-            .document(user.id)
-        
-        // Add friend relationship for the other user
-        let otherUserFriendRef = db.collection("users")
-            .document(user.id)
-            .collection("friends")
-            .document(currentUserId)
-        
-        // Add data to both documents
-        batch.setData([
-            "addedAt": FieldValue.serverTimestamp()
-        ], forDocument: currentUserFriendRef)
-        
-        batch.setData([
-            "addedAt": FieldValue.serverTimestamp()
-        ], forDocument: otherUserFriendRef)
-        
-        // Commit the batch
-        batch.commit { [weak self] error in
-            if let error = error {
-                print("DEBUG: Error adding friend: \(error.localizedDescription)")
-                return
-            }
-            
-            print("DEBUG: Friend added successfully for both users")
+        UserManager.shared.sendFriendRequest(requesterId: currentUserId, receiverId: user.id) { [weak self] result in
             DispatchQueue.main.async {
-                self?.showAlert(title: "Success", message: "Friend added successfully") { _ in
-                    // Clear the search field and result container
-                    self?.searchBar.text = ""
-                    self?.resultContainer.isHidden = true
-                    self?.searchResults = []
+                switch result {
+                case .success:
+                    self?.showAlert(title: "Request Sent!", message: "Wait for the friend to approve the request.") { _ in
+                        self?.searchBar.text = ""
+                        self?.resultContainer.isHidden = true
+                        self?.addFriendButton.isHidden = true
+                        self?.searchResults = []
+                    }
+                case .failure(let error):
+                    self?.showAlert(title: "Error", message: "Failed to send friend request. Please try again.")
                 }
             }
         }
     }
     
+    private func loadProfileImage(for user: User) {
+        print("🔍 Loading profile image for user: \(user.name)")
+        
+        // First, get the saved profile image collection ID from the user's document
+        let db = Firestore.firestore()
+        FirestorePaths.userDoc(user.id, db: db).getDocument { [weak self] snapshot, error in
+                guard let self = self else { return }
+                
+                if let error = error {
+                    print("❌ Error fetching user data for profile image: \(error.localizedDescription)")
+                    self.showDefaultProfileImage()
+                    return
+                }
+                
+                guard let data = snapshot?.data(),
+                      let collectionId = data["profileImageCollectionId"] as? String else {
+                    print("⚠️ No profile image set for user, showing default")
+                    self.showDefaultProfileImage()
+                    return
+                }
+                
+                print("✅ Found profile image collection ID: \(collectionId)")
+                
+                if collectionId == "default" {
+                    self.showDefaultProfileImage()
+                } else {
+                    self.loadImageFromStorage(userId: user.id, collectionId: collectionId)
+                }
+            }
+    }
+    
+    private func showDefaultProfileImage() {
+        if let defaultImage = UIImage(named: "avatar") {
+            DispatchQueue.main.async {
+                self.resultProfileImageView.image = defaultImage
+            }
+            print("✅ Showing default profile image")
+        } else {
+            print("❌ Could not load default avatar image")
+        }
+    }
+    
+    private func loadImageFromStorage(userId: String, collectionId: String) {
+        let imageRef = storage.reference()
+            .child("collection_avatars/\(userId)/\(collectionId)/avatar.png")
+        
+        print("🔍 Loading image from: collection_avatars/\(userId)/\(collectionId)/avatar.png")
+        
+        imageRef.getData(maxSize: 5 * 1024 * 1024) { [weak self] data, error in
+            if let error = error {
+                print("❌ Error loading profile image: \(error.localizedDescription)")
+                self?.showDefaultProfileImage()
+                return
+            }
+            
+            if let data = data, let image = UIImage(data: data) {
+                print("✅ Successfully loaded profile image")
+                DispatchQueue.main.async {
+                    self?.resultProfileImageView.image = image
+                }
+            } else {
+                print("❌ Could not create image from data")
+                self?.showDefaultProfileImage()
+            }
+        }
+    }
+    
     private func showAlert(title: String, message: String, completion: ((UIAlertAction) -> Void)? = nil) {
-        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: completion))
-        present(alert, animated: true)
+        let messageModal = MessageModalViewController(title: title, message: message)
+        if let completion = completion {
+            messageModal.onDismiss = {
+                completion(UIAlertAction())
+            }
+        }
+        present(messageModal, animated: true)
     }
 }
 

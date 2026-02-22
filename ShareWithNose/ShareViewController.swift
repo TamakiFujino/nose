@@ -1,0 +1,426 @@
+//
+//  ShareViewController.swift
+//  ShareWithNose
+//
+//  Created by Tamaki Fujino on 2025/11/16.
+//
+
+import UIKit
+import Social
+import MobileCoreServices
+
+class ShareViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
+
+    // MARK: - Data Models
+    struct SimpleCollection {
+        let id: String
+        let name: String
+    }
+    
+    private var collections: [SimpleCollection] = []
+    private var extractedContent: String?
+    private var contentType: String = "url" // "url" or "text"
+    private var isSaving = false
+    private var selectedCollectionIndex: Int?
+    
+    // MARK: - UI Components
+    private lazy var containerView: UIView = {
+        let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.backgroundColor = .systemBackground
+        view.layer.cornerRadius = 16
+        view.clipsToBounds = true
+        return view
+    }()
+    
+    private lazy var headerView: UIView = {
+        let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.backgroundColor = .systemBackground
+        return view
+    }()
+    
+    private lazy var titleLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.text = "Save to Collection"
+        label.font = .systemFont(ofSize: 17, weight: .semibold)
+        label.textAlignment = .center
+        return label
+    }()
+    
+    private lazy var closeButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
+        button.tintColor = .systemGray2
+        button.addTarget(self, action: #selector(closeTapped), for: .touchUpInside)
+        return button
+    }()
+    
+    private lazy var tableView: UITableView = {
+        let tv = UITableView()
+        tv.translatesAutoresizingMaskIntoConstraints = false
+        tv.delegate = self
+        tv.dataSource = self
+        tv.register(UITableViewCell.self, forCellReuseIdentifier: "Cell")
+        tv.backgroundColor = .clear
+        tv.separatorStyle = .singleLine
+        tv.tableFooterView = UIView()
+        return tv
+    }()
+    
+    private lazy var saveButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.setTitle("Save", for: .normal)
+        button.titleLabel?.font = .systemFont(ofSize: 16, weight: .bold)
+        button.backgroundColor = .systemBlue
+        button.setTitleColor(.white, for: .normal)
+        button.layer.cornerRadius = 22
+        button.addTarget(self, action: #selector(saveTapped), for: .touchUpInside)
+        button.alpha = 0.5
+        button.isEnabled = false
+        return button
+    }()
+    
+    private lazy var loadingIndicator: UIActivityIndicatorView = {
+        let indicator = UIActivityIndicatorView(style: .medium)
+        indicator.translatesAutoresizingMaskIntoConstraints = false
+        indicator.hidesWhenStopped = true
+        return indicator
+    }()
+    
+    private lazy var statusLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.textAlignment = .center
+        label.font = .systemFont(ofSize: 14)
+        label.textColor = .secondaryLabel
+        label.numberOfLines = 0
+        label.isHidden = true
+        return label
+    }()
+    
+    // MARK: - Lifecycle
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = UIColor.black.withAlphaComponent(0.4)
+        
+        setupUI()
+        loadCachedCollections()
+        processInputItems()
+    }
+    
+    private func setupUI() {
+        view.addSubview(containerView)
+        containerView.addSubview(headerView)
+        headerView.addSubview(titleLabel)
+        headerView.addSubview(closeButton)
+        containerView.addSubview(tableView)
+        containerView.addSubview(saveButton)
+        containerView.addSubview(loadingIndicator)
+        containerView.addSubview(statusLabel)
+        
+        NSLayoutConstraint.activate([
+            containerView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            containerView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            containerView.widthAnchor.constraint(equalToConstant: 320),
+            containerView.heightAnchor.constraint(equalToConstant: 480),
+            
+            headerView.topAnchor.constraint(equalTo: containerView.topAnchor),
+            headerView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            headerView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            headerView.heightAnchor.constraint(equalToConstant: 60),
+            
+            titleLabel.centerXAnchor.constraint(equalTo: headerView.centerXAnchor),
+            titleLabel.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
+            
+            closeButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
+            closeButton.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
+            closeButton.widthAnchor.constraint(equalToConstant: 30),
+            closeButton.heightAnchor.constraint(equalToConstant: 30),
+            
+            tableView.topAnchor.constraint(equalTo: headerView.bottomAnchor),
+            tableView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            tableView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            tableView.bottomAnchor.constraint(equalTo: saveButton.topAnchor, constant: -10),
+            
+            saveButton.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 20),
+            saveButton.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -20),
+            saveButton.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -20),
+            saveButton.heightAnchor.constraint(equalToConstant: 50),
+            
+            loadingIndicator.centerXAnchor.constraint(equalTo: containerView.centerXAnchor),
+            loadingIndicator.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            
+            statusLabel.centerXAnchor.constraint(equalTo: containerView.centerXAnchor),
+            statusLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            statusLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 20),
+            statusLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -20)
+        ])
+    }
+    
+    private func loadCachedCollections() {
+        if let defaults = UserDefaults(suiteName: "group.com.tamakifujino.nose"),
+           let cached = defaults.array(forKey: "CachedCollections") as? [[String: String]] {
+            self.collections = cached.compactMap { dict in
+                guard let id = dict["id"], let name = dict["name"] else { return nil }
+                return SimpleCollection(id: id, name: name)
+            }
+            tableView.reloadData()
+        }
+        
+        if collections.isEmpty {
+            showError(message: "No collections found.\nOpen Nose to create one.")
+        }
+    }
+    
+    private func processInputItems() {
+        loadingIndicator.startAnimating()
+        
+        guard let extensionContext = self.extensionContext else { return }
+        
+        var found = false
+        var debugTypes: [String] = []
+        
+        for item in extensionContext.inputItems as! [NSExtensionItem] {
+            guard let attachments = item.attachments else { continue }
+            for provider in attachments {
+                if let identifiers = provider.registeredTypeIdentifiers as? [String] {
+                    debugTypes.append(contentsOf: identifiers)
+                }
+                
+                if provider.hasItemConformingToTypeIdentifier(kUTTypeURL as String) {
+                    found = true
+                    provider.loadItem(forTypeIdentifier: kUTTypeURL as String, options: nil) { [weak self] (url, error) in
+                        DispatchQueue.main.async {
+                            if let url = url as? URL {
+                                self?.validateAndSetContent(url.absoluteString, type: "url")
+                            } else {
+                                self?.tryVCard(provider, debugTypes: debugTypes)
+                            }
+                        }
+                    }
+                    return
+                } else if provider.hasItemConformingToTypeIdentifier(kUTTypeVCard as String) {
+                    found = true
+                    self.tryVCard(provider, debugTypes: debugTypes)
+                    return
+                } else if provider.hasItemConformingToTypeIdentifier(kUTTypePlainText as String) {
+                    found = true
+                    self.tryPlainText(provider, debugTypes: debugTypes)
+                    return
+                }
+            }
+        }
+        
+        if !found {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                self.loadingIndicator.stopAnimating()
+                self.showError(message: "No link found.\nTypes: \(debugTypes.joined(separator: ", "))")
+            }
+        }
+    }
+    
+    private func tryPlainText(_ provider: NSItemProvider, debugTypes: [String]) {
+        provider.loadItem(forTypeIdentifier: kUTTypePlainText as String, options: nil) { [weak self] (text, error) in
+            DispatchQueue.main.async {
+                guard let textString = text as? String else {
+                    self?.loadingIndicator.stopAnimating()
+                    self?.showError(message: "No text content found.")
+                    return
+                }
+                
+                // 1. Try to find a URL in the text
+                if let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue),
+                   let match = detector.firstMatch(in: textString, options: [], range: NSRange(location: 0, length: textString.utf16.count)),
+                   let url = match.url {
+                    self?.validateAndSetContent(url.absoluteString, type: "url")
+                } else {
+                    // 2. Fallback: Use the text itself as a query (e.g. address)
+                    // Apple Maps often shares just the address string if no URL
+                    if !textString.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        self?.validateAndSetContent(textString, type: "text")
+                    } else {
+                        self?.loadingIndicator.stopAnimating()
+                        self?.showError(message: "No location link or text found.")
+                    }
+                }
+            }
+        }
+    }
+    
+    private func tryVCard(_ provider: NSItemProvider, debugTypes: [String]) {
+        provider.loadItem(forTypeIdentifier: kUTTypeVCard as String, options: nil) { [weak self] (data, error) in
+            DispatchQueue.main.async {
+                var vCardString: String?
+                if let vCardData = data as? Data {
+                    vCardString = String(data: vCardData, encoding: .utf8)
+                } else if let vCardURL = data as? URL {
+                    if let fileData = try? Data(contentsOf: vCardURL) {
+                        vCardString = String(data: fileData, encoding: .utf8)
+                    }
+                }
+                
+                if let content = vCardString {
+                    if let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue),
+                       let match = detector.firstMatch(in: content, options: [], range: NSRange(location: 0, length: content.utf16.count)),
+                       let url = match.url {
+                        self?.validateAndSetContent(url.absoluteString, type: "url")
+                        return
+                    }
+                    if let range = content.range(of: "http") {
+                        let tail = content[range.lowerBound...]
+                        let urlString = tail.components(separatedBy: .newlines).first?.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if let urlString = urlString {
+                            self?.validateAndSetContent(urlString, type: "url")
+                            return
+                        }
+                    }
+                    
+                    // Fallback to text processing on vCard? 
+                    // VCards are messy, probably better to fail if no URL.
+                    self?.loadingIndicator.stopAnimating()
+                    self?.showError(message: "No URL in VCard.")
+                } else {
+                    self?.loadingIndicator.stopAnimating()
+                    self?.showError(message: "Invalid VCard data.")
+                }
+            }
+        }
+    }
+    
+    private func validateAndSetContent(_ content: String, type: String) {
+        self.loadingIndicator.stopAnimating()
+        
+        if type == "url" {
+            let host = URL(string: content)?.host?.lowercased() ?? ""
+            let path = URL(string: content)?.path.lowercased() ?? ""
+            
+            let isMapLink = host.contains("google.com") ||
+                            host.contains("goo.gl") ||
+                            host.contains("g.co") ||
+                            host.contains("maps.apple.com") ||
+                            host.contains("waze.com") ||
+                            path.contains("/maps")
+            
+            if isMapLink {
+                self.extractedContent = content
+                self.contentType = "url"
+                self.updateSaveButtonState()
+            } else {
+                showError(message: "Not a recognized map link:\n\(host)")
+            }
+        } else {
+            // Text content (Address/Name)
+            // We accept it but maybe show it to user?
+            self.extractedContent = content
+            self.contentType = "text"
+            self.titleLabel.text = "Save Location"
+            // Update status to show what we found
+            let snippet = content.prefix(50).replacingOccurrences(of: "\n", with: " ")
+            self.statusLabel.text = "Found: \"\(snippet)...\""
+            self.statusLabel.isHidden = false
+            self.updateSaveButtonState()
+        }
+    }
+    
+    private func showError(message: String) {
+        tableView.isHidden = true
+        saveButton.isHidden = true
+        statusLabel.text = message
+        statusLabel.isHidden = false
+    }
+    
+    private func updateSaveButtonState() {
+        let hasContent = extractedContent != nil
+        let hasSelection = selectedCollectionIndex != nil
+        
+        UIView.animate(withDuration: 0.2) {
+            self.saveButton.alpha = (hasContent && hasSelection) ? 1.0 : 0.5
+            self.saveButton.isEnabled = (hasContent && hasSelection)
+        }
+    }
+    
+    @objc private func closeTapped() {
+        self.extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
+    }
+    
+    @objc private func saveTapped() {
+        guard let index = selectedCollectionIndex else { return }
+        let collection = collections[index]
+        saveToCollection(collectionId: collection.id, collectionName: collection.name)
+    }
+    
+    private func saveToCollection(collectionId: String, collectionName: String) {
+        guard let content = extractedContent else { return }
+        guard !isSaving else { return }
+        isSaving = true
+        
+        saveButton.setTitle("Saving...", for: .normal)
+        
+        let pendingItem: [String: Any] = [
+            "content": content,
+            "type": contentType, // "url" or "text"
+            "collectionId": collectionId,
+            "collectionName": collectionName,
+            "timestamp": Date().timeIntervalSince1970
+        ]
+        
+        if let defaults = UserDefaults(suiteName: "group.com.tamakifujino.nose") {
+            var inbox = defaults.array(forKey: "ShareInbox") as? [[String: Any]] ?? []
+            inbox.append(pendingItem)
+            defaults.set(inbox, forKey: "ShareInbox")
+            defaults.synchronize()
+            
+            showSuccessAndClose()
+        }
+    }
+    
+    private func showSuccessAndClose() {
+        tableView.isHidden = true
+        saveButton.isHidden = true
+        titleLabel.text = "Saved!"
+        statusLabel.text = "Place queued for saving."
+        statusLabel.isHidden = false
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            self.extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
+        }
+    }
+
+    // MARK: - TableView DataSource
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return collections.count
+    }
+    
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath)
+        cell.textLabel?.text = collections[indexPath.row].name
+        
+        if indexPath.row == selectedCollectionIndex {
+            cell.accessoryType = .checkmark
+            cell.textLabel?.textColor = .systemBlue
+        } else {
+            cell.accessoryType = .none
+            cell.textLabel?.textColor = .label
+        }
+        
+        cell.selectionStyle = .none
+        return cell
+    }
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        let previousIndex = selectedCollectionIndex
+        selectedCollectionIndex = indexPath.row
+        
+        var reloadPaths: [IndexPath] = [indexPath]
+        if let prev = previousIndex {
+            reloadPaths.append(IndexPath(row: prev, section: 0))
+        }
+        
+        tableView.reloadRows(at: reloadPaths, with: .automatic)
+        updateSaveButtonState()
+    }
+}

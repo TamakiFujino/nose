@@ -37,6 +37,8 @@ final class ViewController: UIViewController {
         setupSocialButton(button: button, iconName: "applelogo", title: "Continue with Apple")
         button.addTarget(self, action: #selector(appleButtonTapped), for: .touchUpInside)
         button.alpha = 0 // Initially invisible
+        button.accessibilityIdentifier = "continue_with_apple"
+        button.accessibilityLabel = "Continue with Apple"
         return button
     }()
     
@@ -46,6 +48,8 @@ final class ViewController: UIViewController {
         setupSocialButton(button: button, iconName: "google_logo", title: "Continue with Google")
         button.addTarget(self, action: #selector(googleButtonTapped), for: .touchUpInside)
         button.alpha = 0 // Initially invisible
+        button.accessibilityIdentifier = "continue_with_google"
+        button.accessibilityLabel = "Continue with Google"
         return button
     }()
     
@@ -72,6 +76,7 @@ final class ViewController: UIViewController {
     // MARK: - Properties
     private var currentNonce: String?
     private var isLoginMode = false
+    weak var sceneDelegate: SceneDelegate?
     
     // MARK: - Lifecycle
     override func viewDidLoad() {
@@ -166,15 +171,13 @@ final class ViewController: UIViewController {
             // User is logged in, check if they have a profile
             UserManager.shared.getUser(id: currentUser.uid) { [weak self] user, error in
                 DispatchQueue.main.async {
+                    guard let self = self else { return }
                     if user != nil {
-                        // User exists, navigate to home screen
-                        let homeViewController = HomeViewController()
-                        let navigationController = UINavigationController(rootViewController: homeViewController)
-                        navigationController.modalPresentationStyle = .fullScreen
-                        self?.present(navigationController, animated: true)
+                        // User exists, replace root with home screen
+                        self.transitionToHome()
                     } else {
                         // User doesn't have a profile yet, show login UI
-                        self?.setupLoginStyle()
+                        self.setupLoginStyle()
                     }
                 }
             }
@@ -278,10 +281,7 @@ final class ViewController: UIViewController {
             
             if user != nil {
                 print("User already exists, navigating to home screen")
-                let homeViewController = HomeViewController()
-                let navigationController = UINavigationController(rootViewController: homeViewController)
-                navigationController.modalPresentationStyle = .fullScreen
-                self.present(navigationController, animated: true)
+                self.transitionToHome()
             } else {
                 print("New user, navigating to name registration")
                 let nameRegistrationVC = NameRegistrationViewController()
@@ -291,10 +291,21 @@ final class ViewController: UIViewController {
         }
     }
     
+    private func transitionToHome() {
+        guard let window = view.window else { return }
+        let homeViewController = HomeViewController()
+        let navigationController = UINavigationController(rootViewController: homeViewController)
+        
+        UIView.transition(with: window, duration: 0.3, options: .transitionCrossDissolve) {
+            window.rootViewController = navigationController
+        } completion: { _ in
+            self.sceneDelegate?.didFinishAuthentication()
+        }
+    }
+    
     private func showError(message: String) {
-        let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
-        present(alert, animated: true)
+        let messageModal = MessageModalViewController(title: "Error", message: message)
+        present(messageModal, animated: true)
     }
     
     // MARK: - Actions
@@ -302,6 +313,7 @@ final class ViewController: UIViewController {
         showLoading()
         guard let clientID = FirebaseApp.app()?.options.clientID else {
             hideLoading()
+            showError(message: "Google Sign-In is not properly configured. Please try again.")
             return
         }
         
@@ -314,6 +326,14 @@ final class ViewController: UIViewController {
             if let error = error {
                 print("Google Sign In error: \(error.localizedDescription)")
                 self.hideLoading()
+                // Check if user cancelled
+                if let gidError = error as NSError?,
+                   gidError.domain == "com.google.GIDSignIn",
+                   gidError.code == -5 { // GIDSignInErrorCode.canceled
+                    // User cancelled - don't show error
+                    return
+                }
+                self.showError(message: "Failed to sign in with Google: \(error.localizedDescription)")
                 return
             }
             
@@ -321,12 +341,16 @@ final class ViewController: UIViewController {
                   let idToken = authentication.idToken?.tokenString else {
                 print("Failed to get Google credentials")
                 self.hideLoading()
+                self.showError(message: "Failed to get Google authentication credentials. Please try again.")
                 return
             }
             
+            // accessToken is non-optional GIDToken, so we can access it directly
+            let accessTokenString = authentication.accessToken.tokenString
+            
             let credential = GoogleAuthProvider.credential(
                 withIDToken: idToken,
-                accessToken: authentication.accessToken.tokenString
+                accessToken: accessTokenString
             )
             
             Auth.auth().signIn(with: credential) { [weak self] authResult, error in
@@ -335,6 +359,7 @@ final class ViewController: UIViewController {
                 if let error = error {
                     print("Firebase Sign In error: \(error.localizedDescription)")
                     self.hideLoading()
+                    self.showError(message: "Failed to authenticate with Firebase: \(error.localizedDescription)")
                     return
                 }
                 
@@ -376,7 +401,7 @@ extension ViewController: ASAuthorizationControllerDelegate {
             }
             
             let credential = OAuthProvider.credential(
-                withProviderID: "apple.com",
+                providerID: .apple,
                 idToken: idTokenString,
                 rawNonce: nonce
             )

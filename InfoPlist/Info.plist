@@ -9,7 +9,7 @@
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.tamakifujino.nose</string>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
@@ -25,18 +25,33 @@
 			<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>$(GOOGLE_REVERSED_CLIENT_ID)</string>
+				<string>com.googleusercontent.apps.489383670741-rv2v85atn42kgfv1d8ot96r06omhoogg</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.tamakifujino.nose</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>nose</string>
 			</array>
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>GoogleClientID</key>
-	<string>$(GOOGLE_CLIENT_ID)</string>
+	<string>489383670741-rv2v85atn42kgfv1d8ot96r06omhoogg.apps.googleusercontent.com</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>googlegmail</string>
 		<string>googleauth</string>
+		<string>comgooglemaps</string>
+		<string>comgooglemaps-x-callback</string>
+		<string>waze</string>
 	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
@@ -44,8 +59,8 @@
 	<string>Always allow</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Allow when using the app</string>
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
+	<key>NoseEnvironment</key>
+	<string>$(CONFIGURATION)</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -63,6 +78,8 @@
 			</array>
 		</dict>
 	</dict>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UISupportedInterfaceOrientations</key>
