@@ -28,8 +28,15 @@ Pods/*GoogleService-Info*.plist
 .firebase/
 
 # Local config that may contain secrets
+.env
 Config.plist
 serviceAccountKey*.json
+
+# Generated from .env (do not commit)
+nose/Configs/Development.xcconfig
+nose/Configs/Staging.xcconfig
+nose/Configs/Production.xcconfig
+noseUITests/Helpers/TestConfig.generated.swift
 
 # Fastlane/Artifacts
 fastlane/report.xml
