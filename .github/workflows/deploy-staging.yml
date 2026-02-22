@@ -4,6 +4,8 @@ name: Deploy Staging
 on:
   push:
     branches: [staging]
+    paths-ignore: ['.github/**']
+  workflow_dispatch:
 
 jobs:
   deploy-firebase-staging:
@@ -18,11 +20,12 @@ jobs:
 
       - name: Authenticate to Firebase and deploy to staging
         run: |
-          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_STAGING }}' > "$RUNNER_TEMP/sa.json"
+          printf '%s' "$FIREBASE_SA" > "$RUNNER_TEMP/sa.json"
           cd FirebaseConfig
           firebase use staging
           firebase deploy --only firestore,storage --non-interactive
         env:
+          FIREBASE_SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_STAGING }}
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
 
   build-and-upload-staging:
@@ -33,6 +36,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Restore unity-build
+        uses: actions/cache@v4
+        with:
+          path: unity-build
+          key: unity-build-${{ hashFiles('nose-unity/Packages/manifest.json', 'nose-unity/Assets/**/*.meta') }}
+
       - name: Select Xcode version
         run: sudo xcode-select -s /Applications/Xcode_16.2.app
 
@@ -41,6 +50,13 @@ jobs:
         with:
           ruby-version: 3.2
           bundler-cache: true
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: Pods
+          key: pods-${{ hashFiles('Podfile.lock') }}
+          restore-keys: pods-
 
       - name: Install CocoaPods dependencies
         run: bundle exec pod install
