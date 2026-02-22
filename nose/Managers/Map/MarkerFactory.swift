@@ -450,17 +450,53 @@ final class MarkerFactory {
     }
     
     static func createPlaceAnnotation(for place: GMSPlace) -> PointAnnotation {
-        let view = createGlassmorphismMarkerView()
-        guard let image = viewToImage(view) else {
+        // Use pin.svg from asset catalog (place_pin) when available; otherwise fall back to programmatic pin
+        let image: UIImage? = loadPlacePinImage() ?? {
+            let view = createGlassmorphismMarkerView()
+            return viewToImage(view)
+        }()
+        guard let image = image else {
             var annotation = PointAnnotation(point: Point(place.coordinate))
             return annotation
         }
         var annotation = PointAnnotation(point: Point(place.coordinate))
         annotation.image = PointAnnotation.Image(image: image, name: "place-marker")
         annotation.iconAnchor = .bottom
-        // Store place name in userInfo for reference
+        let shadowOffsetY = image.size.height - placePinContentHeight
+        annotation.iconOffset = [0, Double(shadowOffsetY)]
         annotation.userInfo = ["name": place.name ?? "", "address": place.formattedAddress ?? ""]
         return annotation
+    }
+    
+    /// Height of the pin graphic (excluding shadow) in the place pin image. Use when positioning so the pin tip is at the coordinate.
+    static let placePinContentHeight: CGFloat = 74
+    
+    /// Loads and scales the place pin from Assets (pin.svg in place_pin.imageset) with drop shadow.
+    /// Pin is drawn at the top; extra space below allows the shadow to render without clipping.
+    private static func loadPlacePinImage() -> UIImage? {
+        guard let image = UIImage(named: "place_pin") else { return nil }
+        let pinSize = CGSize(width: 64, height: 74)
+        let shadowPadding: CGFloat = 10
+        let shadowOffset = CGSize(width: 0, height: 4)
+        let shadowBlur: CGFloat = 8
+        let shadowBottomSpace = shadowOffset.height + shadowBlur + 4
+        let canvasSize = CGSize(
+            width: pinSize.width + shadowPadding * 2,
+            height: pinSize.height + shadowBottomSpace
+        )
+        let pinRect = CGRect(x: shadowPadding, y: 0, width: pinSize.width, height: pinSize.height)
+        let renderer = UIGraphicsImageRenderer(size: canvasSize)
+        return renderer.image { context in
+            let ctx = context.cgContext
+            ctx.setShadow(offset: shadowOffset, blur: shadowBlur, color: UIColor.black.withAlphaComponent(0.25).cgColor)
+            image.draw(in: pinRect)
+            ctx.setShadow(offset: .zero, blur: 0, color: nil)
+        }
+    }
+    
+    /// Returns the place pin image (with drop shadow) for use in animations. Same image as the annotation.
+    static func placePinImage() -> UIImage? {
+        loadPlacePinImage()
     }
     
     static func createEventAnnotation(for event: Event) -> PointAnnotation {

@@ -40,6 +40,8 @@ final class MapboxMapManager: NSObject {
     private var eventAnnotations: [String: PointAnnotation] = [:]
     private var collectionPlaceAnnotations: [String: PointAnnotation] = [:]
     private var searchPlaceAnnotation: PointAnnotation?
+    private var searchPinView: UIImageView?
+    private var searchPlace: GMSPlace?
     private var collectionPlacesData: [(place: PlaceCollection.Place, collection: PlaceCollection)] = []
     private var followUserLocation: Bool = true
     private var currentZoom: Double = Constants.defaultZoom
@@ -76,7 +78,7 @@ final class MapboxMapManager: NSObject {
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleMapTap(_:)))
         mapView.addGestureRecognizer(tapGesture)
         
-        // Observe camera changes for zoom updates
+        // Observe camera changes for zoom updates and search pin position
         mapView.mapboxMap.onEvery(event: .cameraChanged) { [weak self] _ in
             guard let self = self else { return }
             let newZoom = self.mapView.cameraState.zoom
@@ -91,6 +93,7 @@ final class MapboxMapManager: NSObject {
             } else {
                 self.currentZoom = newZoom
             }
+            self.updateSearchPinPosition()
         }
         
         // Set up map loaded event
@@ -149,14 +152,7 @@ final class MapboxMapManager: NSObject {
     }
     
     func showPlaceOnMap(_ place: GMSPlace) {
-        // Remove previous search marker if exists
-        if let existingAnnotation = searchPlaceAnnotation {
-            searchPlaceAnnotationManager?.annotations.removeAll(where: { $0.id == existingAnnotation.id })
-        }
-        
-        let annotation = MarkerFactory.createPlaceAnnotation(for: place)
-        searchPlaceAnnotation = annotation
-        searchPlaceAnnotationManager?.annotations.append(annotation)
+        clearSearchPlaceMarker()
         
         // Calculate offset to position pin above the detail sheet
         // Shift camera center south so the pin appears in upper 1/3 of screen
@@ -177,18 +173,75 @@ final class MapboxMapManager: NSObject {
             longitude: place.coordinate.longitude
         )
         
-        // Move camera with 3D view (pitch) and offset center
+        // Move camera with 3D view (pitch) and offset center; add pin with bounce after fly completes
         let cameraOptions = CameraOptions(
             center: adjustedCenter,
             zoom: Constants.defaultZoom,
             pitch: 50  // Enable 3D view for searched places
         )
         
-        mapView.camera.fly(to: cameraOptions, duration: 1.0)
+        mapView.camera.fly(to: cameraOptions, duration: 1.0) { [weak self] _ in
+            guard let self = self else { return }
+            self.addSearchPinWithBounce(for: place)
+        }
         followUserLocation = false
     }
     
+    /// Adds the search pin as a view with continuous bounce animation (called when camera fly completes).
+    private func addSearchPinWithBounce(for place: GMSPlace) {
+        guard let pinImage = MarkerFactory.placePinImage() else {
+            let annotation = MarkerFactory.createPlaceAnnotation(for: place)
+            searchPlaceAnnotation = annotation
+            searchPlaceAnnotationManager?.annotations.append(annotation)
+            return
+        }
+        
+        searchPlace = place
+        let pinSize = pinImage.size
+        let pinView = UIImageView(image: pinImage)
+        pinView.contentMode = .scaleAspectFit
+        pinView.layer.anchorPoint = CGPoint(x: 0.5, y: 1)
+        pinView.frame = frameForSearchPin(size: pinSize, at: place.coordinate)
+        mapView.addSubview(pinView)
+        searchPinView = pinView
+        
+        startContinuousBounce(on: pinView)
+    }
+    
+    private func frameForSearchPin(size: CGSize, at coordinate: CLLocationCoordinate2D) -> CGRect {
+        let point = mapView.mapboxMap.point(for: coordinate)
+        let pinTipY = MarkerFactory.placePinContentHeight
+        return CGRect(
+            x: point.x - size.width / 2,
+            y: point.y - pinTipY,
+            width: size.width,
+            height: size.height
+        )
+    }
+    
+    private func updateSearchPinPosition() {
+        guard let pinView = searchPinView, let place = searchPlace else { return }
+        guard let pinImage = pinView.image else { return }
+        pinView.frame = frameForSearchPin(size: pinImage.size, at: place.coordinate)
+    }
+    
+    private func startContinuousBounce(on view: UIView) {
+        let bounceHeight: CGFloat = 8
+        let duration: TimeInterval = 0.4
+        UIView.animate(
+            withDuration: duration,
+            delay: 0,
+            options: [.repeat, .autoreverse, .allowUserInteraction]
+        ) {
+            view.transform = CGAffineTransform(translationX: 0, y: -bounceHeight)
+        }
+    }
+    
     func clearSearchPlaceMarker() {
+        searchPinView?.layer.removeAllAnimations()
+        searchPinView?.removeFromSuperview()
+        searchPinView = nil
+        searchPlace = nil
         if let annotation = searchPlaceAnnotation {
             searchPlaceAnnotationManager?.annotations.removeAll(where: { $0.id == annotation.id })
             searchPlaceAnnotation = nil
