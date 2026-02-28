@@ -6,6 +6,46 @@
 //  Objective-C API that we can call from Swift/SwiftUI.
 //
 
+#if defined(EXCLUDE_UNITY)
+// ── Stub implementation (no UnityFramework dependency) ──────────────
+#import "UnityLauncher.h"
+
+@implementation UnityLauncher
+
++ (instancetype)shared {
+    static UnityLauncher *instance = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        instance = [UnityLauncher new];
+    });
+    return instance;
+}
+
+- (void)launchUnityIfNeeded {
+    NSLog(@"[UaaL-stub] launchUnityIfNeeded called – Unity excluded from this build");
+}
+
+- (void)showUnity {
+    NSLog(@"[UaaL-stub] showUnity called – Unity excluded from this build");
+}
+
+- (void)hideUnity {
+    NSLog(@"[UaaL-stub] hideUnity called – Unity excluded from this build");
+}
+
+- (UIViewController *)unityRootViewController {
+    NSLog(@"[UaaL-stub] unityRootViewController called – returning nil");
+    return nil;
+}
+
+- (void)sendMessageToUnity:(NSString *)gameObject method:(NSString *)method message:(NSString *)message {
+    NSLog(@"[UaaL-stub] sendMessageToUnity called – Unity excluded from this build");
+}
+
+@end
+
+#else
+// ── Real implementation (links UnityFramework.framework) ────────────
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 #import <mach-o/dyld.h> // << fix: use _NSGetMachExecuteHeader()
@@ -153,3 +193,5 @@ static UnityFramework *_ufw = nil;
 }
 
 @end
+
+#endif /* EXCLUDE_UNITY */

@@ -129,3 +129,5 @@ Update tests in the **same PR** that changes app behavior. E2E tests live in `Ap
 ## Troubleshooting
 
 See the main repository README or SETUP.md for build and environment issues. For CI: check GitHub Actions logs, verify secrets, and ensure branch protection status check names match the job names (e.g. **E2E**).
+
+<!-- dummy PR: 仮PR用の軽微な変更 -->
