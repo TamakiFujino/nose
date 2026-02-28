@@ -4,6 +4,8 @@ name: Deploy Staging
 on:
   push:
     branches: [staging]
+    paths-ignore: ['.github/**']
+  workflow_dispatch:
 
 jobs:
   deploy-firebase-staging:
@@ -18,11 +20,12 @@ jobs:
 
       - name: Authenticate to Firebase and deploy to staging
         run: |
-          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_STAGING }}' > "$RUNNER_TEMP/sa.json"
+          printf '%s' "$FIREBASE_SA" > "$RUNNER_TEMP/sa.json"
           cd FirebaseConfig
           firebase use staging
           firebase deploy --only firestore,storage --non-interactive
         env:
+          FIREBASE_SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_STAGING }}
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
 
   build-and-upload-staging:
@@ -33,6 +36,42 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Restore unity-build
+        uses: actions/cache@v4
+        with:
+          path: unity-build
+          key: unity-build-${{ hashFiles('nose-unity/Packages/manifest.json', 'nose-unity/Assets/**/*.meta') }}
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate config from env (xcconfig, Config.plist)
+        env:
+          CI_ENV_FILE: ${{ secrets.CI_ENV_FILE }}
+        run: |
+          if [ -z "$CI_ENV_FILE" ]; then
+            echo "::error::Secret CI_ENV_FILE is not set."
+            exit 1
+          fi
+          printf '%s' "$CI_ENV_FILE" > .env
+          node scripts/generate_config_from_env.js
+
+      - name: Write Firebase GoogleService-Info plists
+        env:
+          GOOGLE_SERVICE_INFO_DEVELOPMENT_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_DEVELOPMENT_PLIST }}
+          GOOGLE_SERVICE_INFO_STAGING_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_STAGING_PLIST }}
+          GOOGLE_SERVICE_INFO_PRODUCTION_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PRODUCTION_PLIST }}
+        run: |
+          mkdir -p FirebaseConfig
+          printf '%s' "$GOOGLE_SERVICE_INFO_DEVELOPMENT_PLIST" > FirebaseConfig/GoogleService-Info-Development.plist
+          printf '%s' "$GOOGLE_SERVICE_INFO_STAGING_PLIST" > FirebaseConfig/GoogleService-Info-Staging.plist
+          printf '%s' "$GOOGLE_SERVICE_INFO_PRODUCTION_PLIST" > FirebaseConfig/GoogleService-Info-Production.plist
+          for f in FirebaseConfig/GoogleService-Info-Development.plist FirebaseConfig/GoogleService-Info-Staging.plist FirebaseConfig/GoogleService-Info-Production.plist; do
+            [ -s "$f" ] || { echo "::error::Missing or empty plist: $f"; exit 1; }
+          done
+
       - name: Select Xcode version
         run: sudo xcode-select -s /Applications/Xcode_16.2.app
 
@@ -41,6 +80,13 @@ jobs:
         with:
           ruby-version: 3.2
           bundler-cache: true
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: Pods
+          key: pods-${{ hashFiles('Podfile.lock') }}
+          restore-keys: pods-
 
       - name: Install CocoaPods dependencies
         run: bundle exec pod install
