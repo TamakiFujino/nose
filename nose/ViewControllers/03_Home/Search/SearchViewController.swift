@@ -1,6 +1,5 @@
 import UIKit
 import GooglePlaces
-import FirebaseFirestore
 
 protocol SearchViewControllerDelegate: AnyObject {
     func searchViewController(_ controller: SearchViewController, didSelectPlace place: GMSPlace)

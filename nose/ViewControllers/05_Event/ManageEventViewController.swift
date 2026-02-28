@@ -7,8 +7,6 @@
 
 import UIKit
 import FirebaseAuth
-import FirebaseFirestore
-
 class ManageEventViewController: UIViewController {
     
     // MARK: - Properties
@@ -206,7 +204,7 @@ class ManageEventViewController: UIViewController {
                     self?.updateUI()
                     self?.updateAddButtonState()
                 case .failure(let error):
-                    print("❌ Failed to load events: \(error.localizedDescription)")
+                    Logger.log("Failed to load events: \(error.localizedDescription)", level: .error, category: "ManageEvent")
                     self?.showAlert(title: "Error", message: "Failed to load events. Please try again.")
                     self?.updateUI()
                     self?.updateAddButtonState()
@@ -375,7 +373,7 @@ extension ManageEventViewController: UITableViewDelegate, UITableViewDataSource 
                     self?.updateAddButtonState()
                     ToastManager.showToast(message: "Event deleted", type: .success)
                 case .failure(let error):
-                    print("❌ Failed to delete event: \(error.localizedDescription)")
+                    Logger.log("Failed to delete event: \(error.localizedDescription)", level: .error, category: "ManageEvent")
                     self?.showAlert(title: "Error", message: "Failed to delete event. Please try again.")
                 }
             }
@@ -388,7 +386,7 @@ extension ManageEventViewController: UITableViewDelegate, UITableViewDataSource 
 
 extension ManageEventViewController: CreateEventViewControllerDelegate {
     func createEventViewController(_ controller: CreateEventViewController, didCreateEvent event: Event) {
-        print("Event created: \(event.title)")
+        Logger.log("Event created: \(event.title)", level: .debug, category: "ManageEvent")
         controller.navigationController?.dismiss(animated: true)
         loadEvents()
     }
@@ -520,7 +518,7 @@ class EventTableViewCell: UITableViewCell {
     private func loadEventImage(for event: Event) {
         // Use already loaded image if available
         if !event.images.isEmpty {
-            print("🖼️ Using event uploaded image for: \(event.title)")
+            Logger.log("Using event uploaded image for: \(event.title)", level: .info, category: "ManageEvent")
             eventImageView.image = event.images[0]
             return
         }
@@ -536,22 +534,13 @@ class EventTableViewCell: UITableViewCell {
         avatarImageView.image = UIImage(systemName: "person.circle")
         avatarImageView.tintColor = .systemGray3
         
-        let db = Firestore.firestore()
-        db.collection("users")
-            .document(event.userId)
-            .collection("events")
-            .document(event.id)
-            .getDocument { [weak self] snapshot, error in
-                if let error = error {
-                    print("❌ Error loading avatar image: \(error.localizedDescription)")
-                    return
-                }
-                
-                guard let data = snapshot?.data(),
-                      let avatarImageURL = data["avatarImageURL"] as? String,
+        EventManager.shared.fetchEventAvatarImageURL(userId: event.userId, eventId: event.id) { [weak self] result in
+            switch result {
+            case .success(let avatarImageURL):
+                guard let avatarImageURL = avatarImageURL,
                       !avatarImageURL.isEmpty,
                       let url = URL(string: avatarImageURL) else {
-                    print("⚠️ No avatar image URL found for event: \(event.title)")
+                    Logger.log("No avatar image URL found for event: \(event.title)", level: .warn, category: "ManageEvent")
                     return
                 }
                 
@@ -565,6 +554,9 @@ class EventTableViewCell: UITableViewCell {
                         }
                     }
                 }.resume()
+            case .failure(let error):
+                Logger.log("Error loading avatar image: \(error.localizedDescription)", level: .error, category: "ManageEvent")
             }
+        }
     }
 }

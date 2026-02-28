@@ -2,7 +2,6 @@ import UIKit
 import MapboxMaps
 import CoreLocation
 import GooglePlaces
-import FirebaseFirestore
 import FirebaseAuth
 
 final class HomeViewController: UIViewController {

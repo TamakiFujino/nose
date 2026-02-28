@@ -11,11 +11,11 @@ class LoadingView {
     
     // MARK: - Alert Style Loading
     func showAlertLoading(title: String, message: String = "Please wait...", on viewController: UIViewController) {
-        print("🔄 LoadingView: Showing alert loading with title: \(title)")
+        Logger.log("LoadingView: Showing alert loading with title: \(title)", level: .debug, category: "LoadingView")
         DispatchQueue.main.async {
             // If already showing, just update or return
             if let existingAlert = self.alertController {
-                print("⚠️ LoadingView: Alert already exists, updating/ignoring")
+                Logger.log("LoadingView: Alert already exists, updating/ignoring", level: .warn, category: "LoadingView")
                 // Update message if needed
                 existingAlert.message = message
                 return
@@ -30,27 +30,27 @@ class LoadingView {
             self.alertController = alert
             
             viewController.present(alert, animated: true) {
-                print("✅ LoadingView: Alert presented")
+                Logger.log("LoadingView: Alert presented", level: .info, category: "LoadingView")
             }
         }
     }
     
     func hideAlertLoading() {
-        print("🔄 LoadingView: Hiding alert loading")
+        Logger.log("LoadingView: Hiding alert loading", level: .debug, category: "LoadingView")
         DispatchQueue.main.async {
             guard let alert = self.alertController else {
-                print("⚠️ LoadingView: No alert to hide (alertController is nil)")
+                Logger.log("LoadingView: No alert to hide (alertController is nil)", level: .warn, category: "LoadingView")
                 // Try to find if there is a presented alert controller on top that matches our style
                 // This is a fallback in case reference was lost
                 if let topVC = UIApplication.shared.windows.first?.rootViewController?.presentedViewController as? UIAlertController {
-                    print("⚠️ LoadingView: Found an alert presented, attempting to dismiss it as fallback")
+                    Logger.log("LoadingView: Found an alert presented, attempting to dismiss it as fallback", level: .warn, category: "LoadingView")
                     topVC.dismiss(animated: true, completion: nil)
                 }
                 return
             }
             
             alert.dismiss(animated: true) {
-                print("✅ LoadingView: Alert dismissed")
+                Logger.log("LoadingView: Alert dismissed", level: .info, category: "LoadingView")
                 // Only clear if it matches the one we just dismissed
                 if self.alertController == alert {
                     self.alertController = nil

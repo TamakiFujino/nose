@@ -18,26 +18,27 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         FirebaseApp.configure()
         
         if let options = FirebaseApp.app()?.options {
-            print("✅ Firebase App Config:")
-            print("Project ID: \(options.projectID ?? "nil")")
-            print("Google App ID: \(options.googleAppID)")
-            print("Database URL: \(options.databaseURL ?? "nil")")
-            print("Client ID: \(options.clientID)")
+            Logger.log("Firebase App Config:", level: .info, category: "AppDelegate")
+            Logger.log("Project ID: \(options.projectID ?? "nil")", level: .debug, category: "AppDelegate")
+            Logger.log("Google App ID: \(options.googleAppID)", level: .debug, category: "AppDelegate")
+            Logger.log("Database URL: \(options.databaseURL ?? "nil")", level: .debug, category: "AppDelegate")
+            Logger.log("Client ID: \(options.clientID)", level: .debug, category: "AppDelegate")
         }
         
         // Configure Google Sign-In
         guard let clientID = FirebaseApp.app()?.options.clientID else {
-            fatalError("No client ID found in Firebase configuration")
+            Logger.log("No client ID found in Firebase configuration", level: .error, category: "AppDelegate")
+            return false
         }
         
         if let path = Bundle.main.path(forResource: "GoogleService-Info-Development", ofType: "plist"),
            let plist = NSDictionary(contentsOfFile: path),
            let reversedClientID = plist["REVERSED_CLIENT_ID"] as? String {
-            print("✅ Google Sign-In Config:")
-            print("Client ID: \(clientID)")
-            print("Reversed Client ID: \(reversedClientID)")
+            Logger.log("Google Sign-In Config:", level: .info, category: "AppDelegate")
+            Logger.log("Client ID: \(clientID)", level: .debug, category: "AppDelegate")
+            Logger.log("Reversed Client ID: \(reversedClientID)", level: .debug, category: "AppDelegate")
         } else {
-            print("⚠️ Could not find GoogleService-Info-Development.plist")
+            Logger.log("Could not find GoogleService-Info-Development.plist", level: .warn, category: "AppDelegate")
         }
         
         // Get API keys from Config.plist
@@ -45,7 +46,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
               let plistDict = NSDictionary(contentsOfFile: filePath) as? [String: Any],
               let mapboxAccessToken = plistDict["MapboxAccessToken"] as? String,
               let placesAPIKey = plistDict["GooglePlacesAPIKey"] as? String else {
-            fatalError("Couldn't find API keys in Config.plist")
+            Logger.log("Couldn't find API keys in Config.plist", level: .error, category: "AppDelegate")
+            return false
         }
         
         // Configure Mapbox - set access token as environment variable
