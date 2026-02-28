@@ -5,7 +5,7 @@ name: Build Unity and cache
 
 on:
   push:
-    branches: [staging]
+    branches: [staging, main]
     paths:
       - 'nose-unity/**'
   workflow_dispatch:
@@ -35,9 +35,16 @@ jobs:
 
       - name: Ensure unity-build structure
         run: |
-          if [ -d "unity-build/Unity-iPhone" ] && [ ! -d "unity-build/Unity-iPhone.xcodeproj" ]; then
-            mv unity-build/Unity-iPhone/* unity-build/
-            rmdir unity-build/Unity-iPhone
+          # Game CI outputs to unity-build/iOS/Unity-iPhone/ — flatten to unity-build/
+          NESTED=$(find unity-build -path "*/Unity-iPhone.xcodeproj" -maxdepth 4 -print -quit)
+          if [ -n "$NESTED" ]; then
+            SRC_DIR=$(dirname "$NESTED")
+            if [ "$SRC_DIR" != "unity-build" ]; then
+              echo "Flattening $SRC_DIR → unity-build/"
+              mv "$SRC_DIR"/* unity-build/
+              # Remove empty parent dirs left behind
+              find unity-build -mindepth 1 -type d -empty -delete
+            fi
           fi
           [ -d "unity-build/Unity-iPhone.xcodeproj" ] || (echo "::error::Unity build did not produce Unity-iPhone.xcodeproj"; exit 1)
 

@@ -1,0 +1,157 @@
+# Reusable E2E workflow: build iOS app and run Appium tests.
+# Called by pr-checks.yml and deploy-production.yml.
+name: E2E (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      scheme:
+        description: 'Xcode scheme to build (e.g. nose-staging, nose-production)'
+        required: true
+        type: string
+      configuration:
+        description: 'Xcode build configuration'
+        required: false
+        type: string
+        default: 'Development'
+
+jobs:
+  e2e:
+    name: E2E
+    runs-on: macos-14
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Restore unity-build
+        uses: actions/cache@v4
+        with:
+          path: unity-build
+          key: unity-build-${{ hashFiles('nose-unity/Packages/manifest.json', 'nose-unity/Assets/**/*.meta') }}
+          restore-keys: unity-build-
+
+      - name: Fail if unity-build missing
+        run: |
+          if [ ! -d "unity-build/Unity-iPhone.xcodeproj" ]; then
+            echo "::error::unity-build/ is missing. Run 'Build Unity and cache' from main first."
+            exit 1
+          fi
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate config from env (xcconfig, Config.plist)
+        env:
+          CI_ENV_FILE: ${{ secrets.CI_ENV_FILE }}
+        run: |
+          if [ -z "$CI_ENV_FILE" ]; then
+            echo "::error::Secret CI_ENV_FILE is not set."
+            exit 1
+          fi
+          printf '%s' "$CI_ENV_FILE" > .env
+          node scripts/generate_config_from_env.js
+
+      - name: Write Firebase GoogleService-Info plists
+        env:
+          GOOGLE_SERVICE_INFO_DEVELOPMENT_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_DEVELOPMENT_PLIST }}
+          GOOGLE_SERVICE_INFO_STAGING_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_STAGING_PLIST }}
+          GOOGLE_SERVICE_INFO_PRODUCTION_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PRODUCTION_PLIST }}
+        run: |
+          mkdir -p FirebaseConfig
+          printf '%s' "$GOOGLE_SERVICE_INFO_DEVELOPMENT_PLIST" > FirebaseConfig/GoogleService-Info-Development.plist
+          printf '%s' "$GOOGLE_SERVICE_INFO_STAGING_PLIST" > FirebaseConfig/GoogleService-Info-Staging.plist
+          printf '%s' "$GOOGLE_SERVICE_INFO_PRODUCTION_PLIST" > FirebaseConfig/GoogleService-Info-Production.plist
+          for f in FirebaseConfig/GoogleService-Info-Development.plist FirebaseConfig/GoogleService-Info-Staging.plist FirebaseConfig/GoogleService-Info-Production.plist; do
+            [ -s "$f" ] || { echo "::error::Missing or empty plist: $f"; exit 1; }
+          done
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r AppiumTests/requirements.txt
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.2
+          bundler-cache: true
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: Pods
+          key: pods-${{ hashFiles('Podfile.lock') }}
+          restore-keys: pods-
+
+      - name: Install CocoaPods dependencies
+        run: bundle exec pod install
+
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_16.2.app
+
+      - name: Build iOS app for testing
+        run: |
+          xcodebuild clean -workspace nose.xcworkspace -scheme ${{ inputs.scheme }}
+          xcodebuild build \
+            -workspace nose.xcworkspace \
+            -scheme ${{ inputs.scheme }} \
+            -configuration ${{ inputs.configuration }} \
+            -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=18.2' \
+            -derivedDataPath ./builds
+
+      - name: Start Appium server
+        run: |
+          npm install -g appium
+          appium --base-path /wd/hub --log appium.log &
+          sleep 15
+          curl -f http://localhost:4723/status || (echo "Appium server failed to start" && cat appium.log && exit 1)
+
+      - name: Start iOS Simulator
+        run: |
+          xcrun simctl boot "iPhone 16 Pro"
+          sleep 15
+          xcrun simctl list devices | grep "iPhone 16 Pro" | grep "Booted" || (echo "Simulator failed to boot" && exit 1)
+
+      - name: Install app on simulator
+        run: |
+          xcrun simctl install booted ./builds/Build/Products/${{ inputs.configuration }}-iphonesimulator/nose.app
+
+      - name: Update app path in driver setup
+        run: |
+          APP_PATH="./builds/Build/Products/${{ inputs.configuration }}-iphonesimulator/nose.app"
+          sed -i '' "s|app = '.*'|app = '$APP_PATH'|g" AppiumTests/utils/driver_setup.py
+
+      - name: Run Appium tests
+        run: |
+          cd AppiumTests
+          mkdir -p test-results logs
+          python test_runner.py 2>&1 | tee logs/test_output.log
+          exit_code=${PIPESTATUS[0]}
+          echo "Test execution completed with exit code: $exit_code" > test-results/summary.txt
+          exit $exit_code
+        env:
+          PYTHONPATH: ${{ github.workspace }}/AppiumTests
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: appium-test-results
+          path: |
+            AppiumTests/test-results/
+            AppiumTests/logs/
+            appium.log
+          retention-days: 7
+
+      - name: Cleanup
+        if: always()
+        run: |
+          pkill -f appium || true
+          xcrun simctl shutdown "iPhone 16 Pro" || true
