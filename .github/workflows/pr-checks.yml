@@ -1,5 +1,9 @@
-# PR gate: run E2E before merge to staging.
-# Branch protection should require "E2E" to pass.
+# PR gate: run E2E (and optionally lint) before merge to staging.
+# Branch protection should require "e2e" (and "lint" if added) to pass.
+#
+# Required secrets for build: CI_ENV_FILE (.env contents), and optionally
+# GOOGLE_SERVICE_INFO_DEVELOPMENT_PLIST, _STAGING_PLIST, _PRODUCTION_PLIST (Firebase plist contents).
+# Unity is excluded from E2E builds via EXCLUDE_UNITY flag + pbxproj patching.
 name: PR Checks
 
 on:
@@ -9,7 +13,124 @@ on:
 jobs:
   e2e:
     name: E2E
-    uses: ./.github/workflows/e2e-reusable.yml
-    with:
-      scheme: nose-staging
-    secrets: inherit
+    runs-on: macos-14
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Patch project to exclude Unity
+        run: bash scripts/patch_project_exclude_unity.sh
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate config from env (xcconfig, Config.plist)
+        env:
+          CI_ENV_FILE: ${{ secrets.CI_ENV_FILE }}
+        run: |
+          if [ -z "$CI_ENV_FILE" ]; then
+            echo "::error::Secret CI_ENV_FILE is not set. Add a repo secret with the contents of .env (or a CI-safe .env) so scripts/generate_config_from_env.js can run."
+            exit 1
+          fi
+          printf '%s' "$CI_ENV_FILE" > .env
+          node scripts/generate_config_from_env.js
+
+      - name: Write Firebase GoogleService-Info plists
+        env:
+          GOOGLE_SERVICE_INFO_DEVELOPMENT_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_DEVELOPMENT_PLIST }}
+          GOOGLE_SERVICE_INFO_STAGING_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_STAGING_PLIST }}
+          GOOGLE_SERVICE_INFO_PRODUCTION_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PRODUCTION_PLIST }}
+        run: |
+          mkdir -p FirebaseConfig
+          printf '%s' "$GOOGLE_SERVICE_INFO_DEVELOPMENT_PLIST" > FirebaseConfig/GoogleService-Info-Development.plist
+          printf '%s' "$GOOGLE_SERVICE_INFO_STAGING_PLIST" > FirebaseConfig/GoogleService-Info-Staging.plist
+          printf '%s' "$GOOGLE_SERVICE_INFO_PRODUCTION_PLIST" > FirebaseConfig/GoogleService-Info-Production.plist
+          for f in FirebaseConfig/GoogleService-Info-Development.plist FirebaseConfig/GoogleService-Info-Staging.plist FirebaseConfig/GoogleService-Info-Production.plist; do
+            [ -s "$f" ] || { echo "::error::Missing or empty plist: $f. Add secrets GOOGLE_SERVICE_INFO_DEVELOPMENT_PLIST, _STAGING_PLIST, _PRODUCTION_PLIST (contents of each Firebase plist)."; exit 1; }
+          done
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r AppiumTests/requirements.txt
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.2
+          bundler-cache: true
+
+      - name: Install CocoaPods dependencies
+        run: bundle exec pod install
+
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_16.2.app
+
+      - name: Build iOS app for testing
+        run: |
+          xcodebuild clean -workspace nose.xcworkspace -scheme nose-staging
+          xcodebuild build \
+            -workspace nose.xcworkspace \
+            -scheme nose-staging \
+            -configuration Development \
+            -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=18.2' \
+            -derivedDataPath ./builds \
+            GCC_PREPROCESSOR_DEFINITIONS='$(inherited) EXCLUDE_UNITY=1'
+
+      - name: Start Appium server
+        run: |
+          npm install -g appium
+          appium driver install xcuitest
+          appium --base-path /wd/hub --log appium.log &
+          sleep 15
+          curl -f http://localhost:4723/wd/hub/status || (echo "Appium server failed to start" && cat appium.log && exit 1)
+
+      - name: Start iOS Simulator
+        run: |
+          xcrun simctl boot "iPhone 16 Pro"
+          sleep 15
+          xcrun simctl list devices | grep "iPhone 16 Pro" | grep "Booted" || (echo "Simulator failed to boot" && exit 1)
+
+      - name: Install app on simulator
+        run: |
+          xcrun simctl install booted ./builds/Build/Products/Development-iphonesimulator/nose.app
+
+      - name: Update app path in driver setup
+        run: |
+          APP_PATH="./builds/Build/Products/Development-iphonesimulator/nose.app"
+          sed -i '' "s|app = '.*'|app = '$APP_PATH'|g" AppiumTests/utils/driver_setup.py
+
+      - name: Run Appium tests
+        run: |
+          cd AppiumTests
+          mkdir -p test-results logs
+          python test_runner.py 2>&1 | tee logs/test_output.log
+          exit_code=${PIPESTATUS[0]}
+          echo "Test execution completed with exit code: $exit_code" > test-results/summary.txt
+          exit $exit_code
+        env:
+          PYTHONPATH: ${{ github.workspace }}/AppiumTests
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: appium-test-results
+          path: |
+            AppiumTests/test-results/
+            AppiumTests/logs/
+            appium.log
+          retention-days: 7
+
+      - name: Cleanup
+        if: always()
+        run: |
+          pkill -f appium || true
+          xcrun simctl shutdown "iPhone 16 Pro" || true
