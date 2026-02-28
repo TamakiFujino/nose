@@ -1,5 +1,5 @@
 # PR gate: run E2E (and optionally lint) before merge to staging.
-# Branch protection should require "e2e" (and "lint" if added) to pass.
+# Branch protection should require "E2E" (and "lint" if added) to pass.
 #
 # Required secrets for build: CI_ENV_FILE (.env contents), and optionally
 # GOOGLE_SERVICE_INFO_DEVELOPMENT_PLIST, _STAGING_PLIST, _PRODUCTION_PLIST (Firebase plist contents).
