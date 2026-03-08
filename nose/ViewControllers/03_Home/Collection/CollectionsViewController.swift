@@ -49,9 +49,99 @@ class CollectionsViewController: UIViewController {
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "CollectionCell")
         tableView.backgroundColor = .systemBackground
         tableView.separatorStyle = .none
+        tableView.sectionHeaderTopPadding = 0
+        tableView.tableHeaderView = UIView()
+        tableView.tableFooterView = UIView()
         return tableView
     }()
     
+    private lazy var createNewCollectionButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.setImage(UIImage(systemName: "plus"), for: .normal)
+        button.tintColor = .fourthColor
+        button.backgroundColor = .white
+        button.layer.cornerRadius = 22
+        button.layer.shadowColor = UIColor.black.cgColor
+        button.layer.shadowOffset = CGSize(width: 0, height: 2)
+        button.layer.shadowRadius = 4
+        button.layer.shadowOpacity = 0.1
+        button.addTarget(self, action: #selector(createNewCollectionTapped), for: .touchUpInside)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        return button
+    }()
+
+    private lazy var emptyStateView: UIView = {
+        let container = UIView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        container.isHidden = true
+
+        let imageView = UIImageView(image: UIImage(systemName: "map.fill"))
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.tintColor = .thirdColor
+        imageView.contentMode = .scaleAspectFit
+
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.text = "Your favorite spots deserve a home.\nTap + to create your first collection!"
+        label.font = .systemFont(ofSize: 16, weight: .medium)
+        label.textColor = .thirdColor
+        label.textAlignment = .center
+        label.numberOfLines = 0
+
+        container.addSubview(imageView)
+        container.addSubview(label)
+
+        NSLayoutConstraint.activate([
+            imageView.topAnchor.constraint(equalTo: container.topAnchor),
+            imageView.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            imageView.widthAnchor.constraint(equalToConstant: 48),
+            imageView.heightAnchor.constraint(equalToConstant: 48),
+
+            label.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 12),
+            label.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            label.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            label.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+        ])
+
+        return container
+    }()
+
+    private lazy var sharedEmptyStateView: UIView = {
+        let container = UIView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        container.isHidden = true
+
+        let imageView = UIImageView(image: UIImage(systemName: "person.2.fill"))
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.tintColor = .thirdColor
+        imageView.contentMode = .scaleAspectFit
+
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.text = "No shared collections yet.\nAsk your friends to invite you to theirs!\n\nYou can add friends in\nSettings > Add Friends"
+        label.font = .systemFont(ofSize: 16, weight: .medium)
+        label.textColor = .thirdColor
+        label.textAlignment = .center
+        label.numberOfLines = 0
+
+        container.addSubview(imageView)
+        container.addSubview(label)
+
+        NSLayoutConstraint.activate([
+            imageView.topAnchor.constraint(equalTo: container.topAnchor),
+            imageView.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            imageView.widthAnchor.constraint(equalToConstant: 48),
+            imageView.heightAnchor.constraint(equalToConstant: 48),
+
+            label.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 12),
+            label.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            label.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            label.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+        ])
+
+        return container
+    }()
+
     private lazy var titleLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -71,7 +161,6 @@ class CollectionsViewController: UIViewController {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        configureSheetPresentation()
         loadCollections()
     }
     
@@ -86,13 +175,13 @@ class CollectionsViewController: UIViewController {
     }
     
     // MARK: - Setup
-    private func configureSheetPresentation() {
+    func configureSheetPresentation() {
         guard let sheet = sheetPresentationController else { return }
         
-        // Create a small detent identifier (approximately 10% of screen height)
+        // Create a small detent identifier (approximately 20% of screen height)
         let smallDetentIdentifier = UISheetPresentationController.Detent.Identifier("small")
         let smallDetent = UISheetPresentationController.Detent.custom(identifier: smallDetentIdentifier) { context in
-            return context.maximumDetentValue * 0.1 // 10% of screen
+            return context.maximumDetentValue * 0.2 // 20% of screen
         }
         
         // Set detents: small (minimized) and large (full)
@@ -107,9 +196,12 @@ class CollectionsViewController: UIViewController {
         
         // Enable grabber for better UX
         sheet.prefersGrabberVisible = true
-        
+
         // Allow dismissing by dragging down from any detent
         sheet.prefersScrollingExpandsWhenScrolledToEdge = false
+
+        // Listen for detent changes
+        sheet.delegate = self
     }
     
     private func setupUI() {
@@ -120,7 +212,10 @@ class CollectionsViewController: UIViewController {
         view.addSubview(categoryTabScrollView)
         categoryTabScrollView.addSubview(categoryTabStackView)
         view.addSubview(tableView)
-        
+        view.addSubview(emptyStateView)
+        view.addSubview(sharedEmptyStateView)
+        view.addSubview(createNewCollectionButton)
+
         // Setup category tabs
         setupCategoryTabs()
         
@@ -146,7 +241,25 @@ class CollectionsViewController: UIViewController {
             tableView.topAnchor.constraint(equalTo: categoryTabScrollView.bottomAnchor, constant: 16),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+
+            // Empty state view (centered in tableView area)
+            emptyStateView.centerXAnchor.constraint(equalTo: tableView.centerXAnchor),
+            emptyStateView.centerYAnchor.constraint(equalTo: tableView.centerYAnchor, constant: -60),
+            emptyStateView.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 40),
+            emptyStateView.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -40),
+
+            // Shared empty state view (centered in tableView area)
+            sharedEmptyStateView.centerXAnchor.constraint(equalTo: tableView.centerXAnchor),
+            sharedEmptyStateView.centerYAnchor.constraint(equalTo: tableView.centerYAnchor, constant: -60),
+            sharedEmptyStateView.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 40),
+            sharedEmptyStateView.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -40),
+
+            // Create new collection button (floating over tableView bottom-right)
+            createNewCollectionButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
+            createNewCollectionButton.bottomAnchor.constraint(equalTo: tableView.bottomAnchor, constant: -32),
+            createNewCollectionButton.widthAnchor.constraint(equalToConstant: 44),
+            createNewCollectionButton.heightAnchor.constraint(equalToConstant: 44),
         ])
     }
     
@@ -218,6 +331,26 @@ class CollectionsViewController: UIViewController {
         }
     }
     
+    private var isSheetMinimized: Bool {
+        sheetPresentationController?.selectedDetentIdentifier != .large
+    }
+
+    private func updateEmptyState() {
+        let personalEmpty = currentTab == .personal && personalCollections.isEmpty
+        let sharedEmpty = currentTab == .shared && sharedCollections.isEmpty
+        emptyStateView.isHidden = isSheetMinimized || !personalEmpty
+        sharedEmptyStateView.isHidden = isSheetMinimized || !sharedEmpty
+        createNewCollectionButton.isHidden = isSheetMinimized || currentTab == .shared
+    }
+
+    @objc private func createNewCollectionTapped() {
+        let modalVC = NewCollectionModalViewController()
+        modalVC.delegate = self
+        modalVC.modalPresentationStyle = .overCurrentContext
+        modalVC.modalTransitionStyle = .crossDissolve
+        present(modalVC, animated: true)
+    }
+
     @objc private func categoryTabTapped(_ sender: UIButton) {
         guard sender.tag < 2 else { return }
         let tabs: [CollectionTab] = [.personal, .shared]
@@ -225,8 +358,9 @@ class CollectionsViewController: UIViewController {
         currentTab = tab
         updateTabButtonStates()
         tableView.reloadData()
+        updateEmptyState()
     }
-    
+
     private func updateMapWithCollections() {
         // Combine all collections (personal + shared) and show on map
         let allCollections = personalCollections + sharedCollections
@@ -263,6 +397,7 @@ class CollectionsViewController: UIViewController {
                 // Wait for all member counts to load before reloading table
                 memberCountGroup.notify(queue: .main) {
                     self.tableView.reloadData()
+                    self.updateEmptyState()
                     // Update map with all collections (personal + shared)
                     self.updateMapWithCollections()
                     // Cache for Share Extension
@@ -735,5 +870,19 @@ extension CollectionsViewController: UITableViewDelegate, UITableViewDataSource 
             sheet.prefersGrabberVisible = true
         }
         present(placesVC, animated: true)
+    }
+}
+
+// MARK: - UISheetPresentationControllerDelegate
+extension CollectionsViewController: UISheetPresentationControllerDelegate {
+    func sheetPresentationControllerDidChangeSelectedDetentIdentifier(_ sheetPresentationController: UISheetPresentationController) {
+        updateEmptyState()
+    }
+}
+
+// MARK: - NewCollectionModalViewControllerDelegate
+extension CollectionsViewController: NewCollectionModalViewControllerDelegate {
+    func newCollectionModalViewController(_ controller: NewCollectionModalViewController, didCreateCollection collectionId: String) {
+        loadCollections()
     }
 }

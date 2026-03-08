@@ -17,7 +17,7 @@ final class NameRegistrationViewController: UIViewController {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
         label.text = "What should we call you?"
-        label.textAlignment = .center
+        label.textAlignment = .left
         label.font = .systemFont(ofSize: 24, weight: .bold)
         label.textColor = .black
         return label
@@ -27,13 +27,21 @@ final class NameRegistrationViewController: UIViewController {
         let textField = UITextField()
         textField.translatesAutoresizingMaskIntoConstraints = false
         textField.placeholder = "Enter your name"
-        textField.borderStyle = .roundedRect
+        textField.borderStyle = .none
+        textField.backgroundColor = .secondColor
+        textField.layer.cornerRadius = 8
+        textField.layer.masksToBounds = true
         textField.autocapitalizationType = .words
         textField.autocorrectionType = .no
         textField.returnKeyType = .done
         textField.delegate = self
         textField.addTarget(self, action: #selector(textFieldDidChange), for: .editingChanged)
         textField.accessibilityIdentifier = "name_text_field"
+        let paddingView = UIView(frame: CGRect(x: 0, y: 0, width: 12, height: 0))
+        textField.leftView = paddingView
+        textField.leftViewMode = .always
+        textField.rightView = paddingView
+        textField.rightViewMode = .always
         return textField
     }()
     
@@ -50,6 +58,9 @@ final class NameRegistrationViewController: UIViewController {
     private lazy var continueButton: CustomButton = {
         let button = CustomButton()
         button.translatesAutoresizingMaskIntoConstraints = false
+        button.style = .themeBlue
+        button.size = .large
+        button.isPerfectlyRounded = true
         button.setTitle("Continue", for: .normal)
         button.addTarget(self, action: #selector(continueButtonTapped), for: .touchUpInside)
         return button
@@ -83,7 +94,8 @@ final class NameRegistrationViewController: UIViewController {
     
     private func setupConstraints() {
         NSLayoutConstraint.activate([
-            titleLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            titleLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: Constants.standardPadding),
+            titleLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -Constants.standardPadding),
             titleLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 60),
             
             nameTextField.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: Constants.verticalSpacing),
