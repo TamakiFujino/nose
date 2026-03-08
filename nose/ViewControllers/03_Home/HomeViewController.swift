@@ -62,7 +62,7 @@ final class HomeViewController: UIViewController {
     
     private lazy var newButton: IconButton = {
         let button = IconButton(
-            image: UIImage(systemName: "bookmark", withConfiguration: footerIconConfig),
+            image: UIImage(systemName: "bookmark.fill", withConfiguration: footerIconConfig),
             action: #selector(newButtonTapped),
             target: self,
             backgroundColor: .clear
