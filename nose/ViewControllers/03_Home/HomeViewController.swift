@@ -85,9 +85,12 @@ final class HomeViewController: UIViewController {
     }()
     
     private lazy var mapView: MapView = {
-        // Create map view with default style
-        // Mapbox access token is set in AppDelegate as environment variable
-        let mapView = MapView(frame: .zero, mapInitOptions: MapInitOptions())
+        // Start zoomed out showing the globe for landing animation
+        let initialCamera = CameraOptions(
+            center: CLLocationCoordinate2D(latitude: 0, longitude: 0),
+            zoom: 1
+        )
+        let mapView = MapView(frame: .zero, mapInitOptions: MapInitOptions(cameraOptions: initialCamera))
         mapView.translatesAutoresizingMaskIntoConstraints = false
         mapView.ornaments.options.compass.visibility = .hidden
         mapView.ornaments.options.scaleBar.visibility = .hidden
