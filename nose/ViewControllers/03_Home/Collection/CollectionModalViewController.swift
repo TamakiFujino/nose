@@ -77,27 +77,26 @@ class CollectionModalViewController: UIViewController {
         return textField
     }()
     
-    lazy var cancelButton: UIButton = {
-        let button = UIButton(type: .system)
+    lazy var cancelButton: CustomButton = {
+        let button = CustomButton(type: .system)
         button.setTitle("Cancel", for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
-        button.setTitleColor(.systemGray, for: .normal)
-        button.backgroundColor = UIColor.systemGray5
-        button.layer.cornerRadius = 22 // Perfectly rounded (height 44 / 2)
+        button.style = .secondary
+        button.size = .medium
+        button.isPerfectlyRounded = true
         button.addTarget(self, action: #selector(cancelButtonTapped), for: .touchUpInside)
         button.translatesAutoresizingMaskIntoConstraints = false
         return button
     }()
-    
-    lazy var saveButton: UIButton = {
-        let button = UIButton(type: .system)
+
+    lazy var saveButton: CustomButton = {
+        let button = CustomButton(type: .system)
         button.setTitle("Save", for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
-        button.setTitleColor(.white, for: .normal)
-        button.backgroundColor = .systemGray4 // Start disabled
-        button.layer.cornerRadius = 22 // Perfectly rounded (height 44 / 2)
-        button.addTarget(self, action: #selector(saveButtonTapped), for: .touchUpInside)
+        button.style = .themeBlue
+        button.size = .medium
+        button.isPerfectlyRounded = true
         button.isEnabled = false
+        button.alpha = 0.5
+        button.addTarget(self, action: #selector(saveButtonTapped), for: .touchUpInside)
         button.translatesAutoresizingMaskIntoConstraints = false
         return button
     }()
@@ -290,7 +289,7 @@ class CollectionModalViewController: UIViewController {
     func updateSaveButtonState() {
         let isValid = !collectionName.isEmpty
         saveButton.isEnabled = isValid
-        saveButton.backgroundColor = isValid ? .themeBlue : .systemGray4
+        saveButton.alpha = isValid ? 1.0 : 0.5
     }
     
     func showImagePicker() {

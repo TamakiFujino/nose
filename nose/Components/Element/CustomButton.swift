@@ -19,6 +19,8 @@ class CustomButton: UIButton {
     var size: Size = .medium { didSet { applyStyle() } }
     var isPerfectlyRounded: Bool = false { didSet { updateCornerRadius() } }
 
+    private var gradientLayer: CAGradientLayer?
+
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupButton()
@@ -39,6 +41,10 @@ class CustomButton: UIButton {
         super.layoutSubviews()
         if isPerfectlyRounded {
             updateCornerRadius()
+        }
+        gradientLayer?.frame = bounds
+        if let gradientLayer = gradientLayer {
+            gradientLayer.cornerRadius = layer.cornerRadius
         }
     }
     
@@ -74,6 +80,10 @@ class CustomButton: UIButton {
             contentEdgeInsets = UIEdgeInsets(top: DesignTokens.Spacing.lg, left: DesignTokens.Spacing.xl, bottom: DesignTokens.Spacing.lg, right: DesignTokens.Spacing.xl)
         }
 
+        // Remove gradient if switching away from themeBlue
+        gradientLayer?.removeFromSuperlayer()
+        gradientLayer = nil
+
         // Colors by style
         switch style {
         case .primary:
@@ -97,10 +107,18 @@ class CustomButton: UIButton {
             layer.borderWidth = 0
             layer.borderColor = UIColor.clear.cgColor
         case .themeBlue:
-            backgroundColor = .themeBlue
+            backgroundColor = .clear
             setTitleColor(.white, for: .normal)
             layer.borderWidth = 0
             layer.borderColor = UIColor.clear.cgColor
+            let gradient = CAGradientLayer()
+            gradient.colors = [UIColor.themeBlue.cgColor, (UIColor(hex: "#BECEFA") ?? .themeBlue).cgColor]
+            gradient.startPoint = CGPoint(x: 0, y: 0.5)
+            gradient.endPoint = CGPoint(x: 1, y: 0.5)
+            gradient.frame = bounds
+            gradient.cornerRadius = layer.cornerRadius
+            layer.insertSublayer(gradient, at: 0)
+            gradientLayer = gradient
         }
     }
 }

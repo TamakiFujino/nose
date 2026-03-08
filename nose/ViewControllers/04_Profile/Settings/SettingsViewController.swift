@@ -10,7 +10,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     private lazy var avatarImageView: UIImageView = {
         let imageView = UIImageView()
         imageView.contentMode = .scaleAspectFit
-        imageView.backgroundColor = .secondColor
+        imageView.backgroundColor = .clear
         imageView.clipsToBounds = true
         imageView.layer.cornerRadius = 8
         imageView.isUserInteractionEnabled = true

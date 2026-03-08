@@ -17,7 +17,7 @@ class ConfirmationModalViewController: UIViewController {
     private let onPrimary: () -> Void
     private let onCancel: (() -> Void)?
 
-    private var cancelButton: UIButton?
+    private var cancelButton: CustomButton?
 
     private let containerView: UIView = {
         let view = UIView()
@@ -78,26 +78,17 @@ class ConfirmationModalViewController: UIViewController {
         setupBackgroundTap()
     }
 
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        if let cancel = cancelButton, cancel.bounds.height > 0 {
-            cancel.layer.cornerRadius = cancel.bounds.height / 2
-        }
-    }
-
     private func setupUI() {
         view.backgroundColor = UIColor.black.withAlphaComponent(0.5)
 
         titleLabel.text = titleText
         messageLabel.text = messageText
 
-        let cancel = UIButton(type: .system)
+        let cancel = CustomButton(type: .system)
         cancel.setTitle(cancelTitle, for: .normal)
-        cancel.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
-        cancel.setTitleColor(.black, for: .normal)
-        cancel.backgroundColor = .secondColor
-        cancel.layer.masksToBounds = true
-        cancel.layer.cornerRadius = 25  // pill: height 50 / 2
+        cancel.style = .secondary
+        cancel.size = .large
+        cancel.isPerfectlyRounded = true
         cancel.translatesAutoresizingMaskIntoConstraints = false
         cancel.addTarget(self, action: #selector(cancelTapped), for: .touchUpInside)
         cancelButton = cancel

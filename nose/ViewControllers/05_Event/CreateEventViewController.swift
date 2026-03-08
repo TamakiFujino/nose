@@ -58,16 +58,13 @@ final class CreateEventViewController: UIViewController {
         return imageView
     }()
     
-    private lazy var customizeAvatarButton: UIButton = {
-        let button = UIButton(type: .system)
+    private lazy var customizeAvatarButton: CustomButton = {
+        let button = CustomButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setTitle("Customize avatar", for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
-        button.backgroundColor = .fourthColor
-        button.setTitleColor(.white, for: .normal)
-        button.layer.cornerRadius = 24
-        button.clipsToBounds = true
-        button.contentEdgeInsets = UIEdgeInsets(top: 12, left: 20, bottom: 12, right: 20)
+        button.style = .primary
+        button.size = .medium
+        button.isPerfectlyRounded = true
         button.addTarget(self, action: #selector(customizeAvatarTapped), for: .touchUpInside)
         return button
     }()
@@ -285,27 +282,22 @@ final class CreateEventViewController: UIViewController {
     }()
     
     // Buttons
-    private lazy var cancelButton: UIButton = {
-        let button = UIButton(type: .system)
+    private lazy var cancelButton: CustomButton = {
+        let button = CustomButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setTitle("Cancel", for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
-        button.setTitleColor(.systemRed, for: .normal)
-        button.layer.borderWidth = 1
-        button.layer.borderColor = UIColor.systemRed.cgColor
-        button.layer.cornerRadius = 12
+        button.style = .destructive
+        button.size = .medium
         button.addTarget(self, action: #selector(cancelButtonTapped), for: .touchUpInside)
         return button
     }()
-    
-    private lazy var createButton: UIButton = {
-        let button = UIButton(type: .system)
+
+    private lazy var createButton: CustomButton = {
+        let button = CustomButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setTitle(isEditMode ? "Update Event" : "Create Event", for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 16, weight: .semibold)
-        button.setTitleColor(.white, for: .normal)
-        button.backgroundColor = .fourthColor
-        button.layer.cornerRadius = 12
+        button.style = .primary
+        button.size = .medium
         button.addTarget(self, action: #selector(createButtonTapped), for: .touchUpInside)
         return button
     }()
@@ -473,7 +465,6 @@ final class CreateEventViewController: UIViewController {
             createButton.topAnchor.constraint(equalTo: imagesCollectionView.bottomAnchor, constant: 40),
             createButton.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 20),
             createButton.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -20),
-            createButton.heightAnchor.constraint(equalToConstant: 50),
             
             // Bottom constraint for scroll view
             containerView.bottomAnchor.constraint(equalTo: createButton.bottomAnchor, constant: 40)

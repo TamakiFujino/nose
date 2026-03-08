@@ -161,16 +161,13 @@ class CollectionPlacesViewController: UIViewController {
         return stack
     }()
 
-    lazy var customizeButton: UIButton = {
-        let button = UIButton(type: .system)
+    lazy var customizeButton: CustomButton = {
+        let button = CustomButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setTitle("Customize avatar", for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
-        button.backgroundColor = .themeBlue
-        button.setTitleColor(.white, for: .normal)
-        button.layer.cornerRadius = 24 // rounded here only
-        button.clipsToBounds = true
-        button.contentEdgeInsets = UIEdgeInsets(top: 12, left: 20, bottom: 12, right: 20)
+        button.style = .themeBlue
+        button.size = .medium
+        button.isPerfectlyRounded = true
         button.addTarget(self, action: #selector(customizeAvatarTapped), for: .touchUpInside)
         return button
     }()
