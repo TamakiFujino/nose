@@ -39,9 +39,11 @@ class MessageModalViewController: UIViewController {
     private lazy var okButton: CustomButton = {
         let button = CustomButton()
         button.setTitle(buttonTitle, for: .normal)
-        button.style = .themeBlue
+        button.style = .primary
         button.size = .large
         button.isPerfectlyRounded = true
+        button.backgroundColor = .themeBlue
+        button.setTitleColor(.white, for: .normal)
         button.addTarget(self, action: #selector(okButtonTapped), for: .touchUpInside)
         button.translatesAutoresizingMaskIntoConstraints = false
         return button

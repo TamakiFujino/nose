@@ -83,6 +83,9 @@ class CollectionModalViewController: UIViewController {
         button.style = .secondary
         button.size = .medium
         button.isPerfectlyRounded = true
+        button.backgroundColor = .secondColor
+        button.setTitleColor(.fourthColor, for: .normal)
+        button.layer.borderWidth = 0
         button.addTarget(self, action: #selector(cancelButtonTapped), for: .touchUpInside)
         button.translatesAutoresizingMaskIntoConstraints = false
         return button
@@ -91,9 +94,11 @@ class CollectionModalViewController: UIViewController {
     lazy var saveButton: CustomButton = {
         let button = CustomButton(type: .system)
         button.setTitle("Save", for: .normal)
-        button.style = .themeBlue
+        button.style = .primary
         button.size = .medium
         button.isPerfectlyRounded = true
+        button.backgroundColor = .themeBlue
+        button.setTitleColor(.white, for: .normal)
         button.isEnabled = false
         button.alpha = 0.5
         button.addTarget(self, action: #selector(saveButtonTapped), for: .touchUpInside)

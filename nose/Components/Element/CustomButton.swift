@@ -58,21 +58,21 @@ class CustomButton: UIButton {
         // Typography by size
         switch size {
         case .small:
-            titleLabel?.font = AppFonts.body(14)
+            titleLabel?.font = AppFonts.bodyBold(14)
             if !isPerfectlyRounded {
                 layer.cornerRadius = DesignTokens.Radii.sm
             }
             heightAnchor.constraint(greaterThanOrEqualToConstant: 36).isActive = true
             contentEdgeInsets = UIEdgeInsets(top: DesignTokens.Spacing.sm, left: DesignTokens.Spacing.md, bottom: DesignTokens.Spacing.sm, right: DesignTokens.Spacing.md)
         case .medium:
-            titleLabel?.font = AppFonts.body(16)
+            titleLabel?.font = AppFonts.bodyBold(16)
             if !isPerfectlyRounded {
                 layer.cornerRadius = DesignTokens.Radii.md
             }
             heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
             contentEdgeInsets = UIEdgeInsets(top: DesignTokens.Spacing.md, left: DesignTokens.Spacing.lg, bottom: DesignTokens.Spacing.md, right: DesignTokens.Spacing.lg)
         case .large:
-            titleLabel?.font = AppFonts.body(18)
+            titleLabel?.font = AppFonts.bodyBold(18)
             if !isPerfectlyRounded {
                 layer.cornerRadius = DesignTokens.Radii.lg
             }
