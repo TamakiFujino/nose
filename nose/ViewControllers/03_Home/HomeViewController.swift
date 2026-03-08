@@ -86,9 +86,12 @@ final class HomeViewController: UIViewController {
     }()
     
     private lazy var mapView: MapView = {
-        // Create map view with default style
-        // Mapbox access token is set in AppDelegate as environment variable
-        let mapView = MapView(frame: .zero, mapInitOptions: MapInitOptions())
+        // Start zoomed out showing the globe for landing animation
+        let initialCamera = CameraOptions(
+            center: CLLocationCoordinate2D(latitude: 0, longitude: 0),
+            zoom: 1
+        )
+        let mapView = MapView(frame: .zero, mapInitOptions: MapInitOptions(cameraOptions: initialCamera))
         mapView.translatesAutoresizingMaskIntoConstraints = false
         mapView.ornaments.options.compass.visibility = .hidden
         mapView.ornaments.options.scaleBar.visibility = .hidden
@@ -480,12 +483,12 @@ final class HomeViewController: UIViewController {
     private func setDefaultLocationCamera() {
         guard !hasSetInitialCamera else { return }
         hasSetInitialCamera = true
-        
+
         let cameraOptions = CameraOptions(
             center: CLLocationCoordinate2D(latitude: 35.6812, longitude: 139.7671),  // Tokyo coordinates as default
             zoom: 15
         )
-        mapView.camera.ease(to: cameraOptions, duration: 0.0)
+        mapView.camera.fly(to: cameraOptions, duration: 3.0)
     }
     
     @objc private func currentLocationButtonTapped() {
@@ -758,14 +761,13 @@ extension HomeViewController: CLLocationManagerDelegate {
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
-        
-        // Only move to current location if we haven't set initial camera yet
-        // This prevents the jarring movement from default to current location
+
+        // On first location, fly from globe view to current location (landing animation)
         if !hasSetInitialCamera {
             hasSetInitialCamera = true
-        mapManager?.moveToCurrentLocation()
+            mapManager?.flyToLocation(coordinate: location.coordinate, duration: 3.0)
         }
-        
+
         locationManager.stopUpdatingLocation() // Stop updating after getting the first location
     }
     

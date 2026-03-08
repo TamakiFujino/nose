@@ -109,6 +109,14 @@ final class MapboxMapManager: NSObject {
     }
     
     // MARK: - Public Methods
+    func flyToLocation(coordinate: CLLocationCoordinate2D, zoom: Double = Constants.defaultZoom, duration: TimeInterval = 3.0) {
+        let cameraOptions = CameraOptions(
+            center: coordinate,
+            zoom: zoom
+        )
+        mapView.camera.fly(to: cameraOptions, duration: duration)
+    }
+
     func moveToCurrentLocation() {
         guard let location = currentLocation else {
             locationManager.requestLocation()
