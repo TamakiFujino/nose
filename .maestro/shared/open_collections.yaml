@@ -1,0 +1,5 @@
+appId: com.tamakifujino.nose
+---
+# Navigate to collections: tap bookmark button
+- tapOn:
+    id: "bookmark"

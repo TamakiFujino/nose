@@ -80,13 +80,13 @@ struct User: Codable {
     // Create from Firestore document
     static func fromFirestore(_ document: DocumentSnapshot) -> User? {
         guard let data = document.data() else {
-            print("❌ No data found in Firestore document")
+            Logger.log("No data found in Firestore document", level: .error, category: "User")
             return nil
         }
         
         let id = document.documentID
         guard !id.isEmpty else {
-            print("❌ Empty document ID")
+            Logger.log("Empty document ID", level: .error, category: "User")
             return nil
         }
         
@@ -100,7 +100,7 @@ struct User: Codable {
         } else if let intValue = data["userId"] as? Int {
             userId = String(intValue)
         } else {
-            print("⚠️ Invalid userId type, using document ID")
+            Logger.log("Invalid userId type, using document ID", level: .warn, category: "User")
             userId = id
             invalidFields.append("userId")
         }
@@ -112,7 +112,7 @@ struct User: Codable {
         } else if let intValue = data["name"] as? Int {
             name = String(intValue)
         } else {
-            print("⚠️ Invalid name type, using default name")
+            Logger.log("Invalid name type, using default name", level: .warn, category: "User")
             name = "User \(id.prefix(6))"
             invalidFields.append("name")
         }
@@ -125,7 +125,7 @@ struct User: Codable {
                   let intValue = Int(stringValue) {
             version = intValue
         } else {
-            print("⚠️ Invalid version type. Defaulting to 1")
+            Logger.log("Invalid version type. Defaulting to 1", level: .warn, category: "User")
             version = 1
             invalidFields.append("version")
         }
@@ -137,7 +137,7 @@ struct User: Codable {
         } else if let date = data["createdAt"] as? Date {
             createdAt = date
         } else {
-            print("⚠️ Invalid createdAt type. Using current date")
+            Logger.log("Invalid createdAt type. Using current date", level: .warn, category: "User")
             createdAt = Date()
             invalidFields.append("createdAt")
         }
@@ -148,7 +148,7 @@ struct User: Codable {
         } else if let date = data["lastLoginAt"] as? Date {
             lastLoginAt = date
         } else {
-            print("⚠️ Invalid lastLoginAt type. Using current date")
+            Logger.log("Invalid lastLoginAt type. Using current date", level: .warn, category: "User")
             lastLoginAt = Date()
             invalidFields.append("lastLoginAt")
         }
@@ -170,7 +170,7 @@ struct User: Codable {
             } else if let language = preferencesData["language"] as? Int {
                 preferences.language = String(language)
             } else {
-                print("⚠️ Invalid language type in preferences")
+                Logger.log("Invalid language type in preferences", level: .warn, category: "User")
                 invalidFields.append("preferences.language")
             }
             
@@ -179,7 +179,7 @@ struct User: Codable {
             } else if let theme = preferencesData["theme"] as? Int {
                 preferences.theme = String(theme)
             } else {
-                print("⚠️ Invalid theme type in preferences")
+                Logger.log("Invalid theme type in preferences", level: .warn, category: "User")
                 invalidFields.append("preferences.theme")
             }
             
@@ -190,11 +190,11 @@ struct User: Codable {
             } else if let notifications = preferencesData["notifications"] as? String {
                 preferences.notifications = notifications.lowercased() == "true"
             } else {
-                print("⚠️ Invalid notifications type in preferences")
+                Logger.log("Invalid notifications type in preferences", level: .warn, category: "User")
                 invalidFields.append("preferences.notifications")
             }
         } else {
-            print("⚠️ Invalid preferences structure")
+            Logger.log("Invalid preferences structure", level: .warn, category: "User")
             invalidFields.append("preferences")
         }
         
@@ -209,7 +209,7 @@ struct User: Codable {
         } else if let isDeleted = data["isDeleted"] as? String {
             user.isDeleted = isDeleted.lowercased() == "true"
         } else {
-            print("⚠️ Invalid isDeleted type. Defaulting to false")
+            Logger.log("Invalid isDeleted type. Defaulting to false", level: .warn, category: "User")
             user.isDeleted = false
             invalidFields.append("isDeleted")
         }
@@ -232,7 +232,7 @@ struct User: Codable {
                 return nil
             }
         } else {
-            print("⚠️ Invalid friends array type")
+            Logger.log("Invalid friends array type", level: .warn, category: "User")
             user.friends = []
             invalidFields.append("friends")
         }
@@ -252,16 +252,16 @@ struct User: Codable {
                 return nil
             }
         } else {
-            print("⚠️ Invalid blockedUsers array type")
+            Logger.log("Invalid blockedUsers array type", level: .warn, category: "User")
             user.blockedUsers = []
             invalidFields.append("blockedUsers")
         }
         
         if !invalidFields.isEmpty {
-            print("⚠️ User \(id) has \(invalidFields.count) invalid fields: \(invalidFields.joined(separator: ", "))")
+            Logger.log("User \(id) has \(invalidFields.count) invalid fields: \(invalidFields.joined(separator: ", "))", level: .error, category: "User")
         }
         
-        print("✅ Successfully parsed user: \(id)")
+        Logger.log("Successfully parsed user: \(id)", level: .info, category: "User")
         return user
     }
     

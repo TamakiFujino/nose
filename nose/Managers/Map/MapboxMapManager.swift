@@ -22,8 +22,8 @@ final class MapboxMapManager: NSObject {
     // MARK: - Properties
     private let mapView: MapView
     private let locationManager = CLLocationManager()
-    private var currentLocation: CLLocation?
-    private var currentLocationAnnotation: PointAnnotation?
+    private(set) var currentLocation: CLLocation?
+    private var currentLocationView: UIView?
     private var searchResults: [GMSPlace] = []
     private var sessionToken: GMSAutocompleteSessionToken?
     private var displayLink: CADisplayLink?
@@ -33,7 +33,6 @@ final class MapboxMapManager: NSObject {
     private var eventAnnotationManager: PointAnnotationManager?
     private var collectionPlaceAnnotationManager: PointAnnotationManager?
     private var searchPlaceAnnotationManager: PointAnnotationManager?
-    private var currentLocationAnnotationManager: PointAnnotationManager?
     
     // Store annotation IDs and associated data
     private var placeAnnotations: [String: PointAnnotation] = [:]
@@ -43,8 +42,10 @@ final class MapboxMapManager: NSObject {
     private var searchPinView: UIImageView?
     private var searchPlace: GMSPlace?
     private var collectionPlacesData: [(place: PlaceCollection.Place, collection: PlaceCollection)] = []
-    private var followUserLocation: Bool = true
+    private var followUserLocation: Bool = false
+    var isAnimatingLanding = false
     private var currentZoom: Double = Constants.defaultZoom
+    private var hiddenLayerIds: [String] = []
     
     weak var delegate: MapboxMapManagerDelegate?
     
@@ -71,7 +72,6 @@ final class MapboxMapManager: NSObject {
         eventAnnotationManager = mapView.annotations.makePointAnnotationManager(id: "event-annotations")
         collectionPlaceAnnotationManager = mapView.annotations.makePointAnnotationManager(id: "collection-annotations")
         searchPlaceAnnotationManager = mapView.annotations.makePointAnnotationManager(id: "search-annotations")
-        currentLocationAnnotationManager = mapView.annotations.makePointAnnotationManager(id: "current-location-annotations")
         
         // Set up annotation tap handling using gesture recognizer
         // Mapbox v11 uses gesture recognizers for annotation taps
@@ -96,10 +96,7 @@ final class MapboxMapManager: NSObject {
             self.updateSearchPinPosition()
         }
         
-        // Set up map loaded event
-        mapView.mapboxMap.onNext(event: .mapLoaded) { [weak self] _ in
-            // Map style loaded
-        }
+        // Map loaded event removed - landing animation uses viewDidAppear instead
     }
     
     private func setupLocationManager() {
@@ -109,6 +106,14 @@ final class MapboxMapManager: NSObject {
     }
     
     // MARK: - Public Methods
+    func flyToLocation(coordinate: CLLocationCoordinate2D, zoom: Double = Constants.defaultZoom, duration: TimeInterval = 3.0) {
+        let cameraOptions = CameraOptions(
+            center: coordinate,
+            zoom: zoom
+        )
+        mapView.camera.fly(to: cameraOptions, duration: duration)
+    }
+
     func moveToCurrentLocation() {
         guard let location = currentLocation else {
             locationManager.requestLocation()
@@ -122,6 +127,52 @@ final class MapboxMapManager: NSObject {
         mapView.camera.ease(to: cameraOptions, duration: 0.5)
     }
     
+    func performLandingAnimation(to coordinate: CLLocationCoordinate2D, completion: @escaping () -> Void) {
+        // Hide detail layers (labels, POIs, 3D buildings) to reduce rendering load during zoom
+        hideDetailLayers()
+
+        // Stage 1: Globe → continent (zoom 0→4), 1.0s
+        let stage1 = CameraOptions(center: coordinate, zoom: 4)
+        mapView.camera.ease(to: stage1, duration: 1.0, curve: .easeIn) { [weak self] _ in
+            guard let self = self else { return }
+            // Stage 2: Continent → city (zoom 4→11), 1.2s
+            let stage2 = CameraOptions(center: coordinate, zoom: 11)
+            self.mapView.camera.ease(to: stage2, duration: 1.2, curve: .linear) { [weak self] _ in
+                guard let self = self else { return }
+                // Restore detail layers before final zoom to street level
+                self.showDetailLayers()
+                // Stage 3: City → street (zoom 11→15), 0.8s
+                let stage3 = CameraOptions(center: coordinate, zoom: Constants.defaultZoom)
+                self.mapView.camera.ease(to: stage3, duration: 0.8, curve: .easeOut) { _ in
+                    completion()
+                }
+            }
+        }
+    }
+
+    func finishLandingAnimation() {
+        showDetailLayers()
+        isAnimatingLanding = false
+    }
+
+    private func hideDetailLayers() {
+        hiddenLayerIds = []
+        let allLayers = mapView.mapboxMap.allLayerIdentifiers
+        for layer in allLayers {
+            if layer.type == .symbol || layer.type == .fillExtrusion {
+                try? mapView.mapboxMap.setLayerProperty(for: layer.id, property: "visibility", value: "none")
+                hiddenLayerIds.append(layer.id)
+            }
+        }
+    }
+
+    private func showDetailLayers() {
+        for layerId in hiddenLayerIds {
+            try? mapView.mapboxMap.setLayerProperty(for: layerId, property: "visibility", value: "visible")
+        }
+        hiddenLayerIds = []
+    }
+
     func searchPlaces(query: String, completion: @escaping ([GMSAutocompletePrediction]) -> Void) {
         let placesClient = GMSPlacesClient.shared()
         let filter = GMSAutocompleteFilter()
@@ -407,15 +458,24 @@ final class MapboxMapManager: NSObject {
     }
     
     private func updateCurrentLocationMarker(at location: CLLocation) {
-        // Remove existing current location marker
-        if let existingAnnotation = currentLocationAnnotation {
-            currentLocationAnnotationManager?.annotations.removeAll(where: { $0.id == existingAnnotation.id })
+        if let existingView = currentLocationView {
+            // Update position of existing view annotation
+            let options = ViewAnnotationOptions(geometry: Point(location.coordinate))
+            try? mapView.viewAnnotations.update(existingView, options: options)
+        } else {
+            // Create new current location view with pulsing animation
+            let view = MarkerFactory.createCurrentLocationMarkerView()
+            let options = ViewAnnotationOptions(
+                geometry: Point(location.coordinate),
+                width: view.bounds.width,
+                height: view.bounds.height,
+                allowOverlap: true,
+                anchor: .center
+            )
+            try? mapView.viewAnnotations.add(view, options: options)
+            currentLocationView = view
+            MarkerFactory.startPulsingAnimation(on: view)
         }
-        
-        // Create new current location annotation
-        let annotation = MarkerFactory.createCurrentLocationAnnotation(at: location)
-        currentLocationAnnotation = annotation
-        currentLocationAnnotationManager?.annotations = [annotation]
     }
     
     @objc private func handleMapTap(_ gesture: UITapGestureRecognizer) {
@@ -471,11 +531,17 @@ extension MapboxMapManager: CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
         currentLocation = location
-        
+
+        // During landing animation, only save location - skip camera and marker updates
+        guard !isAnimatingLanding else {
+            manager.stopUpdatingLocation()
+            return
+        }
+
         if followUserLocation {
             moveToCurrentLocation()
         }
-        
+
         updateCurrentLocationMarker(at: location)
         manager.stopUpdatingLocation()
     }
@@ -487,6 +553,8 @@ extension MapboxMapManager: CLLocationManagerDelegate {
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         switch manager.authorizationStatus {
         case .authorizedWhenInUse, .authorizedAlways:
+            // During landing animation, skip - HomeViewController manages location updates
+            guard !isAnimatingLanding else { return }
             locationManager.startUpdatingLocation()
         case .denied, .restricted:
             delegate?.mapboxMapManager(self, didFailWithError: NSError(
@@ -495,7 +563,8 @@ extension MapboxMapManager: CLLocationManagerDelegate {
                 userInfo: [NSLocalizedDescriptionKey: "Location access denied"]
             ))
         case .notDetermined:
-            locationManager.requestWhenInUseAuthorization()
+            // Permission is managed by HomeViewController
+            break
         @unknown default:
             break
         }

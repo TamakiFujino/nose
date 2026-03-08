@@ -1,6 +1,5 @@
 import UIKit
 import GooglePlaces
-import FirebaseFirestore
 import FirebaseAuth
 import MapKit
 
@@ -499,18 +498,6 @@ final class PlaceDetailViewController: UIViewController {
         present(saveVC, animated: true)
     }
     
-    private func savePlaceToCollection(_ collection: PlaceCollection) {
-        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
-        let db = Firestore.firestore()
-        
-        // Get references to both collections
-        _ = FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collection.id, db: db)
-            
-        _ = FirestorePaths.collectionDoc(userId: collection.userId, collectionId: collection.id, db: db)
-        
-        // First get the current collection data
-        // ... existing code ...
-    }
 }
 
 // MARK: - UICollectionViewDelegate & UICollectionViewDataSource

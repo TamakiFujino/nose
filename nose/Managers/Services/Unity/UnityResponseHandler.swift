@@ -7,7 +7,7 @@ import Foundation
     
     /// Handle Unity response - call this method from your iOS Unity integration
     @objc public func handleUnityResponse(_ response: String) {
-        print("📱 UnityResponseHandler: Received response from Unity: \(response)")
+        Logger.log("UnityResponseHandler: Received response from Unity: \(response)", level: .debug, category: "UnityResponse")
         
         // Forward the response to UnityManager asynchronously
         Task { @MainActor in

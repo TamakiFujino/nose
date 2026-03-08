@@ -1,6 +1,5 @@
 import UIKit
 import FirebaseAuth
-import FirebaseFirestore
 
 final class AccountViewController: UIViewController {
     

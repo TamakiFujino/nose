@@ -1,12 +1,28 @@
 import time
 from appium.webdriver.common.appiumby import AppiumBy
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import NoAlertPresentException, TimeoutException
+from selenium.webdriver.support.ui import WebDriverWait
 from utils.config import TEST_USERS
+
+def _accept_alert_if_present(driver, timeout=10):
+    """Wait for an iOS system alert and accept it. Do nothing if no alert appears."""
+    try:
+        WebDriverWait(driver, timeout).until(lambda d: _try_accept_alert(d))
+    except TimeoutException:
+        pass
+
+def _try_accept_alert(driver):
+    try:
+        driver.switch_to.alert.accept()
+        return True
+    except NoAlertPresentException:
+        return False
 
 def google_login(driver, user_key):
     """
     Perform Google login for a specific user
-    
+
     Args:
         driver: Appium WebDriver instance
         user_key: Key of the user in TEST_USERS dict ('user_a' or 'user_b')
@@ -14,10 +30,9 @@ def google_login(driver, user_key):
     # Find and click Google login button
     google_login_button = driver.find_element(AppiumBy.ACCESSIBILITY_ID, 'Continue with Google')
     google_login_button.click()
-    time.sleep(2)
 
-    # Accept iOS alert
-    driver.switch_to.alert.accept()
+    # Accept iOS alert if it appears (e.g. "Sign In" consent dialog)
+    _accept_alert_if_present(driver, timeout=10)
     time.sleep(2)
 
     # Select user account

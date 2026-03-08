@@ -2,7 +2,6 @@ import UIKit
 import MapboxMaps
 import CoreLocation
 import GooglePlaces
-import FirebaseFirestore
 import FirebaseAuth
 
 final class HomeViewController: UIViewController {
@@ -68,7 +67,7 @@ final class HomeViewController: UIViewController {
             target: self,
             backgroundColor: .clear
         )
-        button.accessibilityIdentifier = "sparkle"
+        button.accessibilityIdentifier = "bookmark"
         button.accessibilityLabel = "Collections"
         return button
     }()
@@ -86,9 +85,12 @@ final class HomeViewController: UIViewController {
     }()
     
     private lazy var mapView: MapView = {
-        // Create map view with default style
-        // Mapbox access token is set in AppDelegate as environment variable
-        let mapView = MapView(frame: .zero, mapInitOptions: MapInitOptions())
+        // Start fully zoomed out showing the whole globe for landing animation
+        let initialCamera = CameraOptions(
+            center: CLLocationCoordinate2D(latitude: 0, longitude: 0),
+            zoom: 0
+        )
+        let mapView = MapView(frame: .zero, mapInitOptions: MapInitOptions(cameraOptions: initialCamera))
         mapView.translatesAutoresizingMaskIntoConstraints = false
         mapView.ornaments.options.compass.visibility = .hidden
         mapView.ornaments.options.scaleBar.visibility = .hidden
@@ -112,6 +114,7 @@ final class HomeViewController: UIViewController {
     }()
     
     private var hasSetInitialCamera = false
+    private var hasAppeared = false
     
     private lazy var searchResultsTableView: UITableView = {
         let tableView = UITableView()
@@ -209,42 +212,25 @@ final class HomeViewController: UIViewController {
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
-        definesPresentationContext = true
         setupUI()
         setupManagers()
         setupLocationManager()
         setupNotificationObservers()
         loadEvents()
-        
-        // Check location permission and set initial camera accordingly
-        // This happens after UI setup so mapView is already created
-        checkLocationPermissionForInitialCamera()
+        // Landing animation starts in viewDidAppear
     }
     
     deinit {
         NotificationCenter.default.removeObserver(self)
     }
     
-    private func checkLocationPermissionForInitialCamera() {
-        // Check permission status and set camera accordingly
-        switch locationManager.authorizationStatus {
-        case .restricted, .denied:
-            // Location not allowed - show default location immediately
-            setDefaultLocationCamera()
-        case .authorizedWhenInUse, .authorizedAlways:
-            // Permission granted - location manager will handle camera when location arrives
-            // Don't set default camera - wait for location update
-            break
-        case .notDetermined:
-            // Permission not determined yet - don't set camera, wait for permission response
-            // Default camera will be set if permission is denied, or we'll wait for location if granted
-            break
-        @unknown default:
-            // Fallback to default location
-            setDefaultLocationCamera()
-        }
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        guard !hasAppeared else { return }
+        hasAppeared = true
+        startLandingAnimation()
     }
-    
+
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         // Hide navigation bar on this screen
@@ -421,7 +407,10 @@ final class HomeViewController: UIViewController {
         // Use reduced accuracy for faster initial location fix
         locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
         locationManager.distanceFilter = 10 // Only update if moved 10 meters
-        checkLocationPermission()
+        // Only request permission here - location updates start in startLandingAnimation
+        if locationManager.authorizationStatus == .notDetermined {
+            locationManager.requestWhenInUseAuthorization()
+        }
     }
     
     private func setupNotificationObservers() {
@@ -454,40 +443,68 @@ final class HomeViewController: UIViewController {
     }
     
     private func checkLocationPermission() {
+        let isAnimating = mapManager?.isAnimatingLanding ?? false
+
         switch locationManager.authorizationStatus {
         case .notDetermined:
-            // Only request permission if we haven't asked before
             locationManager.requestWhenInUseAuthorization()
-            // Don't set camera yet - wait for permission response
         case .restricted, .denied:
-            // Location not allowed - show default location if not already set
-            if !hasSetInitialCamera {
+            if !isAnimating && !hasSetInitialCamera {
                 setDefaultLocationCamera()
             }
         case .authorizedWhenInUse, .authorizedAlways:
-            // Permission granted - wait for current location before setting camera
             locationManager.startUpdatingLocation()
-            // Don't set default camera - wait for location update
         @unknown default:
-            // Fallback to default location
-            if !hasSetInitialCamera {
+            if !isAnimating && !hasSetInitialCamera {
                 setDefaultLocationCamera()
             }
-            break
         }
     }
     
     private func setDefaultLocationCamera() {
         guard !hasSetInitialCamera else { return }
         hasSetInitialCamera = true
-        
+
         let cameraOptions = CameraOptions(
-            center: CLLocationCoordinate2D(latitude: 35.6812, longitude: 139.7671),  // Tokyo coordinates as default
+            center: CLLocationCoordinate2D(latitude: 35.6812, longitude: 139.7671),
             zoom: 15
         )
         mapView.camera.ease(to: cameraOptions, duration: 0.0)
     }
     
+    private func startLandingAnimation() {
+        mapManager?.isAnimatingLanding = true
+
+        // Start location updates if already authorized
+        if locationManager.authorizationStatus == .authorizedWhenInUse ||
+           locationManager.authorizationStatus == .authorizedAlways {
+            locationManager.startUpdatingLocation()
+        }
+
+        // Show globe for 0.8s, then begin zoom animation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+            self?.beginZoomAnimation()
+        }
+    }
+
+    private func beginZoomAnimation() {
+        // Get coordinate from HC's location manager or MapboxMapManager, fallback to Tokyo
+        let coordinate: CLLocationCoordinate2D
+        if let location = locationManager.location {
+            coordinate = location.coordinate
+        } else if let location = mapManager?.currentLocation {
+            coordinate = location.coordinate
+        } else {
+            coordinate = CLLocationCoordinate2D(latitude: 35.6812, longitude: 139.7671)
+        }
+
+        mapManager?.performLandingAnimation(to: coordinate) { [weak self] in
+            guard let self = self else { return }
+            self.hasSetInitialCamera = true
+            self.mapManager?.finishLandingAnimation()
+        }
+    }
+
     @objc private func currentLocationButtonTapped() {
         switch locationManager.authorizationStatus {
         case .authorizedWhenInUse, .authorizedAlways:
@@ -550,6 +567,8 @@ final class HomeViewController: UIViewController {
     @objc private func newButtonTapped() {
         let collectionsVC = CollectionsViewController()
         collectionsVC.mapManager = mapManager
+        collectionsVC.modalPresentationStyle = .pageSheet
+        collectionsVC.configureSheetPresentation()
         present(collectionsVC, animated: true)
     }
     
@@ -738,10 +757,13 @@ extension HomeViewController: MapboxMapManagerDelegate {
     }
     
     func mapboxMapManager(_ manager: MapboxMapManager, didTapEventMarker event: Event) {
+        definesPresentationContext = true
         let eventDetailVC = EventDetailViewController(event: event)
         eventDetailVC.modalPresentationStyle = .overCurrentContext
         eventDetailVC.modalTransitionStyle = .crossDissolve
-        present(eventDetailVC, animated: true)
+        present(eventDetailVC, animated: true) { [weak self] in
+            self?.definesPresentationContext = false
+        }
     }
     
     func mapboxMapManager(_ manager: MapboxMapManager, didTapCollectionPlace place: GMSPlace) {
@@ -757,23 +779,23 @@ extension HomeViewController: CLLocationManagerDelegate {
     }
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let location = locations.last else { return }
-        
-        // Only move to current location if we haven't set initial camera yet
-        // This prevents the jarring movement from default to current location
-        if !hasSetInitialCamera {
-            hasSetInitialCamera = true
-        mapManager?.moveToCurrentLocation()
+        guard let _ = locations.last else { return }
+
+        // During landing animation, just stop updating - coordinate is read in beginZoomAnimation
+        if mapManager?.isAnimatingLanding ?? false {
+            locationManager.stopUpdatingLocation()
+            return
         }
-        
-        locationManager.stopUpdatingLocation() // Stop updating after getting the first location
+
+        // After animation, camera is already set
+        locationManager.stopUpdatingLocation()
     }
     
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         Logger.log("Location manager failed: \(error.localizedDescription)", level: .warn, category: "Home")
-        
-        // If we haven't set initial camera yet and location fails, show default location
-        if !hasSetInitialCamera {
+
+        // During animation, don't interfere - beginZoomAnimation handles fallback to Tokyo
+        if !(mapManager?.isAnimatingLanding ?? false) && !hasSetInitialCamera {
             setDefaultLocationCamera()
         }
     }

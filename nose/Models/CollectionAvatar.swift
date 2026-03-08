@@ -190,7 +190,7 @@ struct CollectionAvatar: Codable {
                             if hasValidEntries {
                                 selections[category] = convertedDict
                             } else {
-                                print("⚠️ Skipping category with no valid string values: \(category)")
+                                Logger.log("Skipping category with no valid string values: \(category)", level: .warn, category: "CollectionAvatar")
                                 invalidEntries.append(category)
                             }
                         }
@@ -203,7 +203,7 @@ struct CollectionAvatar: Codable {
                             if valueDict["model"] != nil || valueDict["color"] != nil {
                                 selections[category] = valueDict
                             } else {
-                                print("⚠️ Skipping invalid value structure for category: \(category)")
+                                Logger.log("Skipping invalid value structure for category: \(category)", level: .error, category: "CollectionAvatar")
                                 invalidEntries.append(category)
                             }
                         } else if let valueDict = value as? [String: Any] {
@@ -227,11 +227,11 @@ struct CollectionAvatar: Codable {
                             if hasValidEntries {
                                 selections[category] = convertedDict
                             } else {
-                                print("⚠️ Skipping category with no valid string values: \(category)")
+                                Logger.log("Skipping category with no valid string values: \(category)", level: .warn, category: "CollectionAvatar")
                                 invalidEntries.append(category)
                             }
                         } else {
-                            print("⚠️ Skipping invalid value type for category: \(category)")
+                            Logger.log("Skipping invalid value type for category: \(category)", level: .error, category: "CollectionAvatar")
                             invalidEntries.append(category)
                         }
                     }
@@ -277,7 +277,7 @@ struct CollectionAvatar: Codable {
             }
             
             if !invalidEntries.isEmpty {
-                print("⚠️ Skipped \(invalidEntries.count) invalid entries: \(invalidEntries.joined(separator: ", "))")
+                Logger.log("Skipped \(invalidEntries.count) invalid entries: \(invalidEntries.joined(separator: ", "))", level: .error, category: "CollectionAvatar")
             }
             
             // Return nil only if we have no valid selections at all
@@ -333,12 +333,12 @@ struct CollectionAvatar: Codable {
     static func fromFirestore(_ data: [String: Any]) -> CollectionAvatar? {
         guard let collectionId = data["collectionId"] as? String,
               !collectionId.isEmpty else {
-            print("❌ Missing or empty collectionId")
+            Logger.log("Missing or empty collectionId", level: .error, category: "CollectionAvatar")
             return nil
         }
         
         guard let avatarDataDict = data["avatarData"] as? [String: Any] else {
-            print("❌ Missing avatarData")
+            Logger.log("Missing avatarData", level: .error, category: "CollectionAvatar")
             return nil
         }
         
@@ -349,7 +349,7 @@ struct CollectionAvatar: Codable {
         } else if let date = data["createdAt"] as? Date {
             createdAt = date
         } else {
-            print("❌ Invalid createdAt type. Expected Timestamp or Date")
+            Logger.log("Invalid createdAt type. Expected Timestamp or Date", level: .error, category: "CollectionAvatar")
             return nil
         }
         
@@ -362,7 +362,7 @@ struct CollectionAvatar: Codable {
         } else if let stringValue = data["isOwner"] as? String {
             isOwner = stringValue.lowercased() == "true"
         } else {
-            print("❌ Invalid isOwner type. Expected Bool, Int, or String")
+            Logger.log("Invalid isOwner type. Expected Bool, Int, or String", level: .error, category: "CollectionAvatar")
             return nil
         }
         
@@ -372,7 +372,7 @@ struct CollectionAvatar: Codable {
             if let parsedVersion = Version(rawValue: versionInt) {
                 version = parsedVersion
             } else {
-                print("⚠️ Unknown version \(versionInt) in Firestore data")
+                Logger.log("Unknown version \(versionInt) in Firestore data", level: .warn, category: "CollectionAvatar")
                 return nil
             }
         } else if let versionString = data["version"] as? String,
@@ -380,7 +380,7 @@ struct CollectionAvatar: Codable {
                   let parsedVersion = Version(rawValue: versionInt) {
             version = parsedVersion
         } else {
-            print("⚠️ Invalid version type or value. Defaulting to v1")
+            Logger.log("Invalid version type or value. Defaulting to v1", level: .warn, category: "CollectionAvatar")
             version = .v1
         }
         
@@ -448,11 +448,11 @@ struct CollectionAvatar: Codable {
         }
         
         guard let avatarData = AvatarData.fromFirestoreDict(avatarDataDict, version: version) else {
-            print("❌ Failed to parse avatarData")
+            Logger.log("Failed to parse avatarData", level: .error, category: "CollectionAvatar")
             return nil
         }
         
-        print("✅ Successfully parsed CollectionAvatar: \(collectionId)")
+        Logger.log("Successfully parsed CollectionAvatar: \(collectionId)", level: .info, category: "CollectionAvatar")
         return CollectionAvatar(
             collectionId: collectionId,
             avatarData: avatarData,

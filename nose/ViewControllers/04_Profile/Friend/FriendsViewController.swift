@@ -111,7 +111,7 @@ class FriendsViewController: UIViewController {
     // MARK: - Data Loading
 
     /// Fetches full User documents for the given user IDs; completion is called on main with parsed users (order not guaranteed).
-    private func fetchUsers(ids: [String], db: Firestore, completion: @escaping ([User]) -> Void) {
+    private func fetchUsers(ids: [String], completion: @escaping ([User]) -> Void) {
         guard !ids.isEmpty else {
             DispatchQueue.main.async { completion([]) }
             return
@@ -121,7 +121,7 @@ class FriendsViewController: UIViewController {
         let lock = NSLock()
         ids.forEach { id in
             group.enter()
-            FirestorePaths.userDoc(id, db: db).getDocument { snapshot, error in
+            FirestorePaths.userDoc(id).getDocument { snapshot, error in
                 defer { group.leave() }
                 guard let snapshot = snapshot, let user = User.fromFirestore(snapshot) else { return }
                 lock.lock()
@@ -136,12 +136,11 @@ class FriendsViewController: UIViewController {
 
     private func loadFriends() {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
-        let db = Firestore.firestore()
 
-        FirestorePaths.friends(userId: currentUserId, db: db).getDocuments { [weak self] snapshot, error in
+        FirestorePaths.friends(userId: currentUserId).getDocuments { [weak self] snapshot, error in
             if let error = error { return }
             let ids = snapshot?.documents.map(\.documentID) ?? []
-            self?.fetchUsers(ids: ids, db: db) { users in
+            self?.fetchUsers(ids: ids) { users in
                 self?.friends = users
                 if self?.currentSegment == Tab.friends.rawValue {
                     self?.tableView.reloadData()
@@ -150,10 +149,10 @@ class FriendsViewController: UIViewController {
             }
         }
 
-        FirestorePaths.blocked(userId: currentUserId, db: db).getDocuments { [weak self] snapshot, error in
+        FirestorePaths.blocked(userId: currentUserId).getDocuments { [weak self] snapshot, error in
             if let error = error { return }
             let ids = snapshot?.documents.map(\.documentID) ?? []
-            self?.fetchUsers(ids: ids, db: db) { users in
+            self?.fetchUsers(ids: ids) { users in
                 self?.blockedUsers = users
                 if self?.currentSegment == Tab.blocked.rawValue {
                     self?.tableView.reloadData()
@@ -167,12 +166,11 @@ class FriendsViewController: UIViewController {
 
     private func loadPending() {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
-        let db = Firestore.firestore()
 
-        FirestorePaths.friendRequests(userId: currentUserId, db: db).getDocuments { [weak self] snapshot, error in
+        FirestorePaths.friendRequests(userId: currentUserId).getDocuments { [weak self] snapshot, error in
             if let error = error { return }
             let ids = snapshot?.documents.map(\.documentID) ?? []
-            self?.fetchUsers(ids: ids, db: db) { users in
+            self?.fetchUsers(ids: ids) { users in
                 self?.pendingReceived = users
                 if self?.currentSegment == Tab.pending.rawValue {
                     self?.tableView.reloadData()
@@ -181,10 +179,10 @@ class FriendsViewController: UIViewController {
             }
         }
 
-        FirestorePaths.sentFriendRequests(userId: currentUserId, db: db).getDocuments { [weak self] snapshot, error in
+        FirestorePaths.sentFriendRequests(userId: currentUserId).getDocuments { [weak self] snapshot, error in
             if let error = error { return }
             let ids = snapshot?.documents.map(\.documentID) ?? []
-            self?.fetchUsers(ids: ids, db: db) { users in
+            self?.fetchUsers(ids: ids) { users in
                 self?.pendingSent = users
                 if self?.currentSegment == Tab.requested.rawValue {
                     self?.tableView.reloadData()

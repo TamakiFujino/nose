@@ -1,6 +1,5 @@
 import UIKit
 import FirebaseAuth
-import FirebaseFirestore
 import FirebaseStorage
 
 class ContentViewController: UIViewController, ContentViewControllerDelegate {
@@ -34,11 +33,11 @@ class ContentViewController: UIViewController, ContentViewControllerDelegate {
     }
 
     private func launchUnity() {
-        print("[ContentViewController] Launching Unity...")
+        Logger.log("[ContentViewController] Launching Unity...", level: .debug, category: "UnityContent")
         UnityLauncher.shared().launchUnityIfNeeded()
         // TEMP: skip native overlays so touches pass to Unity
         guard !temporaryDisableNativeUI else {
-            print("[ContentViewController] TEMP: Native UI disabled; not showing overlays")
+            Logger.log("[ContentViewController] TEMP: Native UI disabled; not showing overlays", level: .debug, category: "UnityContent")
             return
         }
         // Show a loading overlay immediately while Unity is preparing and before UI is ready
@@ -60,11 +59,11 @@ class ContentViewController: UIViewController, ContentViewControllerDelegate {
         floatingWindow.isHidden = false
         floatingWindow.makeKeyAndVisible()
         LoadingView.shared.showOverlayLoading(on: placeholderVC.view, message: "Loading avatar...")
-        print("[ContentViewController] Loading overlay window shown")
+        Logger.log("[ContentViewController] Loading overlay window shown", level: .debug, category: "UnityContent")
     }
 
     private func createFloatingUI() {
-        print("[ContentViewController] Creating floating UI on top of Unity...")
+        Logger.log("[ContentViewController] Creating floating UI on top of Unity...", level: .debug, category: "UnityContent")
         guard let floatingWindow = floatingWindow else { return }
 
         let floatingVC = FloatingUIController()
@@ -85,7 +84,7 @@ class ContentViewController: UIViewController, ContentViewControllerDelegate {
         floatingWindow.makeKeyAndVisible()
         // Keep overlay visible while the floating UI prepares thumbnails
         LoadingView.shared.showOverlayLoading(on: floatingVC.view, message: "Loading avatar...")
-        print("[ContentViewController] Floating UI created and visible")
+        Logger.log("[ContentViewController] Floating UI created and visible", level: .debug, category: "UnityContent")
     }
 
     private func applyLatestSelectionsIfVisible() {
@@ -104,11 +103,11 @@ class ContentViewController: UIViewController, ContentViewControllerDelegate {
             let tempAvatarDataKey = "temp_event_avatar_data"
             if let savedData = UserDefaults.standard.data(forKey: tempAvatarDataKey),
                let avatarData = try? JSONDecoder().decode(CollectionAvatar.AvatarData.self, from: savedData) {
-                print("[ContentViewController] Loaded temporary avatar data from UserDefaults")
+                Logger.log("[ContentViewController] Loaded temporary avatar data from UserDefaults", level: .info, category: "UnityContent")
                 completion(avatarData.selections)
                 return
             } else {
-                print("[ContentViewController] No temporary avatar data found in UserDefaults")
+                Logger.log("[ContentViewController] No temporary avatar data found in UserDefaults", level: .debug, category: "UnityContent")
                 completion(nil)
                 return
             }
@@ -116,25 +115,15 @@ class ContentViewController: UIViewController, ContentViewControllerDelegate {
         
         // For regular collections, fetch from Firestore
         guard let userId = Auth.auth().currentUser?.uid else { completion(nil); return }
-        let db = Firestore.firestore()
-        db.collection("users")
-            .document(userId)
-            .collection("collections")
-            .document(collection.id)
-            .getDocument { snapshot, error in
-                if let error = error {
-                    print("[ContentViewController] Failed to fetch existing avatar: \(error.localizedDescription)")
-                    completion(nil)
-                    return
-                }
-                guard let data = snapshot?.data(),
-                      let avatarData = data["avatarData"] as? [String: Any],
-                      let selections = avatarData["selections"] as? [String: [String: String]] else {
-                    completion(nil)
-                    return
-                }
+        CollectionDataService.shared.fetchAvatarSelections(userId: userId, collectionId: collection.id) { result in
+            switch result {
+            case .success(let selections):
                 completion(selections)
+            case .failure(let error):
+                Logger.log("[ContentViewController] Failed to fetch existing avatar: \(error.localizedDescription)", level: .error, category: "UnityContent")
+                completion(nil)
             }
+        }
     }
 }
 
@@ -145,7 +134,7 @@ protocol ContentViewControllerDelegate: AnyObject {
 
 extension ContentViewController {
     func didRequestClose() {
-        print("[ContentViewController] didRequestClose() called")
+        Logger.log("[ContentViewController] didRequestClose() called", level: .debug, category: "UnityContent")
         
         let cleanupUnityOverlays = {
             // Remove floating UI overlay window
@@ -157,27 +146,27 @@ extension ContentViewController {
             if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
                 let normalWindows = windowScene.windows.filter { $0.windowLevel == .normal }
                 if let appWindow = normalWindows.first {
-                    print("[ContentViewController] Making app window key and visible")
+                    Logger.log("[ContentViewController] Making app window key and visible", level: .debug, category: "UnityContent")
                     appWindow.makeKeyAndVisible()
                 } else {
-                    print("[ContentViewController] No normal-level app window found")
+                    Logger.log("[ContentViewController] No normal-level app window found", level: .debug, category: "UnityContent")
                 }
             } else {
-                print("[ContentViewController] No UIWindowScene available")
+                Logger.log("[ContentViewController] No UIWindowScene available", level: .debug, category: "UnityContent")
             }
             
             // Hide Unity after we're already back, so we don't flash a blank ContentViewController background.
-            print("[ContentViewController] Hiding Unity window (no-op)")
+            Logger.log("[ContentViewController] Hiding Unity window (no-op)", level: .debug, category: "UnityContent")
             UnityLauncher.shared().hideUnity()
         }
         
         if let nav = navigationController {
-            print("[ContentViewController] Popping view controller (no animation to avoid white flash)")
+            Logger.log("[ContentViewController] Popping view controller (no animation to avoid white flash)", level: .debug, category: "UnityContent")
             // Pop first (instant), then cleanup Unity/window overlays.
             nav.popViewController(animated: false)
             cleanupUnityOverlays()
         } else {
-            print("[ContentViewController] Dismissing view controller (no animation to avoid white flash)")
+            Logger.log("[ContentViewController] Dismissing view controller (no animation to avoid white flash)", level: .debug, category: "UnityContent")
             dismiss(animated: false) {
                 cleanupUnityOverlays()
             }
@@ -185,7 +174,7 @@ extension ContentViewController {
     }
 
     func didRequestSave(selections: [String : [String : String]]) {
-        print("[ContentViewController] didRequestSave() called with \(selections.count) entries")
+        Logger.log("[ContentViewController] didRequestSave() called with \(selections.count) entries", level: .debug, category: "UnityContent")
         LoadingView.shared.showAlertLoading(title: "Saving", on: self)
         let sanitized = sanitizeSelectionsForSave(selections)
         let avatarData = CollectionAvatar.AvatarData(
@@ -208,9 +197,9 @@ extension ContentViewController {
                 LoadingView.shared.hideAlertLoading()
                 switch result {
                 case .success:
-                    print("✅ Avatar image captured and data posted via notification for temporary collection")
+                    Logger.log("Avatar image captured and data posted via notification for temporary collection", level: .info, category: "UnityContent")
                 case .failure(let error):
-                    print("❌ Failed to capture temporary avatar image: \(error.localizedDescription)")
+                    Logger.log("Failed to capture temporary avatar image: \(error.localizedDescription)", level: .error, category: "UnityContent")
                 }
             }
             return
@@ -226,12 +215,12 @@ extension ContentViewController {
                     case .success:
                         self.applyLatestSelectionsIfVisible()
                     case .failure(let error):
-                        print("[ContentViewController] Thumbnail upload failed: \(error.localizedDescription)")
+                        Logger.log("[ContentViewController] Thumbnail upload failed: \(error.localizedDescription)", level: .error, category: "UnityContent")
                     }
                 }
             case .failure(let error):
                 LoadingView.shared.hideAlertLoading()
-                print("[ContentViewController] Save error: \(error.localizedDescription)")
+                Logger.log("[ContentViewController] Save error: \(error.localizedDescription)", level: .error, category: "UnityContent")
             }
         }
     }
@@ -256,10 +245,10 @@ extension ContentViewController {
         waitForFile(atPath: fullPath, timeout: 2.0, pollInterval: 0.1) { [weak self] fileResult in
             switch fileResult {
             case .success:
-                print("[ContentViewController] Temporary avatar image captured successfully")
+                Logger.log("[ContentViewController] Temporary avatar image captured successfully", level: .info, category: "UnityContent")
                 completion(.success(()))
             case .failure(let error):
-                print("[ContentViewController] Failed to capture temporary avatar image: \(error.localizedDescription)")
+                Logger.log("[ContentViewController] Failed to capture temporary avatar image: \(error.localizedDescription)", level: .error, category: "UnityContent")
                 completion(.failure(error))
             }
         }
@@ -362,25 +351,24 @@ extension ContentViewController {
                             return
                         }
 
-                        let db = Firestore.firestore()
-                        db.collection("users").document(uid).collection("collections").document(self.collection.id)
-                            .setData([
-                                "avatarThumbnailURL": url.absoluteString,
-                                "avatarThumbnailUpdatedAt": FieldValue.serverTimestamp()
-                            ], merge: true) { err in
-                                if bgTask != .invalid { UIApplication.shared.endBackgroundTask(bgTask); bgTask = .invalid }
-                                if let err = err {
-                                    completion(.failure(err))
-                                } else {
-                                    // Notify listeners to refresh thumbnail
-                                    NotificationCenter.default.post(
-                                        name: Notification.Name("AvatarThumbnailUpdated"),
-                                        object: nil,
-                                        userInfo: ["collectionId": self.collection.id]
-                                    )
-                                    completion(.success(()))
-                                }
+                        CollectionDataService.shared.updateAvatarThumbnailURL(
+                            userId: uid,
+                            collectionId: self.collection.id,
+                            url: url.absoluteString
+                        ) { err in
+                            if bgTask != .invalid { UIApplication.shared.endBackgroundTask(bgTask); bgTask = .invalid }
+                            if let err = err {
+                                completion(.failure(err))
+                            } else {
+                                // Notify listeners to refresh thumbnail
+                                NotificationCenter.default.post(
+                                    name: Notification.Name("AvatarThumbnailUpdated"),
+                                    object: nil,
+                                    userInfo: ["collectionId": self.collection.id]
+                                )
+                                completion(.success(()))
                             }
+                        }
                     }
                 }
                 getURL(attempt: 1)

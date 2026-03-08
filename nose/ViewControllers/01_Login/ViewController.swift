@@ -4,7 +4,6 @@ import GoogleSignIn
 import FirebaseCore
 import AuthenticationServices
 import CryptoKit
-import FirebaseFirestore
 
 final class ViewController: UIViewController {
     
@@ -239,7 +238,8 @@ final class ViewController: UIViewController {
         var randomBytes = [UInt8](repeating: 0, count: length)
         let errorCode = SecRandomCopyBytes(kSecRandomDefault, randomBytes.count, &randomBytes)
         if errorCode != errSecSuccess {
-            fatalError("Unable to generate nonce. SecRandomCopyBytes failed with OSStatus \(errorCode)")
+            Logger.log("Unable to generate nonce. SecRandomCopyBytes failed with OSStatus \(errorCode)", level: .error, category: "Login")
+            return ""
         }
         
         let charset: [Character] = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
@@ -264,7 +264,7 @@ final class ViewController: UIViewController {
     
     private func checkExistingUserAndNavigate() {
         guard let firebaseUser = Auth.auth().currentUser else {
-            print("No user is signed in")
+            Logger.log("No user is signed in", level: .debug, category: "Login")
             hideLoading()
             return
         }
@@ -274,16 +274,16 @@ final class ViewController: UIViewController {
             self.hideLoading()
             
             if let error = error {
-                print("Error checking user: \(error.localizedDescription)")
+                Logger.log("Error checking user: \(error.localizedDescription)", level: .error, category: "Login")
                 self.showError(message: "Failed to check user status. Please try again.")
                 return
             }
             
             if user != nil {
-                print("User already exists, navigating to home screen")
+                Logger.log("User already exists, navigating to home screen", level: .debug, category: "Login")
                 self.transitionToHome()
             } else {
-                print("New user, navigating to name registration")
+                Logger.log("New user, navigating to name registration", level: .debug, category: "Login")
                 let nameRegistrationVC = NameRegistrationViewController()
                 nameRegistrationVC.modalPresentationStyle = .fullScreen
                 self.present(nameRegistrationVC, animated: true)
@@ -324,7 +324,7 @@ final class ViewController: UIViewController {
             guard let self = self else { return }
             
             if let error = error {
-                print("Google Sign In error: \(error.localizedDescription)")
+                Logger.log("Google Sign In error: \(error.localizedDescription)", level: .error, category: "Login")
                 self.hideLoading()
                 // Check if user cancelled
                 if let gidError = error as NSError?,
@@ -339,7 +339,7 @@ final class ViewController: UIViewController {
             
             guard let authentication = result?.user,
                   let idToken = authentication.idToken?.tokenString else {
-                print("Failed to get Google credentials")
+                Logger.log("Failed to get Google credentials", level: .error, category: "Login")
                 self.hideLoading()
                 self.showError(message: "Failed to get Google authentication credentials. Please try again.")
                 return
@@ -357,13 +357,13 @@ final class ViewController: UIViewController {
                 guard let self = self else { return }
                 
                 if let error = error {
-                    print("Firebase Sign In error: \(error.localizedDescription)")
+                    Logger.log("Firebase Sign In error: \(error.localizedDescription)", level: .error, category: "Login")
                     self.hideLoading()
                     self.showError(message: "Failed to authenticate with Firebase: \(error.localizedDescription)")
                     return
                 }
                 
-                print("Successfully signed in with Google")
+                Logger.log("Successfully signed in with Google", level: .info, category: "Login")
                 self.checkExistingUserAndNavigate()
             }
         }
@@ -391,11 +391,12 @@ extension ViewController: ASAuthorizationControllerDelegate {
     func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
         if let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential {
             guard let nonce = currentNonce else {
-                fatalError("Invalid state: A login callback was received, but no login request was sent.")
+                Logger.log("Invalid state: A login callback was received, but no login request was sent.", level: .error, category: "Login")
+                return
             }
             guard let appleIDToken = appleIDCredential.identityToken,
                   let idTokenString = String(data: appleIDToken, encoding: .utf8) else {
-                print("Unable to fetch identity token")
+                Logger.log("Unable to fetch identity token", level: .debug, category: "Login")
                 hideLoading()
                 return
             }
@@ -410,19 +411,19 @@ extension ViewController: ASAuthorizationControllerDelegate {
                 guard let self = self else { return }
                 
                 if let error = error {
-                    print("Firebase Sign In error: \(error.localizedDescription)")
+                    Logger.log("Firebase Sign In error: \(error.localizedDescription)", level: .error, category: "Login")
                     self.hideLoading()
                     return
                 }
                 
-                print("Successfully signed in with Apple")
+                Logger.log("Successfully signed in with Apple", level: .info, category: "Login")
                 self.checkExistingUserAndNavigate()
             }
         }
     }
     
     func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
-        print("Apple Sign In error: \(error.localizedDescription)")
+        Logger.log("Apple Sign In error: \(error.localizedDescription)", level: .error, category: "Login")
         hideLoading()
     }
 }
