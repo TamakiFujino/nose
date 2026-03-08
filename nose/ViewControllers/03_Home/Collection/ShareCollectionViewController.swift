@@ -112,10 +112,8 @@ final class ShareCollectionViewController: UIViewController {
             return
         }
         
-        let db = Firestore.firestore()
-        
         // First, get the current members
-        FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collection.id, db: db)
+        FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collection.id)
             .getDocument { [weak self] snapshot, error in
                 if let error = error {
                     Logger.log("Error loading collection: \(error.localizedDescription)", level: .error, category: "Share")
@@ -132,7 +130,7 @@ final class ShareCollectionViewController: UIViewController {
                 self?.selectedFriends.removeAll()
                 
                 // Then load all friends
-                FirestorePaths.friends(userId: currentUserId, db: db)
+                FirestorePaths.friends(userId: currentUserId)
                     .getDocuments { [weak self] snapshot, error in
                         if let error = error {
                             Logger.log("Error loading friends: \(error.localizedDescription)", level: .error, category: "Share")
@@ -148,7 +146,7 @@ final class ShareCollectionViewController: UIViewController {
                             let friendId = document.documentID
                             
                             // Fetch the complete user data from the users collection
-                            FirestorePaths.userDoc(friendId, db: db).getDocument { userSnapshot, userError in
+                            FirestorePaths.userDoc(friendId).getDocument { userSnapshot, userError in
                                 defer { group.leave() }
                                 
                                 if let userError = userError {

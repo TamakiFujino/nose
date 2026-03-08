@@ -1,13 +1,10 @@
 import UIKit
 import FirebaseAuth
 import FirebaseStorage
-import FirebaseFirestore
-
 class SettingsViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
 
     let tableView = UITableView()
     private let storage = Storage.storage()
-    private let db = Firestore.firestore()
     
     // Avatar image view for profile picture
     private lazy var avatarImageView: UIImageView = {
@@ -100,7 +97,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     }
     
     @objc private func avatarTapped() {
-        print("🖼️ Avatar tapped - navigating to ProfileImageViewController")
+        Logger.log("Avatar tapped - navigating to ProfileImageViewController", level: .debug, category: "Settings")
         let profileImageVC = ProfileImageViewController()
         
         // Set callback to receive selected image
@@ -113,40 +110,37 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     
     private func loadProfileImage() {
         guard let userId = Auth.auth().currentUser?.uid else {
-            print("❌ User not authenticated")
+            Logger.log("User not authenticated", level: .error, category: "Settings")
             showDefaultAvatar()
             return
         }
         
-        print("🔍 Loading saved profile image for user: \(userId)")
+        Logger.log("Loading saved profile image for user: \(userId)", level: .debug, category: "Settings")
         
-        // Get the saved profile image collection ID from Firestore
-        db.collection("users")
-            .document(userId)
-            .getDocument { [weak self] snapshot, error in
-                guard let self = self else { return }
-                
-                if let error = error {
-                    print("❌ Error fetching user data: \(error.localizedDescription)")
+        // Get the saved profile image collection ID
+        UserManager.shared.fetchProfileImageCollectionId(userId: userId) { [weak self] result in
+            guard let self = self else { return }
+
+            switch result {
+            case .success(let collectionId):
+                guard let collectionId = collectionId else {
+                    Logger.log("No profile image set, showing default", level: .warn, category: "Settings")
                     self.showDefaultAvatar()
                     return
                 }
-                
-                guard let data = snapshot?.data(),
-                      let collectionId = data["profileImageCollectionId"] as? String else {
-                    print("⚠️ No profile image set, showing default")
-                    self.showDefaultAvatar()
-                    return
-                }
-                
-                print("✅ Found profile image collection ID: \(collectionId)")
-                
+
+                Logger.log("Found profile image collection ID: \(collectionId)", level: .info, category: "Settings")
+
                 if collectionId == "default" {
                     self.showDefaultAvatar()
                 } else {
                     self.loadImageFromStorage(userId: userId, collectionId: collectionId)
                 }
+            case .failure(let error):
+                Logger.log("Error fetching user data: \(error.localizedDescription)", level: .error, category: "Settings")
+                self.showDefaultAvatar()
             }
+        }
     }
     
     private func showDefaultAvatar() {
@@ -154,9 +148,9 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             DispatchQueue.main.async {
                 self.avatarImageView.image = defaultImage
             }
-            print("✅ Showing default avatar")
+            Logger.log("Showing default avatar", level: .info, category: "Settings")
         } else {
-            print("❌ Could not load default avatar image")
+            Logger.log("Could not load default avatar image", level: .error, category: "Settings")
         }
     }
     
@@ -164,21 +158,21 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         let imageRef = storage.reference()
             .child("collection_avatars/\(userId)/\(collectionId)/avatar.png")
         
-        print("🔍 Loading image from: collection_avatars/\(userId)/\(collectionId)/avatar.png")
+        Logger.log("Loading image from: collection_avatars/\(userId)/\(collectionId)/avatar.png", level: .debug, category: "Settings")
         
         imageRef.getData(maxSize: 5 * 1024 * 1024) { [weak self] data, error in
             if let error = error {
-                print("❌ Error loading profile image: \(error.localizedDescription)")
+                Logger.log("Error loading profile image: \(error.localizedDescription)", level: .error, category: "Settings")
                 return
             }
             
             if let data = data, let image = UIImage(data: data) {
-                print("✅ Successfully loaded profile image")
+                Logger.log("Successfully loaded profile image", level: .info, category: "Settings")
                 DispatchQueue.main.async {
                     self?.avatarImageView.image = image
                 }
             } else {
-                print("❌ Could not create image from data")
+                Logger.log("Could not create image from data", level: .error, category: "Settings")
             }
         }
     }
@@ -206,12 +200,12 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
             let fullVersion = "\(version) (\(build))"
             
-            print("DEBUG: App version info:")
-            print("  - Version: \(version)")
-            print("  - Build: \(build)")
-            print("  - Full version: \(fullVersion)")
-            print("  - Bundle identifier: \(Bundle.main.bundleIdentifier ?? "Unknown")")
-            print("  - Info dictionary keys: \(Bundle.main.infoDictionary?.keys.joined(separator: ", ") ?? "None")")
+            Logger.log("DEBUG: App version info:", level: .debug, category: "Settings")
+            Logger.log("  - Version: \(version)", level: .debug, category: "Settings")
+            Logger.log("  - Build: \(build)", level: .debug, category: "Settings")
+            Logger.log("  - Full version: \(fullVersion)", level: .debug, category: "Settings")
+            Logger.log("  - Bundle identifier: \(Bundle.main.bundleIdentifier ?? "Unknown")", level: .debug, category: "Settings")
+            Logger.log("  - Info dictionary keys: \(Bundle.main.infoDictionary?.keys.joined(separator: ", ") ?? "None")", level: .debug, category: "Settings")
             
             cell.detailTextLabel?.text = fullVersion
             cell.detailTextLabel?.textColor = .fourthColor

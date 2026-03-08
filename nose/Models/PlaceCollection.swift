@@ -85,7 +85,7 @@ public struct PlaceCollection: Codable {
         guard let id = dictionary["id"] as? String,
               let name = dictionary["name"] as? String,
               let userId = dictionary["userId"] as? String else {
-            print("❌ Failed to parse basic collection data")
+            Logger.log("Failed to parse basic collection data", level: .error, category: "PlaceCollection")
             return nil
         }
         
@@ -129,13 +129,13 @@ public struct PlaceCollection: Codable {
         self.iconUrl = dictionary["iconUrl"] as? String
         
         if let placesData = dictionary["places"] as? [[String: Any]] {
-            print("📦 Parsing \(placesData.count) places")
+            Logger.log("Parsing \(placesData.count) places", level: .debug, category: "PlaceCollection")
             self.places = placesData.compactMap { placeDict in
                 guard let placeId = placeDict["placeId"] as? String,
                       let name = placeDict["name"] as? String,
                       let formattedAddress = placeDict["formattedAddress"] as? String,
                       let phoneNumber = placeDict["phoneNumber"] as? String else {
-                    print("❌ Failed to parse place basic data")
+                    Logger.log("Failed to parse place basic data", level: .error, category: "PlaceCollection")
                     return nil
                 }
                 
@@ -147,7 +147,7 @@ public struct PlaceCollection: Codable {
                           let ratingFloat = Float(ratingString) {
                     rating = ratingFloat
                 } else {
-                    print("❌ Failed to parse rating")
+                    Logger.log("Failed to parse rating", level: .error, category: "PlaceCollection")
                     return nil
                 }
                 
@@ -156,7 +156,7 @@ public struct PlaceCollection: Codable {
                 if let timestamp = placeDict["addedAt"] as? Timestamp {
                     addedAt = timestamp.dateValue()
                 } else {
-                    print("❌ Failed to parse timestamp")
+                    Logger.log("Failed to parse timestamp", level: .error, category: "PlaceCollection")
                     return nil
                 }
                 
@@ -171,7 +171,7 @@ public struct PlaceCollection: Codable {
                     latitude = lat
                     longitude = lng
                 } else {
-                    print("⚠️ Place missing coordinates, using default (0,0)")
+                    Logger.log("Place missing coordinates, using default (0,0)", level: .warn, category: "PlaceCollection")
                     latitude = 0.0
                     longitude = 0.0
                 }
@@ -186,9 +186,9 @@ public struct PlaceCollection: Codable {
                            latitude: latitude,
                            longitude: longitude)
             }
-            print("✅ Successfully parsed \(self.places.count) places")
+            Logger.log("Successfully parsed \(self.places.count) places", level: .info, category: "PlaceCollection")
         } else {
-            print("❌ No places data found or invalid format")
+            Logger.log("No places data found or invalid format", level: .error, category: "PlaceCollection")
             self.places = []
         }
     }

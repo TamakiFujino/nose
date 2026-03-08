@@ -1,6 +1,5 @@
 import UIKit
 import FirebaseAuth
-import FirebaseFirestore
 
 final class EventDetailViewController: UIViewController {
     
@@ -247,22 +246,10 @@ final class EventDetailViewController: UIViewController {
         }
         
         // If no images loaded yet, try to load from Firestore imageURLs
-        let db = Firestore.firestore()
-        
-        FirestorePaths.eventDoc(userId: event.userId, eventId: event.id, db: db)
-            .getDocument { [weak self] snapshot, error in
-                if let error = error {
-                    Logger.log("Error loading event: \(error.localizedDescription)", level: .error, category: "Event")
-                    DispatchQueue.main.async {
-                        self?.eventImageView.image = UIImage(systemName: "photo")
-                        self?.eventImageView.tintColor = .systemGray3
-                    }
-                    return
-                }
-                
-                guard let data = snapshot?.data(),
-                      let imageURLs = data["imageURLs"] as? [String],
-                      let firstImageURL = imageURLs.first,
+        EventManager.shared.fetchEventImageURLs(userId: event.userId, eventId: event.id) { [weak self] result in
+            switch result {
+            case .success(let imageURLs):
+                guard let firstImageURL = imageURLs.first,
                       !firstImageURL.isEmpty,
                       let url = URL(string: firstImageURL) else {
                     DispatchQueue.main.async {
@@ -286,7 +273,14 @@ final class EventDetailViewController: UIViewController {
                         }
                     }
                 }.resume()
+            case .failure(let error):
+                Logger.log("Error loading event: \(error.localizedDescription)", level: .error, category: "Event")
+                DispatchQueue.main.async {
+                    self?.eventImageView.image = UIImage(systemName: "photo")
+                    self?.eventImageView.tintColor = .systemGray3
+                }
             }
+        }
     }
     
     private func loadAvatarImageFromFirestore() {
@@ -294,21 +288,15 @@ final class EventDetailViewController: UIViewController {
         avatarImageView.image = UIImage(systemName: "person.circle")
         avatarImageView.tintColor = .systemGray3
         
-        let db = Firestore.firestore()
-        FirestorePaths.eventDoc(userId: event.userId, eventId: event.id, db: db)
-            .getDocument { [weak self] snapshot, error in
-                if let error = error {
-                    Logger.log("Error loading avatar image: \(error.localizedDescription)", level: .error, category: "Event")
-                    return
-                }
-                
-                guard let data = snapshot?.data(),
-                      let avatarImageURL = data["avatarImageURL"] as? String,
+        EventManager.shared.fetchEventAvatarImageURL(userId: event.userId, eventId: event.id) { [weak self] result in
+            switch result {
+            case .success(let avatarImageURL):
+                guard let avatarImageURL = avatarImageURL,
                       !avatarImageURL.isEmpty,
                       let url = URL(string: avatarImageURL) else {
                     return
                 }
-                
+
                 // Download avatar image
                 URLSession.shared.dataTask(with: url) { data, response, error in
                     if let data = data, let image = UIImage(data: data) {
@@ -318,9 +306,12 @@ final class EventDetailViewController: UIViewController {
                         }
                     }
                 }.resume()
+            case .failure(let error):
+                Logger.log("Error loading avatar image: \(error.localizedDescription)", level: .error, category: "Event")
             }
+        }
     }
-    
+
     // MARK: - Actions
     @objc private func handleTap(_ gesture: UITapGestureRecognizer) {
         let location = gesture.location(in: view)
@@ -328,7 +319,7 @@ final class EventDetailViewController: UIViewController {
             dismiss(animated: true)
         }
     }
-    
+
     @objc private func saveButtonTapped() {
         let saveVC = SaveToCollectionViewController(event: event)
         saveVC.delegate = self
@@ -347,7 +338,7 @@ extension EventDetailViewController: UIGestureRecognizerDelegate {
 // MARK: - SaveToCollectionViewControllerDelegate
 extension EventDetailViewController: SaveToCollectionViewControllerDelegate {
     func saveToCollectionViewController(_ controller: SaveToCollectionViewController, didSaveEvent event: Event, toCollection collection: PlaceCollection) {
-        
+
         // Animate the save button
         UIView.animate(withDuration: 0.2, animations: {
             self.saveButton.transform = CGAffineTransform(scaleX: 1.2, y: 1.2)
@@ -358,4 +349,3 @@ extension EventDetailViewController: SaveToCollectionViewControllerDelegate {
         }
     }
 }
-

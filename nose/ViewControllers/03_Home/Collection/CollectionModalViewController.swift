@@ -1,6 +1,5 @@
 import UIKit
 import FirebaseAuth
-import FirebaseFirestore
 
 /// Base class for collection modal view controllers (create/edit)
 class CollectionModalViewController: UIViewController {
@@ -284,7 +283,7 @@ class CollectionModalViewController: UIViewController {
     
     @objc func saveButtonTapped() {
         // Subclasses should override
-        fatalError("Subclasses must override saveButtonTapped()")
+        assertionFailure("Subclasses must override saveButtonTapped()")
     }
     
     // MARK: - Helper Methods

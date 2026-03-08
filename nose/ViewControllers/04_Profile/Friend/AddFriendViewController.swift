@@ -199,16 +199,15 @@ class AddFriendViewController: UIViewController {
     
     private func loadCurrentUser() {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
-        let db = Firestore.firestore()
-        
-        FirestorePaths.userDoc(currentUserId, db: db).getDocument { [weak self] snapshot, error in
+
+        FirestorePaths.userDoc(currentUserId).getDocument { [weak self] snapshot, error in
             if let error = error {
-                print("Error loading current user: \(error.localizedDescription)")
+                Logger.log("Error loading current user: \(error.localizedDescription)", level: .error, category: "AddFriend")
                 return
             }
             
             guard let snapshot = snapshot else {
-                print("No document found for current user")
+                Logger.log("No document found for current user", level: .debug, category: "AddFriend")
                 return
             }
             
@@ -276,13 +275,11 @@ class AddFriendViewController: UIViewController {
         resultContainer.isHidden = true
         addFriendButton.isHidden = true
         
-        let db = Firestore.firestore()
-        
         // First check if the user is already a friend
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
-        
+
         // First search for the user
-        FirestorePaths.users(db).whereField("userId", isEqualTo: userId).getDocuments { [weak self] snapshot, error in
+        FirestorePaths.users().whereField("userId", isEqualTo: userId).getDocuments { [weak self] snapshot, error in
             guard let self = self else {
                 return
             }
@@ -314,7 +311,7 @@ class AddFriendViewController: UIViewController {
                 }
                 
                 // Check if the current user has blocked the found user
-                FirestorePaths.blocked(userId: currentUserId, db: db).document(foundUser.id).getDocument { [weak self] blockedSnapshot, blockedError in
+                FirestorePaths.blocked(userId: currentUserId).document(foundUser.id).getDocument { [weak self] blockedSnapshot, blockedError in
                         guard let self = self else { return }
                         
                         self.isSearching = false
@@ -329,7 +326,7 @@ class AddFriendViewController: UIViewController {
                         }
                         
                         // Check if the found user has blocked the current user
-                        FirestorePaths.blocked(userId: foundUser.id, db: db).document(currentUserId).getDocument { [weak self] blockedSnapshot, blockedError in
+                        FirestorePaths.blocked(userId: foundUser.id).document(currentUserId).getDocument { [weak self] blockedSnapshot, blockedError in
                                 guard let self = self else { return }
                                 
                                 if blockedSnapshot?.exists == true {
@@ -341,7 +338,7 @@ class AddFriendViewController: UIViewController {
                                 }
                                 
                                 // Check if already friends
-                                FirestorePaths.friends(userId: currentUserId, db: db).document(foundUser.id).getDocument { [weak self] friendSnapshot, friendError in
+                                FirestorePaths.friends(userId: currentUserId).document(foundUser.id).getDocument { [weak self] friendSnapshot, friendError in
                                         guard let self = self else { return }
                                         
                                         if friendSnapshot?.exists == true {
@@ -353,7 +350,7 @@ class AddFriendViewController: UIViewController {
                                         }
                                         
                                         // Check for existing pending request (received from this user)
-                                        FirestorePaths.friendRequests(userId: currentUserId, db: db).document(foundUser.id).getDocument { [weak self] receivedSnapshot, _ in
+                                        FirestorePaths.friendRequests(userId: currentUserId).document(foundUser.id).getDocument { [weak self] receivedSnapshot, _ in
                                                 guard let self = self else { return }
                                                 if receivedSnapshot?.exists == true {
                                                     self.isSearching = false
@@ -365,7 +362,7 @@ class AddFriendViewController: UIViewController {
                                                     return
                                                 }
                                                 // Check for existing sent request to this user
-                                                FirestorePaths.sentFriendRequests(userId: currentUserId, db: db).document(foundUser.id).getDocument { [weak self] sentSnapshot, _ in
+                                                FirestorePaths.sentFriendRequests(userId: currentUserId).document(foundUser.id).getDocument { [weak self] sentSnapshot, _ in
                                                         guard let self = self else { return }
                                                         if sentSnapshot?.exists == true {
                                                             self.isSearching = false
@@ -419,27 +416,26 @@ class AddFriendViewController: UIViewController {
     }
     
     private func loadProfileImage(for user: User) {
-        print("🔍 Loading profile image for user: \(user.name)")
+        Logger.log("Loading profile image for user: \(user.name)", level: .debug, category: "AddFriend")
         
         // First, get the saved profile image collection ID from the user's document
-        let db = Firestore.firestore()
-        FirestorePaths.userDoc(user.id, db: db).getDocument { [weak self] snapshot, error in
+        FirestorePaths.userDoc(user.id).getDocument { [weak self] snapshot, error in
                 guard let self = self else { return }
                 
                 if let error = error {
-                    print("❌ Error fetching user data for profile image: \(error.localizedDescription)")
+                    Logger.log("Error fetching user data for profile image: \(error.localizedDescription)", level: .error, category: "AddFriend")
                     self.showDefaultProfileImage()
                     return
                 }
                 
                 guard let data = snapshot?.data(),
                       let collectionId = data["profileImageCollectionId"] as? String else {
-                    print("⚠️ No profile image set for user, showing default")
+                    Logger.log("No profile image set for user, showing default", level: .warn, category: "AddFriend")
                     self.showDefaultProfileImage()
                     return
                 }
                 
-                print("✅ Found profile image collection ID: \(collectionId)")
+                Logger.log("Found profile image collection ID: \(collectionId)", level: .info, category: "AddFriend")
                 
                 if collectionId == "default" {
                     self.showDefaultProfileImage()
@@ -454,9 +450,9 @@ class AddFriendViewController: UIViewController {
             DispatchQueue.main.async {
                 self.resultProfileImageView.image = defaultImage
             }
-            print("✅ Showing default profile image")
+            Logger.log("Showing default profile image", level: .info, category: "AddFriend")
         } else {
-            print("❌ Could not load default avatar image")
+            Logger.log("Could not load default avatar image", level: .error, category: "AddFriend")
         }
     }
     
@@ -464,22 +460,22 @@ class AddFriendViewController: UIViewController {
         let imageRef = storage.reference()
             .child("collection_avatars/\(userId)/\(collectionId)/avatar.png")
         
-        print("🔍 Loading image from: collection_avatars/\(userId)/\(collectionId)/avatar.png")
+        Logger.log("Loading image from: collection_avatars/\(userId)/\(collectionId)/avatar.png", level: .debug, category: "AddFriend")
         
         imageRef.getData(maxSize: 5 * 1024 * 1024) { [weak self] data, error in
             if let error = error {
-                print("❌ Error loading profile image: \(error.localizedDescription)")
+                Logger.log("Error loading profile image: \(error.localizedDescription)", level: .error, category: "AddFriend")
                 self?.showDefaultProfileImage()
                 return
             }
             
             if let data = data, let image = UIImage(data: data) {
-                print("✅ Successfully loaded profile image")
+                Logger.log("Successfully loaded profile image", level: .info, category: "AddFriend")
                 DispatchQueue.main.async {
                     self?.resultProfileImageView.image = image
                 }
             } else {
-                print("❌ Could not create image from data")
+                Logger.log("Could not create image from data", level: .error, category: "AddFriend")
                 self?.showDefaultProfileImage()
             }
         }

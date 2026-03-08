@@ -248,8 +248,7 @@ class CollectionsViewController: UIViewController {
     // MARK: - Data Loading
     private func loadCollections() {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
-        let db = Firestore.firestore()
-        
+
         // Create groups to track loading progress
         let memberCountGroup = DispatchGroup()
         var ownedCollectionsLoaded = false
@@ -273,7 +272,7 @@ class CollectionsViewController: UIViewController {
         }
         
         // Load owned collections
-        let ownedCollectionsRef = FirestorePaths.collections(userId: currentUserId, db: db)
+        let ownedCollectionsRef = FirestorePaths.collections(userId: currentUserId)
         
         ownedCollectionsRef.whereField("isOwner", isEqualTo: true).getDocuments { [weak self] snapshot, error in
             if let error = error {
@@ -320,7 +319,7 @@ class CollectionsViewController: UIViewController {
         }
         
         // Load shared collections
-        let sharedCollectionsRef = FirestorePaths.collections(userId: currentUserId, db: db)
+        let sharedCollectionsRef = FirestorePaths.collections(userId: currentUserId)
         
         sharedCollectionsRef.whereField("isOwner", isEqualTo: false).getDocuments { [weak self] snapshot, error in
             if let error = error {
@@ -340,7 +339,7 @@ class CollectionsViewController: UIViewController {
                    let collectionId = data["id"] as? String {
                     
                     // First check if owner account still exists and is not deleted
-                    FirestorePaths.userDoc(ownerId, db: db).getDocument { [weak self] ownerSnapshot, ownerError in
+                    FirestorePaths.userDoc(ownerId).getDocument { [weak self] ownerSnapshot, ownerError in
                         if let ownerError = ownerError {
                             Logger.log("Error checking owner: \(ownerError.localizedDescription)", level: .error, category: "Collections")
                             group.leave()
@@ -359,7 +358,7 @@ class CollectionsViewController: UIViewController {
                                 return
                             }
                             
-                            FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collectionId, db: db)
+                            FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collectionId)
                                 .updateData([
                                     "status": "inactive",
                                     "ownerDeleted": true
@@ -373,7 +372,7 @@ class CollectionsViewController: UIViewController {
                         }
                         
                         // Owner exists, proceed to load the collection
-                    FirestorePaths.collectionDoc(userId: ownerId, collectionId: collectionId, db: db)
+                    FirestorePaths.collectionDoc(userId: ownerId, collectionId: collectionId)
                         .getDocument { snapshot, error in
                             defer { group.leave() }
                             
@@ -442,15 +441,14 @@ class CollectionsViewController: UIViewController {
             group.leave()
             return
         }
-        let db = Firestore.firestore()
-        
+
         // Get blocked users first
-        FirestorePaths.blocked(userId: currentUserId, db: db)
+        FirestorePaths.blocked(userId: currentUserId)
             .getDocuments { [weak self] blockedSnapshot, _ in
                 let blockedUserIds = blockedSnapshot?.documents.map { $0.documentID } ?? []
                 
                 // Get the collection document from owner
-                FirestorePaths.collectionDoc(userId: ownerId, collectionId: collectionId, db: db)
+                FirestorePaths.collectionDoc(userId: ownerId, collectionId: collectionId)
                     .getDocument { snapshot, _ in
                         defer { group.leave() }
                         

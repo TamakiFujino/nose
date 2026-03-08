@@ -1,8 +1,6 @@
 import UIKit
 import FirebaseAuth
 import FirebaseStorage
-import FirebaseFirestore
-
 // MARK: - ImageContainer Helper
 private class ImageContainer {
     private var _images: [(String, UIImage?)] = []
@@ -25,7 +23,6 @@ class ProfileImageViewController: UIViewController {
     private var avatarImages: [(collectionId: String, image: UIImage?)] = []
     private var selectedIndex: Int?
     private let storage = Storage.storage()
-    private let db = Firestore.firestore()
     
     // Callback to pass selected image back
     var onImageSelected: ((UIImage) -> Void)?
@@ -135,34 +132,29 @@ class ProfileImageViewController: UIViewController {
             return
         }
         
-        print("💾 Saving profile image from collection: \(collectionId)")
+        Logger.log("Saving profile image from collection: \(collectionId)", level: .debug, category: "ProfileImage")
         
         // For default avatar, we'll use "default" as the collectionId
         let finalCollectionId = collectionId == "default" ? "default" : collectionId
         
         // Update user document with selected profile image collection ID
-        db.collection("users")
-            .document(userId)
-            .updateData([
-                "profileImageCollectionId": finalCollectionId,
-                "profileImageUpdatedAt": FieldValue.serverTimestamp()
-            ]) { [weak self] error in
-                if let error = error {
-                    print("❌ Error saving profile image: \(error.localizedDescription)")
-                    ToastManager.showToast(message: ToastMessages.avatarUpdateFailed, type: .error)
-                } else {
-                    print("✅ Successfully saved profile image selection")
-                    ToastManager.showToast(message: ToastMessages.avatarUpdated, type: .success)
-                    
-                    // Pass the selected image back via callback
-                    self?.onImageSelected?(image)
-                    
-                    // Pop back to settings
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        self?.navigationController?.popViewController(animated: true)
-                    }
+        UserManager.shared.updateProfileImageCollectionId(userId: userId, collectionId: finalCollectionId) { [weak self] error in
+            if let error = error {
+                Logger.log("Error saving profile image: \(error.localizedDescription)", level: .error, category: "ProfileImage")
+                ToastManager.showToast(message: ToastMessages.avatarUpdateFailed, type: .error)
+            } else {
+                Logger.log("Successfully saved profile image selection", level: .info, category: "ProfileImage")
+                ToastManager.showToast(message: ToastMessages.avatarUpdated, type: .success)
+
+                // Pass the selected image back via callback
+                self?.onImageSelected?(image)
+
+                // Pop back to settings
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    self?.navigationController?.popViewController(animated: true)
                 }
             }
+        }
     }
     
     // MARK: - Setup
@@ -207,7 +199,7 @@ class ProfileImageViewController: UIViewController {
     // MARK: - Data Loading
     private func loadAvatarImages() {
         guard let userId = Auth.auth().currentUser?.uid else {
-            print("❌ User not authenticated")
+            Logger.log("User not authenticated", level: .error, category: "ProfileImage")
             showEmptyState()
             return
         }
@@ -216,36 +208,31 @@ class ProfileImageViewController: UIViewController {
         collectionView.isHidden = true
         emptyStateLabel.isHidden = true
         
-        print("🔍 Loading avatar images for user: \(userId)")
+        Logger.log("Loading avatar images for user: \(userId)", level: .debug, category: "ProfileImage")
         
-        // First, get all collections for this user to find their collection IDs
-        db.collection("users")
-            .document(userId)
-            .collection("collections")
-            .whereField("isOwner", isEqualTo: true)
-            .getDocuments { [weak self] snapshot, error in
-                guard let self = self else { return }
-                
-                if let error = error {
-                    print("❌ Error fetching collections: \(error.localizedDescription)")
+        // First, get all owned collections for this user to find their collection IDs
+        CollectionManager.shared.fetchCollections(userId: userId) { [weak self] result in
+            guard let self = self else { return }
+
+            switch result {
+            case .success(let collections):
+                let ownedCollections = collections.filter { $0.isOwner }
+                guard !ownedCollections.isEmpty else {
+                    Logger.log("No collections found", level: .warn, category: "ProfileImage")
                     self.loadingIndicator.stopAnimating()
                     self.showEmptyState()
                     return
                 }
-                
-                guard let documents = snapshot?.documents, !documents.isEmpty else {
-                    print("⚠️ No collections found")
-                    self.loadingIndicator.stopAnimating()
-                    self.showEmptyState()
-                    return
-                }
-                
-                print("✅ Found \(documents.count) collections")
-                
-                // Extract collection IDs
-                let collectionIds = documents.map { $0.documentID }
+
+                Logger.log("Found \(ownedCollections.count) collections", level: .info, category: "ProfileImage")
+                let collectionIds = ownedCollections.map { $0.id }
                 self.loadImagesForCollections(userId: userId, collectionIds: collectionIds)
+            case .failure(let error):
+                Logger.log("Error fetching collections: \(error.localizedDescription)", level: .error, category: "ProfileImage")
+                self.loadingIndicator.stopAnimating()
+                self.showEmptyState()
             }
+        }
     }
     
     private func loadImagesForCollections(userId: String, collectionIds: [String]) {
@@ -266,7 +253,7 @@ class ProfileImageViewController: UIViewController {
             // Add default avatar as first option
             if let defaultImage = self.defaultAvatarImage {
                 allImages.insert(("default", defaultImage), at: 0)
-                print("✅ Added default avatar as first option")
+                Logger.log("Added default avatar as first option", level: .info, category: "ProfileImage")
             }
             
             self.avatarImages = allImages
@@ -275,7 +262,7 @@ class ProfileImageViewController: UIViewController {
             if self.avatarImages.isEmpty {
                 self.showEmptyState()
             } else {
-                print("✅ Loaded \(self.avatarImages.count) avatar images (including default)")
+                Logger.log("Loaded \(self.avatarImages.count) avatar images (including default)", level: .info, category: "ProfileImage")
                 self.collectionView.isHidden = false
                 self.collectionView.reloadData()
                 
@@ -290,16 +277,16 @@ class ProfileImageViewController: UIViewController {
         let pngRef = storage.reference()
             .child("collection_avatars/\(userId)/\(collectionId)/avatar.png")
         
-        print("🔍 Attempting to load: collection_avatars/\(userId)/\(collectionId)/avatar.png")
+        Logger.log("Attempting to load: collection_avatars/\(userId)/\(collectionId)/avatar.png", level: .debug, category: "ProfileImage")
         
         pngRef.getData(maxSize: 5 * 1024 * 1024) { data, error in
             if let error = error {
-                print("❌ Error loading image for collection \(collectionId): \(error.localizedDescription)")
+                Logger.log("Error loading image for collection \(collectionId): \(error.localizedDescription)", level: .error, category: "ProfileImage")
             } else if let data = data, let image = UIImage(data: data) {
-                print("✅ Successfully loaded PNG image for collection: \(collectionId)")
+                Logger.log("Successfully loaded PNG image for collection: \(collectionId)", level: .info, category: "ProfileImage")
                 container.append((collectionId, image))
             } else {
-                print("❌ Could not create image from data for collection \(collectionId)")
+                Logger.log("Could not create image from data for collection \(collectionId)", level: .error, category: "ProfileImage")
             }
             completion()
         }
@@ -312,51 +299,47 @@ class ProfileImageViewController: UIViewController {
     
     private func autoSelectCurrentProfileImage() {
         guard let userId = Auth.auth().currentUser?.uid else {
-            print("❌ User not authenticated for auto-selection")
+            Logger.log("User not authenticated for auto-selection", level: .error, category: "ProfileImage")
             return
         }
         
-        print("🔍 Auto-selecting current profile image...")
+        Logger.log("Auto-selecting current profile image...", level: .debug, category: "ProfileImage")
         
-        // Get the saved profile image collection ID from Firestore
-        db.collection("users")
-            .document(userId)
-            .getDocument { [weak self] snapshot, error in
-                guard let self = self else { return }
-                
-                if let error = error {
-                    print("❌ Error fetching user data for auto-selection: \(error.localizedDescription)")
-                    // Default to selecting the first item (default avatar)
-                    self.selectImageAtIndex(0)
-                    return
-                }
-                
-                let savedCollectionId: String
-                if let data = snapshot?.data(),
-                   let collectionId = data["profileImageCollectionId"] as? String {
-                    savedCollectionId = collectionId
-                    print("✅ Found saved profile image collection ID: \(collectionId)")
+        // Get the saved profile image collection ID
+        UserManager.shared.fetchProfileImageCollectionId(userId: userId) { [weak self] result in
+            guard let self = self else { return }
+
+            let savedCollectionId: String
+            switch result {
+            case .success(let collectionId):
+                savedCollectionId = collectionId ?? "default"
+                if collectionId != nil {
+                    Logger.log("Found saved profile image collection ID: \(savedCollectionId)", level: .info, category: "ProfileImage")
                 } else {
-                    savedCollectionId = "default"
-                    print("⚠️ No profile image set, defaulting to default avatar")
+                    Logger.log("No profile image set, defaulting to default avatar", level: .warn, category: "ProfileImage")
                 }
-                
-                // Find the index of the saved collection ID
-                let index = self.avatarImages.firstIndex { $0.collectionId == savedCollectionId }
-                
-                if let index = index {
-                    print("✅ Auto-selecting image at index: \(index)")
-                    self.selectImageAtIndex(index)
-                } else {
-                    print("⚠️ Saved collection ID not found in available images, selecting default")
-                    self.selectImageAtIndex(0) // Default to first item (default avatar)
-                }
+            case .failure(let error):
+                Logger.log("Error fetching user data for auto-selection: \(error.localizedDescription)", level: .error, category: "ProfileImage")
+                self.selectImageAtIndex(0)
+                return
             }
+
+            // Find the index of the saved collection ID
+            let index = self.avatarImages.firstIndex { $0.collectionId == savedCollectionId }
+
+            if let index = index {
+                Logger.log("Auto-selecting image at index: \(index)", level: .info, category: "ProfileImage")
+                self.selectImageAtIndex(index)
+            } else {
+                Logger.log("Saved collection ID not found in available images, selecting default", level: .warn, category: "ProfileImage")
+                self.selectImageAtIndex(0)
+            }
+        }
     }
     
     private func selectImageAtIndex(_ index: Int) {
         guard index < avatarImages.count else {
-            print("❌ Index out of bounds for auto-selection")
+            Logger.log("Index out of bounds for auto-selection", level: .error, category: "ProfileImage")
             return
         }
         
@@ -373,7 +356,7 @@ class ProfileImageViewController: UIViewController {
         let indexPath = IndexPath(item: index, section: 0)
         collectionView.reloadItems(at: [indexPath])
         
-        print("✅ Auto-selected: \(selectedAvatar.collectionId)")
+        Logger.log("Auto-selected: \(selectedAvatar.collectionId)", level: .info, category: "ProfileImage")
     }
 }
 
@@ -393,7 +376,7 @@ extension ProfileImageViewController: UICollectionViewDelegate, UICollectionView
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         let selectedImage = avatarImages[indexPath.item]
-        print("📸 Selected avatar from collection: \(selectedImage.collectionId)")
+        Logger.log("Selected avatar from collection: \(selectedImage.collectionId)", level: .debug, category: "ProfileImage")
         
         // Update selected index
         let previousIndex = selectedIndex

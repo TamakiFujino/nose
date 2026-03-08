@@ -232,8 +232,7 @@ class SaveToCollectionViewController: UIViewController {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         
         isLoadingCollections = true
-        let db = Firestore.firestore()
-        
+
         // Create groups to track loading progress
         let memberCountGroup = DispatchGroup()
         var ownedCollectionsLoaded = false
@@ -255,7 +254,7 @@ class SaveToCollectionViewController: UIViewController {
         }
         
         // Load owned collections
-        let ownedCollectionsRef = FirestorePaths.collections(userId: currentUserId, db: db)
+        let ownedCollectionsRef = FirestorePaths.collections(userId: currentUserId)
             .whereField("isOwner", isEqualTo: true)
         
         ownedCollectionsRef.getDocuments { [weak self] snapshot, error in
@@ -292,7 +291,7 @@ class SaveToCollectionViewController: UIViewController {
         }
         
         // Load shared collections
-        let sharedCollectionsRef = FirestorePaths.collections(userId: currentUserId, db: db)
+        let sharedCollectionsRef = FirestorePaths.collections(userId: currentUserId)
             .whereField("isOwner", isEqualTo: false)
         
         sharedCollectionsRef.getDocuments { [weak self] snapshot, error in
@@ -316,7 +315,7 @@ class SaveToCollectionViewController: UIViewController {
                    let collectionId = data["id"] as? String {
                     
                     // First check if owner account still exists and is not deleted
-                    FirestorePaths.userDoc(ownerId, db: db).getDocument { [weak self] ownerSnapshot, ownerError in
+                    FirestorePaths.userDoc(ownerId).getDocument { [weak self] ownerSnapshot, ownerError in
                         if let ownerError = ownerError {
                             Logger.log("Error checking owner: \(ownerError.localizedDescription)", level: .error, category: "Save")
                             group.leave()
@@ -330,7 +329,7 @@ class SaveToCollectionViewController: UIViewController {
                         if ownerSnapshot?.exists == false || isOwnerDeleted {
                             
                             // Mark this collection as inactive in user's database
-                            FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collectionId, db: db)
+                            FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collectionId)
                                 .updateData([
                                     "status": "inactive",
                                     "ownerDeleted": true
@@ -341,7 +340,7 @@ class SaveToCollectionViewController: UIViewController {
                         }
                         
                         // Owner exists, proceed to load the collection
-                    FirestorePaths.collectionDoc(userId: ownerId, collectionId: collectionId, db: db)
+                    FirestorePaths.collectionDoc(userId: ownerId, collectionId: collectionId)
                         .getDocument { snapshot, error in
                             defer { group.leave() }
                             
@@ -467,15 +466,13 @@ class SaveToCollectionViewController: UIViewController {
             group.leave()
             return
         }
-        let db = Firestore.firestore()
-        
         // Get blocked users first
-        FirestorePaths.blocked(userId: currentUserId, db: db)
+        FirestorePaths.blocked(userId: currentUserId)
             .getDocuments { [weak self] blockedSnapshot, _ in
                 let blockedUserIds = blockedSnapshot?.documents.map { $0.documentID } ?? []
                 
                 // Get the collection document from owner
-                FirestorePaths.collectionDoc(userId: ownerId, collectionId: collectionId, db: db)
+                FirestorePaths.collectionDoc(userId: ownerId, collectionId: collectionId)
                     .getDocument { snapshot, _ in
                         defer { group.leave() }
                         
@@ -546,20 +543,19 @@ class SaveToCollectionViewController: UIViewController {
         ]
         
         // Get references for both user and owner collections
-        let db = Firestore.firestore()
         let currentUserId = Auth.auth().currentUser?.uid ?? ""
-        
+
         // Reference to the current user's collection
-        let userCollectionRef = FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collection.id, db: db)
-        
+        let userCollectionRef = FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collection.id)
+
         // If this is a shared collection, also get reference to owner's collection
-        let ownerCollectionRef = collection.isOwner ? nil : FirestorePaths.collectionDoc(userId: collection.userId, collectionId: collection.id, db: db)
-        
+        let ownerCollectionRef = collection.isOwner ? nil : FirestorePaths.collectionDoc(userId: collection.userId, collectionId: collection.id)
+
         // First, verify both collections exist
         let group = DispatchGroup()
         var userCollectionExists = false
         var ownerCollectionExists = false
-        
+
         group.enter()
         userCollectionRef.getDocument { snapshot, error in
             defer { group.leave() }
@@ -569,7 +565,7 @@ class SaveToCollectionViewController: UIViewController {
             }
             userCollectionExists = snapshot?.exists ?? false
         }
-        
+
         if let ownerRef = ownerCollectionRef {
             group.enter()
             ownerRef.getDocument { snapshot, error in
@@ -583,12 +579,12 @@ class SaveToCollectionViewController: UIViewController {
         } else {
             ownerCollectionExists = true // No owner collection to check
         }
-        
+
         group.notify(queue: .main) { [weak self] in
             guard let self = self else { return }
-            
+
             // Create a batch write
-            let batch = db.batch()
+            let batch = Firestore.firestore().batch()
             
             // Update user's copy
             batch.updateData([
@@ -652,17 +648,16 @@ class SaveToCollectionViewController: UIViewController {
         ]
         
         // Get references for both user and owner collections
-        let db = Firestore.firestore()
         let currentUserId = Auth.auth().currentUser?.uid ?? ""
-        
+
         // Reference to the current user's collection
-        let userCollectionRef = FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collection.id, db: db)
-        
+        let userCollectionRef = FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collection.id)
+
         // If this is a shared collection, also get reference to owner's collection
-        let ownerCollectionRef = collection.isOwner ? nil : FirestorePaths.collectionDoc(userId: collection.userId, collectionId: collection.id, db: db)
-        
+        let ownerCollectionRef = collection.isOwner ? nil : FirestorePaths.collectionDoc(userId: collection.userId, collectionId: collection.id)
+
         // Create a batch write
-        let batch = db.batch()
+        let batch = Firestore.firestore().batch()
         
         // Update user's copy with events array
         batch.updateData([

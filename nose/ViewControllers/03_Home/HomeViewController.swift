@@ -2,7 +2,6 @@ import UIKit
 import MapboxMaps
 import CoreLocation
 import GooglePlaces
-import FirebaseFirestore
 import FirebaseAuth
 
 final class HomeViewController: UIViewController {
@@ -96,6 +95,8 @@ final class HomeViewController: UIViewController {
         mapView.ornaments.options.compass.visibility = .hidden
         mapView.ornaments.options.scaleBar.visibility = .hidden
         // Zoom gestures are enabled by default in Mapbox
+        // Hide initially to prevent showing default location before current location is loaded
+        mapView.alpha = 0
         return mapView
     }()
     
@@ -488,7 +489,14 @@ final class HomeViewController: UIViewController {
             center: CLLocationCoordinate2D(latitude: 35.6812, longitude: 139.7671),  // Tokyo coordinates as default
             zoom: 15
         )
-        mapView.camera.fly(to: cameraOptions, duration: 3.0)
+        mapView.camera.ease(to: cameraOptions, duration: 0.0)
+        revealMap()
+    }
+
+    private func revealMap() {
+        UIView.animate(withDuration: 0.3) {
+            self.mapView.alpha = 1
+        }
     }
     
     @objc private func currentLocationButtonTapped() {
@@ -762,13 +770,19 @@ extension HomeViewController: CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
 
-        // On first location, fly from globe view to current location (landing animation)
+        // Only move to current location if we haven't set initial camera yet
         if !hasSetInitialCamera {
             hasSetInitialCamera = true
-            mapManager?.flyToLocation(coordinate: location.coordinate, duration: 3.0)
+            // Set camera instantly (no animation) to avoid the map traveling from a default location
+            let cameraOptions = CameraOptions(
+                center: location.coordinate,
+                zoom: 15
+            )
+            mapView.camera.ease(to: cameraOptions, duration: 0.0)
+            revealMap()
         }
 
-        locationManager.stopUpdatingLocation() // Stop updating after getting the first location
+        locationManager.stopUpdatingLocation()
     }
     
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {

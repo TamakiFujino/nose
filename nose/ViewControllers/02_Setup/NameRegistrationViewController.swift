@@ -1,6 +1,5 @@
 import UIKit
 import FirebaseAuth
-import FirebaseFirestore
 
 final class NameRegistrationViewController: UIViewController {
     
@@ -130,7 +129,7 @@ final class NameRegistrationViewController: UIViewController {
         }
         
         guard let firebaseUser = Auth.auth().currentUser else {
-            print("No user is signed in")
+            Logger.log("No user is signed in", level: .debug, category: "NameReg")
             showError(message: "Authentication error. Please try signing in again.")
             return
         }
@@ -152,12 +151,12 @@ final class NameRegistrationViewController: UIViewController {
             self.continueButton.isEnabled = true
             
             if let error = error {
-                print("Error saving user data: \(error.localizedDescription)")
+                Logger.log("Error saving user data: \(error.localizedDescription)", level: .error, category: "NameReg")
                 self.showError(message: "Failed to save user data. Please try again.")
                 return
             }
             
-            print("Successfully saved user data")
+            Logger.log("Successfully saved user data", level: .info, category: "NameReg")
             self.navigateToHomeScreen()
         }
     }
