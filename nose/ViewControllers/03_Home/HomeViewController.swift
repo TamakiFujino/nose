@@ -68,7 +68,7 @@ final class HomeViewController: UIViewController {
             target: self,
             backgroundColor: .clear
         )
-        button.accessibilityIdentifier = "sparkle"
+        button.accessibilityIdentifier = "bookmark"
         button.accessibilityLabel = "Collections"
         return button
     }()

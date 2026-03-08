@@ -1,0 +1,53 @@
+appId: com.tamakifujino.nose
+---
+# Test 02-02: Add Spot to Shared Collection (User B)
+# User B adds a spot to the shared collection from User A.
+
+- launchApp
+
+# Sign in as User B
+- runFlow: shared/login_user_b.yaml
+- runFlow: shared/dismiss_location_permission.yaml
+
+# Search for a place
+- tapOn:
+    id: "search_button"
+- inputText: "Pinnacles National Park"
+- extendedWaitUntil:
+    visible: "Pinnacles National Park"
+    timeout: 10000
+# Tap the search result row (index 1), not the search bar text (index 0)
+- tapOn:
+    text: "Pinnacles National Park"
+    index: 1
+
+# Bookmark and save to shared collection
+- extendedWaitUntil:
+    visible:
+      id: "bookmark"
+    timeout: 10000
+- tapOn:
+    id: "bookmark"
+- assertVisible: "Save to Collection"
+- tapOn: "From Friends"
+- tapOn: "National Parks"
+- tapOn: "Save"
+
+# Dismiss place detail
+- runFlow: shared/dismiss_modal.yaml
+
+# Verify the collection now has 2 spots
+- runFlow: shared/open_collections.yaml
+- tapOn: "From Friends"
+- tapOn: "National Parks"
+- assertVisible:
+    id: "places_count_label"
+    text: "2"
+- assertVisible: "Kings Canyon National Park"
+- assertVisible: "Pinnacles National Park"
+
+# Dismiss collection detail modal, then collection list modal
+- runFlow: shared/dismiss_modal.yaml
+- runFlow: shared/dismiss_modal.yaml
+- runFlow: shared/logout.yaml
+- assertVisible: "Continue with Google"
