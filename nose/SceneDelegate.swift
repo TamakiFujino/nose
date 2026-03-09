@@ -19,7 +19,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window = UIWindow(windowScene: windowScene)
         
         // Always start with login/auth check screen
-        let loginVC = ViewController()
+        let loginVC = LoginViewController()
         loginVC.sceneDelegate = self
         let nav = UINavigationController(rootViewController: loginVC)
         window?.rootViewController = nav

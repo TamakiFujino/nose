@@ -56,53 +56,6 @@ class CollectionContainerManager {
         }
     }
     
-    func putBackCollection(_ collection: PlaceCollection, completion: @escaping (Error?) -> Void) {
-        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
-        
-        // Get the owner's collection to find all members
-        let ownerCollectionRef = FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collection.id, db: db)
-        
-        ownerCollectionRef.getDocument { [weak self] snapshot, error in
-            guard let self = self else { return }
-            
-            if let error = error {
-                Logger.log("Error getting collection: \(error.localizedDescription)", level: .error, category: "Collection")
-                completion(error)
-                return
-            }
-            
-            // Get current members
-            let members = snapshot?.data()?["members"] as? [String] ?? [currentUserId]
-            
-            // Create a batch write
-            let batch = self.db.batch()
-            
-            // Update owner's collection
-            batch.updateData([
-                "status": PlaceCollection.Status.active.rawValue
-            ], forDocument: ownerCollectionRef)
-            
-            // Update all shared copies
-            for memberId in members {
-                if memberId != currentUserId { // Skip owner, already updated above
-                    let sharedCollectionRef = FirestorePaths.collectionDoc(userId: memberId, collectionId: collection.id, db: self.db)
-                    
-                    batch.updateData([
-                        "status": PlaceCollection.Status.active.rawValue
-                    ], forDocument: sharedCollectionRef)
-                }
-            }
-            
-            // Commit all updates
-            batch.commit { error in
-                if let error = error {
-                    Logger.log("Error putting back collection: \(error.localizedDescription)", level: .error, category: "Collection")
-                }
-                completion(error)
-            }
-        }
-    }
-    
     func deleteCollection(_ collection: PlaceCollection, completion: @escaping (Error?) -> Void) {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         
@@ -154,18 +107,6 @@ class CollectionContainerManager {
                     }
                 }
             }
-        }
-    }
-    
-    func deletePlace(_ place: PlaceCollection.Place, from collection: PlaceCollection, completion: @escaping (Error?) -> Void) {
-        guard let currentUserId = Auth.auth().currentUser?.uid else { return }
-        
-        let collectionRef = FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collection.id, db: db)
-        
-        collectionRef.updateData([
-            "places": FieldValue.arrayRemove([place.toFirestoreData()])
-        ]) { error in
-            completion(error)
         }
     }
     

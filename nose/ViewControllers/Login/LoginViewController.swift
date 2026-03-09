@@ -5,7 +5,7 @@ import FirebaseCore
 import AuthenticationServices
 import CryptoKit
 
-final class ViewController: UIViewController {
+final class LoginViewController: UIViewController {
     
     // MARK: - UI Components
     private lazy var launchLogoImageView: UIImageView = {
@@ -387,7 +387,7 @@ final class ViewController: UIViewController {
 }
 
 // MARK: - ASAuthorizationControllerDelegate
-extension ViewController: ASAuthorizationControllerDelegate {
+extension LoginViewController: ASAuthorizationControllerDelegate {
     func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
         if let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential {
             guard let nonce = currentNonce else {
@@ -429,7 +429,7 @@ extension ViewController: ASAuthorizationControllerDelegate {
 }
 
 // MARK: - ASAuthorizationControllerPresentationContextProviding
-extension ViewController: ASAuthorizationControllerPresentationContextProviding {
+extension LoginViewController: ASAuthorizationControllerPresentationContextProviding {
     func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
         return view.window!
     }

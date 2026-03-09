@@ -28,7 +28,6 @@ struct ToastMessages {
     static let removeSpotFromCollection = "Spot removed from collection"
     
     // maps - error
-    // static let collectionAlreadyExists = "Collection creation failed"
     static let FailedToGetSpotInfo = "Failed to get spot information. Please try again."
     
     // settings - success
