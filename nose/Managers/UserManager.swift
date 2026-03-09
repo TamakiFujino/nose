@@ -71,20 +71,6 @@ final class UserManager {
         }
     }
     
-    func updateUserPreferences(userId: String, preferences: User.UserPreferences, completion: @escaping (Error?) -> Void) {
-        FirestorePaths.userDoc(userId).updateData([
-            "preferences": [
-                "language": preferences.language,
-                "theme": preferences.theme,
-                "notifications": preferences.notifications
-            ],
-            "lastLoginAt": FieldValue.serverTimestamp(),
-            "version": User.currentVersion
-        ]) { error in
-            completion(error)
-        }
-    }
-    
     // MARK: - Account Operations
     
     func updateUserName(userId: String, newName: String, completion: @escaping (Result<Void, Error>) -> Void) {
@@ -242,15 +228,6 @@ final class UserManager {
         getUser(id: userId, completion: completion)
     }
     
-    func updateCurrentUserPreferences(_ preferences: User.UserPreferences, completion: @escaping (Error?) -> Void) {
-        guard let userId = Auth.auth().currentUser?.uid else {
-            completion(nil)
-            return
-        }
-        
-        updateUserPreferences(userId: userId, preferences: preferences, completion: completion)
-    }
-    
     // MARK: - Profile Image
 
     func fetchProfileImageCollectionId(userId: String, completion: @escaping (Result<String?, Error>) -> Void) {
@@ -271,37 +248,4 @@ final class UserManager {
         ], completion: completion)
     }
 
-    // MARK: - Batch Migration
-    func migrateAllUsers(completion: @escaping (Error?) -> Void) {
-        FirestorePaths.users().getDocuments { [weak self] snapshot, error in
-            guard let self = self else { return }
-            
-            if let error = error {
-                completion(error)
-                return
-            }
-            
-            let batch = self.db.batch()
-            var migrationCount = 0
-            
-            snapshot?.documents.forEach { document in
-                let data = document.data()
-                let currentVersion = data["version"] as? Int ?? 1
-                
-                if currentVersion < User.currentVersion {
-                    let migratedData = User.migrate(data, from: currentVersion)
-                    batch.setData(migratedData, forDocument: document.reference, merge: true)
-                    migrationCount += 1
-                }
-            }
-            
-            if migrationCount > 0 {
-                batch.commit { error in
-                    completion(error)
-                }
-            } else {
-                completion(nil)
-            }
-        }
-    }
-} 
+}
