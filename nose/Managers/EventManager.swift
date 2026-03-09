@@ -586,45 +586,4 @@ class EventManager {
             completion(.success((avatarData: avatarData, avatarImageURL: avatarImageURL)))
         }
     }
-
-    // MARK: - Image Cleanup
-    func deleteEventImages(imageURLs: [String], completion: @escaping (Result<Void, Error>) -> Void) {
-        guard !imageURLs.isEmpty else {
-            completion(.success(()))
-            return
-        }
-        
-        let storageRef = storage.reference()
-        let group = DispatchGroup()
-        var deleteErrors: [Error] = []
-        
-        for urlString in imageURLs {
-            group.enter()
-            
-            // Extract the path from the URL
-            if let url = URL(string: urlString) {
-                let imageRef = storageRef.child(url.path)
-                
-                imageRef.delete { error in
-                    if let error = error {
-                        Logger.log("Error deleting image: \(error.localizedDescription)", level: .error, category: "EventMgr")
-                        deleteErrors.append(error)
-                    } else {
-                        Logger.log("Successfully deleted image: \(urlString)", level: .info, category: "EventMgr")
-                    }
-                    group.leave()
-                }
-            } else {
-                group.leave()
-            }
-        }
-        
-        group.notify(queue: .main) {
-            if deleteErrors.isEmpty {
-                completion(.success(()))
-            } else {
-                completion(.failure(deleteErrors.first!))
-            }
-        }
-    }
 }

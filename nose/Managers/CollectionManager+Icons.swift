@@ -1,8 +1,6 @@
 import Foundation
 import FirebaseFirestore
 import FirebaseStorage
-import UIKit
-
 extension CollectionManager {
 
     // MARK: - Collection Icons
@@ -227,65 +225,6 @@ extension CollectionManager {
             }
     }
 
-    // MARK: - Upload Collection Icon (Helper method for admin/manual setup)
-    /// Uploads an image to Firebase Storage and creates a Firestore document for it
-    /// This is a helper method that can be called manually or through admin tools
-    func uploadCollectionIcon(image: UIImage, name: String, category: String = "hobby", completion: @escaping (Result<Void, Error>) -> Void) {
-        guard let imageData = image.jpegData(compressionQuality: 0.8) else {
-            completion(.failure(NSError(domain: "CollectionManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to convert image to data"])))
-            return
-        }
-
-        // Upload to Firebase Storage in categorized folder
-        let storageRef = storage.reference()
-        let imageName = "\(name.replacingOccurrences(of: " ", with: "_")).jpg"
-        let imageRef = storageRef.child("collection_icons/\(category)/\(imageName)")
-
-        let metadata = StorageMetadata()
-        metadata.contentType = "image/jpeg"
-
-        imageRef.putData(imageData, metadata: metadata) { [weak self] metadata, error in
-            guard let self = self else { return }
-
-            if let error = error {
-                Logger.log("Error uploading collection icon image: \(error.localizedDescription)", level: .error, category: "CollectionMgr")
-                completion(.failure(error))
-                return
-            }
-
-            // Get download URL
-            imageRef.downloadURL { [weak self] url, error in
-                guard let self = self else { return }
-
-                if let error = error {
-                    Logger.log("Error getting download URL: \(error.localizedDescription)", level: .error, category: "CollectionMgr")
-                    completion(.failure(error))
-                    return
-                }
-
-                guard let downloadURL = url else {
-                    completion(.failure(NSError(domain: "CollectionManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get download URL"])))
-                    return
-                }
-
-                // Create Firestore document with category
-                self.db.collection("collection_icons").addDocument(data: [
-                    "name": name,
-                    "url": downloadURL.absoluteString,
-                    "category": category
-                ]) { error in
-                    if let error = error {
-                        Logger.log("Error creating collection icon document: \(error.localizedDescription)", level: .error, category: "CollectionMgr")
-                        completion(.failure(error))
-                    } else {
-                        Logger.log("Successfully uploaded collection icon: \(name) in category: \(category)", level: .info, category: "CollectionMgr")
-                        completion(.success(()))
-                    }
-                }
-            }
-        }
-    }
-
     // MARK: - Fetch Icons by Category (Storage-based with caching)
     func fetchCollectionIcons(for category: String, completion: @escaping (Result<[CollectionIcon], Error>) -> Void) {
         let categoryLowercase = category.lowercased()
@@ -375,17 +314,4 @@ extension CollectionManager {
         }
     }
 
-    // MARK: - Clear Icon Cache (optional - for refreshing)
-    func clearIconCache(for category: String? = nil) {
-        iconCacheQueue.async { [weak self] in
-            guard let self = self else { return }
-            if let category = category {
-                self.cachedIcons.removeValue(forKey: category.lowercased())
-                Logger.log("Cleared icon cache for category: \(category)", level: .debug, category: "CollectionMgr")
-            } else {
-                self.cachedIcons.removeAll()
-                Logger.log("Cleared all icon cache", level: .debug, category: "CollectionMgr")
-            }
-        }
-    }
 }

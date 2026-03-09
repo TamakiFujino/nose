@@ -371,12 +371,8 @@ class CollectionPlacesViewController: UIViewController {
     // MARK: - Tab Management
     
     private func setupCategoryTabs() {
-        let tabs: [(Tab, String)] = [(.places, "Places"), (.events, "Events")]
-        for (index, (tab, title)) in tabs.enumerated() {
-            let button = createTabButton(title: title, tag: index, tab: tab)
-            categoryTabStackView.addArrangedSubview(button)
-        }
-        updateTabButtonStates()
+        // Events tab temporarily removed
+        categoryTabScrollView.isHidden = true
     }
     
     private func createTabButton(title: String, tag: Int, tab: Tab) -> UIButton {
@@ -633,7 +629,7 @@ class CollectionPlacesViewController: UIViewController {
         imageAttachment.image = UIImage(systemName: "bookmark.fill")?.withTintColor(.thirdColor)
         let imageString = NSAttributedString(attachment: imageAttachment)
         
-        let totalItems = places.count + events.count
+        let totalItems = places.count
         let textString = NSAttributedString(string: " \(totalItems)", attributes: [
             .foregroundColor: UIColor.thirdColor
         ])
