@@ -89,15 +89,22 @@ class ConfirmationModalViewController: UIViewController {
         cancel.style = .secondary
         cancel.size = .large
         cancel.isPerfectlyRounded = true
+        cancel.backgroundColor = .secondColor
+        cancel.setTitleColor(.fourthColor, for: .normal)
+        cancel.layer.borderWidth = 0
         cancel.translatesAutoresizingMaskIntoConstraints = false
         cancel.addTarget(self, action: #selector(cancelTapped), for: .touchUpInside)
         cancelButton = cancel
 
         let primaryButton = CustomButton()
         primaryButton.setTitle(primaryTitle, for: .normal)
-        primaryButton.style = primaryStyle == .destructive ? .destructive : .themeBlue
+        primaryButton.style = primaryStyle == .destructive ? .destructive : .primary
         primaryButton.size = .large
         primaryButton.isPerfectlyRounded = true
+        if primaryStyle != .destructive {
+            primaryButton.backgroundColor = .themeBlue
+            primaryButton.setTitleColor(.white, for: .normal)
+        }
         primaryButton.translatesAutoresizingMaskIntoConstraints = false
         primaryButton.addTarget(self, action: #selector(primaryTapped), for: .touchUpInside)
 
