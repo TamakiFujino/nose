@@ -123,7 +123,7 @@ final class AccountViewController: UIViewController {
     
     // MARK: - Navigation
     private func navigateToLoginScreen() {
-        let viewController = ViewController()
+        let viewController = LoginViewController()
         viewController.modalPresentationStyle = .fullScreen
         present(viewController, animated: true)
     }
