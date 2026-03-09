@@ -1,0 +1,36 @@
+appId: com.tamakifujino.nose
+---
+# Test 05-02: Delete Collection (User A)
+# User A deletes "Renamed Collection".
+
+- launchApp
+
+# Sign in as User A
+- runFlow: shared/login_user_a.yaml
+- runFlow: shared/dismiss_location_permission.yaml
+
+# Open collections and tap "Renamed Collection"
+- runFlow: shared/open_collections.yaml
+- tapOn: "Renamed Collection"
+
+# Open More menu and tap Delete Collection
+- tapOn: "More"
+- tapOn: "Delete Collection"
+
+# Confirm deletion in the alert
+- extendedWaitUntil:
+    visible: "Delete Collection"
+    timeout: 5000
+- tapOn: "Delete"
+
+# Wait for deletion to complete
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# Verify collection is no longer visible in the list
+- assertNotVisible: "Renamed Collection"
+
+# Dismiss collection list modal
+- runFlow: shared/dismiss_modal.yaml
+- runFlow: shared/logout.yaml
+- assertVisible: "Continue with Google"

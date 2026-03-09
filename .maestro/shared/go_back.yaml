@@ -1,0 +1,6 @@
+appId: com.tamakifujino.nose
+---
+# Navigate back via iOS edge-swipe gesture
+- swipe:
+    start: "1%,50%"
+    end: "75%,50%"

@@ -1,0 +1,8 @@
+appId: com.tamakifujino.nose
+---
+# Logout: Personal Library → Account → Logout → Confirm → OK
+- tapOn: "Personal Library"
+- tapOn: "Account"
+- tapOn: "Logout"
+- tapOn: "Confirm"
+- tapOn: "OK"

@@ -1,0 +1,59 @@
+appId: com.tamakifujino.nose
+---
+# Test 01-01: Create User A
+# Signs in, validates name input, saves user ID, logs out.
+
+- launchApp
+
+# Sign in as User A
+- runFlow: shared/login_user_a.yaml
+
+# --- Name registration screen ---
+- assertVisible: "What should we call you?"
+
+# Validation: 1 char (too short) → Error
+- tapOn:
+    id: "name_text_field"
+- inputText: "A"
+- tapOn: "Continue"
+- assertVisible: "Error"
+- tapOn: "OK"
+
+# Validation: 31 chars (too long) → Error
+- tapOn:
+    id: "name_text_field"
+- eraseText: 1
+- inputText: "ABCDEFGHIJKLMNOPQRSTUVWXYZ12345"
+- tapOn: "Continue"
+- assertVisible: "Error"
+- tapOn: "OK"
+
+# Valid name: "User A"
+- tapOn:
+    id: "name_text_field"
+- eraseText: 31
+- inputText: "User A"
+- tapOn: "Continue"
+
+# Dismiss location permission
+- runFlow: shared/dismiss_location_permission.yaml
+
+# Navigate to Add Friend to get User ID
+- tapOn: "Personal Library"
+- tapOn: "Add Friend"
+
+# Read and copy User A's ID
+- assertVisible:
+    id: "user_id_value"
+- tapOn:
+    id: "copy_button"
+
+# Navigate back (Add Friend → Settings → Home)
+- runFlow: shared/go_back.yaml
+- runFlow: shared/go_back.yaml
+
+# Logout
+- runFlow: shared/logout.yaml
+
+# Verify we're back on login screen
+- assertVisible: "Continue with Google"

@@ -1,0 +1,19 @@
+appId: com.tamakifujino.nose
+---
+# Delete the currently logged-in account from the home screen.
+# Navigates: Home → Personal Library → scroll → Account → Delete Account → confirm
+
+- tapOn: "Personal Library"
+
+# Swipe up from bottom to scroll past the avatar header
+- swipe:
+    start: "50%,90%"
+    end: "50%,50%"
+
+- tapOn: "Account"
+- tapOn: "Delete Account"
+- tapOn: "Confirm"
+- tapOn: "Delete"
+- tapOn:
+    text: "OK"
+    optional: true

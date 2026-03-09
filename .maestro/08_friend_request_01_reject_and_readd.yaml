@@ -1,0 +1,120 @@
+appId: com.tamakifujino.nose
+---
+# Test 08-01: Reject Friend Request and Re-add (User B sends, User A rejects, then re-adds)
+# Combined test: send request → reject → re-send → accept.
+
+- launchApp
+
+# --- Step 1: User A copies their User ID ---
+- runFlow: shared/login_user_a.yaml
+- runFlow: shared/dismiss_location_permission.yaml
+- tapOn: "Personal Library"
+- tapOn: "Add Friend"
+# Copy User A's ID
+- tapOn:
+    id: "copy_button"
+# Navigate back (Add Friend → Settings → Home)
+- runFlow: shared/go_back.yaml
+- runFlow: shared/go_back.yaml
+- runFlow: shared/logout.yaml
+
+# --- Step 2: User B sends friend request to User A ---
+- runFlow: shared/login_user_b.yaml
+- runFlow: shared/dismiss_location_permission.yaml
+- tapOn: "Personal Library"
+- tapOn: "Add Friend"
+# Paste User A's ID
+- longPressOn:
+    id: "search_by_user_id"
+- tapOn:
+    text: "Paste"
+    optional: true
+- tapOn:
+    text: "Allow Paste"
+    optional: true
+# Send friend request
+- tapOn:
+    id: "add_friend_button"
+- extendedWaitUntil:
+    visible: "OK"
+    timeout: 10000
+- tapOn: "OK"
+# Navigate back
+- runFlow: shared/go_back.yaml
+- runFlow: shared/go_back.yaml
+- runFlow: shared/logout.yaml
+
+# --- Step 3: User A rejects the request ---
+- runFlow: shared/login_user_a.yaml
+- runFlow: shared/dismiss_location_permission.yaml
+- runFlow: shared/open_friends_list.yaml
+- tapOn: "Pending"
+- extendedWaitUntil:
+    visible: "User B"
+    timeout: 10000
+# Tap Reject
+- tapOn: "Reject"
+# Confirm rejection
+- extendedWaitUntil:
+    visible: "Reject request"
+    timeout: 5000
+- tapOn: "Reject"
+# Verify User B is gone from Pending
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertNotVisible: "User B"
+# Navigate back (Friends List → Settings → Home)
+- runFlow: shared/go_back.yaml
+- runFlow: shared/go_back.yaml
+- runFlow: shared/logout.yaml
+
+# --- Step 4: User B re-sends friend request ---
+- runFlow: shared/login_user_b.yaml
+- runFlow: shared/dismiss_location_permission.yaml
+- tapOn: "Personal Library"
+- tapOn: "Add Friend"
+# Paste User A's ID again
+- longPressOn:
+    id: "search_by_user_id"
+- tapOn:
+    text: "Paste"
+    optional: true
+- tapOn:
+    text: "Allow Paste"
+    optional: true
+# Send friend request
+- tapOn:
+    id: "add_friend_button"
+- extendedWaitUntil:
+    visible: "OK"
+    timeout: 10000
+- tapOn: "OK"
+# Navigate back
+- runFlow: shared/go_back.yaml
+- runFlow: shared/go_back.yaml
+- runFlow: shared/logout.yaml
+
+# --- Step 5: User A accepts the re-sent request ---
+- runFlow: shared/login_user_a.yaml
+- runFlow: shared/dismiss_location_permission.yaml
+- runFlow: shared/open_friends_list.yaml
+- tapOn: "Pending"
+- extendedWaitUntil:
+    visible: "User B"
+    timeout: 10000
+# Approve the request
+- tapOn: "Approve"
+- tapOn: "Approve"
+- tapOn: "OK"
+# Verify User B appears in Friends tab
+- tapOn: "Friends"
+- waitForAnimationToEnd:
+    timeout: 3000
+- extendedWaitUntil:
+    visible: "User B"
+    timeout: 5000
+# Navigate back (Friends List → Settings → Home)
+- runFlow: shared/go_back.yaml
+- runFlow: shared/go_back.yaml
+- runFlow: shared/logout.yaml
+- assertVisible: "Continue with Google"

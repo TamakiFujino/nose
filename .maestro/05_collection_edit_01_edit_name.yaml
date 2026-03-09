@@ -1,0 +1,42 @@
+appId: com.tamakifujino.nose
+---
+# Test 05-01: Edit Collection Name (User A)
+# User A renames "Test Collection" to "Renamed Collection".
+
+- launchApp
+
+# Sign in as User A
+- runFlow: shared/login_user_a.yaml
+- runFlow: shared/dismiss_location_permission.yaml
+
+# Open collections and tap "Test Collection"
+- runFlow: shared/open_collections.yaml
+- tapOn: "Test Collection"
+
+# Open More menu and tap Edit Collection
+- tapOn: "More"
+- tapOn: "Edit Collection"
+
+# Assert edit modal is visible
+- assertVisible: "Edit Collection"
+
+# Clear existing name and type new name
+- tapOn:
+    id: "collection_name_field"
+- eraseText: 50
+- inputText: "Renamed Collection"
+- hideKeyboard
+
+# Save changes
+- tapOn: "Save"
+
+# Verify the updated name appears
+- extendedWaitUntil:
+    visible: "Renamed Collection"
+    timeout: 10000
+
+# Dismiss collection detail modal, then collection list modal
+- runFlow: shared/dismiss_modal.yaml
+- runFlow: shared/dismiss_modal.yaml
+- runFlow: shared/logout.yaml
+- assertVisible: "Continue with Google"

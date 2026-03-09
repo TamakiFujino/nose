@@ -1,0 +1,94 @@
+appId: com.tamakifujino.nose
+---
+# Test 01-02: Create User B & Send Friend Request
+# Signs in, creates account, sends friend request to User A, renames.
+# Requires: User A's ID in clipboard (from test 01-01)
+
+- launchApp
+
+# Sign in as User B
+- runFlow: shared/login_user_b.yaml
+
+# Name registration
+- assertVisible: "What should we call you?"
+- tapOn:
+    id: "name_text_field"
+- inputText: "Name to be updated"
+- tapOn: "Continue"
+
+# Dismiss location permission
+- runFlow: shared/dismiss_location_permission.yaml
+
+# Navigate to Add Friend
+- tapOn: "Personal Library"
+- tapOn: "Add Friend"
+
+# Paste User A's ID from clipboard and send friend request
+- tapOn:
+    id: "search_by_user_id"
+- longPressOn:
+    id: "search_by_user_id"
+- tapOn:
+    text: "Paste"
+    optional: true
+# Handle iOS paste permission dialog if it appears
+- tapOn:
+    text: "Allow Paste"
+    optional: true
+# Trigger search
+- pressKey: Enter
+# Wait for User A's profile to load
+- extendedWaitUntil:
+    visible: "User A"
+    timeout: 10000
+# Send friend request
+- tapOn:
+    id: "add_friend_button"
+- assertVisible: "Request Sent!"
+- tapOn: "OK"
+
+# Copy User B's ID
+- tapOn:
+    id: "copy_button"
+
+# Navigate back (Add Friend → Settings → Home)
+- runFlow: shared/go_back.yaml
+- runFlow: shared/go_back.yaml
+
+# Rename to "User B" via Settings
+- tapOn: "Personal Library"
+- tapOn: "Name"
+
+# Validation: 1 char (too short)
+- tapOn:
+    id: "name_text_field"
+- eraseText: 50
+- inputText: "A"
+- tapOn: "Save"
+- assertVisible: "Invalid Name"
+- tapOn: "OK"
+
+# Validation: 31 chars (too long)
+- tapOn:
+    id: "name_text_field"
+- eraseText: 50
+- inputText: "ABCDEFGHIJKLMNOPQRSTUVWXYZ12345"
+- tapOn: "Save"
+- assertVisible: "Invalid Name"
+- tapOn: "OK"
+
+# Valid rename
+- tapOn:
+    id: "name_text_field"
+- eraseText: 50
+- inputText: "User B"
+- tapOn: "Save"
+- tapOn: "OK"
+
+# Navigate back (EditName → Settings → Home)
+- runFlow: shared/go_back.yaml
+- runFlow: shared/go_back.yaml
+
+# Logout
+- runFlow: shared/logout.yaml
+- assertVisible: "Continue with Google"

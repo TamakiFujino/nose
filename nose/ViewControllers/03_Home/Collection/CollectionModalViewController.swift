@@ -74,6 +74,7 @@ class CollectionModalViewController: UIViewController {
         textField.rightView = paddingView
         textField.rightViewMode = .always
         textField.translatesAutoresizingMaskIntoConstraints = false
+        textField.accessibilityIdentifier = "collection_name_field"
         return textField
     }()
     
