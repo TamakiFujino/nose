@@ -1,0 +1,40 @@
+appId: com.tamakifujino.nose
+---
+# Test 03-01: Create Collection from Modal (User A)
+# User A creates a second collection using the "+" FAB on the collections screen.
+
+- launchApp
+
+# Sign in as User A
+- runFlow: shared/login_user_a.yaml
+- runFlow: shared/dismiss_location_permission.yaml
+
+# Open collections
+- runFlow: shared/open_collections.yaml
+
+# Tap the "+" FAB to create a new collection
+- tapOn:
+    id: "add_collection_button"
+
+# Assert "New Collection" modal is visible
+- assertVisible: "New Collection"
+
+# Type the collection name
+- tapOn:
+    id: "collection_name_field"
+- inputText: "Test Collection"
+- hideKeyboard
+
+# Save the new collection
+- tapOn: "Save"
+
+# Verify the collection appears in the list
+- extendedWaitUntil:
+    visible: "Test Collection"
+    timeout: 10000
+
+# Dismiss collection list modal
+- runFlow: shared/dismiss_modal.yaml
+- runFlow: shared/dismiss_minimized_modal.yaml
+- runFlow: shared/logout.yaml
+- assertVisible: "Continue with Google"

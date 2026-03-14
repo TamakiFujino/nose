@@ -1,0 +1,6 @@
+appId: com.tamakifujino.nose
+---
+# Dismiss iOS location permission alert if shown
+- tapOn:
+    text: "Allow While Using App"
+    optional: true

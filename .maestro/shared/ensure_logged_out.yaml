@@ -1,0 +1,7 @@
+appId: com.tamakifujino.nose
+---
+# If already logged in (tab bar visible), log out first
+- runFlow:
+    when:
+      visible: "Personal Library"
+    file: logout.yaml

@@ -1,0 +1,49 @@
+appId: com.tamakifujino.nose
+---
+# Test 06-01: Leave Shared Collection (User B)
+# User B leaves the "National Parks" shared collection.
+
+- launchApp
+
+# Sign in as User B
+- runFlow: shared/login_user_b.yaml
+- runFlow: shared/dismiss_location_permission.yaml
+
+# Open collections and go to "From Friends" tab
+- runFlow: shared/open_collections.yaml
+- tapOn: "From Friends"
+
+# Wait for and tap "National Parks"
+- extendedWaitUntil:
+    visible: "National Parks"
+    timeout: 10000
+- tapOn: "National Parks"
+
+# Open More menu and tap "Leave this collection"
+- tapOn: "More"
+- tapOn: "Leave this collection"
+
+# Confirm leave in the alert
+- extendedWaitUntil:
+    visible: "Leave Collection"
+    timeout: 5000
+- tapOn: "Leave"
+
+# Wait for leave to complete
+- waitForAnimationToEnd:
+    timeout: 5000
+- runFlow: shared/dismiss_modal.yaml
+- runFlow: shared/dismiss_modal.yaml
+
+# Reopen collections and verify "National Parks" is gone from "From Friends"
+- runFlow: shared/open_collections.yaml
+- tapOn: "From Friends"
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertNotVisible: "National Parks"
+
+# Dismiss collection list modal
+- runFlow: shared/dismiss_modal.yaml
+- runFlow: shared/dismiss_modal.yaml
+- runFlow: shared/logout.yaml
+- assertVisible: "Continue with Google"

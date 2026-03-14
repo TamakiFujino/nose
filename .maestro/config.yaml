@@ -1,0 +1,11 @@
+# Maestro E2E Test Configuration
+#
+# Test account credentials - override via CLI:
+#   maestro test --env USER_A_EMAIL=... --env USER_A_NAME=... .maestro/
+#
+# Or export as environment variables before running.
+
+USER_A_EMAIL: ${USER_A_EMAIL}
+USER_A_NAME: ${USER_A_NAME}
+USER_B_EMAIL: ${USER_B_EMAIL}
+USER_B_NAME: ${USER_B_NAME}

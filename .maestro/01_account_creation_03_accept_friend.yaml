@@ -1,0 +1,36 @@
+appId: com.tamakifujino.nose
+---
+# Test 01-03: Accept Friend Request
+# User A accepts User B's friend request.
+
+- launchApp
+
+# Sign in as User A
+- runFlow: shared/login_user_a.yaml
+- runFlow: shared/dismiss_location_permission.yaml
+
+# Open Friends List
+- runFlow: shared/open_friends_list.yaml
+
+# Go to Pending tab and approve User B
+- tapOn: "Pending"
+- assertVisible: "User B"
+- tapOn: "Approve"
+- tapOn: "Approve"
+- tapOn: "OK"
+
+# Verify User B appears in Friends tab (use Friends_tab to avoid tapping nav bar title)
+- tapOn:
+    id: "Friends_tab"
+- waitForAnimationToEnd:
+    timeout: 3000
+- extendedWaitUntil:
+    visible: "User B"
+
+# Navigate back (Friends List → Settings → Home)
+- runFlow: shared/go_back.yaml
+- runFlow: shared/go_back.yaml
+
+# Logout
+- runFlow: shared/logout.yaml
+- assertVisible: "Continue with Google"

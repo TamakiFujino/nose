@@ -1,0 +1,50 @@
+appId: com.tamakifujino.nose
+---
+# Test 98-01: Delete Collection (User A); User B no longer has access
+# User A deletes "Renamed Collection". User B logs in and verifies the collection is gone from From Friends.
+
+- launchApp
+
+# Sign in as User A
+- runFlow: shared/login_user_a.yaml
+- runFlow: shared/dismiss_location_permission.yaml
+
+# Open collections and tap "Renamed Collection"
+- runFlow: shared/open_collections.yaml
+- tapOn: "Renamed Collection"
+
+# Open More menu and tap Delete Collection
+- tapOn: "More"
+- tapOn: "Delete Collection"
+
+# Confirm deletion in the alert
+- extendedWaitUntil:
+    visible: "Delete Collection"
+    timeout: 5000
+- tapOn: "Delete"
+
+# Wait for deletion to complete
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# Verify collection is no longer visible in the list
+- assertNotVisible: "Renamed Collection"
+
+# Dismiss collection list modal and logout User A
+- runFlow: shared/dismiss_modal.yaml
+- runFlow: shared/dismiss_minimized_modal.yaml
+- runFlow: shared/logout.yaml
+- assertVisible: "Continue with Google"
+
+# --- User B: verify they no longer have access to the deleted collection ---
+- runFlow: shared/login_user_b.yaml
+- runFlow: shared/dismiss_location_permission.yaml
+- runFlow: shared/open_collections.yaml
+- tapOn: "From Friends"
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertNotVisible: "Renamed Collection"
+- runFlow: shared/dismiss_modal.yaml
+- runFlow: shared/dismiss_minimized_modal.yaml
+- runFlow: shared/logout.yaml
+- assertVisible: "Continue with Google"
