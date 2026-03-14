@@ -1,0 +1,85 @@
+appId: com.tamakifujino.nose
+---
+# Test 07-03: Unblock User (User A unblocks User B, then sends friend request)
+# User A unblocks User B, then sends a friend request to User B.
+# Maestro only pastes from clipboard, so we copy User B's ID right before the paste step.
+
+- launchApp
+
+# Sign in as User A
+- runFlow: shared/login_user_a.yaml
+- runFlow: shared/dismiss_location_permission.yaml
+
+# Open Friends List
+- runFlow: shared/open_friends_list.yaml
+
+# Switch to Blocked tab
+- tapOn: "Blocked"
+- extendedWaitUntil:
+    visible: "User B"
+    timeout: 5000
+
+# Tap User B to show action sheet
+- tapOn: "User B"
+
+# Tap "Unblock User" from the action sheet
+- tapOn: "Unblock User"
+
+# Confirm unblock in the confirmation modal
+- extendedWaitUntil:
+    visible: "Unblock user?"
+    timeout: 5000
+- tapOn: "Unblock"
+
+# Success message
+- extendedWaitUntil:
+    visible: "Success"
+    timeout: 5000
+- tapOn: "OK"
+
+# Verify User B is no longer on Blocked tab
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertNotVisible: "User B"
+
+# Put User B's ID in clipboard: switch to User B, copy, then back to User A to paste and send request
+- runFlow: shared/go_back.yaml
+- runFlow: shared/go_back.yaml
+- runFlow: shared/logout.yaml
+- runFlow: shared/login_user_b.yaml
+- runFlow: shared/dismiss_location_permission.yaml
+- tapOn: "Personal Library"
+- tapOn: "Add Friend"
+- tapOn:
+    id: "copy_button"
+- runFlow: shared/go_back.yaml
+- runFlow: shared/go_back.yaml
+- runFlow: shared/logout.yaml
+- runFlow: shared/login_user_a.yaml
+- runFlow: shared/dismiss_location_permission.yaml
+- tapOn: "Personal Library"
+- tapOn: "Add Friend"
+- longPressOn:
+    id: "search_by_user_id"
+- tapOn:
+    text: "Paste"
+    optional: true
+- tapOn:
+    text: "Allow Paste"
+    optional: true
+- inputText: "\n"
+- extendedWaitUntil:
+    visible: "User B"
+    timeout: 10000
+- tapOn:
+    id: "add_friend_button"
+- extendedWaitUntil:
+    visible: "Request Sent!"
+    timeout: 10000
+- tapOn: "OK"
+
+# Navigate back and logout
+- runFlow: shared/go_back.yaml
+- runFlow: shared/go_back.yaml
+- runFlow: shared/logout.yaml
+- assertVisible: "Continue with Google"

@@ -35,5 +35,6 @@ appId: com.tamakifujino.nose
 
 # Dismiss collection list modal
 - runFlow: shared/dismiss_modal.yaml
+- runFlow: shared/dismiss_minimized_modal.yaml
 - runFlow: shared/logout.yaml
 - assertVisible: "Continue with Google"

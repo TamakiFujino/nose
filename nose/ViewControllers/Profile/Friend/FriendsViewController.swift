@@ -124,6 +124,7 @@ class FriendsViewController: UIViewController {
             FirestorePaths.userDoc(id).getDocument { snapshot, error in
                 defer { group.leave() }
                 guard let snapshot = snapshot, let user = User.fromFirestore(snapshot) else { return }
+                guard !user.isDeleted else { return }
                 lock.lock()
                 users.append(user)
                 lock.unlock()
@@ -199,10 +200,15 @@ class FriendsViewController: UIViewController {
     private func setupCategoryTabs() {
         for (index, (tab, title)) in Self.tabTitles.enumerated() {
             let button = createTabButton(title: title, tag: index, tab: tab)
-            if tab == .pending {
+            switch tab {
+            case .friends:
+                button.accessibilityIdentifier = "Friends_tab"
+            case .pending:
                 button.accessibilityIdentifier = "Pending"
-            } else if tab == .requested {
+            case .requested:
                 button.accessibilityIdentifier = "Requested"
+            case .blocked:
+                button.accessibilityIdentifier = "Blocked"
             }
             categoryTabStackView.addArrangedSubview(button)
         }

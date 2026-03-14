@@ -1,0 +1,8 @@
+appId: com.tamakifujino.nose
+---
+# Dismiss a minimized (strip) modal: swipe down from the strip off the bottom.
+# Start at ~15% from bottom (85% from top), end at bottom (100%).
+- swipe:
+    start: "20%,85%"
+    end: "20%,100%"
+    duration: 400

@@ -21,13 +21,11 @@ appId: com.tamakifujino.nose
     text: "Kings Canyon National Park"
     index: 1
 
-# Bookmark the place
+# Bookmark the place (sheet exposes label "Bookmark", not id, to UI test)
 - extendedWaitUntil:
-    visible:
-      id: "bookmark"
+    visible: "Bookmark"
     timeout: 10000
-- tapOn:
-    id: "bookmark"
+- tapOn: "Bookmark"
 - assertVisible: "Save to Collection"
 
 # Create a new collection
@@ -77,8 +75,9 @@ appId: com.tamakifujino.nose
     id: "shared_friends_count_label"
     text: "2"
 
-# Dismiss collection detail modal, then collection list modal
+# Dismiss collection detail modal (large), then collection list modal (may be minimized)
 - runFlow: shared/dismiss_modal.yaml
 - runFlow: shared/dismiss_modal.yaml
+- runFlow: shared/dismiss_minimized_modal.yaml
 - runFlow: shared/logout.yaml
 - assertVisible: "Continue with Google"

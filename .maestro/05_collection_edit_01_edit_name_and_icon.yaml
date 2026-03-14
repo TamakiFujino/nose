@@ -1,7 +1,7 @@
 appId: com.tamakifujino.nose
 ---
-# Test 05-01: Edit Collection Name (User A)
-# User A renames "Test Collection" to "Renamed Collection".
+# Test 05-01: Edit Collection Name & Icon (User A)
+# User A changes the collection icon and renames "Test Collection" to "Renamed Collection".
 
 - launchApp
 
@@ -20,14 +20,29 @@ appId: com.tamakifujino.nose
 # Assert edit modal is visible
 - assertVisible: "Edit Collection"
 
+# Change collection icon: open picker, switch to different tab, select first icon, close
+- tapOn:
+    id: "icon_button"
+- extendedWaitUntil:
+    visible: "Hobby"
+    timeout: 10000
+# Switch to Food tab and select first icon
+- tapOn: "Food"
+- extendedWaitUntil:
+    visible:
+      id: "icon_cell_0"
+    timeout: 10000
+- tapOn:
+    id: "icon_cell_0"
+
 # Clear existing name and type new name
 - tapOn:
     id: "collection_name_field"
 - eraseText: 50
 - inputText: "Renamed Collection"
-- hideKeyboard
-
-# Save changes
+# Dismiss keyboard by tapping 20% from top (safe area, avoids icon button)
+- tapOn:
+    point: "80%,50%"
 - tapOn: "Save"
 
 # Verify the updated name appears
@@ -38,5 +53,6 @@ appId: com.tamakifujino.nose
 # Dismiss collection detail modal, then collection list modal
 - runFlow: shared/dismiss_modal.yaml
 - runFlow: shared/dismiss_modal.yaml
+- runFlow: shared/dismiss_minimized_modal.yaml
 - runFlow: shared/logout.yaml
 - assertVisible: "Continue with Google"

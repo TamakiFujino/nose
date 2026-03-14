@@ -42,6 +42,12 @@ for var in USER_A_EMAIL USER_A_NAME USER_B_EMAIL USER_B_NAME; do
   fi
 done
 
-echo "Running: maestro test --device $DEVICE_ID ${ENV_FLAGS[*]+"${ENV_FLAGS[*]}"} $*"
+# Output: maestro-report/ at project root (screenshots, JUnit, etc.)
+REPORT_DIR="$PROJECT_ROOT/maestro-report"
+mkdir -p "$REPORT_DIR"
+echo "Report output directory: $REPORT_DIR"
+echo "Running: maestro test --device $DEVICE_ID ${ENV_FLAGS[*]+"${ENV_FLAGS[*]}"} --output $REPORT_DIR $*"
 
-~/.maestro/bin/maestro test --device "$DEVICE_ID" ${ENV_FLAGS[@]+"${ENV_FLAGS[@]}"} "$@"
+~/.maestro/bin/maestro test --device "$DEVICE_ID" ${ENV_FLAGS[@]+"${ENV_FLAGS[@]}"} --output "$REPORT_DIR" "$@"
+
+echo "Done. Check: $REPORT_DIR"

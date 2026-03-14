@@ -1,0 +1,61 @@
+appId: com.tamakifujino.nose
+---
+# Test 07-01: Block User (User A blocks User B; User B removed from collection)
+# Assumes collection is already shared with User B (e.g. from 06-02). Block User B, then verify User B is no longer on the collection.
+
+- launchApp
+
+# Sign in as User A
+- runFlow: shared/login_user_a.yaml
+- runFlow: shared/dismiss_location_permission.yaml
+
+# Open Friends List and block User B
+- runFlow: shared/open_friends_list.yaml
+- extendedWaitUntil:
+    visible: "User B"
+    timeout: 5000
+- tapOn: "User B"
+- tapOn: "Block User"
+- extendedWaitUntil:
+    visible: "Block user?"
+    timeout: 5000
+- tapOn: "Block"
+- extendedWaitUntil:
+    visible: "Success"
+    timeout: 5000
+- tapOn: "OK"
+
+# Verify User B is no longer on Friends tab
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertNotVisible: "User B"
+
+# Switch to Blocked tab and verify User B appears there
+- tapOn: "Blocked"
+- extendedWaitUntil:
+    visible: "User B"
+    timeout: 5000
+
+# Go back to Home (Friends → Settings → Home) and reopen collection to verify User B is no longer on the collection
+- runFlow: shared/go_back.yaml
+- runFlow: shared/go_back.yaml
+- runFlow: shared/open_collections.yaml
+- tapOn: "National Parks"
+- extendedWaitUntil:
+    visible: "More"
+    timeout: 10000
+- tapOn: "More"
+- tapOn: "Share with Friends"
+- extendedWaitUntil:
+    visible: "Update Sharing"
+    timeout: 5000
+# User B must not appear in the share list (removed when blocked)
+- assertNotVisible: "User B"
+
+# Dismiss Share sheet, then collection detail, then collection list; logout
+- runFlow: shared/dismiss_modal.yaml
+- runFlow: shared/dismiss_modal.yaml
+- runFlow: shared/dismiss_modal.yaml
+- runFlow: shared/dismiss_minimized_modal.yaml
+- runFlow: shared/logout.yaml
+- assertVisible: "Continue with Google"

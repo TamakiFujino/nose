@@ -1,0 +1,43 @@
+appId: com.tamakifujino.nose
+---
+# Test 06-02: Verify Leave on Owner Side & Re-share (User A)
+# User A logs in, verifies User B has left (shared count updated), then re-shares with User B for later tests.
+
+- launchApp
+
+# Sign in as User A
+- runFlow: shared/login_user_a.yaml
+- runFlow: shared/dismiss_location_permission.yaml
+
+# Open collection and verify shared count is 1 (User B left in 06-01)
+- runFlow: shared/open_collections.yaml
+- tapOn: "National Parks"
+- extendedWaitUntil:
+    visible: "More"
+    timeout: 10000
+- assertVisible:
+    id: "shared_friends_count_label"
+    text: "1"
+
+# Re-share with User B for later tests (e.g. 07 block user)
+- tapOn: "More"
+- tapOn: "Share with Friends"
+- extendedWaitUntil:
+    visible: "User B"
+    timeout: 5000
+- tapOn: "User B"
+- tapOn: "Update Sharing"
+- extendedWaitUntil:
+    visible:
+      id: "shared_friends_count_label"
+    timeout: 5000
+- assertVisible:
+    id: "shared_friends_count_label"
+    text: "2"
+
+# Dismiss collection detail modal, then collection list modal
+- runFlow: shared/dismiss_modal.yaml
+- runFlow: shared/dismiss_modal.yaml
+- runFlow: shared/dismiss_minimized_modal.yaml
+- runFlow: shared/logout.yaml
+- assertVisible: "Continue with Google"

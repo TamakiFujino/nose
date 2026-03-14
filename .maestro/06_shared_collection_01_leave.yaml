@@ -1,6 +1,6 @@
 appId: com.tamakifujino.nose
 ---
-# Test 07-01: Leave Shared Collection (User B)
+# Test 06-01: Leave Shared Collection (User B)
 # User B leaves the "National Parks" shared collection.
 
 - launchApp
@@ -32,6 +32,8 @@ appId: com.tamakifujino.nose
 # Wait for leave to complete
 - waitForAnimationToEnd:
     timeout: 5000
+- runFlow: shared/dismiss_modal.yaml
+- runFlow: shared/dismiss_modal.yaml
 
 # Reopen collections and verify "National Parks" is gone from "From Friends"
 - runFlow: shared/open_collections.yaml
@@ -41,6 +43,7 @@ appId: com.tamakifujino.nose
 - assertNotVisible: "National Parks"
 
 # Dismiss collection list modal
+- runFlow: shared/dismiss_modal.yaml
 - runFlow: shared/dismiss_modal.yaml
 - runFlow: shared/logout.yaml
 - assertVisible: "Continue with Google"

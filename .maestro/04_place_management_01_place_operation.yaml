@@ -1,0 +1,92 @@
+appId: com.tamakifujino.nose
+---
+# Test 04-01: Place Management (combined)
+# User A: mark visited, delete place, copy place to Test Collection (then verify there), tap heart in National Parks. Single login/logout and one open/dismiss.
+
+- launchApp
+
+# Sign in once
+- runFlow: shared/login_user_a.yaml
+- runFlow: shared/dismiss_location_permission.yaml
+
+# Open collections and tap "National Parks" once
+- runFlow: shared/open_collections.yaml
+- tapOn: "National Parks"
+
+# --- Mark place as visited ---
+- extendedWaitUntil:
+    visible: "Kings Canyon National Park"
+    timeout: 10000
+- swipe:
+    from:
+      text: "Kings Canyon National Park"
+    direction: LEFT
+    duration: 400
+- tapOn: "Visited"
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# --- Delete place ---
+- extendedWaitUntil:
+    visible: "Kings Canyon National Park"
+    timeout: 10000
+- swipe:
+    from:
+      text: "Kings Canyon National Park"
+    direction: LEFT
+    duration: 400
+- tapOn: "Delete"
+- extendedWaitUntil:
+    visible: "Delete Place"
+    timeout: 5000
+- tapOn: "Delete"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertNotVisible: "Kings Canyon National Park"
+
+# --- Copy place to another collection ---
+- extendedWaitUntil:
+    visible: "Pinnacles National Park"
+    timeout: 10000
+- swipe:
+    from:
+      text: "Pinnacles National Park"
+    direction: LEFT
+    duration: 400
+- tapOn: "Copy"
+- extendedWaitUntil:
+    visible: "Copy to Collection"
+    timeout: 5000
+- tapOn: "Test Collection"
+- extendedWaitUntil:
+    visible: "Copy Place"
+    timeout: 5000
+- tapOn: "Copy"
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# --- Go to Test Collection and verify spot is copied ---
+- runFlow: shared/dismiss_modal.yaml
+- tapOn: "Test Collection"
+- extendedWaitUntil:
+    visible: "Pinnacles National Park"
+    timeout: 5000
+- assertVisible: "Pinnacles National Park"
+
+# --- Tap heart for a spot (first place in list, in National Parks) ---
+- runFlow: shared/dismiss_modal.yaml
+- tapOn: "National Parks"
+- extendedWaitUntil:
+    visible: "Heart"
+    timeout: 5000
+- tapOn:
+    text: "Heart"
+    index: 0
+- waitForAnimationToEnd:
+    timeout: 2000
+
+# Dismiss modals once and logout
+- runFlow: shared/dismiss_modal.yaml
+- runFlow: shared/dismiss_minimized_modal.yaml
+- runFlow: shared/logout.yaml
+- assertVisible: "Continue with Google"

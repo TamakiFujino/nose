@@ -1,8 +1,8 @@
 appId: com.tamakifujino.nose
 ---
-# Dismiss a bottom sheet / modal by swiping down and tapping outside
+# Dismiss a large/full sheet modal: swipe down from the sheet to drag it off.
+# Swipe from upper area to lower (center of screen).
 - swipe:
-    direction: DOWN
+    start: "20%,25%"
+    end: "20%,95%"
     duration: 500
-- tapOn:
-    point: "50%,25%"

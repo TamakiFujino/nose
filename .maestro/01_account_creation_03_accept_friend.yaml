@@ -19,8 +19,9 @@ appId: com.tamakifujino.nose
 - tapOn: "Approve"
 - tapOn: "OK"
 
-# Verify User B appears in Friends tab
-- tapOn: "Friends"
+# Verify User B appears in Friends tab (use Friends_tab to avoid tapping nav bar title)
+- tapOn:
+    id: "Friends_tab"
 - waitForAnimationToEnd:
     timeout: 3000
 - extendedWaitUntil:
