@@ -158,25 +158,25 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
                 return UISwipeActionsConfiguration(actions: [])
             }
             let place = places[indexPath.row]
-            let mapAction = UIContextualAction(style: .normal, title: "Map") { [weak self] (action, view, completion) in
+            let mapAction = UIContextualAction(style: .normal, title: "Open in") { [weak self] (action, view, completion) in
                 self?.openPlaceInMapsByName(place.name)
                 completion(true)
             }
-            mapAction.backgroundColor = .systemGreen
-            mapAction.image = UIImage(systemName: "map")
+            mapAction.backgroundColor = .blueColor
+            mapAction.image = UIImage(systemName: "arrow.up.forward")
 
             let visitedAction = UIContextualAction(style: .normal, title: place.visited ? "Unvisited" : "Visited") { [weak self] (action, view, completion) in
                 self?.toggleVisitedStatus(at: indexPath)
                 completion(true)
             }
-            visitedAction.backgroundColor = UIColor.blueColor
+            visitedAction.backgroundColor = .blueColor
             visitedAction.image = UIImage(systemName: place.visited ? "xmark.circle" : "checkmark.circle")
 
             let copyAction = UIContextualAction(style: .normal, title: "Copy") { [weak self] (action, view, completion) in
                 self?.showCopyOptions(for: place, at: indexPath)
                 completion(true)
             }
-            copyAction.backgroundColor = .systemOrange
+            copyAction.backgroundColor = .blueColor
             copyAction.image = UIImage(systemName: "doc.on.doc")
 
             let deleteAction = UIContextualAction(style: .destructive, title: "Delete") { [weak self] (action, view, completion) in

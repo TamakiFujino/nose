@@ -142,6 +142,7 @@ class AddFriendViewController: UIViewController {
         view.addSubview(resultContainer)
         resultContainer.addSubview(resultProfileImageView)
         resultContainer.addSubview(resultNameLabel)
+        resultProfileImageView.isHidden = true // Avatar display disabled
         view.addSubview(addFriendButton)
         view.addSubview(activityIndicator)
         
@@ -179,10 +180,10 @@ class AddFriendViewController: UIViewController {
             
             resultProfileImageView.topAnchor.constraint(equalTo: resultContainer.topAnchor),
             resultProfileImageView.centerXAnchor.constraint(equalTo: resultContainer.centerXAnchor),
-            resultProfileImageView.widthAnchor.constraint(equalToConstant: 200), // Same as preview size
-            resultProfileImageView.heightAnchor.constraint(equalToConstant: 300), // 1.5x width for portrait
+            resultProfileImageView.widthAnchor.constraint(equalToConstant: 200),
+            resultProfileImageView.heightAnchor.constraint(equalToConstant: 0), // Avatar display disabled
             
-            resultNameLabel.topAnchor.constraint(equalTo: resultProfileImageView.bottomAnchor, constant: 16),
+            resultNameLabel.topAnchor.constraint(equalTo: resultContainer.topAnchor, constant: 16),
             resultNameLabel.leadingAnchor.constraint(equalTo: resultContainer.leadingAnchor, constant: 16),
             resultNameLabel.trailingAnchor.constraint(equalTo: resultContainer.trailingAnchor, constant: -16),
             resultNameLabel.bottomAnchor.constraint(equalTo: resultContainer.bottomAnchor),
@@ -376,7 +377,7 @@ class AddFriendViewController: UIViewController {
                                                         // If not blocked, not friends, and no pending request, show the result
                                                         DispatchQueue.main.async {
                                                             self.resultNameLabel.text = foundUser.name
-                                                            self.loadProfileImage(for: foundUser)
+                                                            // Avatar display disabled: no loadProfileImage
                                                             self.resultContainer.isHidden = false
                                                             self.addFriendButton.isHidden = false
                                                         }

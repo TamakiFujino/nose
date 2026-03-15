@@ -152,6 +152,14 @@ class CollectionsViewController: UIViewController {
         return label
     }()
     
+    private lazy var loadingIndicator: UIActivityIndicatorView = {
+        let indicator = UIActivityIndicatorView(style: .large)
+        indicator.translatesAutoresizingMaskIntoConstraints = false
+        indicator.hidesWhenStopped = true
+        indicator.color = .fourthColor
+        return indicator
+    }()
+    
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -215,6 +223,7 @@ class CollectionsViewController: UIViewController {
         view.addSubview(tableView)
         view.addSubview(emptyStateView)
         view.addSubview(sharedEmptyStateView)
+        view.addSubview(loadingIndicator)
         view.addSubview(createNewCollectionButton)
 
         // Setup category tabs
@@ -255,6 +264,10 @@ class CollectionsViewController: UIViewController {
             sharedEmptyStateView.centerYAnchor.constraint(equalTo: tableView.centerYAnchor, constant: -60),
             sharedEmptyStateView.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 40),
             sharedEmptyStateView.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -40),
+
+            // Loading indicator (centered in tableView area)
+            loadingIndicator.centerXAnchor.constraint(equalTo: tableView.centerXAnchor),
+            loadingIndicator.centerYAnchor.constraint(equalTo: tableView.centerYAnchor),
 
             // Create new collection button (floating over tableView bottom-right)
             createNewCollectionButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
@@ -384,6 +397,11 @@ class CollectionsViewController: UIViewController {
     private func loadCollections() {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
 
+        // Show loading indicator
+        DispatchQueue.main.async { [weak self] in
+            self?.loadingIndicator.startAnimating()
+        }
+
         // Create groups to track loading progress
         let memberCountGroup = DispatchGroup()
         var ownedCollectionsLoaded = false
@@ -397,6 +415,7 @@ class CollectionsViewController: UIViewController {
                 reloadSetup = true
                 // Wait for all member counts to load before reloading table
                 memberCountGroup.notify(queue: .main) {
+                    self.loadingIndicator.stopAnimating()
                     self.tableView.reloadData()
                     self.updateEmptyState()
                     // Update map with all collections (personal + shared)
@@ -460,6 +479,8 @@ class CollectionsViewController: UIViewController {
         sharedCollectionsRef.whereField("isOwner", isEqualTo: false).getDocuments { [weak self] snapshot, error in
             if let error = error {
                 Logger.log("Error loading shared collections: \(error.localizedDescription)", level: .error, category: "Collections")
+                sharedCollectionsLoaded = true
+                checkAndReload()
                 return
             }
             
