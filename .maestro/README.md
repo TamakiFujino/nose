@@ -23,10 +23,9 @@ Tests are refactored to run as independently as possible. When one test fails (e
 
 ### Tests with remaining prerequisites
 
-- **98-01** – Requires **05-01** to have run (expects "Renamed Collection" to exist).
+- **98-01** – Requires **05-01** to have run (expects "Test Collection" to exist).
 - **01-03** – Requires **01-02** to have run (User B must have sent a friend request to User A).
 - **04-01** – Expects "National Parks" and "Test Collection" to exist (run **02-01** and **03-01** at some point).
-- **99-04** – Expects User B to have sent a friend request that User A has not accepted (run **01-01** and **01-02**; do not run **01-03** or **99-01** in the same suite if **99-04** runs, since **99-04** deletes User A).
 
 ### Other independence behavior
 
