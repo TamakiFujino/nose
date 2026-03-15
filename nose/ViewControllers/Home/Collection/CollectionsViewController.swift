@@ -83,7 +83,7 @@ class CollectionsViewController: UIViewController {
 
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "Your favorite spots deserve a home.\nTap + to create your first collection!"
+        label.text = String(localized: "collections_empty_personal")
         label.font = .systemFont(ofSize: 16, weight: .medium)
         label.textColor = .thirdColor
         label.textAlignment = .center
@@ -119,7 +119,7 @@ class CollectionsViewController: UIViewController {
 
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "No shared collections yet.\nAsk your friends to invite you to theirs!\n\nYou can add friends in\nSettings > Add Friends"
+        label.text = String(localized: "collections_empty_shared")
         label.font = .systemFont(ofSize: 16, weight: .medium)
         label.textColor = .thirdColor
         label.textAlignment = .center
@@ -146,7 +146,7 @@ class CollectionsViewController: UIViewController {
     private lazy var titleLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "My Collections"
+        label.text = String(localized: "collections_my_collections")
         label.font = .systemFont(ofSize: 20, weight: .bold)
         label.textColor = .label
         return label
@@ -292,7 +292,7 @@ class CollectionsViewController: UIViewController {
     
     // MARK: - Tab Management
     private func setupCategoryTabs() {
-        let tabs: [(CollectionTab, String)] = [(.personal, "Your Collections"), (.shared, "From Friends")]
+        let tabs: [(CollectionTab, String)] = [(.personal, String(localized: "collections_your_collections")), (.shared, String(localized: "collections_from_friends"))]
         for (index, (tab, title)) in tabs.enumerated() {
             let button = createTabButton(title: title, tag: index, tab: tab)
             categoryTabStackView.addArrangedSubview(button)

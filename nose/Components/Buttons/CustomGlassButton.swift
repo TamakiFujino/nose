@@ -4,9 +4,7 @@ import UIKit
 class CustomGlassButton: UIButton {
 
     // MARK: - Properties
-    private let blurView = UIVisualEffectView(effect: UIBlurEffect(style: .systemThinMaterialLight))
-    private let buttonSize: CGFloat = 55  // Standard size for circular buttons
-    private let cornerRadius: CGFloat = 27.5  // Half of buttonSize for perfect round
+    private let blurView = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterialLight))
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -19,34 +17,31 @@ class CustomGlassButton: UIButton {
     }
 
     private func setupButton() {
-        // Insert blur background
-        blurView.frame = bounds
-        blurView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        blurView.translatesAutoresizingMaskIntoConstraints = false
         blurView.isUserInteractionEnabled = false
-        blurView.layer.cornerRadius = cornerRadius
         blurView.clipsToBounds = true
         insertSubview(blurView, at: 0)
 
-        // Base styles
-        layer.cornerRadius = cornerRadius
+        NSLayoutConstraint.activate([
+            blurView.topAnchor.constraint(equalTo: topAnchor),
+            blurView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            blurView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            blurView.bottomAnchor.constraint(equalTo: bottomAnchor)
+        ])
+
+        layer.cornerCurve = .continuous
         clipsToBounds = true
-        backgroundColor = UIColor.firstColor.withAlphaComponent(0.1) // glass background
-        layer.borderColor = UIColor.firstColor.withAlphaComponent(0.3).cgColor
+        backgroundColor = .clear
+        layer.borderColor = UIColor.white.withAlphaComponent(0.35).cgColor
         layer.borderWidth = 1.0
 
-        setTitleColor(.firstColor, for: .normal)
+        setTitleColor(.white, for: .normal)
         titleLabel?.font = AppFonts.bodyBold(18)
 
-        // Enable press animation
         addTarget(self, action: #selector(pressDown), for: [.touchDown, .touchDragEnter])
         addTarget(self, action: #selector(pressUp), for: [.touchUpInside, .touchCancel, .touchDragExit])
-        
-        // Setup size constraints
+
         translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            widthAnchor.constraint(equalToConstant: buttonSize),
-            heightAnchor.constraint(equalToConstant: buttonSize)
-        ])
     }
 
     // MARK: - Press Animation
@@ -69,6 +64,8 @@ class CustomGlassButton: UIButton {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        blurView.frame = bounds
+        let radius = min(bounds.width, bounds.height) / 2
+        layer.cornerRadius = radius
+        blurView.layer.cornerRadius = radius
     }
 }

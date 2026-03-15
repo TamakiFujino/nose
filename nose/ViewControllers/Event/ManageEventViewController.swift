@@ -59,14 +59,14 @@ class ManageEventViewController: UIViewController {
         
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "No events yet"
+        label.text = String(localized: "manage_events_empty_title")
         label.font = .systemFont(ofSize: 18, weight: .medium)
         label.textColor = .secondaryLabel
         label.textAlignment = .center
         
         let subtitleLabel = UILabel()
         subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
-        subtitleLabel.text = "Tap + to create your first event"
+        subtitleLabel.text = String(localized: "manage_events_empty_subtitle")
         subtitleLabel.font = .systemFont(ofSize: 14)
         subtitleLabel.textColor = .tertiaryLabel
         subtitleLabel.textAlignment = .center
@@ -121,7 +121,7 @@ class ManageEventViewController: UIViewController {
     
     private func setupUI() {
         view.backgroundColor = .systemBackground
-        title = "My Events"
+        title = String(localized: "manage_events_title")
         
         // Add navigation bar buttons
         let backButton = UIBarButtonItem(
@@ -184,7 +184,7 @@ class ManageEventViewController: UIViewController {
     private func loadEvents() {
         guard !isLoading else { return }
         guard let userId = Auth.auth().currentUser?.uid else {
-            showAlert(title: "Error", message: "User not authenticated")
+            showAlert(title: String(localized: "modal_error_title"), message: String(localized: "event_error_not_authenticated"))
             return
         }
         
@@ -205,7 +205,7 @@ class ManageEventViewController: UIViewController {
                     self?.updateAddButtonState()
                 case .failure(let error):
                     Logger.log("Failed to load events: \(error.localizedDescription)", level: .error, category: "ManageEvent")
-                    self?.showAlert(title: "Error", message: "Failed to load events. Please try again.")
+                    self?.showAlert(title: String(localized: "modal_error_title"), message: String(localized: "manage_events_error_load"))
                     self?.updateUI()
                     self?.updateAddButtonState()
                 }
@@ -374,7 +374,7 @@ extension ManageEventViewController: UITableViewDelegate, UITableViewDataSource 
                     ToastManager.showToast(message: "Event deleted", type: .success)
                 case .failure(let error):
                     Logger.log("Failed to delete event: \(error.localizedDescription)", level: .error, category: "ManageEvent")
-                    self?.showAlert(title: "Error", message: "Failed to delete event. Please try again.")
+                    self?.showAlert(title: String(localized: "modal_error_title"), message: String(localized: "manage_events_error_delete"))
                 }
             }
         }

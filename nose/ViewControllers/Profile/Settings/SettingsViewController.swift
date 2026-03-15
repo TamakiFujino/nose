@@ -5,11 +5,11 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
 
     let tableView = UITableView()
 
-    // Define setting categories and items
+    // Define setting categories and items (keys for localization)
     var settingsData: [(category: String, items: [String])] = [
-        ("Profile", ["Name", "Account"]),
-        ("Friends", ["Friend List", "Add Friend"]),
-        ("About", ["Privacy Policy", "Terms of Service", "App Version", "Licenses"])
+        ("settings_profile", ["settings_name", "settings_account"]),
+        ("settings_friends", ["settings_friend_list", "settings_add_friend"]),
+        ("settings_about", ["settings_privacy_policy", "settings_terms_of_service", "settings_app_version", "settings_licenses"])
     ]
 
     override func viewDidLoad() {
@@ -29,7 +29,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
     }
 
     private func setupNavigationBar() {
-        navigationItem.title = "Settings"
+        navigationItem.title = String(localized: "settings_title")
         self.navigationController?.navigationBar.tintColor = .fourthColor
         
         // Remove any existing right bar button items
@@ -69,9 +69,9 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         let item = settingsData[indexPath.section].items[indexPath.row]
         let cell: UITableViewCell
 
-        if item == "App Version" {
+        if item == "settings_app_version" {
             cell = UITableViewCell(style: .value1, reuseIdentifier: "versionCell")
-            cell.textLabel?.text = item
+            cell.textLabel?.text = String(localized: String.LocalizationValue(stringLiteral: item))
             
             // Get version and build number
             let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
@@ -91,7 +91,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
             cell.selectionStyle = .none  // Disable selection for app version cell
         } else {
             cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
-            cell.textLabel?.text = item
+            cell.textLabel?.text = String(localized: String.LocalizationValue(stringLiteral: item))
             cell.accessoryType = .disclosureIndicator  // Add arrow to indicate navigation
         }
 
@@ -101,7 +101,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
 
     // Set section headers
     func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        return settingsData[section].category
+        return String(localized: String.LocalizationValue(stringLiteral: settingsData[section].category))
     }
 
     // Handle selection of a setting option
@@ -110,25 +110,25 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
 
         let selectedSetting = settingsData[indexPath.section].items[indexPath.row]
 
-        if selectedSetting == "Name" {
+        if selectedSetting == "settings_name" {
             let nameupdateVC = EditNameViewController()
             navigationController?.pushViewController(nameupdateVC, animated: true)
-        } else if selectedSetting == "Account" {
+        } else if selectedSetting == "settings_account" {
             let accountVC = AccountViewController()
             navigationController?.pushViewController(accountVC, animated: true)
-        } else if selectedSetting == "Friend List" {
+        } else if selectedSetting == "settings_friend_list" {
             let friendsVC = FriendsViewController()
             navigationController?.pushViewController(friendsVC, animated: true)
-        } else if selectedSetting == "Add Friend" {
+        } else if selectedSetting == "settings_add_friend" {
             let addFriendVC = AddFriendViewController()
             navigationController?.pushViewController(addFriendVC, animated: true)
-        } else if selectedSetting == "Privacy Policy" {
+        } else if selectedSetting == "settings_privacy_policy" {
             let privacypolicyVC = PrivacyPolicyViewController()
             navigationController?.pushViewController(privacypolicyVC, animated: true)
-        } else if selectedSetting == "Terms of Service" {
+        } else if selectedSetting == "settings_terms_of_service" {
             let termsVC = ToSViewController()
             navigationController?.pushViewController(termsVC, animated: true)
-        } else if selectedSetting == "Licenses" {
+        } else if selectedSetting == "settings_licenses" {
             let licensesVC = LicensesViewController()
             navigationController?.pushViewController(licensesVC, animated: true)
         }

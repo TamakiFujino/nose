@@ -46,7 +46,7 @@ final class HomeViewController: UIViewController {
             backgroundColor: .clear
         )
         button.accessibilityIdentifier = "personal_library"
-        button.accessibilityLabel = "Personal Library"
+        button.accessibilityLabel = String(localized: "home_personal_library")
         return button
     }()
     
@@ -515,7 +515,7 @@ final class HomeViewController: UIViewController {
             locationManager.requestWhenInUseAuthorization()
         case .denied, .restricted:
             // Show a gentle message that location is not available
-            showMessage(title: "Location Unavailable", subtitle: "Enable location in Settings to use this feature")
+            showMessage(title: String(localized: "home_location_unavailable_title"), subtitle: String(localized: "home_location_unavailable_subtitle"))
         @unknown default:
             break
         }
@@ -560,8 +560,8 @@ final class HomeViewController: UIViewController {
     
     @objc private func createEventButtonTapped() {
         let messageModal = MessageModalViewController(
-            title: "Coming Soon",
-            message: "This feature is coming soon!"
+            title: String(localized: "home_coming_soon_title"),
+            message: String(localized: "home_coming_soon_message")
         )
         present(messageModal, animated: true)
     }

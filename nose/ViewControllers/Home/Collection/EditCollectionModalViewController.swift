@@ -23,7 +23,7 @@ class EditCollectionModalViewController: CollectionModalViewController {
     
     // MARK: - Configuration
     override func configureInitialState() {
-        titleLabel.text = "Edit Collection"
+        titleLabel.text = String(localized: "edit_collection_title")
         
         // Load current collection data
         collectionName = collection.name
@@ -61,7 +61,7 @@ class EditCollectionModalViewController: CollectionModalViewController {
         // Show loading indicator
         saveButton.isEnabled = false
         let originalTitle = saveButton.title(for: .normal)
-        saveButton.setTitle("Saving...", for: .normal)
+        saveButton.setTitle(String(localized: "button_saving"), for: .normal)
         
         updateCollection(name: collectionName, iconUrl: selectedIconUrl, iconName: selectedIconName)
     }
@@ -69,8 +69,8 @@ class EditCollectionModalViewController: CollectionModalViewController {
     private func updateCollection(name: String, iconUrl: String?, iconName: String?) {
         guard let currentUserId = Auth.auth().currentUser?.uid else {
             saveButton.isEnabled = true
-            saveButton.setTitle("Save", for: .normal)
-            let messageModal = MessageModalViewController(title: "Error", message: "User not authenticated")
+            saveButton.setTitle(String(localized: "button_save"), for: .normal)
+            let messageModal = MessageModalViewController(title: String(localized: "modal_error_title"), message: String(localized: "error_user_not_authenticated"))
             present(messageModal, animated: true)
             return
         }
@@ -115,7 +115,7 @@ class EditCollectionModalViewController: CollectionModalViewController {
         guard !updateData.isEmpty else {
             // Nothing to update
             saveButton.isEnabled = true
-            saveButton.setTitle("Save", for: .normal)
+            saveButton.setTitle(String(localized: "button_save"), for: .normal)
             dismiss(animated: true)
             return
         }
@@ -129,12 +129,12 @@ class EditCollectionModalViewController: CollectionModalViewController {
                 guard let self = self else { return }
                 DispatchQueue.main.async {
                     self.saveButton.isEnabled = true
-                    self.saveButton.setTitle("Save", for: .normal)
+                    self.saveButton.setTitle(String(localized: "button_save"), for: .normal)
                 }
                 if let error = error {
                     Logger.log("Error fetching members for collection update: \(error.localizedDescription)", level: .error, category: "Collection")
                     DispatchQueue.main.async {
-                        let messageModal = MessageModalViewController(title: "Error", message: "Failed to update collection. Please try again.")
+                        let messageModal = MessageModalViewController(title: String(localized: "modal_error_title"), message: String(localized: "error_failed_update_collection"))
                         self.present(messageModal, animated: true)
                     }
                     return
@@ -148,10 +148,10 @@ class EditCollectionModalViewController: CollectionModalViewController {
                     DispatchQueue.main.async {
                         guard let self = self else { return }
                         self.saveButton.isEnabled = true
-                        self.saveButton.setTitle("Save", for: .normal)
+                        self.saveButton.setTitle(String(localized: "button_save"), for: .normal)
                         if let error = error {
                             Logger.log("Error updating collection: \(error.localizedDescription)", level: .error, category: "Collection")
-                            let messageModal = MessageModalViewController(title: "Error", message: "Failed to update collection. Please try again.")
+                            let messageModal = MessageModalViewController(title: String(localized: "modal_error_title"), message: String(localized: "error_failed_update_collection"))
                             self.present(messageModal, animated: true)
                             return
                         }
@@ -168,10 +168,10 @@ class EditCollectionModalViewController: CollectionModalViewController {
                 DispatchQueue.main.async {
                     guard let self = self else { return }
                     self.saveButton.isEnabled = true
-                    self.saveButton.setTitle("Save", for: .normal)
+                    self.saveButton.setTitle(String(localized: "button_save"), for: .normal)
                     if let error = error {
                         Logger.log("Error updating collection: \(error.localizedDescription)", level: .error, category: "Collection")
-                        let messageModal = MessageModalViewController(title: "Error", message: "Failed to update collection. Please try again.")
+                        let messageModal = MessageModalViewController(title: String(localized: "modal_error_title"), message: String(localized: "error_failed_update_collection"))
                         self.present(messageModal, animated: true)
                         return
                     }

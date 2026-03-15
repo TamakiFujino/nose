@@ -95,7 +95,7 @@ final class PlaceDetailViewController: UIViewController {
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = .systemFont(ofSize: 16)
         label.textColor = .fourthColor
-        label.text = place.phoneNumber ?? "Phone number not available"
+        label.text = place.phoneNumber ?? String(localized: "place_phone_not_available")
         label.numberOfLines = 0
         return label
     }()
@@ -117,7 +117,7 @@ final class PlaceDetailViewController: UIViewController {
         stackView.spacing = 8
         
         let titleLabel = UILabel()
-        titleLabel.text = "Opening Hours"
+        titleLabel.text = String(localized: "place_opening_hours")
         titleLabel.font = .systemFont(ofSize: 18, weight: .semibold)
         
         stackView.addArrangedSubview(titleLabel)
@@ -131,7 +131,7 @@ final class PlaceDetailViewController: UIViewController {
             }
         } else {
             let noHoursLabel = UILabel()
-            noHoursLabel.text = "Opening hours not available"
+            noHoursLabel.text = String(localized: "place_hours_not_available")
             noHoursLabel.font = .systemFont(ofSize: 14)
             noHoursLabel.textColor = .systemGray
             stackView.addArrangedSubview(noHoursLabel)
@@ -366,13 +366,13 @@ final class PlaceDetailViewController: UIViewController {
         ratingView.addArrangedSubview(ratingLabel)
         
         // Update phone number
-        phoneNumberLabel.text = place.phoneNumber ?? "Phone number not available"
+        phoneNumberLabel.text = place.phoneNumber ?? String(localized: "place_phone_not_available")
         
         // Update opening hours
         openingHoursView.arrangedSubviews.forEach { $0.removeFromSuperview() }
         
         let titleLabel = UILabel()
-        titleLabel.text = "Opening Hours"
+        titleLabel.text = String(localized: "place_opening_hours")
         titleLabel.font = .systemFont(ofSize: 18, weight: .semibold)
         openingHoursView.addArrangedSubview(titleLabel)
         
@@ -385,7 +385,7 @@ final class PlaceDetailViewController: UIViewController {
             }
         } else {
             let noHoursLabel = UILabel()
-            noHoursLabel.text = "Opening hours not available"
+            noHoursLabel.text = String(localized: "place_hours_not_available")
             noHoursLabel.font = .systemFont(ofSize: 14)
             noHoursLabel.textColor = .systemGray
             openingHoursView.addArrangedSubview(noHoursLabel)

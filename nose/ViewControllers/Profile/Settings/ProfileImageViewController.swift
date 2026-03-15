@@ -86,7 +86,7 @@ class ProfileImageViewController: UIViewController {
     private lazy var emptyStateLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "No avatar images found"
+        label.text = String(localized: "profile_no_avatar_found")
         label.font = .systemFont(ofSize: 16)
         label.textColor = .secondaryLabel
         label.textAlignment = .center
@@ -103,7 +103,7 @@ class ProfileImageViewController: UIViewController {
     }
     
     private func setupNavigationBar() {
-        title = "Select Profile Picture"
+        title = String(localized: "profile_select_picture_title")
         
         // Add Save button
         let saveButton = UIBarButtonItem(title: "Save", style: .done, target: self, action: #selector(saveButtonTapped))

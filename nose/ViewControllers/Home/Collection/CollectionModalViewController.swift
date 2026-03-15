@@ -27,7 +27,7 @@ class CollectionModalViewController: UIViewController, UITextFieldDelegate {
     
     let iconSelectionLabel: UILabel = {
         let label = UILabel()
-        label.text = "Select an icon"
+        label.text = String(localized: "collection_modal_select_icon")
         label.font = .systemFont(ofSize: 16)
         label.textColor = .label
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -47,13 +47,13 @@ class CollectionModalViewController: UIViewController, UITextFieldDelegate {
         button.addTarget(self, action: #selector(iconButtonTapped), for: .touchUpInside)
         button.translatesAutoresizingMaskIntoConstraints = false
         button.accessibilityIdentifier = "icon_button"
-        button.accessibilityLabel = "Select an icon"
+        button.accessibilityLabel = String(localized: "collection_modal_select_icon")
         return button
     }()
     
     let nameLabel: UILabel = {
         let label = UILabel()
-        label.text = "Enter a name"
+        label.text = String(localized: "collection_modal_enter_name")
         label.font = .systemFont(ofSize: 16)
         label.textColor = .label
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -62,7 +62,7 @@ class CollectionModalViewController: UIViewController, UITextFieldDelegate {
     
     lazy var nameTextField: UITextField = {
         let textField = UITextField()
-        textField.placeholder = "Collection Name"
+        textField.placeholder = String(localized: "collection_modal_name_placeholder")
         textField.font = .systemFont(ofSize: 16)
         textField.borderStyle = .none
         textField.backgroundColor = UIColor.systemGray5 // Match icon button color
@@ -83,7 +83,7 @@ class CollectionModalViewController: UIViewController, UITextFieldDelegate {
     
     lazy var cancelButton: CustomButton = {
         let button = CustomButton(type: .system)
-        button.setTitle("Cancel", for: .normal)
+        button.setTitle(String(localized: "modal_cancel"), for: .normal)
         button.style = .secondary
         button.size = .medium
         button.isPerfectlyRounded = true
@@ -97,7 +97,7 @@ class CollectionModalViewController: UIViewController, UITextFieldDelegate {
 
     lazy var saveButton: CustomButton = {
         let button = CustomButton(type: .system)
-        button.setTitle("Save", for: .normal)
+        button.setTitle(String(localized: "button_save"), for: .normal)
         button.style = .primary
         button.size = .medium
         button.isPerfectlyRounded = true
