@@ -15,20 +15,14 @@ extension CollectionPlacesViewController: EditCollectionModalViewControllerDeleg
     func editCollectionModalViewController(_ controller: EditCollectionModalViewController, didUpdateCollection collection: PlaceCollection) {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
 
-        CollectionDataService.shared.fetchCollectionData(userId: currentUserId, collectionId: collection.id) { [weak self] result in
+        CollectionDataService.shared.fetchCollection(userId: currentUserId, collectionId: collection.id) { [weak self] result in
             guard let self = self else { return }
             switch result {
-            case .success(let data):
-                if let name = data["name"] as? String {
-                    self.titleLabel.text = name
-                }
-                if let iconUrl = data["iconUrl"] as? String, !iconUrl.isEmpty {
-                    self.currentIconUrl = iconUrl
-                    self.currentIconName = nil
-                } else if let iconName = data["iconName"] as? String, !iconName.isEmpty {
-                    self.currentIconName = iconName
-                    self.currentIconUrl = nil
-                }
+            case .success(let updatedCollection):
+                self.collection = updatedCollection
+                self.titleLabel.text = updatedCollection.name
+                self.currentIconUrl = updatedCollection.iconUrl
+                self.currentIconName = updatedCollection.iconName
                 self.updateCollectionIconDisplay()
                 NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
                 ToastManager.showToast(message: "Collection updated", type: .success)

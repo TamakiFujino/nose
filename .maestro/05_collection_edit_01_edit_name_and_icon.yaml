@@ -2,12 +2,12 @@ appId: com.tamakifujino.nose
 ---
 # Test 05-01: Edit Collection Name & Icon (User A)
 # User A changes the collection icon and renames "Test Collection" to "Renamed Collection".
+# At the end, renames back to "Test Collection" so the test is independent.
 
 - launchApp
 
 # Sign in as User A
-- runFlow: shared/login_user_a.yaml
-- runFlow: shared/dismiss_location_permission.yaml
+- runFlow: shared/login_user_a_ready.yaml
 
 # Open collections and tap "Test Collection"
 - runFlow: shared/open_collections.yaml
@@ -50,9 +50,24 @@ appId: com.tamakifujino.nose
     visible: "Renamed Collection"
     timeout: 10000
 
+# Rename back to "Test Collection" so test is independent (04-01, 03-01 expect this name)
+- tapOn: "More"
+- tapOn: "Edit Collection"
+- extendedWaitUntil:
+    visible: "Edit Collection"
+    timeout: 5000
+- tapOn:
+    id: "collection_name_field"
+- eraseText: 50
+- inputText: "Test Collection"
+- tapOn:
+    point: "80%,50%"
+- tapOn: "Save"
+- extendedWaitUntil:
+    visible: "Test Collection"
+    timeout: 10000
+
 # Dismiss collection detail modal, then collection list modal
-- runFlow: shared/dismiss_modal.yaml
-- runFlow: shared/dismiss_modal.yaml
-- runFlow: shared/dismiss_minimized_modal.yaml
+- runFlow: shared/dismiss_collection_and_minimized.yaml
 - runFlow: shared/logout.yaml
 - assertVisible: "Continue with Google"
