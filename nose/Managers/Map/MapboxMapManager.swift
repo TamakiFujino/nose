@@ -131,21 +131,24 @@ final class MapboxMapManager: NSObject {
         // Hide detail layers (labels, POIs, 3D buildings) to reduce rendering load during zoom
         hideDetailLayers()
 
-        // Stage 1: Globe → continent (zoom 0→4), 1.0s
-        let stage1 = CameraOptions(center: coordinate, zoom: 4)
-        mapView.camera.ease(to: stage1, duration: 1.0, curve: .easeIn) { [weak self] _ in
+        let globeAlignedCamera = CameraOptions(
+            center: coordinate,
+            zoom: 0
+        )
+
+        let finalCamera = CameraOptions(
+            center: coordinate,
+            zoom: Constants.defaultZoom,
+            pitch: 50
+        )
+
+        // Split the landing into:
+        // 1) slower globe re-centering so the earth rotation is easier to see
+        // 2) the zoom-in, keeping the center fixed on the destination
+        mapView.camera.ease(to: globeAlignedCamera, duration: 1.4, curve: .easeInOut) { [weak self] _ in
             guard let self = self else { return }
-            // Stage 2: Continent → city (zoom 4→11), 1.2s
-            let stage2 = CameraOptions(center: coordinate, zoom: 11)
-            self.mapView.camera.ease(to: stage2, duration: 1.2, curve: .linear) { [weak self] _ in
-                guard let self = self else { return }
-                // Restore detail layers before final zoom to street level
-                self.showDetailLayers()
-                // Stage 3: City → street (zoom 11→15), 0.8s
-                let stage3 = CameraOptions(center: coordinate, zoom: Constants.defaultZoom)
-                self.mapView.camera.ease(to: stage3, duration: 0.8, curve: .easeOut) { _ in
-                    completion()
-                }
+            self.mapView.camera.fly(to: finalCamera, duration: 3.0) { _ in
+                completion()
             }
         }
     }

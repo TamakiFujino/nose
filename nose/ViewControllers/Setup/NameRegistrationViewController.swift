@@ -16,7 +16,7 @@ final class NameRegistrationViewController: UIViewController {
     private lazy var titleLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "What should we call you?"
+        label.text = String(localized: "name_registration_prompt")
         label.textAlignment = .left
         label.font = .systemFont(ofSize: 24, weight: .bold)
         label.textColor = .black
@@ -26,7 +26,7 @@ final class NameRegistrationViewController: UIViewController {
     private lazy var nameTextField: UITextField = {
         let textField = UITextField()
         textField.translatesAutoresizingMaskIntoConstraints = false
-        textField.placeholder = "Enter your name"
+        textField.placeholder = String(localized: "edit_name_placeholder")
         textField.borderStyle = .none
         textField.backgroundColor = .secondColor
         textField.layer.cornerRadius = 8
@@ -51,7 +51,7 @@ final class NameRegistrationViewController: UIViewController {
         label.textAlignment = .right
         label.font = .systemFont(ofSize: 12)
         label.textColor = .gray
-        label.text = "0/\(Constants.maxNameLength)"
+        label.text = String(format: String(localized: "edit_name_char_count"), 0, Constants.maxNameLength)
         return label
     }()
     
@@ -119,7 +119,7 @@ final class NameRegistrationViewController: UIViewController {
     // MARK: - Actions
     @objc private func textFieldDidChange(_ textField: UITextField) {
         let count = textField.text?.count ?? 0
-        characterCountLabel.text = "\(count)/\(Constants.maxNameLength)"
+        characterCountLabel.text = String(format: String(localized: "edit_name_char_count"), count, Constants.maxNameLength)
         characterCountLabel.textColor = count > Constants.maxNameLength ? .systemRed :
                                       count < Constants.minNameLength ? .systemOrange : .gray
     }

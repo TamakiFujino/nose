@@ -225,7 +225,7 @@ final class EventDetailViewController: UIViewController {
         if !event.details.isEmpty {
             detailsLabel.text = event.details
         } else {
-            detailsLabel.text = "No additional details"
+            detailsLabel.text = String(localized: "event_detail_no_details")
             detailsLabel.textColor = .systemGray
         }
     }

@@ -13,6 +13,13 @@ final class AccountViewController: UIViewController {
         case logout = "Logout"
         case deleteAccount = "Delete Account"
         
+        var displayTitle: String {
+            switch self {
+            case .logout: return String(localized: "account_logout_row")
+            case .deleteAccount: return String(localized: "account_delete_account_row")
+            }
+        }
+        
         var isDestructive: Bool {
             switch self {
             case .deleteAccount: return true
@@ -22,15 +29,15 @@ final class AccountViewController: UIViewController {
         
         var alertTitle: String {
             switch self {
-            case .logout: return "Log Out"
-            case .deleteAccount: return "Delete Account"
+            case .logout: return String(localized: "account_logout_confirm_title")
+            case .deleteAccount: return String(localized: "account_delete_confirm_title")
             }
         }
         
         var alertMessage: String {
             switch self {
-            case .logout: return "Are you sure you want to log out?"
-            case .deleteAccount: return "This action is irreversible. Are you sure?"
+            case .logout: return String(localized: "account_logout_confirm_message")
+            case .deleteAccount: return String(localized: "account_delete_confirm_short")
             }
         }
     }
@@ -57,7 +64,7 @@ final class AccountViewController: UIViewController {
     // MARK: - Setup
     private func setupUI() {
         view.backgroundColor = .firstColor
-        title = "Account"
+        title = String(localized: "account_title")
         navigationController?.navigationBar.tintColor = .label
         navigationItem.largeTitleDisplayMode = .never
         
@@ -82,23 +89,23 @@ final class AccountViewController: UIViewController {
     private func handleLogout() {
         do {
             try Auth.auth().signOut()
-            showAlert(title: "Logged Out", message: "You have been successfully logged out.") {
+            showAlert(title: String(localized: "account_logged_out_title"), message: String(localized: "account_logged_out_message")) {
                 self.navigateToLoginScreen()
             }
         } catch {
-            showAlert(title: "Error", message: "Failed to log out: \(error.localizedDescription)")
+            showAlert(title: String(localized: "modal_error_title"), message: String(format: String(localized: "account_logout_failed_format"), error.localizedDescription))
         }
     }
     
     private func deleteAccount() {
         let alert = UIAlertController(
-            title: "Delete Account",
-            message: "Are you sure you want to delete your account? This action cannot be undone.",
+            title: String(localized: "account_delete_confirm_title"),
+            message: String(localized: "account_delete_confirm_message"),
             preferredStyle: .alert
         )
         
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        alert.addAction(UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
+        alert.addAction(UIAlertAction(title: String(localized: "modal_cancel"), style: .cancel))
+        alert.addAction(UIAlertAction(title: String(localized: "button_delete"), style: .destructive) { [weak self] _ in
             guard let self = self,
                   let currentUserId = Auth.auth().currentUser?.uid else { return }
             
@@ -106,13 +113,13 @@ final class AccountViewController: UIViewController {
                 switch result {
                 case .success:
                     DispatchQueue.main.async {
-                        self.showAlert(title: "Success", message: "Account deleted successfully") { 
+                        self.showAlert(title: String(localized: "modal_success_title"), message: String(localized: "account_deleted_success")) { 
                             self.navigateToLoginScreen()
                         }
                     }
                 case .failure(let error):
                     DispatchQueue.main.async {
-                        self.showAlert(title: "Error", message: "Failed to delete account: \(error.localizedDescription)")
+                        self.showAlert(title: String(localized: "modal_error_title"), message: String(format: String(localized: "account_delete_failed_format"), error.localizedDescription))
                     }
                 }
             }
@@ -136,8 +143,8 @@ final class AccountViewController: UIViewController {
             preferredStyle: .alert
         )
         
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        alert.addAction(UIAlertAction(title: "Confirm", style: item.isDestructive ? .destructive : .default) { [weak self] _ in
+        alert.addAction(UIAlertAction(title: String(localized: "modal_cancel"), style: .cancel))
+        alert.addAction(UIAlertAction(title: String(localized: "button_confirm"), style: item.isDestructive ? .destructive : .default) { [weak self] _ in
             switch item {
             case .logout:
                 self?.handleLogout()
@@ -151,7 +158,7 @@ final class AccountViewController: UIViewController {
     
     private func showAlert(title: String, message: String, completion: (() -> Void)? = nil) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in completion?() })
+        alert.addAction(UIAlertAction(title: String(localized: "modal_ok"), style: .default) { _ in completion?() })
         present(alert, animated: true)
     }
 }
@@ -167,7 +174,7 @@ extension AccountViewController: UITableViewDelegate, UITableViewDataSource {
         let item = SettingsItem.allCases[indexPath.row]
         
         var content = cell.defaultContentConfiguration()
-        content.text = item.rawValue
+        content.text = item.displayTitle
         content.textProperties.color = item.isDestructive ? .systemRed : .label
         cell.contentConfiguration = content
         

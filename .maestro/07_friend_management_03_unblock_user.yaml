@@ -1,0 +1,68 @@
+appId: com.tamakifujino.nose
+---
+# Test 07-03: Unblock User (User A unblocks User B, then sends friend request)
+# User A unblocks User B, then sends a friend request to User B.
+# Maestro only pastes from clipboard, so we copy User B's ID right before the paste step.
+
+- launchApp
+
+# Sign in as User A
+- runFlow: shared/login_user_a_ready.yaml
+
+# Open Friends List
+- runFlow: shared/open_friends_list.yaml
+
+# Switch to Blocked tab
+- tapOn: "Blocked"
+- extendedWaitUntil:
+    visible: "User B"
+    timeout: 5000
+
+# Tap User B to show action sheet
+- tapOn: "User B"
+
+# Tap "Unblock User" from the action sheet
+- tapOn: "Unblock User"
+
+# Confirm unblock in the confirmation modal
+- extendedWaitUntil:
+    visible: "Unblock user?"
+    timeout: 5000
+- tapOn: "Unblock"
+
+# Success message
+- extendedWaitUntil:
+    visible: "Success"
+    timeout: 5000
+- tapOn: "OK"
+
+# Verify User B is no longer on Blocked tab
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertNotVisible: "User B"
+
+# Put User B's ID in clipboard: switch to User B, copy, then back to User A to paste and send request
+- runFlow: shared/go_back.yaml
+- runFlow: shared/logout_from_drawer.yaml
+- runFlow: shared/login_user_b_ready.yaml
+- runFlow: shared/open_add_friend.yaml
+- runFlow: shared/copy_my_user_id.yaml
+- runFlow: shared/go_back.yaml
+- runFlow: shared/logout_from_drawer.yaml
+- runFlow: shared/login_user_a_ready.yaml
+- runFlow: shared/open_add_friend.yaml
+- runFlow: shared/paste_user_id_and_search.yaml
+- extendedWaitUntil:
+    visible: "User B"
+    timeout: 10000
+- tapOn:
+    id: "add_friend_button"
+- extendedWaitUntil:
+    visible: "Request Sent!"
+    timeout: 10000
+- tapOn: "OK"
+
+# Navigate back to drawer and logout
+- runFlow: shared/go_back.yaml
+- runFlow: shared/logout_from_drawer.yaml
+- assertVisible: "Continue with Google"

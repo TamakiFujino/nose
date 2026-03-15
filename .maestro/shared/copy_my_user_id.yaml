@@ -1,0 +1,7 @@
+appId: com.tamakifujino.nose
+---
+# On Add Friend screen: assert current user ID visible and copy to clipboard
+- assertVisible:
+    id: "user_id_value"
+- tapOn:
+    id: "copy_button"

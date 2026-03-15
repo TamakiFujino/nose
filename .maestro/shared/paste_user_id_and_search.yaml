@@ -1,0 +1,14 @@
+appId: com.tamakifujino.nose
+---
+# On Add Friend screen: paste from clipboard into search and trigger search
+- tapOn:
+    id: "search_by_user_id"
+- longPressOn:
+    id: "search_by_user_id"
+- tapOn:
+    text: "Paste"
+    optional: true
+- tapOn:
+    text: "Allow Paste"
+    optional: true
+- pressKey: Enter

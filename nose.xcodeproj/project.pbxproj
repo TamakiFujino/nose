@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		2D6983AE4B30069205E0C0C4 /* Pods_noseTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 30352ACF35D91D68848CB136 /* Pods_noseTests.framework */; };
-		491514A72E99F03B00D5C35F /* UnityFramework.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 49F87F4A2E64768400C129C4 /* UnityFramework.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		4915172B2E9A01C800D5C35F /* GoogleService-Info-Development.plist in Resources */ = {isa = PBXBuildFile; fileRef = 491517272E9A01C800D5C35F /* GoogleService-Info-Development.plist */; };
 		4915172C2E9A01C800D5C35F /* GoogleService-Info-Staging.plist in Resources */ = {isa = PBXBuildFile; fileRef = 491517292E9A01C800D5C35F /* GoogleService-Info-Staging.plist */; };
 		4915172D2E9A01C800D5C35F /* GoogleService-Info-Production.plist in Resources */ = {isa = PBXBuildFile; fileRef = 491517282E9A01C800D5C35F /* GoogleService-Info-Production.plist */; };
@@ -16,8 +15,6 @@
 		491FD1FE2ECA18C30085D3BA /* ShareWithNose.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 491FD1F42ECA18C30085D3BA /* ShareWithNose.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		49A0F1A32EA9B00100F1A2B4 /* nose/Bridging/UnityBridgeShim.m in Sources */ = {isa = PBXBuildFile; fileRef = 49A0F1A22EA9B00100F1A2B3 /* nose/Bridging/UnityBridgeShim.m */; };
 		49F7C2162E49E258003A3D50 /* UnityLauncher.mm in Sources */ = {isa = PBXBuildFile; fileRef = 49F7C2152E49E258003A3D50 /* UnityLauncher.mm */; };
-		49F87F4D2E64769D00C129C4 /* UnityFramework.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 49F87F4A2E64768400C129C4 /* UnityFramework.framework */; };
-		49F87F522E6476DD00C129C4 /* Data in Resources */ = {isa = PBXBuildFile; fileRef = 49F87F512E6476DD00C129C4 /* Data */; };
 		5CBEFBF89CA4287F9A230B55 /* Pods_noseUITests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F23C16B756E43F653CDBFDD4 /* Pods_noseUITests.framework */; };
 		90E1384E390AC4D7DCDC4D2F /* Pods-nose-metadata.plist in Resources */ = {isa = PBXBuildFile; fileRef = 6BAD938A99764361A6E14FC3 /* Pods-nose-metadata.plist */; };
 		F48FCEE9B776081042DD07E7 /* Pods-nose-noseUITests-metadata.plist in Resources */ = {isa = PBXBuildFile; fileRef = 76DC80AC657D4235EC30D629 /* Pods-nose-noseUITests-metadata.plist */; };
@@ -90,7 +87,6 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-				491514A72E99F03B00D5C35F /* UnityFramework.framework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -199,7 +195,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				49F87F4D2E64769D00C129C4 /* UnityFramework.framework in Frameworks */,
 				FB8851DBE556023CF8443ADC /* Pods_nose.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -494,7 +489,6 @@
 				4915172B2E9A01C800D5C35F /* GoogleService-Info-Development.plist in Resources */,
 				4915172C2E9A01C800D5C35F /* GoogleService-Info-Staging.plist in Resources */,
 				4915172D2E9A01C800D5C35F /* GoogleService-Info-Production.plist in Resources */,
-				49F87F522E6476DD00C129C4 /* Data in Resources */,
 				90E1384E390AC4D7DCDC4D2F /* Pods-nose-metadata.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -23,7 +23,7 @@ class LicensesViewController: UIViewController, UITableViewDelegate, UITableView
     }
 
     private func setupNavigationBar() {
-        navigationItem.title = "Licenses"
+        navigationItem.title = String(localized: "licenses_title")
         self.navigationController?.navigationBar.tintColor = .black
     }
 

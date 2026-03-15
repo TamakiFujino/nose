@@ -1,0 +1,35 @@
+# Maestro E2E Test Configuration
+#
+# Test account credentials - override via CLI:
+#   maestro test --env USER_A_EMAIL=... --env USER_A_NAME=... .maestro/
+#
+# Or export as environment variables before running.
+
+USER_A_EMAIL: ${USER_A_EMAIL}
+USER_A_NAME: ${USER_A_NAME}
+USER_B_EMAIL: ${USER_B_EMAIL}
+USER_B_NAME: ${USER_B_NAME}
+
+# Run test flows sequentially in this order (default is non-deterministic/parallel).
+executionOrder:
+  continueOnFailure: false
+  flowsOrder:
+    - 01_account_creation_01_create_user_a
+    - 01_account_creation_02_create_user_b
+    - 01_account_creation_03_accept_friend
+    - 02_collection_creation_01_create_and_share
+    - 02_collection_creation_02_add_spot
+    - 03_collection_management_01_create_from_modal
+    - 04_place_management_01_place_operation
+    - 05_collection_edit_01_edit_name_and_icon
+    - 05_collection_edit_02_owner_edit_synced_to_member
+    - 06_shared_collection_01_leave
+    - 06_shared_collection_02_verify_leave_and_reshare
+    - 07_friend_management_01_block_user
+    - 07_friend_management_02_blocked_user_cannot_add
+    - 07_friend_management_03_unblock_user
+    - 07_friend_management_04_reject_and_readd
+    - 98_delete_collection_01_delete_collection
+    - 99_delete_account_01_delete_user_a
+    - 99_delete_account_02_delete_user_b
+    - 99_delete_account_03_ensure_cleanup

@@ -22,7 +22,7 @@ final class ShareCollectionViewController: UIViewController {
         label.font = .systemFont(ofSize: 14)
         label.textColor = .secondaryLabel
         label.numberOfLines = 0
-        label.text = "Shared users can save spots to this collection, but cannot add friends or delete the collection."
+        label.text = String(localized: "share_collection_description")
         return label
     }()
     
@@ -67,7 +67,7 @@ final class ShareCollectionViewController: UIViewController {
     // MARK: - Setup
     private func setupUI() {
         view.backgroundColor = .systemBackground
-        title = "Share Collection"
+        title = String(localized: "share_collection_title")
         
         // Add close button
         let closeButton = UIBarButtonItem(
@@ -280,10 +280,10 @@ final class FriendSelectionCell: UITableViewCell {
         checkmarkImageView.isHidden = !isSelected
         
         if wasPreviouslyShared && !isSelected {
-            statusLabel.text = "Will be removed"
+            statusLabel.text = String(localized: "share_collection_will_remove")
             statusLabel.textColor = .systemRed
         } else if !wasPreviouslyShared && isSelected {
-            statusLabel.text = "Will be added"
+            statusLabel.text = String(localized: "share_collection_will_add")
             statusLabel.textColor = .systemGreen
         } else {
             statusLabel.text = wasPreviouslyShared ? "Currently shared" : "Not shared"

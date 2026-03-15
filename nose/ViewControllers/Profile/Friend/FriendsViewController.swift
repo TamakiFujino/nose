@@ -72,7 +72,7 @@ class FriendsViewController: UIViewController {
         // set background color
         view.backgroundColor = .firstColor
         
-        title = "Friends"
+        title = String(localized: "friends_title")
         
         // Configure navigation bar
         navigationController?.navigationBar.tintColor = .label
@@ -124,6 +124,7 @@ class FriendsViewController: UIViewController {
             FirestorePaths.userDoc(id).getDocument { snapshot, error in
                 defer { group.leave() }
                 guard let snapshot = snapshot, let user = User.fromFirestore(snapshot) else { return }
+                guard !user.isDeleted else { return }
                 lock.lock()
                 users.append(user)
                 lock.unlock()
@@ -194,15 +195,20 @@ class FriendsViewController: UIViewController {
     
     // MARK: - Actions
     // MARK: - Tab Management
-    private static let tabTitles: [(Tab, String)] = [(.friends, "Friends"), (.pending, "Pending"), (.requested, "Requested"), (.blocked, "Blocked")]
+    private static let tabTitles: [(Tab, String)] = [(.friends, "friends_title"), (.pending, "friends_tab_pending"), (.requested, "friends_tab_requested"), (.blocked, "friends_tab_blocked")]
 
     private func setupCategoryTabs() {
-        for (index, (tab, title)) in Self.tabTitles.enumerated() {
-            let button = createTabButton(title: title, tag: index, tab: tab)
-            if tab == .pending {
+        for (index, (tab, titleKey)) in Self.tabTitles.enumerated() {
+            let button = createTabButton(title: String(localized: String.LocalizationValue(stringLiteral: titleKey)), tag: index, tab: tab)
+            switch tab {
+            case .friends:
+                button.accessibilityIdentifier = "Friends_tab"
+            case .pending:
                 button.accessibilityIdentifier = "Pending"
-            } else if tab == .requested {
+            case .requested:
                 button.accessibilityIdentifier = "Requested"
+            case .blocked:
+                button.accessibilityIdentifier = "Blocked"
             }
             categoryTabStackView.addArrangedSubview(button)
         }
@@ -263,13 +269,13 @@ class FriendsViewController: UIViewController {
     private func emptyMessage(for tab: Tab) -> String {
         switch tab {
         case .friends:
-            return "No friends yet. Share your User ID from Add Friend so others can send you a request."
+            return String(localized: "friends_empty_friends")
         case .pending:
-            return "No pending requests. When someone sends you a friend request, it will appear here."
+            return String(localized: "friends_empty_pending")
         case .requested:
-            return "No requests sent. When you send a friend request from Add Friend, it will appear here until they respond."
+            return String(localized: "friends_empty_requested")
         case .blocked:
-            return "No blocked users."
+            return String(localized: "friends_empty_blocked")
         }
     }
     
@@ -319,7 +325,7 @@ class FriendsViewController: UIViewController {
         nameLabel.textColor = .label
 
         let approve = UIButton(type: .system)
-        approve.setTitle("Approve", for: .normal)
+        approve.setTitle(String(localized: "friends_approve"), for: .normal)
         approve.tag = indexPath.row
         approve.accessibilityIdentifier = "Approve"
         approve.titleLabel?.font = .systemFont(ofSize: 14, weight: .medium)
@@ -331,7 +337,7 @@ class FriendsViewController: UIViewController {
         approve.addTarget(self, action: #selector(pendingApproveTapped(_:)), for: .touchUpInside)
 
         let reject = UIButton(type: .system)
-        reject.setTitle("Reject", for: .normal)
+        reject.setTitle(String(localized: "friends_reject"), for: .normal)
         reject.tag = indexPath.row
         reject.accessibilityIdentifier = "Reject"
         reject.titleLabel?.font = .systemFont(ofSize: 14, weight: .medium)
@@ -365,11 +371,11 @@ class FriendsViewController: UIViewController {
     
     private func blockUser(_ user: User) {
         let modal = ConfirmationModalViewController(
-            title: "Block user?",
-            message: "Are you sure you want to block \"\(user.name)\"? You will not be able to share a collection or add them as a friend.",
-            primaryTitle: "Block",
+            title: String(localized: "friends_block_confirm_title"),
+            message: String(format: String(localized: "friends_block_confirm_message_format"), user.name),
+            primaryTitle: String(localized: "friends_block_user"),
             primaryStyle: .destructive,
-            cancelTitle: "Cancel",
+            cancelTitle: String(localized: "modal_cancel"),
             onPrimary: { [weak self] in
                 self?.performBlockUser(user)
             },
@@ -385,9 +391,9 @@ class FriendsViewController: UIViewController {
                 switch result {
                 case .success:
                     self?.loadFriends()
-                    self?.showAlert(title: "Success", message: "User blocked successfully")
+                    self?.showAlert(title: String(localized: "modal_success_title"), message: String(localized: "friends_block_success"))
                 case .failure(let error):
-                    self?.showAlert(title: "Error", message: "Failed to block user: \(error.localizedDescription)")
+                    self?.showAlert(title: String(localized: "modal_error_title"), message: String(format: String(localized: "friends_block_failed_format"), error.localizedDescription))
                 }
             }
         }
@@ -395,10 +401,10 @@ class FriendsViewController: UIViewController {
 
     private func unblockUser(_ user: User) {
         let modal = ConfirmationModalViewController(
-            title: "Unblock user?",
-            message: "\(user.name) will be able to add you as a friend with your User ID.",
-            primaryTitle: "Unblock",
-            cancelTitle: "Cancel",
+            title: String(localized: "friends_unblock_confirm_title"),
+            message: String(format: String(localized: "friends_unblock_confirm_message_format"), user.name),
+            primaryTitle: String(localized: "friends_unblock_user"),
+            cancelTitle: String(localized: "modal_cancel"),
             onPrimary: { [weak self] in
                 self?.performUnblockUser(user)
             },
@@ -414,9 +420,9 @@ class FriendsViewController: UIViewController {
                 switch result {
                 case .success:
                     self?.loadFriends()
-                    self?.showAlert(title: "Success", message: "User unblocked successfully")
+                    self?.showAlert(title: String(localized: "modal_success_title"), message: String(localized: "friends_unblock_success"))
                 case .failure(let error):
-                    self?.showAlert(title: "Error", message: "Failed to unblock user: \(error.localizedDescription)")
+                    self?.showAlert(title: String(localized: "modal_error_title"), message: String(format: String(localized: "friends_unblock_failed_format"), error.localizedDescription))
                 }
             }
         }
@@ -450,7 +456,7 @@ extension FriendsViewController: UITableViewDelegate, UITableViewDataSource {
             let cell = tableView.dequeueReusableCell(withIdentifier: "UserCell", for: indexPath)
             let user = pendingSent[indexPath.row]
             var content = cell.defaultContentConfiguration()
-            content.text = "\(user.name) requested"
+            content.text = String(format: String(localized: "friends_requested"), user.name)
             content.textProperties.color = .label
             content.textProperties.font = .systemFont(ofSize: 17, weight: .medium)
             cell.contentConfiguration = content
@@ -488,10 +494,10 @@ extension FriendsViewController: UITableViewDelegate, UITableViewDataSource {
         guard row < pendingReceived.count else { return }
         let user = pendingReceived[row]
         let modal = ConfirmationModalViewController(
-            title: "Approve request",
-            message: "Add \(user.name) as a friend?",
-            primaryTitle: "Approve",
-            cancelTitle: "Cancel",
+            title: String(localized: "friends_approve_confirm_title"),
+            message: String(format: String(localized: "friends_approve_confirm_message_format"), user.name),
+            primaryTitle: String(localized: "friends_approve"),
+            cancelTitle: String(localized: "modal_cancel"),
             onPrimary: { [weak self] in
                 self?.performApproveFriendRequest(from: user)
             },
@@ -508,9 +514,9 @@ extension FriendsViewController: UITableViewDelegate, UITableViewDataSource {
                 case .success:
                     self?.loadFriends()
                     self?.loadPending()
-                    self?.showAlert(title: "Success", message: "Friend request approved.")
+                    self?.showAlert(title: String(localized: "modal_success_title"), message: String(localized: "friends_approve_success"))
                 case .failure(let error):
-                    self?.showAlert(title: "Error", message: error.localizedDescription)
+                    self?.showAlert(title: String(localized: "modal_error_title"), message: error.localizedDescription)
                 }
             }
         }
@@ -521,11 +527,11 @@ extension FriendsViewController: UITableViewDelegate, UITableViewDataSource {
         guard row < pendingReceived.count else { return }
         let user = pendingReceived[row]
         let modal = ConfirmationModalViewController(
-            title: "Reject request",
-            message: "Reject friend request from \(user.name)?",
-            primaryTitle: "Reject",
+            title: String(localized: "friends_reject_confirm_title"),
+            message: String(format: String(localized: "friends_reject_confirm_message_format"), user.name),
+            primaryTitle: String(localized: "friends_reject"),
             primaryStyle: .default,
-            cancelTitle: "Cancel",
+            cancelTitle: String(localized: "modal_cancel"),
             onPrimary: { [weak self] in
                 self?.performRejectFriendRequest(from: user)
             },
@@ -543,7 +549,7 @@ extension FriendsViewController: UITableViewDelegate, UITableViewDataSource {
                     self?.loadPending()
                     self?.updateEmptyState()
                 case .failure(let error):
-                    self?.showAlert(title: "Error", message: error.localizedDescription)
+                    self?.showAlert(title: String(localized: "modal_error_title"), message: error.localizedDescription)
                 }
             }
         }
@@ -557,15 +563,15 @@ extension FriendsViewController: UITableViewDelegate, UITableViewDataSource {
         let user = currentSegment == Tab.friends.rawValue ? friends[indexPath.row] : blockedUsers[indexPath.row]
         let alert = UIAlertController(title: user.name, message: nil, preferredStyle: .actionSheet)
         if currentSegment == Tab.friends.rawValue {
-            alert.addAction(UIAlertAction(title: "Block User", style: .destructive) { [weak self] _ in
+            alert.addAction(UIAlertAction(title: String(localized: "friends_block_user"), style: .destructive) { [weak self] _ in
                 self?.blockUser(user)
             })
         } else {
-            alert.addAction(UIAlertAction(title: "Unblock User", style: .default) { [weak self] _ in
+            alert.addAction(UIAlertAction(title: String(localized: "friends_unblock_user"), style: .default) { [weak self] _ in
                 self?.unblockUser(user)
             })
         }
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: String(localized: "modal_cancel"), style: .cancel))
         present(alert, animated: true)
     }
 }

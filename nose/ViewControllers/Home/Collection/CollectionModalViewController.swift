@@ -2,7 +2,7 @@ import UIKit
 import FirebaseAuth
 
 /// Base class for collection modal view controllers (create/edit)
-class CollectionModalViewController: UIViewController {
+class CollectionModalViewController: UIViewController, UITextFieldDelegate {
     // MARK: - Properties
     var selectedIconUrl: String?
     var selectedIconName: String?
@@ -27,7 +27,7 @@ class CollectionModalViewController: UIViewController {
     
     let iconSelectionLabel: UILabel = {
         let label = UILabel()
-        label.text = "Select an icon"
+        label.text = String(localized: "collection_modal_select_icon")
         label.font = .systemFont(ofSize: 16)
         label.textColor = .label
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -46,12 +46,14 @@ class CollectionModalViewController: UIViewController {
         button.setPreferredSymbolConfiguration(config, forImageIn: .normal)
         button.addTarget(self, action: #selector(iconButtonTapped), for: .touchUpInside)
         button.translatesAutoresizingMaskIntoConstraints = false
+        button.accessibilityIdentifier = "icon_button"
+        button.accessibilityLabel = String(localized: "collection_modal_select_icon")
         return button
     }()
     
     let nameLabel: UILabel = {
         let label = UILabel()
-        label.text = "Enter a name"
+        label.text = String(localized: "collection_modal_enter_name")
         label.font = .systemFont(ofSize: 16)
         label.textColor = .label
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -60,7 +62,7 @@ class CollectionModalViewController: UIViewController {
     
     lazy var nameTextField: UITextField = {
         let textField = UITextField()
-        textField.placeholder = "Collection Name"
+        textField.placeholder = String(localized: "collection_modal_name_placeholder")
         textField.font = .systemFont(ofSize: 16)
         textField.borderStyle = .none
         textField.backgroundColor = UIColor.systemGray5 // Match icon button color
@@ -74,12 +76,14 @@ class CollectionModalViewController: UIViewController {
         textField.rightView = paddingView
         textField.rightViewMode = .always
         textField.translatesAutoresizingMaskIntoConstraints = false
+        textField.accessibilityIdentifier = "collection_name_field"
+        textField.returnKeyType = .done
         return textField
     }()
     
     lazy var cancelButton: CustomButton = {
         let button = CustomButton(type: .system)
-        button.setTitle("Cancel", for: .normal)
+        button.setTitle(String(localized: "modal_cancel"), for: .normal)
         button.style = .secondary
         button.size = .medium
         button.isPerfectlyRounded = true
@@ -93,7 +97,7 @@ class CollectionModalViewController: UIViewController {
 
     lazy var saveButton: CustomButton = {
         let button = CustomButton(type: .system)
-        button.setTitle("Save", for: .normal)
+        button.setTitle(String(localized: "button_save"), for: .normal)
         button.style = .primary
         button.size = .medium
         button.isPerfectlyRounded = true
@@ -103,6 +107,7 @@ class CollectionModalViewController: UIViewController {
         button.alpha = 0.5
         button.addTarget(self, action: #selector(saveButtonTapped), for: .touchUpInside)
         button.translatesAutoresizingMaskIntoConstraints = false
+        button.accessibilityIdentifier = "collection_modal_save"
         return button
     }()
     
@@ -136,6 +141,7 @@ class CollectionModalViewController: UIViewController {
         containerView.addSubview(iconButton)
         containerView.addSubview(nameLabel)
         containerView.addSubview(nameTextField)
+        nameTextField.delegate = self
         containerView.addSubview(cancelButton)
         containerView.addSubview(saveButton)
         
@@ -347,5 +353,11 @@ extension CollectionModalViewController: ImagePickerViewControllerDelegate {
         } else {
             resetIconButton()
         }
+    }
+
+    // MARK: - UITextFieldDelegate
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        textField.resignFirstResponder()
+        return true
     }
 }

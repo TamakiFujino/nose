@@ -1,0 +1,30 @@
+appId: com.tamakifujino.nose
+---
+# Login as User A via Google Sign-In
+# Expects: USER_A_NAME and USER_A_EMAIL env vars
+
+# If already logged in, log out first
+- runFlow: ensure_logged_out.yaml
+
+- tapOn:
+    text: "Continue with Google"
+    retryTapIfNoChange: true
+
+# iOS system alert: "nose wants to use google.com to sign in"
+- tapOn:
+    text: "Continue"
+    optional: true
+
+# Pick account from Google WebView
+- extendedWaitUntil:
+    visible: ${USER_A_NAME}
+    timeout: 15000
+- tapOn: ${USER_A_NAME}
+
+# Consent screen "Continue" / "次へ" (may not always appear)
+- tapOn:
+    text: "Continue"
+    optional: true
+- tapOn:
+    text: "次へ"
+    optional: true

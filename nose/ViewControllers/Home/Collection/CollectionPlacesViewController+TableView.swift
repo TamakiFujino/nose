@@ -29,11 +29,11 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
             let hasPastEvents = !pastEvents.isEmpty
 
             if hasFutureEvents && hasPastEvents {
-                return section == 0 ? "Upcoming Events" : "Past Events"
+                return section == 0 ? String(localized: "events_upcoming") : String(localized: "events_past")
             } else if hasFutureEvents {
-                return "Upcoming Events"
+                return String(localized: "events_upcoming")
             } else if hasPastEvents {
-                return "Past Events"
+                return String(localized: "events_past")
             }
             return nil
         }
@@ -120,8 +120,8 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
                 } else {
                     DispatchQueue.main.async {
                         let messageModal = MessageModalViewController(
-                            title: "Unable to Load Details",
-                            message: "Could not load complete details for \(place.name). Please try again later."
+                            title: String(localized: "alert_unable_to_load_details"),
+                            message: String(format: String(localized: "alert_could_not_load_details_format"), place.name)
                         )
                         self?.present(messageModal, animated: true)
                     }
@@ -152,57 +152,61 @@ extension CollectionPlacesViewController: UITableViewDelegate, UITableViewDataSo
     }
 
     func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
-        // Handle events section
-        if indexPath.section == 0 {
-            guard indexPath.row < events.count else {
+        // Places tab: single section with places → Visited, Copy, Delete, Map
+        if selectedTab == .places {
+            guard indexPath.row < places.count else {
                 return UISwipeActionsConfiguration(actions: [])
             }
+            let place = places[indexPath.row]
+            let mapAction = UIContextualAction(style: .normal, title: String(localized: "action_open_in")) { [weak self] (action, view, completion) in
+                self?.openPlaceInMapsByName(place.name)
+                completion(true)
+            }
+            mapAction.backgroundColor = .blueColor
+            mapAction.image = UIImage(systemName: "arrow.up.forward")
 
-            let deleteAction = UIContextualAction(style: .destructive, title: "Delete") { [weak self] (action, view, completion) in
-                self?.confirmDeleteEvent(at: indexPath)
+            let visitedAction = UIContextualAction(style: .normal, title: place.visited ? String(localized: "action_unvisited") : String(localized: "action_visited")) { [weak self] (action, view, completion) in
+                self?.toggleVisitedStatus(at: indexPath)
+                completion(true)
+            }
+            visitedAction.backgroundColor = .blueColor
+            visitedAction.image = UIImage(systemName: place.visited ? "xmark.circle" : "checkmark.circle")
+
+            let copyAction = UIContextualAction(style: .normal, title: String(localized: "action_copy")) { [weak self] (action, view, completion) in
+                self?.showCopyOptions(for: place, at: indexPath)
+                completion(true)
+            }
+            copyAction.backgroundColor = .blueColor
+            copyAction.image = UIImage(systemName: "doc.on.doc")
+
+            let deleteAction = UIContextualAction(style: .destructive, title: String(localized: "action_delete")) { [weak self] (action, view, completion) in
+                self?.confirmDeletePlace(at: indexPath)
                 completion(false)
             }
             deleteAction.backgroundColor = .fourthColor
             deleteAction.image = UIImage(systemName: "trash")
 
-            return UISwipeActionsConfiguration(actions: [deleteAction])
+            return UISwipeActionsConfiguration(actions: [deleteAction, copyAction, visitedAction, mapAction])
         }
 
-        // Handle places section
-        guard indexPath.row < places.count else {
+        // Events tab: section 0 = future (or past if no future); section 1 = past
+        let eventCount: Int
+        if indexPath.section == 0 {
+            eventCount = !futureEvents.isEmpty ? futureEvents.count : pastEvents.count
+        } else {
+            eventCount = pastEvents.count
+        }
+        guard indexPath.row < eventCount else {
             return UISwipeActionsConfiguration(actions: [])
         }
 
-        let place = places[indexPath.row]
-
-        let mapAction = UIContextualAction(style: .normal, title: "Map") { [weak self] (action, view, completion) in
-            self?.openPlaceInMapsByName(place.name)
-            completion(true)
-        }
-        mapAction.backgroundColor = .systemGreen
-        mapAction.image = UIImage(systemName: "map")
-
-        let visitedAction = UIContextualAction(style: .normal, title: place.visited ? "Unvisited" : "Visited") { [weak self] (action, view, completion) in
-            self?.toggleVisitedStatus(at: indexPath)
-            completion(true)
-        }
-        visitedAction.backgroundColor = UIColor.blueColor
-        visitedAction.image = UIImage(systemName: place.visited ? "xmark.circle" : "checkmark.circle")
-
-        let copyAction = UIContextualAction(style: .normal, title: "Copy") { [weak self] (action, view, completion) in
-            self?.showCopyOptions(for: place, at: indexPath)
-            completion(true)
-        }
-        copyAction.backgroundColor = .systemOrange
-        copyAction.image = UIImage(systemName: "doc.on.doc")
-
-        let deleteAction = UIContextualAction(style: .destructive, title: "Delete") { [weak self] (action, view, completion) in
-            self?.confirmDeletePlace(at: indexPath)
+        let deleteAction = UIContextualAction(style: .destructive, title: String(localized: "action_delete")) { [weak self] (action, view, completion) in
+            self?.confirmDeleteEvent(at: indexPath)
             completion(false)
         }
         deleteAction.backgroundColor = .fourthColor
         deleteAction.image = UIImage(systemName: "trash")
 
-        return UISwipeActionsConfiguration(actions: [deleteAction, copyAction, visitedAction, mapAction])
+        return UISwipeActionsConfiguration(actions: [deleteAction])
     }
 }

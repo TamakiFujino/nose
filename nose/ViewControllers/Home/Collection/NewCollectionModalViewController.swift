@@ -18,7 +18,7 @@ class NewCollectionModalViewController: CollectionModalViewController {
     
     // MARK: - Configuration
     override func configureInitialState() {
-        titleLabel.text = "New Collection"
+        titleLabel.text = String(localized: "new_collection_title")
         // Save button starts disabled (handled by base class)
     }
     

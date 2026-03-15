@@ -11,21 +11,19 @@ final class LoginViewController: UIViewController {
     private lazy var launchLogoImageView: UIImageView = {
         let imageView = UIImageView()
         imageView.translatesAutoresizingMaskIntoConstraints = false
-        imageView.image = UIImage(named: "logo")
+        imageView.image = UIImage(named: "logo_dark")
         imageView.contentMode = .scaleAspectFit
         return imageView
     }()
     
-    private lazy var sloganLabel: UILabel = {
+    private lazy var appNameLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "Map your journey\nStyle your future"
+        label.text = String(localized: "app_name")
         label.textAlignment = .center
-        // set font to gotham
-        let font = UIFont(name: "Gotham-Bold", size: 32) ?? UIFont.systemFont(ofSize: 32, weight: .bold)
+        let font = UIFont(name: "Futura-Medium", size: 66) ?? UIFont.systemFont(ofSize: 66, weight: .medium)
         label.font = font
         label.textColor = .white
-        label.numberOfLines = 0
         label.alpha = 0 // Initially invisible
         return label
     }()
@@ -33,23 +31,61 @@ final class LoginViewController: UIViewController {
     private lazy var appleButton: CustomGlassButton = {
         let button = CustomGlassButton()
         button.translatesAutoresizingMaskIntoConstraints = false
-        setupSocialButton(button: button, iconName: "applelogo", title: "Continue with Apple")
+        setupSocialButton(button: button, iconName: "applelogo", title: String(localized: "apple_login"))
         button.addTarget(self, action: #selector(appleButtonTapped), for: .touchUpInside)
         button.alpha = 0 // Initially invisible
         button.accessibilityIdentifier = "continue_with_apple"
-        button.accessibilityLabel = "Continue with Apple"
+        button.accessibilityLabel = String(localized: "apple_login")
         return button
     }()
     
     private lazy var googleButton: CustomGlassButton = {
         let button = CustomGlassButton()
         button.translatesAutoresizingMaskIntoConstraints = false
-        setupSocialButton(button: button, iconName: "google_logo", title: "Continue with Google")
+        setupSocialButton(button: button, iconName: "google_logo", title: String(localized: "google_login"))
         button.addTarget(self, action: #selector(googleButtonTapped), for: .touchUpInside)
         button.alpha = 0 // Initially invisible
         button.accessibilityIdentifier = "continue_with_google"
-        button.accessibilityLabel = "Continue with Google"
+        button.accessibilityLabel = String(localized: "google_login")
         return button
+    }()
+    
+    private lazy var termsAndPrivacyTextView: UITextView = {
+        let textView = UITextView()
+        textView.translatesAutoresizingMaskIntoConstraints = false
+        textView.isEditable = false
+        textView.isScrollEnabled = false
+        textView.backgroundColor = .clear
+        textView.textContainerInset = .zero
+        textView.textContainer.lineFragmentPadding = 0
+        textView.delegate = self
+        textView.alpha = 0 // Initially invisible
+        textView.linkTextAttributes = [
+            .foregroundColor: UIColor.white,
+            .underlineStyle: NSUnderlineStyle.single.rawValue
+        ]
+        let base = String(localized: "login_terms_base")
+        let terms = String(localized: "login_terms_of_service")
+        let and = String(localized: "login_terms_and")
+        let privacy = String(localized: "login_privacy_policy")
+        let end = String(localized: "login_terms_end")
+        let full = base + terms + and + privacy + end
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.alignment = .center
+        let attributed = NSMutableAttributedString(
+            string: full,
+            attributes: [
+                .font: UIFont.systemFont(ofSize: 14, weight: .regular),
+                .foregroundColor: UIColor.white,
+                .paragraphStyle: paragraphStyle
+            ]
+        )
+        let termsRange = (full as NSString).range(of: terms)
+        let privacyRange = (full as NSString).range(of: privacy)
+        attributed.addAttribute(.link, value: "nose://terms", range: termsRange)
+        attributed.addAttribute(.link, value: "nose://privacy", range: privacyRange)
+        textView.attributedText = attributed
+        return textView
     }()
     
     private lazy var loadingView: UIView = {
@@ -75,6 +111,7 @@ final class LoginViewController: UIViewController {
     // MARK: - Properties
     private var currentNonce: String?
     private var isLoginMode = false
+    private var loginGradientLayer: CAGradientLayer?
     weak var sceneDelegate: SceneDelegate?
     
     // MARK: - Lifecycle
@@ -86,10 +123,18 @@ final class LoginViewController: UIViewController {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        navigationController?.setNavigationBarHidden(true, animated: animated)
     }
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+    }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        if isLoginMode {
+            loginGradientLayer?.frame = view.bounds
+        }
     }
     
     // MARK: - Setup
@@ -108,57 +153,65 @@ final class LoginViewController: UIViewController {
     }
     
     private func setupLoginStyle() {
-        // Switch to login style (splash background + login UI)
+        // Switch to login style (gradient background + logo above slogan)
         isLoginMode = true
         
-        // Remove launch logo
         launchLogoImageView.removeFromSuperview()
+        view.backgroundColor = .themeLightBlue
         
-        // Setup splash background
-        let backgroundImage = UIImageView(frame: UIScreen.main.bounds)
-        backgroundImage.image = UIImage(named: "splash")
-        
-        if backgroundImage.image == nil {
-            // Set a fallback background color
-            view.backgroundColor = .systemBlue
-        }
-        
-        backgroundImage.contentMode = .scaleAspectFill
-        backgroundImage.clipsToBounds = true
-        view.addSubview(backgroundImage)
-        view.sendSubviewToBack(backgroundImage)
-        
-        // Add login UI elements
-        [sloganLabel, appleButton, googleButton, loadingView].forEach {
-            view.addSubview($0)
-        }
-        
-        // Setup login UI constraints
+        let gradient = CAGradientLayer()
+        gradient.colors = [UIColor.themeLightBlue.cgColor, UIColor.themeBlue.cgColor]
+        gradient.startPoint = CGPoint(x: 0.5, y: 0)
+        gradient.endPoint = CGPoint(x: 0.5, y: 1)
+        gradient.frame = view.bounds
+        view.layer.insertSublayer(gradient, at: 0)
+        loginGradientLayer = gradient
+
+        let bottomStack = UIStackView(arrangedSubviews: [termsAndPrivacyTextView, appleButton, googleButton])
+        bottomStack.axis = .vertical
+        bottomStack.alignment = .center
+        bottomStack.spacing = 8
+        bottomStack.setCustomSpacing(16, after: termsAndPrivacyTextView)
+        bottomStack.translatesAutoresizingMaskIntoConstraints = false
+
+        launchLogoImageView.widthAnchor.constraint(equalToConstant: 72).isActive = true
+        launchLogoImageView.heightAnchor.constraint(equalToConstant: 72).isActive = true
+
+        view.addSubview(launchLogoImageView)
+        view.addSubview(appNameLabel)
+        view.addSubview(bottomStack)
+        view.addSubview(loadingView)
+
+        appNameLabel.font = UIFont(name: "Futura-Medium", size: 66) ?? UIFont.systemFont(ofSize: 66, weight: .medium)
+        appNameLabel.adjustsFontSizeToFitWidth = false
+
+        appleButton.widthAnchor.constraint(equalTo: bottomStack.widthAnchor).isActive = true
+        appleButton.heightAnchor.constraint(equalToConstant: 50).isActive = true
+        googleButton.widthAnchor.constraint(equalTo: bottomStack.widthAnchor).isActive = true
+        googleButton.heightAnchor.constraint(equalToConstant: 50).isActive = true
+
+        launchLogoImageView.alpha = 0
+
         NSLayoutConstraint.activate([
-            sloganLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            sloganLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            sloganLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            sloganLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-            
-            appleButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            appleButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-            appleButton.heightAnchor.constraint(equalToConstant: 50),
-            appleButton.bottomAnchor.constraint(equalTo: googleButton.topAnchor, constant: -16),
-            
-            googleButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            googleButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-            googleButton.heightAnchor.constraint(equalToConstant: 50),
-            googleButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
-            
+            launchLogoImageView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            launchLogoImageView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            appNameLabel.leadingAnchor.constraint(equalTo: launchLogoImageView.trailingAnchor, constant: -8),
+            appNameLabel.centerYAnchor.constraint(equalTo: launchLogoImageView.centerYAnchor, constant: -8),
+            termsAndPrivacyTextView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            termsAndPrivacyTextView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
+            bottomStack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            bottomStack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            bottomStack.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
             loadingView.topAnchor.constraint(equalTo: view.topAnchor),
             loadingView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             loadingView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             loadingView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
         
-        // Show login UI with animation
         UIView.animate(withDuration: 0.5) {
-            self.sloganLabel.alpha = 1
+            self.launchLogoImageView.alpha = 1
+            self.appNameLabel.alpha = 1
+            self.termsAndPrivacyTextView.alpha = 1
             self.appleButton.alpha = 1
             self.googleButton.alpha = 1
         }
@@ -275,7 +328,7 @@ final class LoginViewController: UIViewController {
             
             if let error = error {
                 Logger.log("Error checking user: \(error.localizedDescription)", level: .error, category: "Login")
-                self.showError(message: "Failed to check user status. Please try again.")
+                self.showError(message: String(localized: "login_error_check_user"))
                 return
             }
             
@@ -304,7 +357,7 @@ final class LoginViewController: UIViewController {
     }
     
     private func showError(message: String) {
-        let messageModal = MessageModalViewController(title: "Error", message: message)
+        let messageModal = MessageModalViewController(title: String(localized: "modal_error_title"), message: message)
         present(messageModal, animated: true)
     }
     
@@ -313,7 +366,7 @@ final class LoginViewController: UIViewController {
         showLoading()
         guard let clientID = FirebaseApp.app()?.options.clientID else {
             hideLoading()
-            showError(message: "Google Sign-In is not properly configured. Please try again.")
+            showError(message: String(localized: "login_error_google_config"))
             return
         }
         
@@ -333,7 +386,7 @@ final class LoginViewController: UIViewController {
                     // User cancelled - don't show error
                     return
                 }
-                self.showError(message: "Failed to sign in with Google: \(error.localizedDescription)")
+                self.showError(message: String(format: String(localized: "login_error_google_signin_format"), error.localizedDescription))
                 return
             }
             
@@ -341,7 +394,7 @@ final class LoginViewController: UIViewController {
                   let idToken = authentication.idToken?.tokenString else {
                 Logger.log("Failed to get Google credentials", level: .error, category: "Login")
                 self.hideLoading()
-                self.showError(message: "Failed to get Google authentication credentials. Please try again.")
+                self.showError(message: String(localized: "login_error_google_credentials"))
                 return
             }
             
@@ -359,7 +412,7 @@ final class LoginViewController: UIViewController {
                 if let error = error {
                     Logger.log("Firebase Sign In error: \(error.localizedDescription)", level: .error, category: "Login")
                     self.hideLoading()
-                    self.showError(message: "Failed to authenticate with Firebase: \(error.localizedDescription)")
+                    self.showError(message: String(format: String(localized: "login_error_firebase_auth_format"), error.localizedDescription))
                     return
                 }
                 
@@ -432,5 +485,30 @@ extension LoginViewController: ASAuthorizationControllerDelegate {
 extension LoginViewController: ASAuthorizationControllerPresentationContextProviding {
     func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
         return view.window!
+    }
+}
+
+// MARK: - UITextViewDelegate
+extension LoginViewController: UITextViewDelegate {
+    func textView(_ textView: UITextView, shouldInteractWith URL: URL, in characterRange: NSRange, interaction: UITextItemInteraction) -> Bool {
+        if URL.scheme == "nose" {
+            if URL.host == "terms" {
+                let termsVC = ToSViewController()
+                termsVC.navigationItem.leftBarButtonItem = UIBarButtonItem(barButtonSystemItem: .done, target: self, action: #selector(dismissPresentedPolicyOrTerms))
+                let nav = UINavigationController(rootViewController: termsVC)
+                present(nav, animated: true)
+            } else if URL.host == "privacy" {
+                let privacyVC = PrivacyPolicyViewController()
+                privacyVC.navigationItem.leftBarButtonItem = UIBarButtonItem(barButtonSystemItem: .done, target: self, action: #selector(dismissPresentedPolicyOrTerms))
+                let nav = UINavigationController(rootViewController: privacyVC)
+                present(nav, animated: true)
+            }
+            return false
+        }
+        return true
+    }
+    
+    @objc private func dismissPresentedPolicyOrTerms() {
+        presentedViewController?.dismiss(animated: true)
     }
 } 

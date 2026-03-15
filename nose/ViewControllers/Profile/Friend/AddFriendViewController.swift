@@ -21,7 +21,7 @@ class AddFriendViewController: UIViewController {
     private lazy var searchBar: UISearchBar = {
         let searchBar = UISearchBar()
         searchBar.translatesAutoresizingMaskIntoConstraints = false
-        searchBar.placeholder = "Search by User ID"
+        searchBar.placeholder = String(localized: "add_friend_search_placeholder")
         searchBar.delegate = self
         searchBar.searchBarStyle = .minimal
         searchBar.autocapitalizationType = .allCharacters
@@ -40,7 +40,7 @@ class AddFriendViewController: UIViewController {
     private lazy var userIdLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "Your User ID:"
+        label.text = String(localized: "add_friend_your_user_id")
         label.font = .systemFont(ofSize: 14, weight: .medium)
         label.textColor = .secondaryLabel
         return label
@@ -95,7 +95,7 @@ class AddFriendViewController: UIViewController {
     private lazy var addFriendButton: CustomButton = {
         let button = CustomButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.setTitle("Send Request", for: .normal)
+        button.setTitle(String(localized: "add_friend_send_request"), for: .normal)
         button.addTarget(self, action: #selector(addFriendButtonTapped), for: .touchUpInside)
         button.accessibilityIdentifier = "add_friend_button"
         button.isHidden = true // Initially hidden
@@ -126,7 +126,7 @@ class AddFriendViewController: UIViewController {
         // set background color
         view.backgroundColor = .firstColor
         
-        title = "Add Friend"
+        title = String(localized: "add_friend_title")
         
         // Configure navigation bar
         navigationController?.navigationBar.tintColor = .label
@@ -142,6 +142,7 @@ class AddFriendViewController: UIViewController {
         view.addSubview(resultContainer)
         resultContainer.addSubview(resultProfileImageView)
         resultContainer.addSubview(resultNameLabel)
+        resultProfileImageView.isHidden = true // Avatar display disabled
         view.addSubview(addFriendButton)
         view.addSubview(activityIndicator)
         
@@ -179,10 +180,10 @@ class AddFriendViewController: UIViewController {
             
             resultProfileImageView.topAnchor.constraint(equalTo: resultContainer.topAnchor),
             resultProfileImageView.centerXAnchor.constraint(equalTo: resultContainer.centerXAnchor),
-            resultProfileImageView.widthAnchor.constraint(equalToConstant: 200), // Same as preview size
-            resultProfileImageView.heightAnchor.constraint(equalToConstant: 300), // 1.5x width for portrait
+            resultProfileImageView.widthAnchor.constraint(equalToConstant: 200),
+            resultProfileImageView.heightAnchor.constraint(equalToConstant: 0), // Avatar display disabled
             
-            resultNameLabel.topAnchor.constraint(equalTo: resultProfileImageView.bottomAnchor, constant: 16),
+            resultNameLabel.topAnchor.constraint(equalTo: resultContainer.topAnchor, constant: 16),
             resultNameLabel.leadingAnchor.constraint(equalTo: resultContainer.leadingAnchor, constant: 16),
             resultNameLabel.trailingAnchor.constraint(equalTo: resultContainer.trailingAnchor, constant: -16),
             resultNameLabel.bottomAnchor.constraint(equalTo: resultContainer.bottomAnchor),
@@ -247,7 +248,7 @@ class AddFriendViewController: UIViewController {
             searchResults = []
             resultContainer.isHidden = true
             addFriendButton.isHidden = true
-            showAlert(title: "Invalid Input", message: "Please enter a User ID to search")
+            showAlert(title: String(localized: "modal_error_title"), message: String(localized: "add_friend_invalid_input"))
             return
         }
         
@@ -257,7 +258,7 @@ class AddFriendViewController: UIViewController {
             searchResults = []
             resultContainer.isHidden = true
             addFriendButton.isHidden = true
-            showAlert(title: "Invalid User ID", message: "User ID must be exactly 10 characters (letters and numbers)")
+            showAlert(title: String(localized: "modal_error_title"), message: String(localized: "add_friend_invalid_user_id"))
             return
         }
         
@@ -266,7 +267,7 @@ class AddFriendViewController: UIViewController {
             searchResults = []
             resultContainer.isHidden = true
             addFriendButton.isHidden = true
-            showAlert(title: "Cannot Add Yourself", message: "You cannot add yourself as a friend")
+            showAlert(title: String(localized: "modal_error_title"), message: String(localized: "add_friend_cannot_add_yourself"))
             return
         }
         
@@ -287,7 +288,7 @@ class AddFriendViewController: UIViewController {
             if let error = error {
                 self.isSearching = false
                 self.activityIndicator.stopAnimating()
-                self.showAlert(title: "Error", message: "An error occurred while searching. Please try again.")
+                self.showAlert(title: String(localized: "modal_error_title"), message: String(localized: "add_friend_search_error"))
                 return
             }
             
@@ -306,7 +307,7 @@ class AddFriendViewController: UIViewController {
                     self.searchResults = []
                     self.resultContainer.isHidden = true
                     self.addFriendButton.isHidden = true
-                    self.showAlert(title: "User Not Found", message: "No user found with this User ID. Please check the ID and try again.")
+                    self.showAlert(title: String(localized: "modal_error_title"), message: String(localized: "add_friend_user_not_found"))
                     return
                 }
                 
@@ -321,7 +322,7 @@ class AddFriendViewController: UIViewController {
                             self.searchResults = []
                             self.resultContainer.isHidden = true
                             self.addFriendButton.isHidden = true
-                            self.showAlert(title: "Cannot Add Friend", message: "You have blocked this user. Please unblock them first to add them as a friend.")
+                            self.showAlert(title: String(localized: "add_friend_cannot_add_friend"), message: String(localized: "add_friend_blocked_user"))
                             return
                         }
                         
@@ -333,7 +334,7 @@ class AddFriendViewController: UIViewController {
                                     self.searchResults = []
                                     self.resultContainer.isHidden = true
                                     self.addFriendButton.isHidden = true
-                                    self.showAlert(title: "User Not Found", message: "No user found with this User ID. Please check the ID and try again.")
+                                    self.showAlert(title: String(localized: "modal_error_title"), message: String(localized: "add_friend_user_not_found"))
                                     return
                                 }
                                 
@@ -345,7 +346,7 @@ class AddFriendViewController: UIViewController {
                                             self.searchResults = []
                                             self.resultContainer.isHidden = true
                                             self.addFriendButton.isHidden = true
-                                            self.showAlert(title: "Already Friends", message: "This user is already in your friends list")
+                                            self.showAlert(title: String(localized: "modal_success_title"), message: String(localized: "add_friend_already_friends"))
                                             return
                                         }
                                         
@@ -358,7 +359,7 @@ class AddFriendViewController: UIViewController {
                                                     self.searchResults = []
                                                     self.resultContainer.isHidden = true
                                                     self.addFriendButton.isHidden = true
-                                                    self.showAlert(title: "Request Pending", message: "This user has already sent you a friend request. Check the Pending tab to approve or reject.")
+                                                    self.showAlert(title: String(localized: "modal_error_title"), message: String(localized: "add_friend_request_pending"))
                                                     return
                                                 }
                                                 // Check for existing sent request to this user
@@ -370,13 +371,13 @@ class AddFriendViewController: UIViewController {
                                                             self.searchResults = []
                                                             self.resultContainer.isHidden = true
                                                             self.addFriendButton.isHidden = true
-                                                            self.showAlert(title: "Request Already Sent", message: "You have already sent a friend request to this user. Check the Pending tab.")
+                                                            self.showAlert(title: String(localized: "modal_error_title"), message: String(localized: "add_friend_request_already_sent"))
                                                             return
                                                         }
                                                         // If not blocked, not friends, and no pending request, show the result
                                                         DispatchQueue.main.async {
                                                             self.resultNameLabel.text = foundUser.name
-                                                            self.loadProfileImage(for: foundUser)
+                                                            // Avatar display disabled: no loadProfileImage
                                                             self.resultContainer.isHidden = false
                                                             self.addFriendButton.isHidden = false
                                                         }
@@ -390,7 +391,7 @@ class AddFriendViewController: UIViewController {
                 self.activityIndicator.stopAnimating()
                 self.resultContainer.isHidden = true
                 self.addFriendButton.isHidden = true
-                self.showAlert(title: "User Not Found", message: "No user found with this User ID. Please check the ID and try again.")
+                self.showAlert(title: String(localized: "modal_error_title"), message: String(localized: "add_friend_user_not_found"))
             }
         }
     }
@@ -402,14 +403,14 @@ class AddFriendViewController: UIViewController {
             DispatchQueue.main.async {
                 switch result {
                 case .success:
-                    self?.showAlert(title: "Request Sent!", message: "Wait for the friend to approve the request.") { _ in
+                    self?.showAlert(title: String(localized: "add_friend_request_sent_title"), message: String(localized: "add_friend_request_sent_message")) { _ in
                         self?.searchBar.text = ""
                         self?.resultContainer.isHidden = true
                         self?.addFriendButton.isHidden = true
                         self?.searchResults = []
                     }
                 case .failure(let error):
-                    self?.showAlert(title: "Error", message: "Failed to send friend request. Please try again.")
+                    self?.showAlert(title: String(localized: "modal_error_title"), message: String(localized: "add_friend_send_request_failed"))
                 }
             }
         }

@@ -52,7 +52,7 @@ class ConfirmationModalViewController: UIViewController {
         message: String,
         primaryTitle: String,
         primaryStyle: PrimaryStyle = .default,
-        cancelTitle: String = "Cancel",
+        cancelTitle: String = String(localized: "modal_cancel"),
         onPrimary: @escaping () -> Void,
         onCancel: (() -> Void)? = nil
     ) {
@@ -98,10 +98,14 @@ class ConfirmationModalViewController: UIViewController {
 
         let primaryButton = CustomButton()
         primaryButton.setTitle(primaryTitle, for: .normal)
-        primaryButton.style = primaryStyle == .destructive ? .destructive : .primary
+        primaryButton.style = .primary
         primaryButton.size = .large
         primaryButton.isPerfectlyRounded = true
-        if primaryStyle != .destructive {
+        if primaryStyle == .destructive {
+            primaryButton.backgroundColor = .statusError
+            primaryButton.setTitleColor(.white, for: .normal)
+            primaryButton.layer.borderWidth = 0
+        } else {
             primaryButton.backgroundColor = .themeBlue
             primaryButton.setTitleColor(.white, for: .normal)
         }

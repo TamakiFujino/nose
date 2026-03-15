@@ -46,7 +46,7 @@ final class HomeViewController: UIViewController {
             backgroundColor: .clear
         )
         button.accessibilityIdentifier = "personal_library"
-        button.accessibilityLabel = "Personal Library"
+        button.accessibilityLabel = String(localized: "home_personal_library")
         return button
     }()
     
@@ -481,8 +481,8 @@ final class HomeViewController: UIViewController {
             locationManager.startUpdatingLocation()
         }
 
-        // Show globe for 0.8s, then begin zoom animation
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+        // Hold on the globe briefly, then begin one continuous landing animation.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) { [weak self] in
             self?.beginZoomAnimation()
         }
     }
@@ -501,6 +501,8 @@ final class HomeViewController: UIViewController {
         mapManager?.performLandingAnimation(to: coordinate) { [weak self] in
             guard let self = self else { return }
             self.hasSetInitialCamera = true
+            self.is3DViewEnabled = true
+            self.toggle3DButton.setImage(UIImage(systemName: "cube.fill"), for: .normal)
             self.mapManager?.finishLandingAnimation()
         }
     }
@@ -513,7 +515,7 @@ final class HomeViewController: UIViewController {
             locationManager.requestWhenInUseAuthorization()
         case .denied, .restricted:
             // Show a gentle message that location is not available
-            showMessage(title: "Location Unavailable", subtitle: "Enable location in Settings to use this feature")
+            showMessage(title: String(localized: "home_location_unavailable_title"), subtitle: String(localized: "home_location_unavailable_subtitle"))
         @unknown default:
             break
         }
@@ -558,8 +560,8 @@ final class HomeViewController: UIViewController {
     
     @objc private func createEventButtonTapped() {
         let messageModal = MessageModalViewController(
-            title: "Coming Soon",
-            message: "This feature is coming soon!"
+            title: String(localized: "home_coming_soon_title"),
+            message: String(localized: "home_coming_soon_message")
         )
         present(messageModal, animated: true)
     }

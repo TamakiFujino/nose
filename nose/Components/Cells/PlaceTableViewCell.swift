@@ -68,6 +68,7 @@ class PlaceTableViewCell: UITableViewCell {
         button.tintColor = .secondaryLabel // Match bookmark color
         button.adjustsImageWhenHighlighted = false
         button.addTarget(self, action: #selector(heartButtonTapped), for: .touchUpInside)
+        button.accessibilityLabel = "Heart"
         return button
     }()
     
@@ -238,7 +239,7 @@ class PlaceTableViewCell: UITableViewCell {
         placeImageView.image = nil
         
         nameLabel.text = place.name
-        ratingLabel.text = "Rating: \(String(format: "%.1f", place.rating))"
+        ratingLabel.text = String(format: String(localized: "place_rating_format"), String(format: "%.1f", place.rating))
         
         // Update heart button state and visibility
         heartButton.isSelected = isHearted

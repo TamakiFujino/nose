@@ -2,11 +2,11 @@ import UIKit
 import GooglePlaces
 import FirebaseAuth
 
-class CollectionPlacesViewController: UIViewController {
+class CollectionPlacesViewController: UIViewController, UIGestureRecognizerDelegate {
 
     // MARK: - Properties
 
-    let collection: PlaceCollection
+    var collection: PlaceCollection
     var places: [PlaceCollection.Place] = []
     var events: [Event] = []
     var sessionToken: GMSAutocompleteSessionToken?
@@ -164,7 +164,7 @@ class CollectionPlacesViewController: UIViewController {
     lazy var customizeButton: CustomButton = {
         let button = CustomButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.setTitle("Customize avatar", for: .normal)
+        button.setTitle(String(localized: "button_customize_avatar"), for: .normal)
         button.style = .themeBlue
         button.size = .medium
         button.isPerfectlyRounded = true
@@ -352,8 +352,35 @@ class CollectionPlacesViewController: UIViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        // Let table view swipe actions win: sheet's pan must not start when touch is in table
+        setupSheetPanGestureDelegate()
         // Refresh overlapping avatars on return
         loadOverlappingAvatars()
+    }
+
+    /// Prevents the sheet's pan gesture from capturing touches that start in the table view,
+    /// so trailing swipe actions (Visited, Copy, Delete, Map) can recognize horizontal swipes.
+    private func setupSheetPanGestureDelegate() {
+        guard sheetPresentationController != nil else { return }
+        for container in [sheetPresentationController?.presentedView, view.superview] {
+            guard let container = container else { continue }
+            for gr in container.gestureRecognizers ?? [] {
+                if gr is UIPanGestureRecognizer {
+                    gr.delegate = self
+                    return
+                }
+            }
+        }
+    }
+
+    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        guard gestureRecognizer is UIPanGestureRecognizer else { return true }
+        guard gestureRecognizer.view === sheetPresentationController?.presentedView else { return true }
+        let location = gestureRecognizer.location(in: view)
+        if tableView.frame.contains(location) {
+            return false
+        }
+        return true
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -468,13 +495,13 @@ class CollectionPlacesViewController: UIViewController {
     
     func toggleHeart(for placeId: String, isHearted: Bool) {
         guard let currentUserId = Auth.auth().currentUser?.uid else {
-            ToastManager.showToast(message: "Please sign in to heart spots", type: .error)
+            ToastManager.showToast(message: String(localized: "toast_please_sign_in_to_heart"), type: .error)
             return
         }
         
         // Check if user is a member of this collection
         guard collectionMembers.contains(currentUserId) else {
-            ToastManager.showToast(message: "Only collection members can heart spots", type: .error)
+            ToastManager.showToast(message: String(localized: "toast_only_members_can_heart"), type: .error)
             return
         }
         
@@ -528,7 +555,7 @@ class CollectionPlacesViewController: UIViewController {
         ) { [weak self] error in
             if let error = error {
                 Logger.log("Error saving hearts: \(error.localizedDescription)", level: .error, category: "Collection")
-                ToastManager.showToast(message: "Failed to save hearts", type: .error)
+                ToastManager.showToast(message: String(localized: "toast_failed_to_save_hearts"), type: .error)
                 self?.loadPlaceHearts()
             }
         }

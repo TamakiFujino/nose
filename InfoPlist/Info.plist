@@ -4,6 +4,11 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>ja</string>
+	</array>
 	<key>CFBundleDisplayName</key>
 	<string></string>
 	<key>CFBundleExecutable</key>
@@ -25,7 +30,7 @@
 			<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.489383670741-rv2v85atn42kgfv1d8ot96r06omhoogg</string>
+				<string>com.googleusercontent.apps.233262718811-74avijm91vnklsk8h03mdto7vfapvctt</string>
 			</array>
 		</dict>
 		<dict>
@@ -42,7 +47,7 @@
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>GoogleClientID</key>
-	<string>489383670741-rv2v85atn42kgfv1d8ot96r06omhoogg.apps.googleusercontent.com</string>
+	<string>233262718811-74avijm91vnklsk8h03mdto7vfapvctt.apps.googleusercontent.com</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSApplicationQueriesSchemes</key>

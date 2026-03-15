@@ -95,7 +95,7 @@ final class PlaceDetailViewController: UIViewController {
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = .systemFont(ofSize: 16)
         label.textColor = .fourthColor
-        label.text = place.phoneNumber ?? "Phone number not available"
+        label.text = place.phoneNumber ?? String(localized: "place_phone_not_available")
         label.numberOfLines = 0
         return label
     }()
@@ -117,7 +117,7 @@ final class PlaceDetailViewController: UIViewController {
         stackView.spacing = 8
         
         let titleLabel = UILabel()
-        titleLabel.text = "Opening Hours"
+        titleLabel.text = String(localized: "place_opening_hours")
         titleLabel.font = .systemFont(ofSize: 18, weight: .semibold)
         
         stackView.addArrangedSubview(titleLabel)
@@ -131,7 +131,7 @@ final class PlaceDetailViewController: UIViewController {
             }
         } else {
             let noHoursLabel = UILabel()
-            noHoursLabel.text = "Opening hours not available"
+            noHoursLabel.text = String(localized: "place_hours_not_available")
             noHoursLabel.font = .systemFont(ofSize: 14)
             noHoursLabel.textColor = .systemGray
             stackView.addArrangedSubview(noHoursLabel)
@@ -152,6 +152,9 @@ final class PlaceDetailViewController: UIViewController {
         button.layer.shadowRadius = 4
         button.layer.shadowOpacity = 0.2
         button.addTarget(self, action: #selector(saveButtonTapped), for: .touchUpInside)
+        button.accessibilityIdentifier = "place_detail_bookmark"
+        button.accessibilityLabel = "Bookmark"
+        button.isAccessibilityElement = true
         return button
     }()
     
@@ -185,33 +188,28 @@ final class PlaceDetailViewController: UIViewController {
     private func configureSheetPresentation() {
         guard let sheet = sheetPresentationController else { return }
         
-        // Small detent (10% - minimized)
-        let smallDetentId = UISheetPresentationController.Detent.Identifier("small")
-        let smallDetent = UISheetPresentationController.Detent.custom(identifier: smallDetentId) { context in
-            return context.maximumDetentValue * 0.1
-        }
-        
-        // Medium detent (60% - default view)
+        // Medium detent (60% - default view) and large (90%) only; no minimize so swipe-down dismisses
         let mediumDetentId = UISheetPresentationController.Detent.Identifier("medium")
         let mediumDetent = UISheetPresentationController.Detent.custom(identifier: mediumDetentId) { context in
             return context.maximumDetentValue * 0.6
         }
         
-        // Large detent (90% - expanded but grabber still reachable)
         let largeDetentId = UISheetPresentationController.Detent.Identifier("large")
         let largeDetent = UISheetPresentationController.Detent.custom(identifier: largeDetentId) { context in
             return context.maximumDetentValue * 0.9
         }
         
-        sheet.detents = [smallDetent, mediumDetent, largeDetent]
-        sheet.selectedDetentIdentifier = mediumDetentId  // Start at medium
-        sheet.largestUndimmedDetentIdentifier = smallDetentId  // Map interactive when minimized
+        sheet.detents = [mediumDetent, largeDetent]
+        sheet.selectedDetentIdentifier = mediumDetentId
         sheet.prefersGrabberVisible = true
         sheet.prefersScrollingExpandsWhenScrolledToEdge = true
     }
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        // Expose sheet to accessibility/UI testing so elements (e.g. place_detail_bookmark) are findable
+        view.accessibilityViewIsModal = true
+        UIAccessibility.post(notification: .screenChanged, argument: view)
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -368,13 +366,13 @@ final class PlaceDetailViewController: UIViewController {
         ratingView.addArrangedSubview(ratingLabel)
         
         // Update phone number
-        phoneNumberLabel.text = place.phoneNumber ?? "Phone number not available"
+        phoneNumberLabel.text = place.phoneNumber ?? String(localized: "place_phone_not_available")
         
         // Update opening hours
         openingHoursView.arrangedSubviews.forEach { $0.removeFromSuperview() }
         
         let titleLabel = UILabel()
-        titleLabel.text = "Opening Hours"
+        titleLabel.text = String(localized: "place_opening_hours")
         titleLabel.font = .systemFont(ofSize: 18, weight: .semibold)
         openingHoursView.addArrangedSubview(titleLabel)
         
@@ -387,7 +385,7 @@ final class PlaceDetailViewController: UIViewController {
             }
         } else {
             let noHoursLabel = UILabel()
-            noHoursLabel.text = "Opening hours not available"
+            noHoursLabel.text = String(localized: "place_hours_not_available")
             noHoursLabel.font = .systemFont(ofSize: 14)
             noHoursLabel.textColor = .systemGray
             openingHoursView.addArrangedSubview(noHoursLabel)

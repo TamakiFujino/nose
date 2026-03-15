@@ -50,7 +50,7 @@ class MessageModalViewController: UIViewController {
     }()
     
     // MARK: - Initialization
-    init(title: String, message: String, buttonTitle: String = "OK") {
+    init(title: String, message: String, buttonTitle: String = String(localized: "modal_ok")) {
         self.titleText = title
         self.messageText = message
         self.buttonTitle = buttonTitle
