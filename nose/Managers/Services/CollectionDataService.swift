@@ -377,16 +377,37 @@ final class CollectionDataService {
 
     // MARK: - Leave Collection
 
-    /// Delete the current user's copy of a shared collection.
+    /// Delete the current user's copy of a shared collection and remove them from the owner's members list
+    /// so the owner (User A) no longer sees the collection as shared with the leaving user (User B).
     func leaveCollection(
         currentUserId: String,
         collectionId: String,
         completion: @escaping (Error?) -> Void
     ) {
-        FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collectionId, db: db)
-            .delete { error in
+        let leavingUserRef = FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collectionId, db: db)
+
+        leavingUserRef.getDocument { [weak self] snapshot, error in
+            guard let self = self else { return }
+            if let error = error {
                 completion(error)
+                return
             }
+            guard let data = snapshot?.data(),
+                  let ownerId = data["userId"] as? String else {
+                // No owner id (e.g. malformed doc); still delete the user's copy
+                leavingUserRef.delete { completion($0) }
+                return
+            }
+
+            let ownerRef = FirestorePaths.collectionDoc(userId: ownerId, collectionId: collectionId, db: self.db)
+            let batch = self.db.batch()
+            batch.updateData(
+                ["members": FieldValue.arrayRemove([currentUserId])],
+                forDocument: ownerRef
+            )
+            batch.deleteDocument(leavingUserRef)
+            batch.commit { completion($0) }
+        }
     }
 
     // MARK: - Avatar Thumbnails

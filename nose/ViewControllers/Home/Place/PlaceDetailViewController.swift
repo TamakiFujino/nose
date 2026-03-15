@@ -152,6 +152,9 @@ final class PlaceDetailViewController: UIViewController {
         button.layer.shadowRadius = 4
         button.layer.shadowOpacity = 0.2
         button.addTarget(self, action: #selector(saveButtonTapped), for: .touchUpInside)
+        button.accessibilityIdentifier = "place_detail_bookmark"
+        button.accessibilityLabel = "Bookmark"
+        button.isAccessibilityElement = true
         return button
     }()
     
@@ -185,33 +188,28 @@ final class PlaceDetailViewController: UIViewController {
     private func configureSheetPresentation() {
         guard let sheet = sheetPresentationController else { return }
         
-        // Small detent (10% - minimized)
-        let smallDetentId = UISheetPresentationController.Detent.Identifier("small")
-        let smallDetent = UISheetPresentationController.Detent.custom(identifier: smallDetentId) { context in
-            return context.maximumDetentValue * 0.1
-        }
-        
-        // Medium detent (60% - default view)
+        // Medium detent (60% - default view) and large (90%) only; no minimize so swipe-down dismisses
         let mediumDetentId = UISheetPresentationController.Detent.Identifier("medium")
         let mediumDetent = UISheetPresentationController.Detent.custom(identifier: mediumDetentId) { context in
             return context.maximumDetentValue * 0.6
         }
         
-        // Large detent (90% - expanded but grabber still reachable)
         let largeDetentId = UISheetPresentationController.Detent.Identifier("large")
         let largeDetent = UISheetPresentationController.Detent.custom(identifier: largeDetentId) { context in
             return context.maximumDetentValue * 0.9
         }
         
-        sheet.detents = [smallDetent, mediumDetent, largeDetent]
-        sheet.selectedDetentIdentifier = mediumDetentId  // Start at medium
-        sheet.largestUndimmedDetentIdentifier = smallDetentId  // Map interactive when minimized
+        sheet.detents = [mediumDetent, largeDetent]
+        sheet.selectedDetentIdentifier = mediumDetentId
         sheet.prefersGrabberVisible = true
         sheet.prefersScrollingExpandsWhenScrolledToEdge = true
     }
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        // Expose sheet to accessibility/UI testing so elements (e.g. place_detail_bookmark) are findable
+        view.accessibilityViewIsModal = true
+        UIAccessibility.post(notification: .screenChanged, argument: view)
     }
     
     override func viewWillDisappear(_ animated: Bool) {

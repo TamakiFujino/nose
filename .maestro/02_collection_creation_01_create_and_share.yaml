@@ -6,8 +6,7 @@ appId: com.tamakifujino.nose
 - launchApp
 
 # Sign in as User A
-- runFlow: shared/login_user_a.yaml
-- runFlow: shared/dismiss_location_permission.yaml
+- runFlow: shared/login_user_a_ready.yaml
 
 # Search for a place
 - tapOn:
@@ -76,8 +75,6 @@ appId: com.tamakifujino.nose
     text: "2"
 
 # Dismiss collection detail modal (large), then collection list modal (may be minimized)
-- runFlow: shared/dismiss_modal.yaml
-- runFlow: shared/dismiss_modal.yaml
-- runFlow: shared/dismiss_minimized_modal.yaml
+- runFlow: shared/dismiss_collection_and_minimized.yaml
 - runFlow: shared/logout.yaml
 - assertVisible: "Continue with Google"

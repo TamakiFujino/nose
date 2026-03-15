@@ -6,8 +6,7 @@ appId: com.tamakifujino.nose
 - launchApp
 
 # Sign in as User B
-- runFlow: shared/login_user_b.yaml
-- runFlow: shared/dismiss_location_permission.yaml
+- runFlow: shared/login_user_b_ready.yaml
 
 # Open collections and go to "From Friends" tab
 - runFlow: shared/open_collections.yaml

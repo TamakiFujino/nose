@@ -1,13 +1,31 @@
 appId: com.tamakifujino.nose
 ---
 # Test 07-01: Block User (User A blocks User B; User B removed from collection)
-# Assumes collection is already shared with User B (e.g. from 06-02). Block User B, then verify User B is no longer on the collection.
+# Independent: ensures National Parks is shared with User B at start (so 06-02 need not run first).
 
 - launchApp
 
 # Sign in as User A
-- runFlow: shared/login_user_a.yaml
-- runFlow: shared/dismiss_location_permission.yaml
+- runFlow: shared/login_user_a_ready.yaml
+
+# Ensure collection is shared with User B (re-share if needed so test runs without 06-02)
+- runFlow: shared/open_collections.yaml
+- tapOn: "National Parks"
+- extendedWaitUntil:
+    visible: "More"
+    timeout: 10000
+- tapOn: "More"
+- tapOn: "Share with Friends"
+- extendedWaitUntil:
+    visible: "User B"
+    timeout: 5000
+- tapOn: "User B"
+- tapOn: "Update Sharing"
+- extendedWaitUntil:
+    visible:
+      id: "shared_friends_count_label"
+    timeout: 5000
+- runFlow: shared/dismiss_collection_and_minimized.yaml
 
 # Open Friends List and block User B
 - runFlow: shared/open_friends_list.yaml

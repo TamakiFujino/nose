@@ -1,0 +1,5 @@
+appId: com.tamakifujino.nose
+---
+# Login as User A and dismiss location permission (ready to interact)
+- runFlow: login_user_a.yaml
+- runFlow: dismiss_location_permission.yaml

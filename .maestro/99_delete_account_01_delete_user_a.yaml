@@ -5,8 +5,7 @@ appId: com.tamakifujino.nose
 - launchApp
 
 # Sign in as User A
-- runFlow: shared/login_user_a.yaml
-- runFlow: shared/dismiss_location_permission.yaml
+- runFlow: shared/login_user_a_ready.yaml
 
 # Open Settings
 - tapOn: "Personal Library"
@@ -51,14 +50,12 @@ appId: com.tamakifujino.nose
 - assertVisible: "Continue with Google"
 
 # --- User B: verify User A no longer exists on Friends list ---
-- runFlow: shared/login_user_b.yaml
-- runFlow: shared/dismiss_location_permission.yaml
+- runFlow: shared/login_user_b_ready.yaml
 - runFlow: shared/open_friends_list.yaml
 - extendedWaitUntil:
     visible: "Friends"
     timeout: 5000
 - assertNotVisible: "User A"
 - runFlow: shared/go_back.yaml
-- runFlow: shared/go_back.yaml
-- runFlow: shared/logout.yaml
+- runFlow: shared/logout_from_drawer.yaml
 - assertVisible: "Continue with Google"

@@ -8,8 +8,7 @@ appId: com.tamakifujino.nose
 - launchApp
 
 # User A: open National Parks, edit name to "Synced Rename"
-- runFlow: shared/login_user_a.yaml
-- runFlow: shared/dismiss_location_permission.yaml
+- runFlow: shared/login_user_a_ready.yaml
 - runFlow: shared/open_collections.yaml
 - tapOn: "National Parks"
 - tapOn: "More"
@@ -28,13 +27,12 @@ appId: com.tamakifujino.nose
     visible: "Synced Rename"
     timeout: 10000
 - runFlow: shared/dismiss_modal.yaml
-- runFlow: shared/dismiss_minimized_modal.yaml
+- runFlow: shared/dismiss_modal.yaml
 - runFlow: shared/logout.yaml
 - assertVisible: "Continue with Google"
 
 # User B: open From Friends and verify collection shows new name
-- runFlow: shared/login_user_b.yaml
-- runFlow: shared/dismiss_location_permission.yaml
+- runFlow: shared/login_user_b_ready.yaml
 - runFlow: shared/open_collections.yaml
 - tapOn: "From Friends"
 - extendedWaitUntil:
@@ -42,15 +40,12 @@ appId: com.tamakifujino.nose
     timeout: 10000
 - tapOn: "Synced Rename"
 - assertVisible: "Synced Rename"
-- runFlow: shared/dismiss_modal.yaml
-- runFlow: shared/dismiss_modal.yaml
-- runFlow: shared/dismiss_minimized_modal.yaml
+- runFlow: shared/dismiss_collection_and_minimized.yaml
 - runFlow: shared/logout.yaml
 - assertVisible: "Continue with Google"
 
 # User A: rename back to "National Parks" so test is independent (other flows expect this name)
-- runFlow: shared/login_user_a.yaml
-- runFlow: shared/dismiss_location_permission.yaml
+- runFlow: shared/login_user_a_ready.yaml
 - runFlow: shared/open_collections.yaml
 - tapOn: "Synced Rename"
 - tapOn: "More"
@@ -69,6 +64,6 @@ appId: com.tamakifujino.nose
     visible: "National Parks"
     timeout: 10000
 - runFlow: shared/dismiss_modal.yaml
-- runFlow: shared/dismiss_minimized_modal.yaml
+- runFlow: shared/dismiss_modal.yaml
 - runFlow: shared/logout.yaml
 - assertVisible: "Continue with Google"

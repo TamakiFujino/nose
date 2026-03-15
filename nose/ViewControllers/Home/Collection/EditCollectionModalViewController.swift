@@ -120,26 +120,64 @@ class EditCollectionModalViewController: CollectionModalViewController {
             return
         }
         
-        // Create a batch to update both collections
-        let batch = Firestore.firestore().batch()
-        batch.updateData(updateData, forDocument: userCollectionRef)
-        batch.updateData(updateData, forDocument: ownerCollectionRef)
+        let db = Firestore.firestore()
+        let batch = db.batch()
         
-        // Commit the batch
-        batch.commit { [weak self] error in
-            DispatchQueue.main.async {
-                self?.saveButton.isEnabled = true
-                self?.saveButton.setTitle("Save", for: .normal)
-                
+        if currentUserId == collection.userId {
+            // Owner editing: update all members' copies so everyone sees the new name/icon
+            ownerCollectionRef.getDocument { [weak self] snapshot, error in
+                guard let self = self else { return }
+                DispatchQueue.main.async {
+                    self.saveButton.isEnabled = true
+                    self.saveButton.setTitle("Save", for: .normal)
+                }
                 if let error = error {
-                    Logger.log("Error updating collection: \(error.localizedDescription)", level: .error, category: "Collection")
-                    let messageModal = MessageModalViewController(title: "Error", message: "Failed to update collection. Please try again.")
-                    self?.present(messageModal, animated: true)
+                    Logger.log("Error fetching members for collection update: \(error.localizedDescription)", level: .error, category: "Collection")
+                    DispatchQueue.main.async {
+                        let messageModal = MessageModalViewController(title: "Error", message: "Failed to update collection. Please try again.")
+                        self.present(messageModal, animated: true)
+                    }
                     return
                 }
-                
-                self?.delegate?.editCollectionModalViewController(self!, didUpdateCollection: self!.collection)
-                self?.dismiss(animated: true)
+                let members = snapshot?.data()?["members"] as? [String] ?? [currentUserId]
+                for memberId in members {
+                    let memberRef = FirestorePaths.collectionDoc(userId: memberId, collectionId: self.collection.id, db: db)
+                    batch.updateData(updateData, forDocument: memberRef)
+                }
+                batch.commit { [weak self] error in
+                    DispatchQueue.main.async {
+                        guard let self = self else { return }
+                        self.saveButton.isEnabled = true
+                        self.saveButton.setTitle("Save", for: .normal)
+                        if let error = error {
+                            Logger.log("Error updating collection: \(error.localizedDescription)", level: .error, category: "Collection")
+                            let messageModal = MessageModalViewController(title: "Error", message: "Failed to update collection. Please try again.")
+                            self.present(messageModal, animated: true)
+                            return
+                        }
+                        self.delegate?.editCollectionModalViewController(self, didUpdateCollection: self.collection)
+                        self.dismiss(animated: true)
+                    }
+                }
+            }
+        } else {
+            // Non-owner: update only current user's copy and owner's copy
+            batch.updateData(updateData, forDocument: userCollectionRef)
+            batch.updateData(updateData, forDocument: ownerCollectionRef)
+            batch.commit { [weak self] error in
+                DispatchQueue.main.async {
+                    guard let self = self else { return }
+                    self.saveButton.isEnabled = true
+                    self.saveButton.setTitle("Save", for: .normal)
+                    if let error = error {
+                        Logger.log("Error updating collection: \(error.localizedDescription)", level: .error, category: "Collection")
+                        let messageModal = MessageModalViewController(title: "Error", message: "Failed to update collection. Please try again.")
+                        self.present(messageModal, animated: true)
+                        return
+                    }
+                    self.delegate?.editCollectionModalViewController(self, didUpdateCollection: self.collection)
+                    self.dismiss(animated: true)
+                }
             }
         }
     }

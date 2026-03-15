@@ -7,22 +7,10 @@ appId: com.tamakifujino.nose
 - launchApp
 
 # User A: copy own ID to clipboard for User B to paste later
-- runFlow: shared/login_user_a.yaml
-- runFlow: shared/dismiss_location_permission.yaml
-- tapOn: "Personal Library"
-- tapOn: "Add Friend"
-- assertVisible:
-    id: "user_id_value"
-- tapOn:
-    id: "copy_button"
-- runFlow: shared/go_back.yaml
-- runFlow: shared/go_back.yaml
-- runFlow: shared/logout.yaml
-- assertVisible: "Continue with Google"
+- runFlow: shared/copy_user_a_id.yaml
 
 # User B: verify User A not on Friends list, then try to add User A (paste ID copied above)
-- runFlow: shared/login_user_b.yaml
-- runFlow: shared/dismiss_location_permission.yaml
+- runFlow: shared/login_user_b_ready.yaml
 
 # Open Friends list and verify User A is not listed (removed when A blocked B)
 - runFlow: shared/open_friends_list.yaml
@@ -31,29 +19,17 @@ appId: com.tamakifujino.nose
     timeout: 5000
 - assertNotVisible: "User A"
 - runFlow: shared/go_back.yaml
-- runFlow: shared/go_back.yaml
 
 # Add Friend: paste User A's ID and trigger search
-- tapOn: "Personal Library"
-- tapOn: "Add Friend"
-- longPressOn:
-    id: "search_by_user_id"
-- tapOn:
-    text: "Paste"
-    optional: true
-- tapOn:
-    text: "Allow Paste"
-    optional: true
-# Trigger search (press keyboard Search/Enter)
-- inputText: "\n"
+- runFlow: shared/open_add_friend_from_drawer.yaml
+- runFlow: shared/paste_user_id_and_search.yaml
 # App shows "User Not Found" when the other user has blocked you
 - extendedWaitUntil:
     visible: "User Not Found"
     timeout: 10000
 - tapOn: "OK"
 
-# Navigate back and logout
+# Navigate back to drawer and logout
 - runFlow: shared/go_back.yaml
-- runFlow: shared/go_back.yaml
-- runFlow: shared/logout.yaml
+- runFlow: shared/logout_from_drawer.yaml
 - assertVisible: "Continue with Google"

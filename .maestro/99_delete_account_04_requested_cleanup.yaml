@@ -8,14 +8,12 @@ appId: com.tamakifujino.nose
 - launchApp
 
 # User A: delete account
-- runFlow: shared/login_user_a.yaml
-- runFlow: shared/dismiss_location_permission.yaml
+- runFlow: shared/login_user_a_ready.yaml
 - runFlow: shared/delete_current_account.yaml
 - assertVisible: "Continue with Google"
 
 # User B: verify User A no longer in Requested or Friends
-- runFlow: shared/login_user_b.yaml
-- runFlow: shared/dismiss_location_permission.yaml
+- runFlow: shared/login_user_b_ready.yaml
 - runFlow: shared/open_friends_list.yaml
 - tapOn: "Requested"
 - extendedWaitUntil:
@@ -29,6 +27,5 @@ appId: com.tamakifujino.nose
     timeout: 5000
 - assertNotVisible: "User A"
 - runFlow: shared/go_back.yaml
-- runFlow: shared/go_back.yaml
-- runFlow: shared/logout.yaml
+- runFlow: shared/logout_from_drawer.yaml
 - assertVisible: "Continue with Google"

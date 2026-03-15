@@ -6,8 +6,7 @@ appId: com.tamakifujino.nose
 - launchApp
 
 # Sign in as User B
-- runFlow: shared/login_user_b.yaml
-- runFlow: shared/dismiss_location_permission.yaml
+- runFlow: shared/login_user_b_ready.yaml
 
 # Search for a place
 - tapOn:
@@ -45,15 +44,12 @@ appId: com.tamakifujino.nose
 - assertVisible: "Pinnacles National Park"
 
 # Dismiss collection detail modal, then collection list modal
-- runFlow: shared/dismiss_modal.yaml
-- runFlow: shared/dismiss_modal.yaml
-- runFlow: shared/dismiss_minimized_modal.yaml
+- runFlow: shared/dismiss_collection_and_minimized.yaml
 - runFlow: shared/logout.yaml
 - assertVisible: "Continue with Google"
 
 # --- User A (owner): verify owner sees the place User B added ---
-- runFlow: shared/login_user_a.yaml
-- runFlow: shared/dismiss_location_permission.yaml
+- runFlow: shared/login_user_a_ready.yaml
 - runFlow: shared/open_collections.yaml
 - tapOn: "National Parks"
 - extendedWaitUntil:
@@ -65,8 +61,6 @@ appId: com.tamakifujino.nose
     text: "2"
 - assertVisible: "Kings Canyon National Park"
 - assertVisible: "Pinnacles National Park"
-- runFlow: shared/dismiss_modal.yaml
-- runFlow: shared/dismiss_modal.yaml
-- runFlow: shared/dismiss_minimized_modal.yaml
+- runFlow: shared/dismiss_collection_and_minimized.yaml
 - runFlow: shared/logout.yaml
 - assertVisible: "Continue with Google"

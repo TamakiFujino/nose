@@ -6,8 +6,7 @@ appId: com.tamakifujino.nose
 - launchApp
 
 # Sign in as User A
-- runFlow: shared/login_user_a.yaml
-- runFlow: shared/dismiss_location_permission.yaml
+- runFlow: shared/login_user_a_ready.yaml
 
 # Open collections
 - runFlow: shared/open_collections.yaml

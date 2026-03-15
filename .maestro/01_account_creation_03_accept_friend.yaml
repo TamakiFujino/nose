@@ -6,8 +6,7 @@ appId: com.tamakifujino.nose
 - launchApp
 
 # Sign in as User A
-- runFlow: shared/login_user_a.yaml
-- runFlow: shared/dismiss_location_permission.yaml
+- runFlow: shared/login_user_a_ready.yaml
 
 # Open Friends List
 - runFlow: shared/open_friends_list.yaml
@@ -27,10 +26,7 @@ appId: com.tamakifujino.nose
 - extendedWaitUntil:
     visible: "User B"
 
-# Navigate back (Friends List → Settings → Home)
+# Navigate back to drawer and logout
 - runFlow: shared/go_back.yaml
-- runFlow: shared/go_back.yaml
-
-# Logout
-- runFlow: shared/logout.yaml
+- runFlow: shared/logout_from_drawer.yaml
 - assertVisible: "Continue with Google"

@@ -38,22 +38,13 @@ appId: com.tamakifujino.nose
 # Dismiss location permission
 - runFlow: shared/dismiss_location_permission.yaml
 
-# Navigate to Add Friend to get User ID
-- tapOn: "Personal Library"
-- tapOn: "Add Friend"
+# Navigate to Add Friend and copy User A's ID
+- runFlow: shared/open_add_friend.yaml
+- runFlow: shared/copy_my_user_id.yaml
 
-# Read and copy User A's ID
-- assertVisible:
-    id: "user_id_value"
-- tapOn:
-    id: "copy_button"
-
-# Navigate back (Add Friend → Settings → Home)
+# Navigate back to drawer and logout
 - runFlow: shared/go_back.yaml
-- runFlow: shared/go_back.yaml
-
-# Logout
-- runFlow: shared/logout.yaml
+- runFlow: shared/logout_from_drawer.yaml
 
 # Verify we're back on login screen
 - assertVisible: "Continue with Google"

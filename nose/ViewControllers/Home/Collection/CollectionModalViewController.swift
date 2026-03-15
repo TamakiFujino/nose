@@ -2,7 +2,7 @@ import UIKit
 import FirebaseAuth
 
 /// Base class for collection modal view controllers (create/edit)
-class CollectionModalViewController: UIViewController {
+class CollectionModalViewController: UIViewController, UITextFieldDelegate {
     // MARK: - Properties
     var selectedIconUrl: String?
     var selectedIconName: String?
@@ -46,6 +46,8 @@ class CollectionModalViewController: UIViewController {
         button.setPreferredSymbolConfiguration(config, forImageIn: .normal)
         button.addTarget(self, action: #selector(iconButtonTapped), for: .touchUpInside)
         button.translatesAutoresizingMaskIntoConstraints = false
+        button.accessibilityIdentifier = "icon_button"
+        button.accessibilityLabel = "Select an icon"
         return button
     }()
     
@@ -75,6 +77,7 @@ class CollectionModalViewController: UIViewController {
         textField.rightViewMode = .always
         textField.translatesAutoresizingMaskIntoConstraints = false
         textField.accessibilityIdentifier = "collection_name_field"
+        textField.returnKeyType = .done
         return textField
     }()
     
@@ -104,6 +107,7 @@ class CollectionModalViewController: UIViewController {
         button.alpha = 0.5
         button.addTarget(self, action: #selector(saveButtonTapped), for: .touchUpInside)
         button.translatesAutoresizingMaskIntoConstraints = false
+        button.accessibilityIdentifier = "collection_modal_save"
         return button
     }()
     
@@ -137,6 +141,7 @@ class CollectionModalViewController: UIViewController {
         containerView.addSubview(iconButton)
         containerView.addSubview(nameLabel)
         containerView.addSubview(nameTextField)
+        nameTextField.delegate = self
         containerView.addSubview(cancelButton)
         containerView.addSubview(saveButton)
         
@@ -348,5 +353,11 @@ extension CollectionModalViewController: ImagePickerViewControllerDelegate {
         } else {
             resetIconButton()
         }
+    }
+
+    // MARK: - UITextFieldDelegate
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        textField.resignFirstResponder()
+        return true
     }
 }

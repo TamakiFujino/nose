@@ -62,6 +62,7 @@ class ImagePickerViewController: UIViewController {
         button.tintColor = .label
         button.addTarget(self, action: #selector(closeButtonTapped), for: .touchUpInside)
         button.translatesAutoresizingMaskIntoConstraints = false
+        button.accessibilityLabel = "Close"
         return button
     }()
     
@@ -290,6 +291,7 @@ extension ImagePickerViewController: UICollectionViewDelegate, UICollectionViewD
         // Show remote images
         let icon = filteredIcons[indexPath.item]
         cell.configure(with: icon.url, sfSymbolName: nil)
+        cell.accessibilityIdentifier = "icon_cell_\(indexPath.item)"
         
         return cell
     }

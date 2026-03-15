@@ -6,8 +6,7 @@ appId: com.tamakifujino.nose
 - launchApp
 
 # Sign in as User A
-- runFlow: shared/login_user_a.yaml
-- runFlow: shared/dismiss_location_permission.yaml
+- runFlow: shared/login_user_a_ready.yaml
 
 # Open collection and verify shared count is 1 (User B left in 06-01)
 - runFlow: shared/open_collections.yaml
@@ -36,8 +35,6 @@ appId: com.tamakifujino.nose
     text: "2"
 
 # Dismiss collection detail modal, then collection list modal
-- runFlow: shared/dismiss_modal.yaml
-- runFlow: shared/dismiss_modal.yaml
-- runFlow: shared/dismiss_minimized_modal.yaml
+- runFlow: shared/dismiss_collection_and_minimized.yaml
 - runFlow: shared/logout.yaml
 - assertVisible: "Continue with Google"

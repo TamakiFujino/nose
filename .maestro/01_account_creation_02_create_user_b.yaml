@@ -2,9 +2,12 @@ appId: com.tamakifujino.nose
 ---
 # Test 01-02: Create User B & Send Friend Request
 # Signs in, creates account, sends friend request to User A, renames.
-# Requires: User A's ID in clipboard (from test 01-01)
+# Independent: copies User A's ID in-flow so 01-01 need not run first.
 
 - launchApp
+
+# User A: copy own ID to clipboard for User B to paste later
+- runFlow: shared/copy_user_a_id.yaml
 
 # Sign in as User B
 - runFlow: shared/login_user_b.yaml
@@ -19,24 +22,9 @@ appId: com.tamakifujino.nose
 # Dismiss location permission
 - runFlow: shared/dismiss_location_permission.yaml
 
-# Navigate to Add Friend
-- tapOn: "Personal Library"
-- tapOn: "Add Friend"
-
-# Paste User A's ID from clipboard and send friend request
-- tapOn:
-    id: "search_by_user_id"
-- longPressOn:
-    id: "search_by_user_id"
-- tapOn:
-    text: "Paste"
-    optional: true
-# Handle iOS paste permission dialog if it appears
-- tapOn:
-    text: "Allow Paste"
-    optional: true
-# Trigger search
-- pressKey: Enter
+# Navigate to Add Friend and paste User A's ID, trigger search
+- runFlow: shared/open_add_friend.yaml
+- runFlow: shared/paste_user_id_and_search.yaml
 # Wait for User A's profile to load
 - extendedWaitUntil:
     visible: "User A"
@@ -48,15 +36,10 @@ appId: com.tamakifujino.nose
 - tapOn: "OK"
 
 # Copy User B's ID
-- tapOn:
-    id: "copy_button"
+- runFlow: shared/copy_my_user_id.yaml
 
-# Navigate back (Add Friend → Settings → Home)
+# Navigate back to drawer and open Name
 - runFlow: shared/go_back.yaml
-- runFlow: shared/go_back.yaml
-
-# Rename to "User B" via Settings
-- tapOn: "Personal Library"
 - tapOn: "Name"
 
 # Validation: 1 char (too short)
@@ -85,10 +68,6 @@ appId: com.tamakifujino.nose
 - tapOn: "Save"
 - tapOn: "OK"
 
-# Navigate back (EditName → Settings → Home)
-- runFlow: shared/go_back.yaml
-- runFlow: shared/go_back.yaml
-
-# Logout
-- runFlow: shared/logout.yaml
+# Navigate back to drawer and logout
+- runFlow: shared/logout_from_drawer.yaml
 - assertVisible: "Continue with Google"
