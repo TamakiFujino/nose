@@ -1,21 +1,9 @@
 import UIKit
 import FirebaseAuth
-import FirebaseStorage
+
 class SettingsViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
 
     let tableView = UITableView()
-    private let storage = Storage.storage()
-    
-    // Avatar image view for profile picture
-    private lazy var avatarImageView: UIImageView = {
-        let imageView = UIImageView()
-        imageView.contentMode = .scaleAspectFit
-        imageView.backgroundColor = .clear
-        imageView.clipsToBounds = true
-        imageView.layer.cornerRadius = 8
-        imageView.isUserInteractionEnabled = true
-        return imageView
-    }()
 
     // Define setting categories and items
     var settingsData: [(category: String, items: [String])] = [
@@ -33,14 +21,11 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         setupNavigationBar()
 
         setupTableView()
-        setupAvatarHeader()
-        loadProfileImage()
+        // Avatar display disabled: no header, no profile image load
     }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        // Reload profile image when returning from ProfileImageViewController
-        loadProfileImage()
     }
 
     private func setupNavigationBar() {
@@ -70,113 +55,6 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         ])
     }
     
-    func setupAvatarHeader() {
-        // Create a container view for the header
-        let avatarWidth = UIScreen.main.bounds.width * 0.75 // Same as ProfileImageViewController
-        let avatarHeight = avatarWidth * 1.5
-        let headerHeight = avatarHeight + 32 // Add padding top and bottom
-        
-        let headerView = UIView(frame: CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width, height: headerHeight))
-        headerView.backgroundColor = .clear
-        
-        // Add avatar image view to header
-        avatarImageView.frame = CGRect(
-            x: (UIScreen.main.bounds.width - avatarWidth) / 2,
-            y: 16,
-            width: avatarWidth,
-            height: avatarHeight
-        )
-        headerView.addSubview(avatarImageView)
-        
-        // Add tap gesture to navigate to ProfileImageViewController
-        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(avatarTapped))
-        avatarImageView.addGestureRecognizer(tapGesture)
-        
-        // Set as table header view
-        tableView.tableHeaderView = headerView
-    }
-    
-    @objc private func avatarTapped() {
-        Logger.log("Avatar tapped - navigating to ProfileImageViewController", level: .debug, category: "Settings")
-        let profileImageVC = ProfileImageViewController()
-        
-        // Set callback to receive selected image
-        profileImageVC.onImageSelected = { [weak self] selectedImage in
-            self?.avatarImageView.image = selectedImage
-        }
-        
-        navigationController?.pushViewController(profileImageVC, animated: true)
-    }
-    
-    private func loadProfileImage() {
-        guard let userId = Auth.auth().currentUser?.uid else {
-            Logger.log("User not authenticated", level: .error, category: "Settings")
-            showDefaultAvatar()
-            return
-        }
-        
-        Logger.log("Loading saved profile image for user: \(userId)", level: .debug, category: "Settings")
-        
-        // Get the saved profile image collection ID
-        UserManager.shared.fetchProfileImageCollectionId(userId: userId) { [weak self] result in
-            guard let self = self else { return }
-
-            switch result {
-            case .success(let collectionId):
-                guard let collectionId = collectionId else {
-                    Logger.log("No profile image set, showing default", level: .warn, category: "Settings")
-                    self.showDefaultAvatar()
-                    return
-                }
-
-                Logger.log("Found profile image collection ID: \(collectionId)", level: .info, category: "Settings")
-
-                if collectionId == "default" {
-                    self.showDefaultAvatar()
-                } else {
-                    self.loadImageFromStorage(userId: userId, collectionId: collectionId)
-                }
-            case .failure(let error):
-                Logger.log("Error fetching user data: \(error.localizedDescription)", level: .error, category: "Settings")
-                self.showDefaultAvatar()
-            }
-        }
-    }
-    
-    private func showDefaultAvatar() {
-        if let defaultImage = UIImage(named: "avatar") {
-            DispatchQueue.main.async {
-                self.avatarImageView.image = defaultImage
-            }
-            Logger.log("Showing default avatar", level: .info, category: "Settings")
-        } else {
-            Logger.log("Could not load default avatar image", level: .error, category: "Settings")
-        }
-    }
-    
-    private func loadImageFromStorage(userId: String, collectionId: String) {
-        let imageRef = storage.reference()
-            .child("collection_avatars/\(userId)/\(collectionId)/avatar.png")
-        
-        Logger.log("Loading image from: collection_avatars/\(userId)/\(collectionId)/avatar.png", level: .debug, category: "Settings")
-        
-        imageRef.getData(maxSize: 5 * 1024 * 1024) { [weak self] data, error in
-            if let error = error {
-                Logger.log("Error loading profile image: \(error.localizedDescription)", level: .error, category: "Settings")
-                return
-            }
-            
-            if let data = data, let image = UIImage(data: data) {
-                Logger.log("Successfully loaded profile image", level: .info, category: "Settings")
-                DispatchQueue.main.async {
-                    self?.avatarImageView.image = image
-                }
-            } else {
-                Logger.log("Could not create image from data", level: .error, category: "Settings")
-            }
-        }
-    }
-
     // MARK: - TableView DataSource
 
     func numberOfSections(in tableView: UITableView) -> Int {

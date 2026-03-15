@@ -481,8 +481,8 @@ final class HomeViewController: UIViewController {
             locationManager.startUpdatingLocation()
         }
 
-        // Show globe for 0.8s, then begin zoom animation
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+        // Hold on the globe briefly, then begin one continuous landing animation.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) { [weak self] in
             self?.beginZoomAnimation()
         }
     }
@@ -501,6 +501,8 @@ final class HomeViewController: UIViewController {
         mapManager?.performLandingAnimation(to: coordinate) { [weak self] in
             guard let self = self else { return }
             self.hasSetInitialCamera = true
+            self.is3DViewEnabled = true
+            self.toggle3DButton.setImage(UIImage(systemName: "cube.fill"), for: .normal)
             self.mapManager?.finishLandingAnimation()
         }
     }
