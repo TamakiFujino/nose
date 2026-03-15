@@ -1,0 +1,6 @@
+appId: com.tamakifujino.nose
+---
+# Dismiss collection detail modal, then collection list modal, then minimized (FAB) modal. Use when leaving collection flow to Home.
+- runFlow: dismiss_modal.yaml
+- runFlow: dismiss_modal.yaml
+- runFlow: dismiss_minimized_modal.yaml

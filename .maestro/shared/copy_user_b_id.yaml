@@ -1,0 +1,10 @@
+appId: com.tamakifujino.nose
+---
+# Login as User B, copy own ID to clipboard, logout (for test independence)
+- runFlow: login_user_b.yaml
+- runFlow: dismiss_location_permission.yaml
+- runFlow: open_add_friend.yaml
+- runFlow: copy_my_user_id.yaml
+- runFlow: go_back.yaml
+- runFlow: logout_from_drawer.yaml
+- assertVisible: "Continue with Google"

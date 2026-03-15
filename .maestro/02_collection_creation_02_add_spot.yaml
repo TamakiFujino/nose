@@ -1,13 +1,12 @@
 appId: com.tamakifujino.nose
 ---
-# Test 02-02: Add Spot to Shared Collection (User B)
-# User B adds a spot to the shared collection from User A.
+# Test 02-02: Add Spot to Shared Collection (User B); owner (User A) sees new place
+# User B adds a spot to the shared collection; User A (owner) verifies they see both places.
 
 - launchApp
 
 # Sign in as User B
-- runFlow: shared/login_user_b.yaml
-- runFlow: shared/dismiss_location_permission.yaml
+- runFlow: shared/login_user_b_ready.yaml
 
 # Search for a place
 - tapOn:
@@ -21,13 +20,11 @@ appId: com.tamakifujino.nose
     text: "Pinnacles National Park"
     index: 1
 
-# Bookmark and save to shared collection
+# Bookmark and save to shared collection (sheet exposes label "Bookmark" to UI test)
 - extendedWaitUntil:
-    visible:
-      id: "bookmark"
+    visible: "Bookmark"
     timeout: 10000
-- tapOn:
-    id: "bookmark"
+- tapOn: "Bookmark"
 - assertVisible: "Save to Collection"
 - tapOn: "From Friends"
 - tapOn: "National Parks"
@@ -47,7 +44,23 @@ appId: com.tamakifujino.nose
 - assertVisible: "Pinnacles National Park"
 
 # Dismiss collection detail modal, then collection list modal
-- runFlow: shared/dismiss_modal.yaml
-- runFlow: shared/dismiss_modal.yaml
+- runFlow: shared/dismiss_collection_and_minimized.yaml
+- runFlow: shared/logout.yaml
+- assertVisible: "Continue with Google"
+
+# --- User A (owner): verify owner sees the place User B added ---
+- runFlow: shared/login_user_a_ready.yaml
+- runFlow: shared/open_collections.yaml
+- tapOn: "National Parks"
+- extendedWaitUntil:
+    visible:
+      id: "places_count_label"
+    timeout: 10000
+- assertVisible:
+    id: "places_count_label"
+    text: "2"
+- assertVisible: "Kings Canyon National Park"
+- assertVisible: "Pinnacles National Park"
+- runFlow: shared/dismiss_collection_and_minimized.yaml
 - runFlow: shared/logout.yaml
 - assertVisible: "Continue with Google"

@@ -1,0 +1,73 @@
+appId: com.tamakifujino.nose
+---
+# Test 01-02: Create User B & Send Friend Request
+# Signs in, creates account, sends friend request to User A, renames.
+# Independent: copies User A's ID in-flow so 01-01 need not run first.
+
+- launchApp
+
+# User A: copy own ID to clipboard for User B to paste later
+- runFlow: shared/copy_user_a_id.yaml
+
+# Sign in as User B
+- runFlow: shared/login_user_b.yaml
+
+# Name registration
+- assertVisible: "What should we call you?"
+- tapOn:
+    id: "name_text_field"
+- inputText: "Name to be updated"
+- tapOn: "Continue"
+
+# Dismiss location permission
+- runFlow: shared/dismiss_location_permission.yaml
+
+# Navigate to Add Friend and paste User A's ID, trigger search
+- runFlow: shared/open_add_friend.yaml
+- runFlow: shared/paste_user_id_and_search.yaml
+# Wait for User A's profile to load
+- extendedWaitUntil:
+    visible: "User A"
+    timeout: 10000
+# Send friend request
+- tapOn:
+    id: "add_friend_button"
+- assertVisible: "Request Sent!"
+- tapOn: "OK"
+
+# Copy User B's ID
+- runFlow: shared/copy_my_user_id.yaml
+
+# Navigate back to drawer and open Name
+- runFlow: shared/go_back.yaml
+- tapOn: "Name"
+
+# Validation: 1 char (too short)
+- tapOn:
+    id: "name_text_field"
+- eraseText: 50
+- inputText: "A"
+- tapOn: "Save"
+- assertVisible: "Invalid Name"
+- tapOn: "OK"
+
+# Validation: 31 chars (too long)
+- tapOn:
+    id: "name_text_field"
+- eraseText: 50
+- inputText: "ABCDEFGHIJKLMNOPQRSTUVWXYZ12345"
+- tapOn: "Save"
+- assertVisible: "Invalid Name"
+- tapOn: "OK"
+
+# Valid rename
+- tapOn:
+    id: "name_text_field"
+- eraseText: 50
+- inputText: "User B"
+- tapOn: "Save"
+- tapOn: "OK"
+
+# Navigate back to drawer and logout
+- runFlow: shared/logout_from_drawer.yaml
+- assertVisible: "Continue with Google"

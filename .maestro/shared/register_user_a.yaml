@@ -1,0 +1,9 @@
+appId: com.tamakifujino.nose
+---
+# Complete name registration for User A
+# Used when account was previously deleted and Google Sign-In created a fresh session.
+
+- tapOn:
+    id: "name_text_field"
+- inputText: ${USER_A_NAME}
+- tapOn: "Continue"

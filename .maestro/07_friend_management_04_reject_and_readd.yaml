@@ -1,0 +1,71 @@
+appId: com.tamakifujino.nose
+---
+# Test 07-04: Reject Friend Request and Re-add
+# Prerequisite: 07-03 ran (User A already sent friend request to User B).
+# User B rejects the request, User A sends request again, User B approves.
+
+- launchApp
+
+# Copy User B's ID to clipboard so User A can paste when re-sending
+- runFlow: shared/copy_user_b_id.yaml
+
+# --- Step 1: User B rejects the request from User A ---
+- runFlow: shared/login_user_b_ready.yaml
+- runFlow: shared/open_friends_list.yaml
+- tapOn: "Pending"
+- extendedWaitUntil:
+    visible: "User A"
+    timeout: 10000
+# Tap Reject
+- tapOn: "Reject"
+# Confirm rejection
+- extendedWaitUntil:
+    visible: "Reject request"
+    timeout: 5000
+- tapOn: "Reject"
+# Verify User A is gone from Pending
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertNotVisible: "User A"
+# Navigate back to drawer and logout
+- runFlow: shared/go_back.yaml
+- runFlow: shared/logout_from_drawer.yaml
+
+# --- Step 2: User A sends friend request to User B again ---
+- runFlow: shared/login_user_a_ready.yaml
+- runFlow: shared/open_add_friend.yaml
+- runFlow: shared/paste_user_id_and_search.yaml
+- extendedWaitUntil:
+    visible: "User B"
+    timeout: 10000
+- tapOn:
+    id: "add_friend_button"
+- assertVisible: "Request Sent!"
+- tapOn: "OK"
+# Navigate back to drawer and logout
+- runFlow: shared/go_back.yaml
+- runFlow: shared/logout_from_drawer.yaml
+
+# --- Step 3: User B approves the request from User A ---
+- runFlow: shared/login_user_b_ready.yaml
+- runFlow: shared/open_friends_list.yaml
+- tapOn: "Pending"
+- extendedWaitUntil:
+    visible: "User A"
+    timeout: 10000
+# Approve the request
+- tapOn: "Approve"
+- tapOn: "Approve"
+- tapOn: "OK"
+# Verify User A appears in Friends tab
+- tapOn:
+    id: "Friends_tab"
+- waitForAnimationToEnd:
+    timeout: 3000
+- extendedWaitUntil:
+    visible: "User A"
+    timeout: 5000
+# Navigate back to drawer and logout
+- runFlow: shared/go_back.yaml
+- runFlow: shared/logout_from_drawer.yaml
+- assertVisible: "Continue with Google"

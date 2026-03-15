@@ -2,11 +2,11 @@ import UIKit
 import GooglePlaces
 import FirebaseAuth
 
-class CollectionPlacesViewController: UIViewController {
+class CollectionPlacesViewController: UIViewController, UIGestureRecognizerDelegate {
 
     // MARK: - Properties
 
-    let collection: PlaceCollection
+    var collection: PlaceCollection
     var places: [PlaceCollection.Place] = []
     var events: [Event] = []
     var sessionToken: GMSAutocompleteSessionToken?
@@ -352,8 +352,35 @@ class CollectionPlacesViewController: UIViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        // Let table view swipe actions win: sheet's pan must not start when touch is in table
+        setupSheetPanGestureDelegate()
         // Refresh overlapping avatars on return
         loadOverlappingAvatars()
+    }
+
+    /// Prevents the sheet's pan gesture from capturing touches that start in the table view,
+    /// so trailing swipe actions (Visited, Copy, Delete, Map) can recognize horizontal swipes.
+    private func setupSheetPanGestureDelegate() {
+        guard sheetPresentationController != nil else { return }
+        for container in [sheetPresentationController?.presentedView, view.superview] {
+            guard let container = container else { continue }
+            for gr in container.gestureRecognizers ?? [] {
+                if gr is UIPanGestureRecognizer {
+                    gr.delegate = self
+                    return
+                }
+            }
+        }
+    }
+
+    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        guard gestureRecognizer is UIPanGestureRecognizer else { return true }
+        guard gestureRecognizer.view === sheetPresentationController?.presentedView else { return true }
+        let location = gestureRecognizer.location(in: view)
+        if tableView.frame.contains(location) {
+            return false
+        }
+        return true
     }
 
     override func viewWillDisappear(_ animated: Bool) {

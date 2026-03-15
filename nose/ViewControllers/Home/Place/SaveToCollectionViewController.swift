@@ -114,6 +114,8 @@ class SaveToCollectionViewController: UIViewController {
         button.layer.shadowOpacity = 0.1
         button.addTarget(self, action: #selector(createNewCollectionTapped), for: .touchUpInside)
         button.translatesAutoresizingMaskIntoConstraints = false
+        button.accessibilityIdentifier = "add"
+        button.accessibilityLabel = "Add"
         return button
     }()
     
@@ -582,44 +584,46 @@ class SaveToCollectionViewController: UIViewController {
 
         group.notify(queue: .main) { [weak self] in
             guard let self = self else { return }
-
-            // Create a batch write
-            let batch = Firestore.firestore().batch()
-            
-            // Update user's copy
-            batch.updateData([
-                "places": FieldValue.arrayUnion([placeData])
-            ], forDocument: userCollectionRef)
-            
-            // If this is a shared collection, also update owner's copy
-            if let ownerRef = ownerCollectionRef {
-                batch.updateData([
-                    "places": FieldValue.arrayUnion([placeData])
-                ], forDocument: ownerRef)
-            }
-            
-            // Commit the batch
-            batch.commit { error in
-                DispatchQueue.main.async {
-                    loadingAlert.dismiss(animated: true) {
-                        if let error = error {
-                            Logger.log("Error saving place: \(error.localizedDescription)", level: .error, category: "Save")
-                            // Show error alert
-                            let messageModal = MessageModalViewController(
-                                title: "Error",
-                                message: "Failed to save place. Please try again."
-                            )
+            let db = Firestore.firestore()
+            let ownerRef = FirestorePaths.collectionDoc(userId: collection.userId, collectionId: collection.id)
+            ownerRef.getDocument { [weak self] snapshot, error in
+                guard let self = self else { return }
+                if let error = error {
+                    Logger.log("Error fetching members for place save: \(error.localizedDescription)", level: .error, category: "Save")
+                    DispatchQueue.main.async {
+                        loadingAlert.dismiss(animated: true) {
+                            let messageModal = MessageModalViewController(title: "Error", message: "Failed to save place. Please try again.")
                             self.present(messageModal, animated: true)
-                        } else {
-                            // Refresh collections to update the count
-                            self.loadCollections()
-                            // Post notification to update map immediately
-                            NotificationCenter.default.post(name: NSNotification.Name("UpdateMapWithCollections"), object: nil)
-                            // Notify delegate and dismiss
-                            if case .place(let place) = self.itemToSave {
-                                self.delegate?.saveToCollectionViewController(self, didSavePlace: place, toCollection: collection)
+                        }
+                    }
+                    return
+                }
+                let members = snapshot?.data()?["members"] as? [String] ?? [currentUserId]
+                let batch = db.batch()
+                for memberId in members {
+                    let memberRef = FirestorePaths.collectionDoc(userId: memberId, collectionId: collection.id, db: db)
+                    batch.updateData([
+                        "places": FieldValue.arrayUnion([placeData])
+                    ], forDocument: memberRef)
+                }
+                batch.commit { error in
+                    DispatchQueue.main.async {
+                        loadingAlert.dismiss(animated: true) {
+                            if let error = error {
+                                Logger.log("Error saving place: \(error.localizedDescription)", level: .error, category: "Save")
+                                let messageModal = MessageModalViewController(
+                                    title: "Error",
+                                    message: "Failed to save place. Please try again."
+                                )
+                                self.present(messageModal, animated: true)
+                            } else {
+                                self.loadCollections()
+                                NotificationCenter.default.post(name: NSNotification.Name("UpdateMapWithCollections"), object: nil)
+                                if case .place(let place) = self.itemToSave {
+                                    self.delegate?.saveToCollectionViewController(self, didSavePlace: place, toCollection: collection)
+                                }
+                                self.dismiss(animated: true)
                             }
-                            self.dismiss(animated: true)
                         }
                     }
                 }
@@ -647,47 +651,45 @@ class SaveToCollectionViewController: UIViewController {
             "userId": event.userId
         ]
         
-        // Get references for both user and owner collections
         let currentUserId = Auth.auth().currentUser?.uid ?? ""
-
-        // Reference to the current user's collection
-        let userCollectionRef = FirestorePaths.collectionDoc(userId: currentUserId, collectionId: collection.id)
-
-        // If this is a shared collection, also get reference to owner's collection
-        let ownerCollectionRef = collection.isOwner ? nil : FirestorePaths.collectionDoc(userId: collection.userId, collectionId: collection.id)
-
-        // Create a batch write
-        let batch = Firestore.firestore().batch()
-        
-        // Update user's copy with events array
-        batch.updateData([
-            "events": FieldValue.arrayUnion([eventData])
-        ], forDocument: userCollectionRef)
-        
-        // If this is a shared collection, also update owner's copy
-        if let ownerRef = ownerCollectionRef {
-            batch.updateData([
-                "events": FieldValue.arrayUnion([eventData])
-            ], forDocument: ownerRef)
-        }
-        
-        // Commit the batch
-        batch.commit { error in
-            DispatchQueue.main.async {
-                loadingAlert.dismiss(animated: true) {
-                    if let error = error {
-                        Logger.log("Error saving event: \(error.localizedDescription)", level: .error, category: "Save")
-                        let messageModal = MessageModalViewController(
-                            title: "Error",
-                            message: "Failed to save event. Please try again."
-                        )
+        let db = Firestore.firestore()
+        let ownerRef = FirestorePaths.collectionDoc(userId: collection.userId, collectionId: collection.id, db: db)
+        ownerRef.getDocument { [weak self] snapshot, error in
+            guard let self = self else { return }
+            if let error = error {
+                Logger.log("Error fetching members for event save: \(error.localizedDescription)", level: .error, category: "Save")
+                DispatchQueue.main.async {
+                    loadingAlert.dismiss(animated: true) {
+                        let messageModal = MessageModalViewController(title: "Error", message: "Failed to save event. Please try again.")
                         self.present(messageModal, animated: true)
-                    } else {
-                        self.loadCollections()
-                        // Post notification to update map immediately
-                        NotificationCenter.default.post(name: NSNotification.Name("UpdateMapWithCollections"), object: nil)
-                        self.delegate?.saveToCollectionViewController(self, didSaveEvent: event, toCollection: collection)
-                        self.dismiss(animated: true)
+                    }
+                }
+                return
+            }
+            let members = snapshot?.data()?["members"] as? [String] ?? [currentUserId]
+            let batch = db.batch()
+            for memberId in members {
+                let memberRef = FirestorePaths.collectionDoc(userId: memberId, collectionId: collection.id, db: db)
+                batch.updateData([
+                    "events": FieldValue.arrayUnion([eventData])
+                ], forDocument: memberRef)
+            }
+            batch.commit { error in
+                DispatchQueue.main.async {
+                    loadingAlert.dismiss(animated: true) {
+                        if let error = error {
+                            Logger.log("Error saving event: \(error.localizedDescription)", level: .error, category: "Save")
+                            let messageModal = MessageModalViewController(
+                                title: "Error",
+                                message: "Failed to save event. Please try again."
+                            )
+                            self.present(messageModal, animated: true)
+                        } else {
+                            self.loadCollections()
+                            NotificationCenter.default.post(name: NSNotification.Name("UpdateMapWithCollections"), object: nil)
+                            self.delegate?.saveToCollectionViewController(self, didSaveEvent: event, toCollection: collection)
+                            self.dismiss(animated: true)
+                        }
                     }
                 }
             }

@@ -1,20 +1,16 @@
 appId: com.tamakifujino.nose
 ---
-# Test 99-01: Settings Verification & Delete User A
+# Test 99-01: Settings Verification & Delete User A; User B verifies User A gone from Friends
 
 - launchApp
 
 # Sign in as User A
-- runFlow: shared/login_user_a.yaml
-- runFlow: shared/dismiss_location_permission.yaml
+- runFlow: shared/login_user_a_ready.yaml
 
 # Open Settings
 - tapOn: "Personal Library"
 
 # Swipe up from bottom of screen to scroll past the avatar header
-- swipe:
-    start: "50%,90%"
-    end: "50%,20%"
 - swipe:
     start: "50%,90%"
     end: "50%,20%"
@@ -40,9 +36,6 @@ appId: com.tamakifujino.nose
 - swipe:
     start: "50%,20%"
     end: "50%,90%"
-- swipe:
-    start: "50%,20%"
-    end: "50%,90%"
 
 # Delete account
 - tapOn: "Account"
@@ -54,4 +47,15 @@ appId: com.tamakifujino.nose
     optional: true
 
 # Verify returned to login screen
+- assertVisible: "Continue with Google"
+
+# --- User B: verify User A no longer exists on Friends list ---
+- runFlow: shared/login_user_b_ready.yaml
+- runFlow: shared/open_friends_list.yaml
+- extendedWaitUntil:
+    visible: "Friends"
+    timeout: 5000
+- assertNotVisible: "User A"
+- runFlow: shared/go_back.yaml
+- runFlow: shared/logout_from_drawer.yaml
 - assertVisible: "Continue with Google"

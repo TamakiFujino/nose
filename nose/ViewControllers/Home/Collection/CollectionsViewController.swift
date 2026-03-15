@@ -67,6 +67,7 @@ class CollectionsViewController: UIViewController {
         button.layer.shadowOpacity = 0.1
         button.addTarget(self, action: #selector(createNewCollectionTapped), for: .touchUpInside)
         button.translatesAutoresizingMaskIntoConstraints = false
+        button.accessibilityIdentifier = "add_collection_button"
         return button
     }()
 

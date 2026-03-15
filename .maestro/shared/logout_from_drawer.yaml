@@ -1,0 +1,7 @@
+appId: com.tamakifujino.nose
+---
+# Logout when already in Settings drawer: Account → Logout → Confirm → OK
+- tapOn: "Account"
+- tapOn: "Logout"
+- tapOn: "Confirm"
+- tapOn: "OK"

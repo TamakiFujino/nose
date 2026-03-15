@@ -33,6 +33,7 @@ final class EditNameViewController: UIViewController {
         textField.leftViewMode = .always
         textField.rightView = paddingView
         textField.rightViewMode = .always
+        textField.accessibilityIdentifier = "name_text_field"
         return textField
     }()
     

@@ -68,6 +68,7 @@ class PlaceTableViewCell: UITableViewCell {
         button.tintColor = .secondaryLabel // Match bookmark color
         button.adjustsImageWhenHighlighted = false
         button.addTarget(self, action: #selector(heartButtonTapped), for: .touchUpInside)
+        button.accessibilityLabel = "Heart"
         return button
     }()
     

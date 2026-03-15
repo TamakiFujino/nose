@@ -1,0 +1,5 @@
+appId: com.tamakifujino.nose
+---
+# Navigate to Add Friend screen: Personal Library → Add Friend
+- tapOn: "Personal Library"
+- tapOn: "Add Friend"
