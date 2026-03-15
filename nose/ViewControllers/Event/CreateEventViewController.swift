@@ -73,7 +73,7 @@ final class CreateEventViewController: UIViewController {
     private lazy var titleSectionLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "Title"
+        label.text = String(localized: "event_title_label")
         label.font = .systemFont(ofSize: 18, weight: .semibold)
         label.textColor = .label
         return label
@@ -82,7 +82,7 @@ final class CreateEventViewController: UIViewController {
     lazy var titleTextField: UITextField = {
         let textField = UITextField()
         textField.translatesAutoresizingMaskIntoConstraints = false
-        textField.placeholder = "Enter title (max 25 characters)"
+        textField.placeholder = String(localized: "event_title_placeholder")
         textField.borderStyle = .roundedRect
         textField.font = .systemFont(ofSize: 16)
         textField.delegate = self
@@ -92,7 +92,7 @@ final class CreateEventViewController: UIViewController {
     lazy var titleCharCountLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "0/25"
+        label.text = String(format: String(localized: "event_char_count_format"), 0, 25)
         label.font = .systemFont(ofSize: 12)
         label.textColor = .secondaryLabel
         label.textAlignment = .right
@@ -103,7 +103,7 @@ final class CreateEventViewController: UIViewController {
     private lazy var dateTimeSectionLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "Date & Time"
+        label.text = String(localized: "event_date_time_label")
         label.font = .systemFont(ofSize: 18, weight: .semibold)
         label.textColor = .label
         return label
@@ -112,7 +112,7 @@ final class CreateEventViewController: UIViewController {
     private lazy var startDateLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "From"
+        label.text = String(localized: "event_from_label")
         label.font = .systemFont(ofSize: 16, weight: .medium)
         label.textColor = .label
         return label
@@ -136,7 +136,7 @@ final class CreateEventViewController: UIViewController {
     private lazy var endDateLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "To"
+        label.text = String(localized: "event_to_label")
         label.font = .systemFont(ofSize: 16, weight: .medium)
         label.textColor = .label
         return label
@@ -160,7 +160,7 @@ final class CreateEventViewController: UIViewController {
     private lazy var durationDisplayLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "Duration: 1h"
+        label.text = String(format: String(localized: "event_duration_format"), "1h")
         label.font = .systemFont(ofSize: 14, weight: .medium)
         label.textColor = .fourthColor
         label.textAlignment = .center
@@ -173,7 +173,7 @@ final class CreateEventViewController: UIViewController {
     private lazy var locationSectionLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "Location"
+        label.text = String(localized: "event_location_label")
         label.font = .systemFont(ofSize: 18, weight: .semibold)
         label.textColor = .label
         return label
@@ -182,7 +182,7 @@ final class CreateEventViewController: UIViewController {
     lazy var locationTextField: UITextField = {
         let textField = UITextField()
         textField.translatesAutoresizingMaskIntoConstraints = false
-        textField.placeholder = "Search for location"
+        textField.placeholder = String(localized: "event_location_placeholder")
         textField.borderStyle = .roundedRect
         textField.font = .systemFont(ofSize: 16)
         textField.delegate = self
@@ -209,7 +209,7 @@ final class CreateEventViewController: UIViewController {
     private lazy var detailsSectionLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "Details"
+        label.text = String(localized: "event_details_label")
         label.font = .systemFont(ofSize: 18, weight: .semibold)
         label.textColor = .label
         return label
@@ -230,7 +230,7 @@ final class CreateEventViewController: UIViewController {
     lazy var detailsPlaceholderLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "Describe the event... (max 1000 characters)"
+        label.text = String(localized: "event_details_placeholder")
         label.font = .systemFont(ofSize: 16)
         label.textColor = .placeholderText
         return label
@@ -239,7 +239,7 @@ final class CreateEventViewController: UIViewController {
     lazy var detailsCharCountLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "0/1000"
+        label.text = String(format: String(localized: "event_char_count_format"), 0, 1000)
         label.font = .systemFont(ofSize: 12)
         label.textColor = .secondaryLabel
         label.textAlignment = .right
@@ -250,7 +250,7 @@ final class CreateEventViewController: UIViewController {
     private lazy var imagesSectionLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "Images"
+        label.text = String(localized: "event_images_label")
         label.font = .systemFont(ofSize: 18, weight: .semibold)
         label.textColor = .label
         return label
@@ -259,7 +259,7 @@ final class CreateEventViewController: UIViewController {
     private lazy var imagesLimitLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "Upload 1 image"
+        label.text = String(localized: "event_upload_one_image")
         label.font = .systemFont(ofSize: 14)
         label.textColor = .secondaryLabel
         return label
@@ -501,7 +501,7 @@ final class CreateEventViewController: UIViewController {
         
         // Populate title
         titleTextField.text = event.title
-        titleCharCountLabel.text = "\(event.title.count)/25"
+        titleCharCountLabel.text = String(format: String(localized: "event_char_count_format"), event.title.count, 25)
         
         // Populate dates
         selectedStartDate = event.dateTime.startDate
@@ -516,7 +516,7 @@ final class CreateEventViewController: UIViewController {
         // Populate details
         detailsTextView.text = event.details
         detailsPlaceholderLabel.isHidden = !event.details.isEmpty
-        detailsCharCountLabel.text = "\(event.details.count)/1000"
+        detailsCharCountLabel.text = String(format: String(localized: "event_char_count_format"), event.details.count, 1000)
         
         // Populate images
         selectedImages = event.images
@@ -586,7 +586,7 @@ final class CreateEventViewController: UIViewController {
     
     private func createEvent() {
         guard let userId = Auth.auth().currentUser?.uid else {
-            showAlert(title: "Error", message: "User not authenticated")
+            showAlert(title: String(localized: "modal_error_title"), message: String(localized: "event_error_not_authenticated"))
             return
         }
         
@@ -599,8 +599,8 @@ final class CreateEventViewController: UIViewController {
                 if count >= 1 {
                     DispatchQueue.main.async {
                         self.showAlert(
-                            title: "Event Limit Reached",
-                            message: "You can only create one event at a time."
+                            title: String(localized: "event_limit_reached_title"),
+                            message: String(localized: "event_limit_reached_message")
                         )
                     }
                     return
@@ -613,7 +613,7 @@ final class CreateEventViewController: UIViewController {
                 
             case .failure(let error):
                 DispatchQueue.main.async {
-                    self.showAlert(title: "Error", message: "Failed to check existing events. Please try again.")
+                    self.showAlert(title: String(localized: "modal_error_title"), message: String(localized: "event_error_check_events"))
                     Logger.log("Error checking upcoming events: \(error.localizedDescription)", level: .error, category: "CreateEvent")
                 }
             }
@@ -622,7 +622,7 @@ final class CreateEventViewController: UIViewController {
     
     private func proceedWithEventCreation(userId: String) {
         // Show loading indicator
-        showLoadingAlert(title: "Creating Event")
+        showLoadingAlert(title: String(localized: "event_creating"))
         
         let eventDateTime = EventDateTime(startDate: selectedStartDate, endDate: selectedEndDate)
         let event = Event(
@@ -657,7 +657,7 @@ final class CreateEventViewController: UIViewController {
                 case .failure(let error):
                     Logger.log("Failed to create event: \(error.localizedDescription)", level: .error, category: "CreateEvent")
                     self?.dismiss(animated: true) {
-                        self?.showAlert(title: "Error", message: "Failed to create event. Please try again.")
+                        self?.showAlert(title: String(localized: "modal_error_title"), message: String(localized: "event_error_create_failed"))
                     }
                 }
             }
@@ -668,7 +668,7 @@ final class CreateEventViewController: UIViewController {
         guard let eventToEdit = eventToEdit else { return }
         
         // Show loading indicator
-        showLoadingAlert(title: "Updating Event")
+        showLoadingAlert(title: String(localized: "event_updating"))
         
         let eventDateTime = EventDateTime(startDate: selectedStartDate, endDate: selectedEndDate)
         let updatedEvent = Event(
@@ -696,7 +696,7 @@ final class CreateEventViewController: UIViewController {
                 case .failure(let error):
                     Logger.log("Failed to update event: \(error.localizedDescription)", level: .error, category: "CreateEvent")
                     self?.dismiss(animated: true) {
-                        self?.showAlert(title: "Error", message: "Failed to update event. Please try again.")
+                        self?.showAlert(title: String(localized: "modal_error_title"), message: String(localized: "event_error_update_failed"))
                     }
                 }
             }
@@ -755,7 +755,7 @@ final class CreateEventViewController: UIViewController {
             datePicker.date = selectedEndDate
         }
         
-        let alert = UIAlertController(title: type == .start ? "Select Start Date & Time" : "Select End Date & Time", message: "\n\n\n\n\n\n\n\n\n\n\n", preferredStyle: .actionSheet)
+        let alert = UIAlertController(title: type == .start ? String(localized: "date_picker_start_title") : String(localized: "date_picker_end_title"), message: "\n\n\n\n\n\n\n\n\n\n\n", preferredStyle: .actionSheet)
         
         // Add date picker as subview to the alert's view
         alert.view.addSubview(datePicker)
@@ -768,7 +768,7 @@ final class CreateEventViewController: UIViewController {
             datePicker.heightAnchor.constraint(equalToConstant: 200)
         ])
         
-        let selectAction = UIAlertAction(title: "Select", style: .default) { [weak self] _ in
+        let selectAction = UIAlertAction(title: String(localized: "button_select"), style: .default) { [weak self] _ in
             if type == .start {
                 self?.selectedStartDate = datePicker.date
                 // Ensure end date is after start date
@@ -782,7 +782,7 @@ final class CreateEventViewController: UIViewController {
             self?.updateDurationDisplay()
         }
         
-        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+        let cancelAction = UIAlertAction(title: String(localized: "modal_cancel"), style: .cancel)
         
         alert.addAction(selectAction)
         alert.addAction(cancelAction)
@@ -807,7 +807,7 @@ final class CreateEventViewController: UIViewController {
     
     private func updateDurationDisplay() {
         let eventDateTime = EventDateTime(startDate: selectedStartDate, endDate: selectedEndDate)
-        durationDisplayLabel.text = "Duration: \(eventDateTime.formattedDuration)"
+        durationDisplayLabel.text = String(format: String(localized: "event_duration_format"), eventDateTime.formattedDuration)
     }
     
     func searchLocations(query: String) {
@@ -878,27 +878,27 @@ extension CreateEventViewController {
     // MARK: - Helper Methods
     private func validateForm() -> Bool {
         guard let title = titleTextField.text, !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            showAlert(title: "Missing Title", message: "Please enter an event title.")
+            showAlert(title: String(localized: "event_validation_missing_title"), message: String(localized: "event_validation_missing_title_message"))
             return false
         }
         
         guard title.count <= 25 else {
-            showAlert(title: "Title Too Long", message: "Event title must be 25 characters or less.")
+            showAlert(title: String(localized: "event_validation_title_too_long"), message: String(localized: "event_validation_title_max_message"))
             return false
         }
         
         guard selectedLocation != nil else {
-            showAlert(title: "Missing Location", message: "Please select an event location.")
+            showAlert(title: String(localized: "event_validation_missing_location"), message: String(localized: "event_validation_missing_location_message"))
             return false
         }
         
         guard let details = detailsTextView.text, !details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            showAlert(title: "Missing Details", message: "Please enter event details.")
+            showAlert(title: String(localized: "event_validation_missing_details"), message: String(localized: "event_validation_missing_details_message"))
             return false
         }
         
         guard details.count <= 1000 else {
-            showAlert(title: "Details Too Long", message: "Event details must be 1000 characters or less.")
+            showAlert(title: String(localized: "event_validation_details_too_long"), message: String(localized: "event_validation_details_max_message"))
             return false
         }
         

@@ -9,7 +9,7 @@ extension CreateEventViewController: UITextFieldDelegate {
             let newText = (currentText as NSString).replacingCharacters(in: range, with: string)
 
             if newText.count <= 25 {
-                titleCharCountLabel.text = "\(newText.count)/25"
+                titleCharCountLabel.text = String(format: String(localized: "event_char_count_format"), newText.count, 25)
                 titleCharCountLabel.textColor = newText.count > 20 ? .systemRed : .secondaryLabel
                 return true
             }
@@ -55,7 +55,7 @@ extension CreateEventViewController: UITextViewDelegate {
         detailsPlaceholderLabel.isHidden = !textView.text.isEmpty
 
         let count = textView.text.count
-        detailsCharCountLabel.text = "\(count)/1000"
+        detailsCharCountLabel.text = String(format: String(localized: "event_char_count_format"), count, 1000)
         detailsCharCountLabel.textColor = count > 900 ? .systemRed : .secondaryLabel
 
         if count > 1000 {
@@ -76,7 +76,7 @@ extension CreateEventViewController: UITableViewDelegate, UITableViewDataSource 
         // Safety check to prevent index out of bounds crash
         guard indexPath.row < locationPredictions.count else {
             var content = cell.defaultContentConfiguration()
-            content.text = "Loading..."
+            content.text = String(localized: "event_loading")
             cell.contentConfiguration = content
             return cell
         }

@@ -50,7 +50,7 @@ class SaveToCollectionViewController: UIViewController {
     
     private lazy var titleLabel: UILabel = {
         let label = UILabel()
-        label.text = "Save to Collection"
+        label.text = String(localized: "save_to_collection_title")
         label.font = .systemFont(ofSize: 24, weight: .bold)
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
@@ -115,13 +115,13 @@ class SaveToCollectionViewController: UIViewController {
         button.addTarget(self, action: #selector(createNewCollectionTapped), for: .touchUpInside)
         button.translatesAutoresizingMaskIntoConstraints = false
         button.accessibilityIdentifier = "add"
-        button.accessibilityLabel = "Add"
+        button.accessibilityLabel = String(localized: "button_add")
         return button
     }()
     
     private lazy var saveButton: CustomButton = {
         let button = CustomButton()
-        button.setTitle("Save", for: .normal)
+        button.setTitle(String(localized: "button_save"), for: .normal)
         button.style = .themeBlue
         button.size = .large
         button.isPerfectlyRounded = true
@@ -400,7 +400,7 @@ class SaveToCollectionViewController: UIViewController {
     
     // MARK: - Tab Management
     private func setupCategoryTabs() {
-        let tabs: [(CollectionTab, String)] = [(.personal, "Your Collections"), (.shared, "From Friends")]
+        let tabs: [(CollectionTab, String)] = [(.personal, String(localized: "collections_your_collections")), (.shared, String(localized: "collections_from_friends"))]
         for (index, (tab, title)) in tabs.enumerated() {
             let button = createTabButton(title: title, tag: index, tab: tab)
             categoryTabStackView.addArrangedSubview(button)
@@ -524,12 +524,12 @@ class SaveToCollectionViewController: UIViewController {
     private func savePlaceToCollection(place: GMSPlace, collection: PlaceCollection) {
         // Check if place is already in the collection
         if collection.places.contains(where: { $0.placeId == place.placeID }) {
-            showAlert(title: "Already Saved", message: "This place is already saved in this collection.")
+            showAlert(title: String(localized: "save_already_saved_title"), message: String(localized: "save_already_saved_message"))
             return
         }
         
         // Show loading indicator
-        let loadingAlert = UIAlertController(title: "Saving...", message: nil, preferredStyle: .alert)
+        let loadingAlert = UIAlertController(title: String(localized: "save_saving"), message: nil, preferredStyle: .alert)
         present(loadingAlert, animated: true)
         
         // Create place data
@@ -592,7 +592,7 @@ class SaveToCollectionViewController: UIViewController {
                     Logger.log("Error fetching members for place save: \(error.localizedDescription)", level: .error, category: "Save")
                     DispatchQueue.main.async {
                         loadingAlert.dismiss(animated: true) {
-                            let messageModal = MessageModalViewController(title: "Error", message: "Failed to save place. Please try again.")
+                            let messageModal = MessageModalViewController(title: String(localized: "modal_error_title"), message: String(localized: "save_failed_place"))
                             self.present(messageModal, animated: true)
                         }
                     }
@@ -612,8 +612,8 @@ class SaveToCollectionViewController: UIViewController {
                             if let error = error {
                                 Logger.log("Error saving place: \(error.localizedDescription)", level: .error, category: "Save")
                                 let messageModal = MessageModalViewController(
-                                    title: "Error",
-                                    message: "Failed to save place. Please try again."
+                                    title: String(localized: "modal_error_title"),
+                                    message: String(localized: "save_failed_place")
                                 )
                                 self.present(messageModal, animated: true)
                             } else {
@@ -634,7 +634,7 @@ class SaveToCollectionViewController: UIViewController {
     private func saveEventToCollection(event: Event, collection: PlaceCollection) {
         
         // Show loading indicator
-        let loadingAlert = UIAlertController(title: "Saving...", message: nil, preferredStyle: .alert)
+        let loadingAlert = UIAlertController(title: String(localized: "save_saving"), message: nil, preferredStyle: .alert)
         present(loadingAlert, animated: true)
         
         // Create event data
@@ -660,7 +660,7 @@ class SaveToCollectionViewController: UIViewController {
                 Logger.log("Error fetching members for event save: \(error.localizedDescription)", level: .error, category: "Save")
                 DispatchQueue.main.async {
                     loadingAlert.dismiss(animated: true) {
-                        let messageModal = MessageModalViewController(title: "Error", message: "Failed to save event. Please try again.")
+                        let messageModal = MessageModalViewController(title: String(localized: "modal_error_title"), message: String(localized: "save_failed_event"))
                         self.present(messageModal, animated: true)
                     }
                 }
@@ -680,8 +680,8 @@ class SaveToCollectionViewController: UIViewController {
                         if let error = error {
                             Logger.log("Error saving event: \(error.localizedDescription)", level: .error, category: "Save")
                             let messageModal = MessageModalViewController(
-                                title: "Error",
-                                message: "Failed to save event. Please try again."
+                                title: String(localized: "modal_error_title"),
+                                message: String(localized: "save_failed_event")
                             )
                             self.present(messageModal, animated: true)
                         } else {

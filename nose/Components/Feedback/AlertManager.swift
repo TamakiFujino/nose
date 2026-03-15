@@ -13,7 +13,7 @@ final class AlertManager {
         message: String? = nil,
         style: AlertStyle = .info,
         preferredStyle: UIAlertController.Style = .alert,
-        actions: [UIAlertAction] = [UIAlertAction(title: "OK", style: .default)]
+        actions: [UIAlertAction] = [UIAlertAction(title: String(localized: "modal_ok"), style: .default)]
     ) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: preferredStyle)
         actions.forEach { alert.addAction($0) }

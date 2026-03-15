@@ -52,7 +52,7 @@ class ConfirmationModalViewController: UIViewController {
         message: String,
         primaryTitle: String,
         primaryStyle: PrimaryStyle = .default,
-        cancelTitle: String = "Cancel",
+        cancelTitle: String = String(localized: "modal_cancel"),
         onPrimary: @escaping () -> Void,
         onCancel: (() -> Void)? = nil
     ) {

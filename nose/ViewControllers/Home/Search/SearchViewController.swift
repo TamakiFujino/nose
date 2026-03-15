@@ -52,7 +52,7 @@ final class SearchViewController: UIViewController {
     private lazy var searchTextField: UITextField = {
         let field = UITextField()
         field.translatesAutoresizingMaskIntoConstraints = false
-        field.placeholder = "Search for places or events"
+        field.placeholder = String(localized: "search_placeholder")
         field.font = .systemFont(ofSize: 16)
         field.backgroundColor = .clear
         field.borderStyle = .none

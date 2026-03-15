@@ -65,7 +65,7 @@ class PrivacyPolicyViewController: UIViewController, WKNavigationDelegate {
         loadingView.isHidden = true
         activityIndicator.stopAnimating()
         // Show error alert
-        let messageModal = MessageModalViewController(title: "Error", message: "Failed to load content. Please try again.")
+        let messageModal = MessageModalViewController(title: String(localized: "modal_error_title"), message: String(localized: "error_failed_load_content"))
         present(messageModal, animated: true)
     }
 }

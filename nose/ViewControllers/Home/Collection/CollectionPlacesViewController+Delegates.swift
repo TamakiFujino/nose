@@ -25,7 +25,7 @@ extension CollectionPlacesViewController: EditCollectionModalViewControllerDeleg
                 self.currentIconName = updatedCollection.iconName
                 self.updateCollectionIconDisplay()
                 NotificationCenter.default.post(name: NSNotification.Name("RefreshCollections"), object: nil)
-                ToastManager.showToast(message: "Collection updated", type: .success)
+                ToastManager.showToast(message: ToastMessages.collectionUpdated, type: .success)
             case .failure(let error):
                 Logger.log("Error fetching updated collection: \(error.localizedDescription)", level: .error, category: "Collection")
             }
@@ -37,7 +37,7 @@ extension CollectionPlacesViewController: EditCollectionModalViewControllerDeleg
 
 extension CollectionPlacesViewController: ShareCollectionViewControllerDelegate {
     func shareCollectionViewController(_ controller: ShareCollectionViewController, didSelectFriends friends: [User]) {
-        LoadingView.shared.showOverlayLoading(on: view, message: "Sharing Collection...")
+        LoadingView.shared.showOverlayLoading(on: view, message: String(localized: "loading_sharing_collection"))
 
         CollectionContainerManager.shared.shareCollection(collection, with: friends) { [weak self] error in
             DispatchQueue.main.async {
@@ -45,9 +45,9 @@ extension CollectionPlacesViewController: ShareCollectionViewControllerDelegate 
 
                 if let error = error {
                     Logger.log("Error sharing collection: \(error.localizedDescription)", level: .error, category: "Collection")
-                    ToastManager.showToast(message: "Failed to share collection", type: .error)
+                    ToastManager.showToast(message: String(localized: "toast_failed_to_share_collection"), type: .error)
                 } else {
-                    ToastManager.showToast(message: "Collection shared successfully", type: .success)
+                    ToastManager.showToast(message: String(localized: "toast_collection_shared_success"), type: .success)
                     self?.loadSharedFriendsCount()
                 }
             }

@@ -18,7 +18,7 @@ final class EditNameViewController: UIViewController {
     private lazy var nameTextField: UITextField = {
         let textField = UITextField()
         textField.translatesAutoresizingMaskIntoConstraints = false
-        textField.placeholder = "Enter your name"
+        textField.placeholder = String(localized: "edit_name_placeholder")
         textField.borderStyle = .none
         textField.backgroundColor = .secondColor
         textField.layer.cornerRadius = 8
@@ -43,14 +43,14 @@ final class EditNameViewController: UIViewController {
         label.textAlignment = .right
         label.font = .systemFont(ofSize: 12)
         label.textColor = .gray
-        label.text = "0/\(Constants.maxNameLength)"
+        label.text = String(format: String(localized: "edit_name_char_count"), 0, Constants.maxNameLength)
         return label
     }()
     
     private lazy var saveButton: CustomButton = {
         let button = CustomButton()
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.setTitle("Save", for: .normal)
+        button.setTitle(String(localized: "button_save"), for: .normal)
         button.style = .themeBlue
         button.size = .large
         button.isPerfectlyRounded = true
@@ -68,7 +68,7 @@ final class EditNameViewController: UIViewController {
     // MARK: - Setup
     private func setupUI() {
         view.backgroundColor = .firstColor
-        title = "Edit Name"
+        title = String(localized: "edit_name_title")
         navigationController?.navigationBar.tintColor = .label
         navigationItem.largeTitleDisplayMode = .never
         
@@ -105,7 +105,7 @@ final class EditNameViewController: UIViewController {
         
         UserManager.shared.getUser(id: currentUserId) { [weak self] user, error in
             if let error = error {
-                self?.showAlert(title: "Error", message: "Failed to load user data: \(error.localizedDescription)")
+                self?.showAlert(title: String(localized: "modal_error_title"), message: String(format: String(localized: "edit_name_failed_load"), error.localizedDescription))
                 return
             }
             
@@ -126,7 +126,7 @@ final class EditNameViewController: UIViewController {
     
     private func updateCharacterCount(for text: String?) {
         let count = text?.count ?? 0
-        characterCountLabel.text = "\(count)/\(Constants.maxNameLength)"
+        characterCountLabel.text = String(format: String(localized: "edit_name_char_count"), count, Constants.maxNameLength)
         
         // Update label color based on character count
         if count > Constants.maxNameLength {
@@ -141,18 +141,18 @@ final class EditNameViewController: UIViewController {
     @objc private func saveButtonTapped() {
         guard let newName = nameTextField.text?.trimmingCharacters(in: .whitespacesAndNewlines),
               !newName.isEmpty else {
-            showAlert(title: "Invalid Name", message: "Please enter a valid name")
+            showAlert(title: String(localized: "edit_name_invalid_title"), message: String(localized: "edit_name_enter_valid"))
             return
         }
         
         // Validate name length
         if newName.count < Constants.minNameLength {
-            showAlert(title: "Invalid Name", message: "Name must be at least \(Constants.minNameLength) characters long")
+            showAlert(title: String(localized: "edit_name_invalid_title"), message: String(format: String(localized: "edit_name_min_length_format"), Constants.minNameLength))
             return
         }
         
         if newName.count > Constants.maxNameLength {
-            showAlert(title: "Invalid Name", message: "Name must be no more than \(Constants.maxNameLength) characters long")
+            showAlert(title: String(localized: "edit_name_invalid_title"), message: String(format: String(localized: "edit_name_max_length_format"), Constants.maxNameLength))
             return
         }
         
@@ -162,13 +162,13 @@ final class EditNameViewController: UIViewController {
             switch result {
             case .success:
                 DispatchQueue.main.async {
-                    self?.showAlert(title: "Success", message: "Name updated successfully") { _ in
+                    self?.showAlert(title: String(localized: "edit_name_success_title"), message: String(localized: "edit_name_success_message")) { _ in
                         self?.navigationController?.popViewController(animated: true)
                     }
                 }
             case .failure(let error):
                 DispatchQueue.main.async {
-                    self?.showAlert(title: "Error", message: "Failed to update name: \(error.localizedDescription)")
+                    self?.showAlert(title: String(localized: "modal_error_title"), message: String(format: String(localized: "edit_name_failed_update_format"), error.localizedDescription))
                 }
             }
         }

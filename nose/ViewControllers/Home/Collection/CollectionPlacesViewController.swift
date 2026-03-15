@@ -164,7 +164,7 @@ class CollectionPlacesViewController: UIViewController, UIGestureRecognizerDeleg
     lazy var customizeButton: CustomButton = {
         let button = CustomButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.setTitle("Customize avatar", for: .normal)
+        button.setTitle(String(localized: "button_customize_avatar"), for: .normal)
         button.style = .themeBlue
         button.size = .medium
         button.isPerfectlyRounded = true
@@ -495,13 +495,13 @@ class CollectionPlacesViewController: UIViewController, UIGestureRecognizerDeleg
     
     func toggleHeart(for placeId: String, isHearted: Bool) {
         guard let currentUserId = Auth.auth().currentUser?.uid else {
-            ToastManager.showToast(message: "Please sign in to heart spots", type: .error)
+            ToastManager.showToast(message: String(localized: "toast_please_sign_in_to_heart"), type: .error)
             return
         }
         
         // Check if user is a member of this collection
         guard collectionMembers.contains(currentUserId) else {
-            ToastManager.showToast(message: "Only collection members can heart spots", type: .error)
+            ToastManager.showToast(message: String(localized: "toast_only_members_can_heart"), type: .error)
             return
         }
         
@@ -555,7 +555,7 @@ class CollectionPlacesViewController: UIViewController, UIGestureRecognizerDeleg
         ) { [weak self] error in
             if let error = error {
                 Logger.log("Error saving hearts: \(error.localizedDescription)", level: .error, category: "Collection")
-                ToastManager.showToast(message: "Failed to save hearts", type: .error)
+                ToastManager.showToast(message: String(localized: "toast_failed_to_save_hearts"), type: .error)
                 self?.loadPlaceHearts()
             }
         }

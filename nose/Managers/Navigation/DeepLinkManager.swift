@@ -67,7 +67,7 @@ final class DeepLinkManager {
                                     Logger.log("Resolved to: \(resolved.absoluteString)", level: .info, category: "DeepLink")
                                     self.processResolvedURL(resolved, in: window)
                                 } else {
-                                    self.showAlert(title: "Error", message: "Could not resolve the link.", in: window)
+                                    self.showAlert(title: String(localized: "modal_error_title"), message: String(localized: "deeplink_error_resolve"), in: window)
                                 }
                             }
                         }
@@ -84,7 +84,7 @@ final class DeepLinkManager {
         }
         
         Logger.log("No recognizable content in URL", level: .warn, category: "DeepLink")
-        showAlert(title: "Cannot Open Link", message: "This link doesn't include a recognizable place.", in: window)
+        showAlert(title: String(localized: "modal_error_title"), message: String(localized: "deeplink_cannot_open_no_place"), in: window)
         return false
     }
     
@@ -275,7 +275,7 @@ final class DeepLinkManager {
             Logger.log("Searching for place by query: \(query)", level: .info, category: "DeepLink")
             searchForPlaceByName(query, in: window)
         } else {
-            showAlert(title: "Cannot Open Link", message: "The resolved link doesn't include a recognizable place.", in: window)
+            showAlert(title: String(localized: "modal_error_title"), message: String(localized: "deeplink_resolved_no_place"), in: window)
         }
     }
     
@@ -309,13 +309,13 @@ final class DeepLinkManager {
                                     self.openPlaceInApp(placeId: retryResult.placeID, in: window)
                                 } else {
                                     Logger.log("No places found for query or fallback", level: .warn, category: "DeepLink")
-                                    self.showAlert(title: "Place Not Found", message: "Could not find a matching place.", in: window)
+                                    self.showAlert(title: String(localized: "modal_error_title"), message: String(localized: "deeplink_place_not_found"), in: window)
                                 }
                             }
                         }
                     } else {
                         Logger.log("No places found for query", level: .warn, category: "DeepLink")
-                        self.showAlert(title: "Place Not Found", message: "Could not find a matching place.", in: window)
+                        self.showAlert(title: String(localized: "modal_error_title"), message: String(localized: "deeplink_place_not_found"), in: window)
                     }
                 }
             }
@@ -368,7 +368,7 @@ final class DeepLinkManager {
                     self.showPlaceInMap(place: place, in: window)
                 } else {
                     Logger.log("Failed to fetch place details", level: .warn, category: "DeepLink")
-                    self.showAlert(title: "Place Not Found", message: "Could not find details for this place.", in: window)
+                    self.showAlert(title: String(localized: "modal_error_title"), message: String(localized: "deeplink_place_no_details"), in: window)
                 }
             }
         }
@@ -377,7 +377,7 @@ final class DeepLinkManager {
     private func showPlaceInMap(place: GMSPlace, in window: UIWindow?) {
         // Find or create HomeViewController
         guard let homeVC = findOrCreateHomeViewController(in: window) else {
-            showAlert(title: "Error", message: "Could not open the map.", in: window)
+            showAlert(title: String(localized: "modal_error_title"), message: String(localized: "deeplink_error_open_map"), in: window)
             return
         }
         
@@ -391,7 +391,7 @@ final class DeepLinkManager {
     
     private func openCoordinateInApp(latitude: Double, longitude: Double, in window: UIWindow?) {
         guard let homeVC = findOrCreateHomeViewController(in: window) else {
-            showAlert(title: "Error", message: "Could not open the map.", in: window)
+            showAlert(title: String(localized: "modal_error_title"), message: String(localized: "deeplink_error_open_map"), in: window)
             return
         }
         
@@ -408,13 +408,13 @@ final class DeepLinkManager {
         
         // Ensure user is authenticated
         guard let currentUserId = Auth.auth().currentUser?.uid else {
-            showAlert(title: "Sign In Required", message: "Please sign in to add this collection.", in: window)
+            showAlert(title: String(localized: "modal_error_title"), message: String(localized: "deeplink_sign_in_required"), in: window)
             return
         }
         
         // Don't allow adding your own collection
         if currentUserId == userId {
-            showAlert(title: "Already Owned", message: "This is your own collection.", in: window)
+            showAlert(title: String(localized: "modal_error_title"), message: String(localized: "deeplink_already_owned"), in: window)
             return
         }
         
@@ -428,7 +428,7 @@ final class DeepLinkManager {
             
             if let error = error {
                 Logger.log("Error checking existing collection: \(error.localizedDescription)", level: .error, category: "DeepLink")
-                self.showAlert(title: "Error", message: "Failed to check collection. Please try again.", in: window)
+                self.showAlert(title: String(localized: "modal_error_title"), message: String(localized: "deeplink_error_check_collection"), in: window)
                 return
             }
             
@@ -448,25 +448,25 @@ final class DeepLinkManager {
                 
                 if let error = error {
                     Logger.log("Error fetching collection: \(error.localizedDescription)", level: .error, category: "DeepLink")
-                    self.showAlert(title: "Collection Not Found", message: "This collection could not be found.", in: window)
+                    self.showAlert(title: String(localized: "modal_error_title"), message: String(localized: "deeplink_collection_not_found"), in: window)
                     return
                 }
                 
                 guard let ownerData = ownerSnapshot?.data(),
                       ownerSnapshot?.exists == true else {
-                    self.showAlert(title: "Collection Not Found", message: "This collection could not be found.", in: window)
+                    self.showAlert(title: String(localized: "modal_error_title"), message: String(localized: "deeplink_collection_not_found"), in: window)
                     return
                 }
                 
                 // Parse the collection
                 guard let collection = PlaceCollection(dictionary: ownerData) else {
-                    self.showAlert(title: "Error", message: "Failed to load collection data.", in: window)
+                    self.showAlert(title: String(localized: "modal_error_title"), message: String(localized: "deeplink_error_load_collection"), in: window)
                     return
                 }
                 
                 // Check if collection is active
                 guard collection.status == .active else {
-                    self.showAlert(title: "Collection Unavailable", message: "This collection is no longer available.", in: window)
+                    self.showAlert(title: String(localized: "modal_error_title"), message: String(localized: "deeplink_collection_unavailable"), in: window)
                     return
                 }
                 
@@ -525,7 +525,7 @@ final class DeepLinkManager {
                         if let error = error {
                             DispatchQueue.main.async {
                                 Logger.log("Error adding collection: \(error.localizedDescription)", level: .error, category: "DeepLink")
-                                self.showAlert(title: "Error", message: "Failed to add collection. Please try again.", in: window)
+                                self.showAlert(title: String(localized: "modal_error_title"), message: String(localized: "deeplink_error_add_collection"), in: window)
                             }
                         } else {
                             Logger.log("Successfully added collection: \(collection.name)", level: .info, category: "DeepLink")
@@ -534,7 +534,7 @@ final class DeepLinkManager {
                             guard let sharedCollection = PlaceCollection(dictionary: sharedCollectionData) else {
                                 DispatchQueue.main.async {
                                     Logger.log("Failed to create shared collection object", level: .error, category: "DeepLink")
-                                    self.showAlert(title: "Error", message: "Failed to open collection. Please try again.", in: window)
+                                    self.showAlert(title: String(localized: "modal_error_title"), message: String(localized: "deeplink_error_open_collection"), in: window)
                                 }
                                 return
                             }
@@ -554,7 +554,7 @@ final class DeepLinkManager {
                                     
                                     // Show toast message
                                     ToastManager.showToast(
-                                        message: "You joined the collection created by \(ownerName)",
+                                        message: String(format: String(localized: "toast_joined_collection_format"), ownerName),
                                         type: .success
                                     )
                                     
@@ -589,16 +589,16 @@ final class DeepLinkManager {
             
             DispatchQueue.main.async {
                 let alert = UIAlertController(
-                    title: "Friend Required",
-                    message: "To join the collection, you need to be friend with the collection owner.",
+                    title: String(localized: "deeplink_friend_required_title"),
+                    message: String(localized: "deeplink_friend_required_message"),
                     preferredStyle: .alert
                 )
                 
                 // OK button
-                alert.addAction(UIAlertAction(title: "OK", style: .default))
+                alert.addAction(UIAlertAction(title: String(localized: "modal_ok"), style: .default))
                 
                 // Add Friend button
-                alert.addAction(UIAlertAction(title: "Add Friend", style: .default) { [weak self] _ in
+                alert.addAction(UIAlertAction(title: String(localized: "settings_add_friend"), style: .default) { [weak self] _ in
                     self?.navigateToAddFriend(ownerUserId: ownerUserIdString, in: window)
                 })
                 
@@ -656,7 +656,7 @@ final class DeepLinkManager {
         DispatchQueue.main.async {
             // Find or create HomeViewController
             guard let homeVC = self.findOrCreateHomeViewController(in: window) else {
-                self.showAlert(title: "Error", message: "Could not open the collection.", in: window)
+                self.showAlert(title: String(localized: "modal_error_title"), message: String(localized: "deeplink_error_open_collection_generic"), in: window)
                 return
             }
             
@@ -758,9 +758,9 @@ final class DeepLinkManager {
     private func showLocationSharedMessage(address: String?, in window: UIWindow?) {
         let message: String
         if let address = address {
-            message = "Map moved to \(address). You can search for places nearby."
+            message = String(format: String(localized: "deeplink_map_moved_address_format"), address)
         } else {
-            message = "Map moved to shared location. You can search for places nearby."
+            message = String(localized: "deeplink_map_moved_shared")
         }
         Logger.log("Showing location shared message: \(message)", level: .info, category: "DeepLink")
         // Note: We show the message but don't block the UI

@@ -466,7 +466,7 @@ class FloatingUIController: UIViewController {
         colorSheetView = sheet
 
         let title = UILabel()
-        title.text = "Colors"
+        title.text = String(localized: "unity_colors")
         title.font = .systemFont(ofSize: 16, weight: .semibold)
         title.translatesAutoresizingMaskIntoConstraints = false
         sheet.addSubview(title)
@@ -923,7 +923,7 @@ class FloatingUIController: UIViewController {
             ])
 
             let noAssetsLabel = UILabel()
-            noAssetsLabel.text = "No assets available"
+            noAssetsLabel.text = String(localized: "unity_no_assets")
             noAssetsLabel.textAlignment = .center
             noAssetsLabel.textColor = .fourthColor
             noAssetsLabel.font = .systemFont(ofSize: 16, weight: .medium)
