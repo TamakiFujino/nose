@@ -1,0 +1,119 @@
+# Reusable Maestro E2E workflow: build iOS app and run Maestro tests.
+# Runs on a self-hosted macOS runner where Google test accounts are already
+# cached in the simulator (required for Google Sign-In picker flows).
+#
+# Required secrets: CI_ENV_FILE, GOOGLE_SERVICE_INFO_DEVELOPMENT_PLIST,
+# GOOGLE_SERVICE_INFO_STAGING_PLIST, GOOGLE_SERVICE_INFO_PRODUCTION_PLIST,
+# USER_A_EMAIL, USER_A_NAME, USER_B_EMAIL, USER_B_NAME.
+name: Maestro E2E
+
+on:
+  workflow_call:
+
+jobs:
+  maestro-e2e:
+    name: Maestro E2E
+    runs-on: [self-hosted, macOS]
+    env:
+      JAVA_HOME: /opt/homebrew/opt/openjdk@17
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Patch project to exclude Unity
+        run: bash scripts/patch_project_exclude_unity.sh
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate config from env (xcconfig, Config.plist)
+        env:
+          CI_ENV_FILE: ${{ secrets.CI_ENV_FILE }}
+        run: |
+          if [ -z "$CI_ENV_FILE" ]; then
+            echo "::error::Secret CI_ENV_FILE is not set."
+            exit 1
+          fi
+          printf '%s' "$CI_ENV_FILE" > .env
+          node scripts/generate_config_from_env.js
+
+      - name: Write Firebase GoogleService-Info plists
+        env:
+          GOOGLE_SERVICE_INFO_DEVELOPMENT_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_DEVELOPMENT_PLIST }}
+          GOOGLE_SERVICE_INFO_STAGING_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_STAGING_PLIST }}
+          GOOGLE_SERVICE_INFO_PRODUCTION_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PRODUCTION_PLIST }}
+        run: |
+          mkdir -p FirebaseConfig
+          printf '%s' "$GOOGLE_SERVICE_INFO_DEVELOPMENT_PLIST" > FirebaseConfig/GoogleService-Info-Development.plist
+          printf '%s' "$GOOGLE_SERVICE_INFO_STAGING_PLIST" > FirebaseConfig/GoogleService-Info-Staging.plist
+          printf '%s' "$GOOGLE_SERVICE_INFO_PRODUCTION_PLIST" > FirebaseConfig/GoogleService-Info-Production.plist
+          for f in FirebaseConfig/GoogleService-Info-Development.plist FirebaseConfig/GoogleService-Info-Staging.plist FirebaseConfig/GoogleService-Info-Production.plist; do
+            [ -s "$f" ] || { echo "::error::Missing or empty plist: $f"; exit 1; }
+          done
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.2
+          bundler-cache: true
+
+      - name: Install CocoaPods dependencies
+        run: bundle exec pod install
+
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_16.2.app
+
+      - name: Build iOS app
+        run: |
+          xcodebuild build \
+            -workspace nose.xcworkspace \
+            -scheme nose-e2e \
+            -configuration E2E \
+            -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=18.2' \
+            -derivedDataPath ./builds
+
+      - name: Boot simulator
+        run: xcrun simctl boot "iPhone 16 Pro" || true
+
+      - name: Install app on simulator
+        run: xcrun simctl install booted ./builds/Build/Products/E2E-iphonesimulator/nose.app
+
+      - name: Ensure Maestro installed
+        run: |
+          if command -v maestro &>/dev/null || [ -x "$HOME/.maestro/bin/maestro" ]; then
+            echo "Maestro is already installed."
+          else
+            echo "Installing Maestro..."
+            curl -fsSL "https://get.maestro.mobile.dev" | bash
+          fi
+
+      - name: Run Maestro tests
+        env:
+          USER_A_EMAIL: ${{ secrets.USER_A_EMAIL }}
+          USER_A_NAME: ${{ secrets.USER_A_NAME }}
+          USER_B_EMAIL: ${{ secrets.USER_B_EMAIL }}
+          USER_B_NAME: ${{ secrets.USER_B_NAME }}
+        run: |
+          export PATH="$HOME/.maestro/bin:$PATH"
+          maestro test \
+            --format junit \
+            --output ./maestro-report \
+            --env USER_A_EMAIL="$USER_A_EMAIL" \
+            --env USER_A_NAME="$USER_A_NAME" \
+            --env USER_B_EMAIL="$USER_B_EMAIL" \
+            --env USER_B_NAME="$USER_B_NAME" \
+            .maestro/
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-report
+          path: maestro-report/
+          retention-days: 7
+
+      - name: Cleanup
+        if: always()
+        run: xcrun simctl shutdown "iPhone 16 Pro" || true
