@@ -108,28 +108,44 @@ public class AssetManager : MonoBehaviour
     public List<RegionDef> regionDefs = new List<RegionDef>
     {
         new RegionDef{ name = "chest", id = 1},
-        new RegionDef{ name = "shoulder", id = 2},
-        new RegionDef{ name = "stomach", id = 3},
-        new RegionDef{ name = "upperarm_l", id = 4},
-        new RegionDef{ name = "upperarm_r", id = 5},
-        new RegionDef{ name = "forearm_l", id = 6},
-        new RegionDef{ name = "forearm_r", id = 7},
-        new RegionDef{ name = "hand_l", id = 8},
-        new RegionDef{ name = "hand_r", id = 9},
-        new RegionDef{ name = "torso", id = 10},
-        new RegionDef{ name = "hip", id = 11},
-        new RegionDef{ name = "thigh_l", id = 12},
-        new RegionDef{ name = "thigh_r", id = 13},
-        new RegionDef{ name = "calf_l", id = 14},
+        new RegionDef{ name = "belly", id = 2},
+        new RegionDef{ name = "shoulder", id = 3},
+        new RegionDef{ name = "upper_arm", id = 4},
+        new RegionDef{ name = "elbow", id = 5},
+        new RegionDef{ name = "lower_arm", id = 6},
+        new RegionDef{ name = "hip", id = 7},
+        new RegionDef{ name = "upper_upper_leg", id = 8},
+        new RegionDef{ name = "upper_lower_leg", id = 9},
+        new RegionDef{ name = "knee", id = 10},
+        new RegionDef{ name = "lower_upper_leg", id = 11},
+        new RegionDef{ name = "lower_lower_leg", id = 12},
+        new RegionDef{ name = "ankle", id = 13},
+        new RegionDef{ name = "foot", id = 14},
         // add or adjust as needed
     };
 
     [Header("Region Mask Group Config")]
     public RegionMaskConfig regionMaskConfig;
 
+    [Header("Body Region Mask Textures")]
+    [Tooltip("If enabled, Body Region Mask shader uses packed RGBA textures instead of vertex-color region IDs.")]
+    public bool useRegionMaskTextures = false;
+    [Tooltip("Pack 0 uses RGBA for regions 1-4.")]
+    public Texture2D bodyRegionMaskPack0;
+    [Tooltip("Pack 1 uses RGBA for regions 5-8.")]
+    public Texture2D bodyRegionMaskPack1;
+    [Tooltip("Pack 2 uses RGBA for regions 9-12.")]
+    public Texture2D bodyRegionMaskPack2;
+    [Tooltip("Pack 3 uses RGBA for regions 13-16 (13-14 currently used).")]
+    public Texture2D bodyRegionMaskPack3;
+    [Range(0f, 1f)]
+    [Tooltip("Threshold used when testing sampled region mask channels.")]
+    public float bodyRegionMaskThreshold = 0.5f;
+
     private void Start()
     {
         EnsureAvatarRoot();
+        ApplyBodyRegionMaskTextureSettings();
         SetupUnityBridge();
         StartCoroutine(InitializeAddressables());
         if (verboseLogs) Debug.Log("AssetManager: Ready to receive asset data from iOS");
@@ -1536,11 +1552,36 @@ public class AssetManager : MonoBehaviour
         var smr = GetBodySkinnedMesh();
         if (smr != null)
         {
+            ApplyBodyRegionMaskTextureSettings();
             int id = Shader.PropertyToID("_RegionHideMask");
             foreach (var m in smr.materials)
             {
                 if (m != null && m.HasProperty(id)) m.SetInt(id, mask);
             }
+        }
+    }
+
+    private void ApplyBodyRegionMaskTextureSettings()
+    {
+        var smr = GetBodySkinnedMesh();
+        if (smr == null) return;
+
+        int useTexturesId = Shader.PropertyToID("_UseRegionMaskTextures");
+        int pack0Id = Shader.PropertyToID("_RegionMaskPack0");
+        int pack1Id = Shader.PropertyToID("_RegionMaskPack1");
+        int pack2Id = Shader.PropertyToID("_RegionMaskPack2");
+        int pack3Id = Shader.PropertyToID("_RegionMaskPack3");
+        int thresholdId = Shader.PropertyToID("_RegionMaskThreshold");
+
+        foreach (var m in smr.materials)
+        {
+            if (m == null) continue;
+            if (m.HasProperty(useTexturesId)) m.SetFloat(useTexturesId, useRegionMaskTextures ? 1f : 0f);
+            if (m.HasProperty(pack0Id) && bodyRegionMaskPack0 != null) m.SetTexture(pack0Id, bodyRegionMaskPack0);
+            if (m.HasProperty(pack1Id) && bodyRegionMaskPack1 != null) m.SetTexture(pack1Id, bodyRegionMaskPack1);
+            if (m.HasProperty(pack2Id) && bodyRegionMaskPack2 != null) m.SetTexture(pack2Id, bodyRegionMaskPack2);
+            if (m.HasProperty(pack3Id) && bodyRegionMaskPack3 != null) m.SetTexture(pack3Id, bodyRegionMaskPack3);
+            if (m.HasProperty(thresholdId)) m.SetFloat(thresholdId, bodyRegionMaskThreshold);
         }
     }
 }

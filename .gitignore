@@ -54,6 +54,12 @@ builds/
 # Node/npm caches
 node_modules/
 
+# Local tooling / caches (do not commit)
+actions-runner/
+.bundle/
+vendor/
+.claude/
+
 # Addressables cache states
 nose-unity/Assets/AddressableAssetsData/*/*.bin
 # OpenInNose extension: generated or local override
