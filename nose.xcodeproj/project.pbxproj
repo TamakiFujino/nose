@@ -43,13 +43,6 @@
 			remoteGlobalIDString = 49E99BF52D3BE432000F3CE5;
 			remoteInfo = nose;
 		};
-		49F87F492E64768400C129C4 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 49F87F3E2E64768400C129C4 /* Unity-iPhone.xcodeproj */;
-			proxyType = 2;
-			remoteGlobalIDString = 9D25AB9D213FB47800354C27;
-			remoteInfo = UnityFramework;
-		};
 		49F87F4F2E6476AB00C129C4 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 49F87F3E2E64768400C129C4 /* Unity-iPhone.xcodeproj */;
@@ -276,7 +269,6 @@
 		49F87F3F2E64768400C129C4 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				49F87F4A2E64768400C129C4 /* UnityFramework.framework */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -462,16 +454,6 @@
 			);
 		};
 /* End PBXProject section */
-
-/* Begin PBXReferenceProxy section */
-		49F87F4A2E64768400C129C4 /* UnityFramework.framework */ = {
-			isa = PBXReferenceProxy;
-			fileType = wrapper.framework;
-			path = UnityFramework.framework;
-			remoteRef = 49F87F492E64768400C129C4 /* PBXContainerItemProxy */;
-			sourceTree = BUILT_PRODUCTS_DIR;
-		};
-/* End PBXReferenceProxy section */
 
 /* Begin PBXResourcesBuildPhase section */
 		491FD1F22ECA18C30085D3BA /* Resources */ = {
