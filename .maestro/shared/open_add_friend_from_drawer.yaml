@@ -1,0 +1,4 @@
+appId: com.tamakifujino.nose
+---
+# Open Add Friend when already in Settings drawer
+- tapOn: "Add Friend"

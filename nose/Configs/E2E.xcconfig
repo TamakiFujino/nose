@@ -1,0 +1,21 @@
+//
+//  E2E.xcconfig
+//  nose
+//
+//  E2E build configuration for simulator-based testing (Maestro).
+//  Based on Development but excludes Unity (which only supports device archs).
+//
+
+// Configuration settings file format documentation can be found at:
+// https://developer.apple.com/documentation/xcode/adding-a-build-configuration-file-to-your-project
+
+#include "Pods/Target Support Files/Pods-nose/Pods-nose.e2e.xcconfig"
+
+GOOGLE_REVERSED_CLIENT_ID = com.googleusercontent.apps.489383670741-rv2v85atn42kgfv1d8ot96r06omhoogg
+GOOGLE_CLIENT_ID = 489383670741-rv2v85atn42kgfv1d8ot96r06omhoogg.apps.googleusercontent.com
+
+// Activate the EXCLUDE_UNITY stub in UnityLauncher.mm
+GCC_PREPROCESSOR_DEFINITIONS = $(inherited) EXCLUDE_UNITY=1
+
+// Let Swift code use #if EXCLUDE_UNITY
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = $(inherited) EXCLUDE_UNITY

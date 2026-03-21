@@ -1,0 +1,69 @@
+appId: com.tamakifujino.nose
+---
+# Test 05-02: Owner edit synced to member (User A renames; User B sees new name)
+# When the owner renames a shared collection, the member sees the new name in From Friends.
+# At the end, User A renames back to "National Parks" so the test is independent.
+# Prerequisite: 02-01 has run (National Parks created and shared with User B).
+
+- launchApp
+
+# User A: open National Parks, edit name to "Synced Rename"
+- runFlow: shared/login_user_a_ready.yaml
+- runFlow: shared/open_collections.yaml
+- tapOn: "National Parks"
+- tapOn: "More"
+- tapOn: "Edit Collection"
+- extendedWaitUntil:
+    visible: "Edit Collection"
+    timeout: 5000
+- tapOn:
+    id: "collection_name_field"
+- eraseText: 50
+- inputText: "Synced Rename"
+- tapOn:
+    point: "80%,50%"
+- tapOn: "Save"
+- extendedWaitUntil:
+    visible: "Synced Rename"
+    timeout: 10000
+- runFlow: shared/dismiss_modal.yaml
+- runFlow: shared/dismiss_modal.yaml
+- runFlow: shared/logout.yaml
+- assertVisible: "Continue with Google"
+
+# User B: open From Friends and verify collection shows new name
+- runFlow: shared/login_user_b_ready.yaml
+- runFlow: shared/open_collections.yaml
+- tapOn: "From Friends"
+- extendedWaitUntil:
+    visible: "Synced Rename"
+    timeout: 10000
+- tapOn: "Synced Rename"
+- assertVisible: "Synced Rename"
+- runFlow: shared/dismiss_collection_and_minimized.yaml
+- runFlow: shared/logout.yaml
+- assertVisible: "Continue with Google"
+
+# User A: rename back to "National Parks" so test is independent (other flows expect this name)
+- runFlow: shared/login_user_a_ready.yaml
+- runFlow: shared/open_collections.yaml
+- tapOn: "Synced Rename"
+- tapOn: "More"
+- tapOn: "Edit Collection"
+- extendedWaitUntil:
+    visible: "Edit Collection"
+    timeout: 5000
+- tapOn:
+    id: "collection_name_field"
+- eraseText: 50
+- inputText: "National Parks"
+- tapOn:
+    point: "80%,50%"
+- tapOn: "Save"
+- extendedWaitUntil:
+    visible: "National Parks"
+    timeout: 10000
+- runFlow: shared/dismiss_modal.yaml
+- runFlow: shared/dismiss_modal.yaml
+- runFlow: shared/logout.yaml
+- assertVisible: "Continue with Google"

@@ -71,20 +71,6 @@ final class UserManager {
         }
     }
     
-    func updateUserPreferences(userId: String, preferences: User.UserPreferences, completion: @escaping (Error?) -> Void) {
-        FirestorePaths.userDoc(userId).updateData([
-            "preferences": [
-                "language": preferences.language,
-                "theme": preferences.theme,
-                "notifications": preferences.notifications
-            ],
-            "lastLoginAt": FieldValue.serverTimestamp(),
-            "version": User.currentVersion
-        ]) { error in
-            completion(error)
-        }
-    }
-    
     // MARK: - Account Operations
     
     func updateUserName(userId: String, newName: String, completion: @escaping (Result<Void, Error>) -> Void) {
@@ -129,6 +115,10 @@ final class UserManager {
             
             snapshot?.documents.forEach { document in
                 batch.deleteDocument(document.reference)
+                // Remove this user from each friend's friends list so they no longer see the deleted user
+                let friendId = document.documentID
+                let friendFriendsRef = FirestorePaths.friends(userId: friendId, db: self.db).document(userId)
+                batch.deleteDocument(friendFriendsRef)
             }
             
             // 3. Delete user's blocked collection
@@ -145,8 +135,43 @@ final class UserManager {
                     batch.deleteDocument(document.reference)
                 }
                 
-                // 4. Get user's collections and mark shared copies as inactive
-                let collectionsRef = userRef.collection("collections")
+                // 3b. Remove deleted user from others' friend request lists and delete user's request subcollections
+                let friendRequestsRef = FirestorePaths.friendRequests(userId: userId, db: self.db)
+                let sentFriendRequestsRef = FirestorePaths.sentFriendRequests(userId: userId, db: self.db)
+                let requestGroup = DispatchGroup()
+                requestGroup.enter()
+                requestGroup.enter()
+                friendRequestsRef.getDocuments { [weak self] snapshot, error in
+                    defer { requestGroup.leave() }
+                    guard let self = self else { return }
+                    if let error = error {
+                        Logger.log("Error fetching friendRequests for cleanup: \(error.localizedDescription)", level: .error, category: "UserMgr")
+                        return
+                    }
+                    snapshot?.documents.forEach { document in
+                        let requesterId = document.documentID
+                        batch.deleteDocument(document.reference)
+                        let requesterSentRef = FirestorePaths.sentFriendRequests(userId: requesterId, db: self.db).document(userId)
+                        batch.deleteDocument(requesterSentRef)
+                    }
+                }
+                sentFriendRequestsRef.getDocuments { [weak self] snapshot, error in
+                    defer { requestGroup.leave() }
+                    guard let self = self else { return }
+                    if let error = error {
+                        Logger.log("Error fetching sentFriendRequests for cleanup: \(error.localizedDescription)", level: .error, category: "UserMgr")
+                        return
+                    }
+                    snapshot?.documents.forEach { document in
+                        let receiverId = document.documentID
+                        batch.deleteDocument(document.reference)
+                        let receiverRequestsRef = FirestorePaths.friendRequests(userId: receiverId, db: self.db).document(userId)
+                        batch.deleteDocument(receiverRequestsRef)
+                    }
+                }
+                requestGroup.notify(queue: .main) {
+                    // 4. Get user's collections and mark shared copies as inactive
+                    let collectionsRef = userRef.collection("collections")
                 collectionsRef.getDocuments { [weak self] snapshot, error in
                     guard let self = self else { return }
                     
@@ -218,6 +243,7 @@ final class UserManager {
                         }
                     }
                 }
+                }
             }
         }
     }
@@ -242,15 +268,6 @@ final class UserManager {
         getUser(id: userId, completion: completion)
     }
     
-    func updateCurrentUserPreferences(_ preferences: User.UserPreferences, completion: @escaping (Error?) -> Void) {
-        guard let userId = Auth.auth().currentUser?.uid else {
-            completion(nil)
-            return
-        }
-        
-        updateUserPreferences(userId: userId, preferences: preferences, completion: completion)
-    }
-    
     // MARK: - Profile Image
 
     func fetchProfileImageCollectionId(userId: String, completion: @escaping (Result<String?, Error>) -> Void) {
@@ -271,37 +288,4 @@ final class UserManager {
         ], completion: completion)
     }
 
-    // MARK: - Batch Migration
-    func migrateAllUsers(completion: @escaping (Error?) -> Void) {
-        FirestorePaths.users().getDocuments { [weak self] snapshot, error in
-            guard let self = self else { return }
-            
-            if let error = error {
-                completion(error)
-                return
-            }
-            
-            let batch = self.db.batch()
-            var migrationCount = 0
-            
-            snapshot?.documents.forEach { document in
-                let data = document.data()
-                let currentVersion = data["version"] as? Int ?? 1
-                
-                if currentVersion < User.currentVersion {
-                    let migratedData = User.migrate(data, from: currentVersion)
-                    batch.setData(migratedData, forDocument: document.reference, merge: true)
-                    migrationCount += 1
-                }
-            }
-            
-            if migrationCount > 0 {
-                batch.commit { error in
-                    completion(error)
-                }
-            } else {
-                completion(nil)
-            }
-        }
-    }
-} 
+}

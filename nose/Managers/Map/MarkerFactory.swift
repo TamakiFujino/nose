@@ -222,21 +222,29 @@ final class MarkerFactory {
         
         return markerView
     }
-    private static func createCurrentLocationMarkerView() -> UIView {
-        let markerView = UIView(frame: CGRect(x: 0, y: 0, width: Constants.markerSize, height: Constants.markerSize))
+    static func createCurrentLocationMarkerView() -> UIView {
+        let containerSize = Constants.markerSize * 2 // Extra room for pulse animation
+
+        let markerView = UIView(frame: CGRect(x: 0, y: 0, width: containerSize, height: containerSize))
         markerView.backgroundColor = .clear
-        
-        // Outer circle
-        let outerCircle = UIView(frame: CGRect(x: 0, y: 0, width: Constants.markerSize, height: Constants.markerSize))
+        markerView.isUserInteractionEnabled = false
+
+        // Outer pulsing circle - centered in container
+        let outerCircle = UIView(frame: CGRect(
+            x: (containerSize - Constants.markerSize) / 2,
+            y: (containerSize - Constants.markerSize) / 2,
+            width: Constants.markerSize,
+            height: Constants.markerSize
+        ))
         outerCircle.backgroundColor = UIColor.fourthColor.withAlphaComponent(0.3)
         outerCircle.layer.cornerRadius = Constants.markerSize / 2
-        outerCircle.layer.masksToBounds = true
+        outerCircle.tag = 100
         markerView.addSubview(outerCircle)
-        
-        // Inner circle
+
+        // Inner circle - centered in container
         let innerCircle = UIView(frame: CGRect(
-            x: Constants.innerCircleOffset,
-            y: Constants.innerCircleOffset,
+            x: (containerSize - Constants.innerCircleSize) / 2,
+            y: (containerSize - Constants.innerCircleSize) / 2,
             width: Constants.innerCircleSize,
             height: Constants.innerCircleSize
         ))
@@ -244,8 +252,22 @@ final class MarkerFactory {
         innerCircle.layer.cornerRadius = Constants.innerCircleSize / 2
         innerCircle.layer.masksToBounds = true
         markerView.addSubview(innerCircle)
-        
+
         return markerView
+    }
+
+    static func startPulsingAnimation(on markerView: UIView) {
+        guard let pulseCircle = markerView.viewWithTag(100) else { return }
+
+        let scaleAnimation = CABasicAnimation(keyPath: "transform.scale")
+        scaleAnimation.fromValue = 1.0
+        scaleAnimation.toValue = 1.4
+        scaleAnimation.duration = 1.0
+        scaleAnimation.repeatCount = .infinity
+        scaleAnimation.autoreverses = true
+        scaleAnimation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+
+        pulseCircle.layer.add(scaleAnimation, forKey: "pulse")
     }
     
     private static func createCollectionPlaceMarkerView(iconName: String?, iconUrl: String?, isSmall: Bool = false) -> UIView {

@@ -13,45 +13,59 @@ MonoBehaviour:
   m_Name: RegionMaskConfig
   m_EditorClassIdentifier: 
   groups:
-  - label: tops-nosleeve-cropped
-    regionNames: []
+  - label: chest
+    regionNames:
+    - chest
     regionIds: 01000000
-  - label: tops-nosleeve
-    regionNames: []
-    regionIds: 0100000002000000
-  - label: tops-short-cropped
-    regionNames: []
-    regionIds: 0100000003000000
-  - label: tops-short
-    regionNames: []
-    regionIds: 010000000200000003000000
-  - label: tops-half-cropped
-    regionNames: []
-    regionIds: 010000000300000004000000
-  - label: tops-half
-    regionNames: []
-    regionIds: 01000000020000000300000004000000
-  - label: tops-seven-cropped
-    regionNames: []
-    regionIds: 01000000030000000400000005000000
-  - label: tops-seven
-    regionNames: []
-    regionIds: 0100000002000000030000000400000005000000
-  - label: tops-long-cropped
-    regionNames: []
-    regionIds: 0100000003000000040000000500000006000000
-  - label: tops-long
-    regionNames: []
-    regionIds: 010000000200000003000000040000000500000006000000
-  - label: bottoms-short
-    regionNames: []
+  - label: belly
+    regionNames:
+    - belly
+    regionIds: 02000000
+  - label: shoulder
+    regionNames:
+    - shoulder
+    regionIds: 03000000
+  - label: upper_arm
+    regionNames:
+    - upper_arm
+    regionIds: 04000000
+  - label: elbow
+    regionNames:
+    - elbow
+    regionIds: 05000000
+  - label: lower_arm
+    regionNames:
+    - lower_arm
+    regionIds: 06000000
+  - label: hip
+    regionNames:
+    - hip
     regionIds: 07000000
-  - label: bottoms-half
-    regionNames: []
-    regionIds: 0700000008000000
-  - label: bottoms-med
-    regionNames: []
-    regionIds: 070000000800000009000000
-  - label: bottoms-long
-    regionNames: []
-    regionIds: 0700000008000000090000000a000000
+  - label: upper_upper_leg
+    regionNames:
+    - upper_upper_leg
+    regionIds: 08000000
+  - label: upper_lower_leg
+    regionNames:
+    - upper_lower_leg
+    regionIds: 09000000
+  - label: knee
+    regionNames:
+    - knee
+    regionIds: 0a000000
+  - label: lower_upper_leg
+    regionNames:
+    - lower_upper_leg
+    regionIds: 0b000000
+  - label: lower_lower_leg
+    regionNames:
+    - lower_lower_leg
+    regionIds: 0c000000
+  - label: ankle
+    regionNames:
+    - ankle
+    regionIds: 0d000000
+  - label: foot
+    regionNames:
+    - foot
+    regionIds: 0e000000

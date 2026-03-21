@@ -1,0 +1,21 @@
+appId: com.tamakifujino.nose
+---
+# Test 99-02: Verify Cascade & Delete User B
+
+- launchApp
+
+# Sign in as User B
+- runFlow: shared/login_user_b_ready.yaml
+
+# Verify User A's collection no longer appears
+- runFlow: shared/open_collections.yaml
+- tapOn: "From Friends"
+- assertNotVisible: "National Parks"
+- runFlow: shared/dismiss_modal.yaml
+- runFlow: shared/dismiss_modal.yaml
+
+# Delete account
+- runFlow: shared/delete_current_account.yaml
+
+# Verify returned to login screen
+- assertVisible: "Continue with Google"

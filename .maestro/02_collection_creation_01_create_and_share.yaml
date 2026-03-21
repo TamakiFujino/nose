@@ -1,0 +1,80 @@
+appId: com.tamakifujino.nose
+---
+# Test 02-01: Create Collection & Share (User A)
+# Creates a collection, adds a spot, shares with User B.
+
+- launchApp
+
+# Sign in as User A
+- runFlow: shared/login_user_a_ready.yaml
+
+# Search for a place
+- tapOn:
+    id: "search_button"
+- inputText: "Kings Canyon National Park"
+- extendedWaitUntil:
+    visible: "Kings Canyon National Park"
+    timeout: 10000
+# Tap the search result row (index 1), not the search bar text (index 0)
+- tapOn:
+    text: "Kings Canyon National Park"
+    index: 1
+
+# Bookmark the place (sheet exposes label "Bookmark", not id, to UI test)
+- extendedWaitUntil:
+    visible: "Bookmark"
+    timeout: 10000
+- tapOn: "Bookmark"
+- assertVisible: "Save to Collection"
+
+# Create a new collection
+- tapOn:
+    id: "add"
+# Select an icon
+- tapOn:
+    id: "icon_button"
+- extendedWaitUntil:
+    visible: "Hobby"
+    timeout: 10000
+# Tap the first icon in the grid
+- tapOn:
+    id: "icon_cell_0"
+# Type collection name
+- tapOn:
+    id: "collection_name_field"
+- inputText: "National Parks"
+- hideKeyboard
+- tapOn: "Save"
+
+# Save to the collection
+- extendedWaitUntil:
+    visible: "National Parks"
+    timeout: 10000
+- tapOn: "National Parks"
+- tapOn: "Save"
+
+# Dismiss place detail
+- runFlow: shared/dismiss_modal.yaml
+
+# Open collections and verify
+- runFlow: shared/open_collections.yaml
+- assertVisible: "My Collections"
+- tapOn: "National Parks"
+- assertVisible: "Kings Canyon National Park"
+- assertVisible:
+    id: "places_count_label"
+    text: "1"
+
+# Share with User B
+- tapOn: "More"
+- tapOn: "Share with Friends"
+- tapOn: "User B"
+- tapOn: "Update Sharing"
+- assertVisible:
+    id: "shared_friends_count_label"
+    text: "2"
+
+# Dismiss collection detail modal (large), then collection list modal (may be minimized)
+- runFlow: shared/dismiss_collection_and_minimized.yaml
+- runFlow: shared/logout.yaml
+- assertVisible: "Continue with Google"

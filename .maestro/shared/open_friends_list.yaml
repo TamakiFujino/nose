@@ -1,0 +1,5 @@
+appId: com.tamakifujino.nose
+---
+# Navigate to Friends List: Personal Library → Friend List
+- tapOn: "Personal Library"
+- tapOn: "Friend List"

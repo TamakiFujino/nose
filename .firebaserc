@@ -1,0 +1,31 @@
+{
+  "projects": {
+    "default": "nose-a2309",
+    "dev": "nose-a2309",
+    "staging": "nose-staging",
+    "production": "nose-production"
+  },
+  "targets": {
+    "nose-a2309": {
+      "hosting": {
+        "dev": [
+          "nose-a2309"
+        ]
+      }
+    },
+    "nose-staging": {
+      "hosting": {
+        "staging": [
+          "nose-staging"
+        ]
+      }
+    },
+    "nose-production": {
+      "hosting": {
+        "production": [
+          "production"
+        ]
+      }
+    }
+  }
+}
