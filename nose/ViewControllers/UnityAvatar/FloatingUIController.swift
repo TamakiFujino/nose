@@ -791,7 +791,7 @@ class FloatingUIController: UIViewController {
         button.setTitleColor(.black, for: .normal)
         // Set default background to secondColor
         button.backgroundColor = .secondColor
-        button.layer.cornerRadius = isParent ? 16 : 12
+        button.clipsToBounds = true
         button.layer.borderWidth = 0
         button.layer.borderColor = UIColor.clear.cgColor
         button.translatesAutoresizingMaskIntoConstraints = false
@@ -867,7 +867,6 @@ class FloatingUIController: UIViewController {
                 // Inactive tab: secondColor background with black text
                 button.backgroundColor = isSelected ? .fourthColor : .secondColor
                 button.setTitleColor(isSelected ? .white : .black, for: .normal)
-                button.layer.cornerRadius = 16
             }
         }
         for (index, subview) in childCategoryStackView.arrangedSubviews.enumerated() {
@@ -879,7 +878,6 @@ class FloatingUIController: UIViewController {
                 // Inactive tab: secondColor background with black text
                 button.backgroundColor = isSelected ? .fourthColor : .secondColor
                 button.setTitleColor(isSelected ? .white : .black, for: .normal)
-                button.layer.cornerRadius = 12
             }
         }
     }
