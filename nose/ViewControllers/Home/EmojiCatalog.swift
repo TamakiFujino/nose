@@ -13,17 +13,18 @@ enum EmojiCategory: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    /// Tab label; localized via `Localizable.xcstrings` (`emoji_category_*`).
     var title: String {
         switch self {
-        case .smileys: return "Smileys"
-        case .people: return "People"
-        case .nature: return "Nature"
-        case .food: return "Food"
-        case .travel: return "Places"
-        case .activities: return "Activities"
-        case .objects: return "Objects"
-        case .symbols: return "Symbols"
-        case .flags: return "Flags"
+        case .smileys: return String(localized: "emoji_category_smileys")
+        case .people: return String(localized: "emoji_category_people")
+        case .nature: return String(localized: "emoji_category_nature")
+        case .food: return String(localized: "emoji_category_food")
+        case .travel: return String(localized: "emoji_category_travel")
+        case .activities: return String(localized: "emoji_category_activities")
+        case .objects: return String(localized: "emoji_category_objects")
+        case .symbols: return String(localized: "emoji_category_symbols")
+        case .flags: return String(localized: "emoji_category_flags")
         }
     }
 }
