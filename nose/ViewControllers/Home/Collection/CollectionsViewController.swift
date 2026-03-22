@@ -584,7 +584,9 @@ class CollectionsViewController: UIViewController {
         let allCollections = personalCollections + sharedCollections
         
         for collection in allCollections {
-            if let iconUrl = collection.iconUrl, !iconUrl.isEmpty {
+            if (collection.iconName?.isEmpty ?? true),
+               let iconUrl = collection.iconUrl,
+               !iconUrl.isEmpty {
                 // Only load if not already cached
                 if CollectionsViewController.imageCache.object(forKey: iconUrl as NSString) == nil {
                     loadRemoteIconImage(urlString: iconUrl, collectionId: collection.id)
@@ -646,15 +648,17 @@ extension CollectionsViewController: UITableViewDelegate, UITableViewDataSource 
         // Create icon image for the collection
         var iconImage = createCollectionIconImage(collection: collection)
         
-        // Check if we have a cached or loaded remote icon
-        if let iconUrl = collection.iconUrl, !iconUrl.isEmpty {
+        // Legacy image fallback for older collections that still use icon URLs.
+        if (collection.iconName?.isEmpty ?? true),
+           let iconUrl = collection.iconUrl,
+           !iconUrl.isEmpty {
             // First check if already loaded in memory
             if let loadedImage = loadedIconImages[collection.id] {
-                iconImage = createIconImageWithBackground(remoteImage: loadedImage, size: 40)
+                iconImage = CollectionIconRenderer.makeIconImage(iconName: nil, remoteImage: loadedImage, size: 40)
             } else if let cachedImage = CollectionsViewController.imageCache.object(forKey: iconUrl as NSString) {
                 // Use cached image immediately
                 loadedIconImages[collection.id] = cachedImage
-                iconImage = createIconImageWithBackground(remoteImage: cachedImage, size: 40)
+                iconImage = CollectionIconRenderer.makeIconImage(iconName: nil, remoteImage: cachedImage, size: 40)
             } else {
                 // Not cached yet, load it (but don't block the UI)
                 loadRemoteIconImage(urlString: iconUrl, collectionId: collection.id)
@@ -713,138 +717,16 @@ extension CollectionsViewController: UITableViewDelegate, UITableViewDataSource 
     }
     
     private func createCollectionIconImage(collection: PlaceCollection) -> UIImage? {
-        let size: CGFloat = 40 // Close to cell height
-        let format = UIGraphicsImageRendererFormat.default()
-        format.opaque = false
-        let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size), format: format)
-        
-        // Priority: iconUrl > iconName
-        let iconUrl = collection.iconUrl
-        let iconName = collection.iconName
-        
-        // Check if we have a loaded custom image
-        if let url = iconUrl, let loadedImage = loadedIconImages[collection.id] {
-            return createIconImageWithBackground(remoteImage: loadedImage, size: size)
-        }
-        
-        // Check if icon is set - either iconUrl exists (even if not loaded) or iconName exists
-        let hasIcon = (iconUrl != nil && !iconUrl!.isEmpty) || (iconName != nil && UIImage(systemName: iconName!) != nil)
-        
-        // Fall back to SF Symbol if iconUrl is not available
-        return renderer.image { context in
-            let rect = CGRect(x: 0, y: 0, width: size, height: size)
-            let cgContext = context.cgContext
-            
-            // Draw background circle - white if icon is set, light gray if no icon
-            let path = UIBezierPath(ovalIn: rect)
-            cgContext.setFillColor(hasIcon ? UIColor.white.cgColor : UIColor.systemGray5.cgColor)
-            cgContext.addPath(path.cgPath)
-            cgContext.fillPath()
-            
-            // Draw white border
-            cgContext.setStrokeColor(UIColor.white.cgColor)
-            cgContext.setLineWidth(1.5)
-            cgContext.addPath(path.cgPath)
-            cgContext.strokePath()
-            
-            // Draw icon if available
-            if let iconName = iconName,
-               let iconImage = UIImage(systemName: iconName) {
-                let iconSize: CGFloat = 22
-                let iconRect = CGRect(
-                    x: (size - iconSize) / 2,
-                    y: (size - iconSize) / 2,
-                    width: iconSize,
-                    height: iconSize
-                )
-                
-                // Calculate aspect-preserving rect
-                let aspect = iconImage.size.width / iconImage.size.height
-                var drawRect = iconRect
-                
-                if aspect > 1 {
-                    let height = iconRect.width / aspect
-                    drawRect = CGRect(
-                        x: iconRect.origin.x,
-                        y: iconRect.origin.y + (iconRect.height - height) / 2,
-                        width: iconRect.width,
-                        height: height
-                    )
-                } else {
-                    let width = iconRect.height * aspect
-                    drawRect = CGRect(
-                        x: iconRect.origin.x + (iconRect.width - width) / 2,
-                        y: iconRect.origin.y,
-                        width: width,
-                        height: iconRect.height
-                    )
-                }
-                
-                // Draw icon in darker color
-                let tintedIcon = iconImage.withTintColor(.systemGray, renderingMode: .alwaysTemplate)
-                tintedIcon.draw(in: drawRect, blendMode: .normal, alpha: 1.0)
-            }
-        }
+        let size: CGFloat = 40
+        return CollectionIconRenderer.makeIconImage(
+            iconName: collection.iconName,
+            remoteImage: loadedIconImages[collection.id],
+            size: size
+        )
     }
     
     private func createIconImageWithBackground(remoteImage: UIImage, size: CGFloat) -> UIImage? {
-        let format = UIGraphicsImageRendererFormat.default()
-        format.opaque = false
-        let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size), format: format)
-        
-        return renderer.image { context in
-            let rect = CGRect(x: 0, y: 0, width: size, height: size)
-            let cgContext = context.cgContext
-            
-            // Draw background circle
-            let path = UIBezierPath(ovalIn: rect)
-            cgContext.setFillColor(UIColor.white.cgColor)
-            cgContext.addPath(path.cgPath)
-            cgContext.fillPath()
-            
-            // Draw white border
-            cgContext.setStrokeColor(UIColor.white.cgColor)
-            cgContext.setLineWidth(1.5)
-            cgContext.addPath(path.cgPath)
-            cgContext.strokePath()
-            
-            // Draw remote image in the center, preserving aspect ratio
-            let imageSize: CGFloat = size * 0.75 // 75% of circle size for padding
-            let imageRect = CGRect(
-                x: (size - imageSize) / 2,
-                y: (size - imageSize) / 2,
-                width: imageSize,
-                height: imageSize
-            )
-            
-            // Clip to circle
-            cgContext.addPath(path.cgPath)
-            cgContext.clip()
-            
-            // Calculate aspect-preserving rect
-            let aspect = remoteImage.size.width / remoteImage.size.height
-            var drawRect = imageRect
-            
-            if aspect > 1 {
-                let height = imageRect.width / aspect
-                drawRect = CGRect(
-                    x: imageRect.origin.x,
-                    y: imageRect.origin.y + (imageRect.height - height) / 2,
-                    width: imageRect.width,
-                    height: height
-                )
-            } else {
-                let width = imageRect.height * aspect
-                drawRect = CGRect(
-                    x: imageRect.origin.x + (imageRect.width - width) / 2,
-                    y: imageRect.origin.y,
-                    width: width,
-                    height: imageRect.height
-                )
-            }
-            
-            remoteImage.draw(in: drawRect, blendMode: .normal, alpha: 1.0)
-        }
+        CollectionIconRenderer.makeIconImage(iconName: nil, remoteImage: remoteImage, size: size)
     }
     
     private func loadRemoteIconImage(urlString: String, collectionId: String) {

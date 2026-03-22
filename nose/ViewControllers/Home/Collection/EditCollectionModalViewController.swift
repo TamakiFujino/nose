@@ -34,8 +34,10 @@ class EditCollectionModalViewController: CollectionModalViewController {
         selectedIconName = collection.iconName
         
         // Update icon button display
-        if let iconUrl = collection.iconUrl, !iconUrl.isEmpty {
-            updateIconButton(with: iconUrl)
+        if let iconName = collection.iconName, !iconName.isEmpty {
+            updateIconButton(with: iconName)
+        } else if let iconUrl = collection.iconUrl, !iconUrl.isEmpty {
+            updateLegacyIconButtonState()
         } else {
             resetIconButton()
         }

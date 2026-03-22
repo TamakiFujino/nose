@@ -5,82 +5,15 @@ import UIKit
 extension CollectionPlacesViewController {
 
     func createCollectionIconImage(collection: PlaceCollection?, iconName: String? = nil, iconUrl: String? = nil) -> UIImage? {
-        let size: CGFloat = 60
-        let format = UIGraphicsImageRendererFormat.default()
-        format.opaque = false
-        let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size), format: format)
-
         let finalIconUrl = iconUrl ?? collection?.iconUrl
         let finalIconName = iconName ?? collection?.iconName
+        let legacyImage = finalIconName == nil ? imageForCollectionIconURL(finalIconUrl) : nil
 
-        let hasIcon = (finalIconUrl != nil && !finalIconUrl!.isEmpty) || (finalIconName != nil && UIImage(systemName: finalIconName!) != nil)
-
-        if let iconUrlString = finalIconUrl, let _ = URL(string: iconUrlString) {
-            return renderer.image { context in
-                let rect = CGRect(x: 0, y: 0, width: size, height: size)
-                let cgContext = context.cgContext
-
-                let path = UIBezierPath(ovalIn: rect)
-                cgContext.setFillColor(hasIcon ? UIColor.white.cgColor : UIColor.systemGray5.cgColor)
-                cgContext.addPath(path.cgPath)
-                cgContext.fillPath()
-
-                cgContext.setStrokeColor(UIColor.white.cgColor)
-                cgContext.setLineWidth(1.5)
-                cgContext.addPath(path.cgPath)
-                cgContext.strokePath()
-            }
-        }
-
-        return renderer.image { context in
-            let rect = CGRect(x: 0, y: 0, width: size, height: size)
-            let cgContext = context.cgContext
-
-            let path = UIBezierPath(ovalIn: rect)
-            cgContext.setFillColor(hasIcon ? UIColor.white.cgColor : UIColor.systemGray5.cgColor)
-            cgContext.addPath(path.cgPath)
-            cgContext.fillPath()
-
-            cgContext.setStrokeColor(UIColor.white.cgColor)
-            cgContext.setLineWidth(1.5)
-            cgContext.addPath(path.cgPath)
-            cgContext.strokePath()
-
-            if let iconName = finalIconName,
-               let iconImage = UIImage(systemName: iconName) {
-                let iconSize: CGFloat = 33
-                let iconRect = CGRect(
-                    x: (size - iconSize) / 2,
-                    y: (size - iconSize) / 2,
-                    width: iconSize,
-                    height: iconSize
-                )
-
-                let aspect = iconImage.size.width / iconImage.size.height
-                var drawRect = iconRect
-
-                if aspect > 1 {
-                    let height = iconRect.width / aspect
-                    drawRect = CGRect(
-                        x: iconRect.origin.x,
-                        y: iconRect.origin.y + (iconRect.height - height) / 2,
-                        width: iconRect.width,
-                        height: height
-                    )
-                } else {
-                    let width = iconRect.height * aspect
-                    drawRect = CGRect(
-                        x: iconRect.origin.x + (iconRect.width - width) / 2,
-                        y: iconRect.origin.y,
-                        width: width,
-                        height: iconRect.height
-                    )
-                }
-
-                let tintedIcon = iconImage.withTintColor(.systemGray, renderingMode: .alwaysTemplate)
-                tintedIcon.draw(in: drawRect, blendMode: .normal, alpha: 1.0)
-            }
-        }
+        return CollectionIconRenderer.makeIconImage(
+            iconName: finalIconName,
+            remoteImage: legacyImage,
+            size: 60
+        )
     }
 
     func loadRemoteIconImage(urlString: String, completion: @escaping (UIImage?) -> Void) {
@@ -111,76 +44,37 @@ extension CollectionPlacesViewController {
         let iconUrlToUse = currentIconUrl ?? collection.iconUrl
         let iconNameToUse = currentIconName ?? collection.iconName
 
+        if let iconName = iconNameToUse, !iconName.isEmpty {
+            collectionIconImageView.image = createCollectionIconImage(collection: collection, iconName: iconName, iconUrl: nil)
+            return
+        }
+
         if let iconUrl = iconUrlToUse, !iconUrl.isEmpty {
             loadRemoteIconImage(urlString: iconUrl) { [weak self] image in
                 DispatchQueue.main.async {
                     guard let self = self else { return }
-                    if let image = image {
-                        self.collectionIconImageView.image = self.createIconImageWithBackground(remoteImage: image)
-                    } else {
-                        self.collectionIconImageView.image = self.createCollectionIconImage(collection: self.collection, iconName: iconNameToUse, iconUrl: nil)
-                    }
+                    self.collectionIconImageView.image = CollectionIconRenderer.makeIconImage(
+                        iconName: nil,
+                        remoteImage: image,
+                        size: 60
+                    )
                 }
             }
-        } else {
-            collectionIconImageView.image = createCollectionIconImage(collection: collection, iconName: iconNameToUse, iconUrl: nil)
+            return
         }
+
+        collectionIconImageView.image = createCollectionIconImage(collection: collection, iconName: nil, iconUrl: nil)
     }
 
     func createIconImageWithBackground(remoteImage: UIImage) -> UIImage? {
-        let size: CGFloat = 60
-        let format = UIGraphicsImageRendererFormat.default()
-        format.opaque = false
-        let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size), format: format)
+        CollectionIconRenderer.makeIconImage(iconName: nil, remoteImage: remoteImage, size: 60)
+    }
 
-        return renderer.image { context in
-            let rect = CGRect(x: 0, y: 0, width: size, height: size)
-            let cgContext = context.cgContext
-
-            let path = UIBezierPath(ovalIn: rect)
-            cgContext.setFillColor(UIColor.white.cgColor)
-            cgContext.addPath(path.cgPath)
-            cgContext.fillPath()
-
-            cgContext.setStrokeColor(UIColor.white.cgColor)
-            cgContext.setLineWidth(1.5)
-            cgContext.addPath(path.cgPath)
-            cgContext.strokePath()
-
-            let imageSize: CGFloat = size * 0.75
-            let imageRect = CGRect(
-                x: (size - imageSize) / 2,
-                y: (size - imageSize) / 2,
-                width: imageSize,
-                height: imageSize
-            )
-
-            cgContext.addPath(path.cgPath)
-            cgContext.clip()
-
-            let aspect = remoteImage.size.width / remoteImage.size.height
-            var drawRect = imageRect
-
-            if aspect > 1 {
-                let height = imageRect.width / aspect
-                drawRect = CGRect(
-                    x: imageRect.origin.x,
-                    y: imageRect.origin.y + (imageRect.height - height) / 2,
-                    width: imageRect.width,
-                    height: height
-                )
-            } else {
-                let width = imageRect.height * aspect
-                drawRect = CGRect(
-                    x: imageRect.origin.x + (imageRect.width - width) / 2,
-                    y: imageRect.origin.y,
-                    width: width,
-                    height: imageRect.height
-                )
-            }
-
-            remoteImage.draw(in: drawRect, blendMode: .normal, alpha: 1.0)
+    private func imageForCollectionIconURL(_ urlString: String?) -> UIImage? {
+        guard let urlString, !urlString.isEmpty else {
+            return nil
         }
+        return CollectionPlacesViewController.imageCache.object(forKey: urlString as NSString)
     }
 
     // MARK: - Avatar Loading

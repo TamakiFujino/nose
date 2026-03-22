@@ -889,7 +889,16 @@
     "date_picker_end_title" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Select End Date & Time" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "終了日時を選択" } } } },
     "button_select" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Select" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "選択" } } } },
     "unity_colors" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Colors" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "カラー" } } } },
-    "unity_no_assets" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "No assets available" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "利用可能なアセットがありません" } } } }
+    "unity_no_assets" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "No assets available" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "利用可能なアセットがありません" } } } },
+    "emoji_category_smileys" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Smileys" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "スマイル" } } } },
+    "emoji_category_people" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "People" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "人物" } } } },
+    "emoji_category_nature" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Nature" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "自然" } } } },
+    "emoji_category_food" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Food" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "食べ物" } } } },
+    "emoji_category_travel" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Places" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "場所" } } } },
+    "emoji_category_activities" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Activities" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "スポーツ" } } } },
+    "emoji_category_objects" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Objects" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "日用品" } } } },
+    "emoji_category_symbols" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Symbols" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "記号" } } } },
+    "emoji_category_flags" : { "extractionState" : "manual", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Flags" } }, "ja" : { "stringUnit" : { "state" : "translated", "value" : "国旗" } } } }
   },
   "version" : "1.0"
 }
