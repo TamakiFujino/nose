@@ -281,8 +281,8 @@ final class MarkerFactory {
         let markerView = UIView(frame: CGRect(x: 0, y: 0, width: totalSize, height: totalSize))
         markerView.backgroundColor = .clear
         
-        // Check if icon is set
-        let hasIcon = (iconUrl != nil && !iconUrl!.isEmpty) || (iconName != nil && UIImage(systemName: iconName!) != nil)
+        let normalizedIconName = iconName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let hasIcon = (normalizedIconName?.isEmpty == false) || (iconUrl != nil && !iconUrl!.isEmpty)
         
         // Create circular shadow using multiple layers for soft blur effect
         let shadowSize = size + shadowRadius * 4
@@ -326,10 +326,39 @@ final class MarkerFactory {
         
         markerView.addSubview(backgroundCircle)
         
-        // Priority: iconUrl > iconName (with fallback)
+        // Priority: emoji / symbol in iconName > legacy iconUrl fallback.
         var iconAdded = false
         
-        if let iconUrl = iconUrl, !iconUrl.isEmpty {
+        if let iconName = normalizedIconName, !iconName.isEmpty {
+            if let iconImage = UIImage(systemName: iconName) {
+                let iconSize: CGFloat = size * (isSmall ? 0.55 : 0.7)
+                let iconImageView = UIImageView(frame: CGRect(
+                    x: shadowPadding + (size - iconSize) / 2,
+                    y: shadowPadding + (size - iconSize) / 2,
+                    width: iconSize,
+                    height: iconSize
+                ))
+                iconImageView.image = iconImage
+                iconImageView.tintColor = .systemGray
+                iconImageView.contentMode = .scaleAspectFit
+                markerView.addSubview(iconImageView)
+                iconAdded = true
+            } else {
+                let iconLabel = UILabel(frame: CGRect(
+                    x: shadowPadding,
+                    y: shadowPadding,
+                    width: size,
+                    height: size
+                ))
+                iconLabel.text = iconName
+                iconLabel.font = .systemFont(ofSize: size * (isSmall ? 0.52 : 0.58))
+                iconLabel.textAlignment = .center
+                markerView.addSubview(iconLabel)
+                iconAdded = true
+            }
+        }
+
+        if !iconAdded, let iconUrl = iconUrl, !iconUrl.isEmpty {
             // Load custom image from URL synchronously (for annotation creation)
             // This ensures the image is loaded before the view is converted to an image
             if let iconImage = loadMarkerIconImageSync(urlString: iconUrl) {
@@ -352,23 +381,6 @@ final class MarkerFactory {
             } else {
                 Logger.log("Failed to load icon from URL (timeout or error): \(iconUrl)", level: .warn, category: "MarkerFactory")
             }
-        }
-        
-        // Fallback to SF Symbol if iconUrl failed or not available
-        if !iconAdded, let iconName = iconName, let iconImage = UIImage(systemName: iconName) {
-            // Use SF Symbol
-            let iconSize: CGFloat = size * (isSmall ? 0.55 : 0.7)
-            let iconImageView = UIImageView(frame: CGRect(
-                x: shadowPadding + (size - iconSize) / 2,
-                y: shadowPadding + (size - iconSize) / 2,
-                width: iconSize,
-                height: iconSize
-            ))
-            iconImageView.image = iconImage
-            iconImageView.tintColor = .systemGray // Darker color since background is light gray
-            iconImageView.contentMode = .scaleAspectFit
-            markerView.addSubview(iconImageView)
-            iconAdded = true
         }
         
         // Ensure view layout is complete before returning

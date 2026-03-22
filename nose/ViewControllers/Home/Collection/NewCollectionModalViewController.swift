@@ -41,8 +41,10 @@ class NewCollectionModalViewController: CollectionModalViewController {
             "members": [currentUserId]
         ]
         
-        // Add icon if selected
-        if let iconUrl = selectedIconUrl {
+        // Add emoji if selected
+        if let iconName = selectedIconName, !iconName.isEmpty {
+            collectionData["iconName"] = iconName
+        } else if let iconUrl = selectedIconUrl {
             collectionData["iconUrl"] = iconUrl
         }
         

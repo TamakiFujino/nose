@@ -248,6 +248,9 @@ class CollectionPlacesViewController: UIViewController, UIGestureRecognizerDeleg
     }
     
     private func preloadCollectionIconIfNeeded() {
+        if let iconName = currentIconName ?? collection.iconName, !iconName.isEmpty {
+            return
+        }
         let iconUrlToUse = currentIconUrl ?? collection.iconUrl
         if let iconUrl = iconUrlToUse, !iconUrl.isEmpty {
             // Check if already cached
