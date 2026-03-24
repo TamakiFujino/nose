@@ -29,43 +29,6 @@ public class UnityBridge : MonoBehaviour
     private readonly Dictionary<string, LastAssetCall> lastAssetPerSlot = new Dictionary<string, LastAssetCall>();
     private const float changeAssetDebounceSeconds = 0.15f;
     
-    // Helper to snapshot and restore material state when forcing opaque capture
-    private struct MaterialState
-    {
-        public Material material;
-		public Shader shader;
-        public bool alphaTestOn;
-        public bool alphaBlendOn;
-        public bool alphaPremulOn;
-        public bool hadMode;
-        public float? mode;
-        public bool hadSurface;
-        public float? surface;
-        public bool hadColor;
-        public Color? color;
-		public bool hadRegionMask;
-		public float? regionMask;
-        public int renderQueue;
-
-        public MaterialState(Material m)
-        {
-			material = m;
-			shader = m != null ? m.shader : null;
-            alphaTestOn = m != null && m.IsKeywordEnabled("_ALPHATEST_ON");
-            alphaBlendOn = m != null && m.IsKeywordEnabled("_ALPHABLEND_ON");
-            alphaPremulOn = m != null && m.IsKeywordEnabled("_ALPHAPREMULTIPLY_ON");
-            hadMode = m != null && m.HasProperty("_Mode");
-            mode = hadMode ? (float?)m.GetFloat("_Mode") : null;
-            hadSurface = m != null && m.HasProperty("_Surface");
-            surface = hadSurface ? (float?)m.GetFloat("_Surface") : null;
-            hadColor = m != null && m.HasProperty("_Color");
-            color = hadColor ? (Color?)m.GetColor("_Color") : null;
-			hadRegionMask = m != null && m.HasProperty("_RegionHideMask");
-			regionMask = hadRegionMask ? (float?)m.GetFloat("_RegionHideMask") : null;
-            renderQueue = m != null ? m.renderQueue : -1;
-        }
-    }
-    
     // Callback system for iOS responses
     private Dictionary<string, System.Action<string>> pendingCallbacks = new Dictionary<string, System.Action<string>>();
     private int callbackIdCounter = 0;
@@ -156,7 +119,9 @@ public class UnityBridge : MonoBehaviour
         Animator anim = null;
         if (root != null)
         {
-            anim = root.GetComponent<Animator>() ?? root.GetComponentInChildren<Animator>(true);
+            anim = root.GetComponent<Animator>()
+                ?? root.GetComponentInChildren<Animator>(true)
+                ?? root.GetComponentInParent<Animator>();
         }
 
         focus = (focus ?? "").ToLowerInvariant();
@@ -175,7 +140,39 @@ public class UnityBridge : MonoBehaviour
             var hips = anim.GetBoneTransform(HumanBodyBones.Hips);
             if (hips != null) return hips;
         }
+
+        // Fallback: search for bones by name in the hierarchy
+        if (root != null)
+        {
+            if (focus == "face")
+            {
+                foreach (var name in new[] { "Head", "head", "Neck", "neck" })
+                {
+                    var found = root.Find(name) ?? FindDeepChild(root, name);
+                    if (found != null) return found;
+                }
+            }
+            foreach (var name in new[] { "Chest", "chest", "Spine1", "spine1", "Hips", "hips" })
+            {
+                var found = root.Find(name) ?? FindDeepChild(root, name);
+                if (found != null) return found;
+            }
+        }
+
         return root != null ? root : (assetManager != null ? assetManager.transform : transform);
+    }
+
+    // Recursive search for a child transform by name (case-insensitive)
+    private Transform FindDeepChild(Transform parent, string name)
+    {
+        string lower = name.ToLowerInvariant();
+        foreach (Transform child in parent)
+        {
+            if (child.name.ToLowerInvariant() == lower) return child;
+            var result = FindDeepChild(child, name);
+            if (result != null) return result;
+        }
+        return null;
     }
 
     private IEnumerator AnimateCameraTo(Camera cam, Vector3 targetPos, Quaternion targetRot, float targetFov, float duration)
@@ -290,9 +287,26 @@ public class UnityBridge : MonoBehaviour
             return;
         }
 
+        // If the target is the avatar root (ground level), estimate face position from bounds
+        Vector3 targetPos = target.position;
+        var mgr = assetManager != null ? assetManager : FindObjectOfType<AssetManager>();
+        var avatarRoot = mgr != null ? mgr.avatarRoot : null;
+        if (avatarRoot != null && target == avatarRoot)
+        {
+            var renderers = avatarRoot.GetComponentsInChildren<Renderer>(true);
+            if (renderers != null && renderers.Length > 0)
+            {
+                Bounds b = renderers[0].bounds;
+                for (int i = 1; i < renderers.Length; i++)
+                    if (renderers[i] != null) b.Encapsulate(renderers[i].bounds);
+                // Head is approximately at 85% of avatar height
+                targetPos = new Vector3(b.center.x, b.min.y + b.size.y * 0.85f, b.center.z);
+            }
+        }
+
         // Use the default camera direction so zoom in/out is a straight dolly.
         Vector3 basePos = hasDefaultView ? defaultCamPos : cam.transform.position;
-        Vector3 toCam = basePos - target.position;
+        Vector3 toCam = basePos - targetPos;
         Vector3 dir = toCam.sqrMagnitude > 0.0001f ? toCam.normalized : -target.forward;
 
         // Face framing: wider + higher (show more upper body, keep face higher in frame).
@@ -300,13 +314,13 @@ public class UnityBridge : MonoBehaviour
         float height = 0.95f;
         float fov = 66f;
 
-        Vector3 desiredPos = target.position + dir * distance + Vector3.up * height;
+        Vector3 desiredPos = targetPos + dir * distance + Vector3.up * height;
         // Aim lower (neck/chest) so the face appears higher in frame.
         // Prefer humanoid chest/hips via our existing resolver; fall back to an offset.
         var chestOrHips = GetAvatarFocusTarget("clothes");
-        Vector3 lookAt = (chestOrHips != null)
+        Vector3 lookAt = (chestOrHips != null && chestOrHips != avatarRoot)
             ? (chestOrHips.position + Vector3.down * 0.15f)
-            : (target.position + Vector3.down * 0.75f);
+            : (targetPos + Vector3.down * 0.75f);
 
         if (cameraFocusCoroutine != null) StopCoroutine(cameraFocusCoroutine);
         // Zoom-in: slightly faster + ease-out so it doesn't feel overly animated.
@@ -342,19 +356,24 @@ public class UnityBridge : MonoBehaviour
         // Draw a full-screen procedural triangle to clear stencil
         stencilClearCmd.DrawProcedural(Matrix4x4.identity, clearMat, 0, MeshTopology.Triangles, 3);
 
-        // Apply to likely cameras
-        var avatarCam = GameObject.Find("AvatarCamera")?.GetComponent<Camera>();
-        var thumbCam = GameObject.Find("ThumbnailCamera")?.GetComponent<Camera>();
-        if (avatarCam != null)
-        {
-            avatarCam.RemoveCommandBuffer(CameraEvent.BeforeForwardOpaque, stencilClearCmd);
-            avatarCam.AddCommandBuffer(CameraEvent.BeforeForwardOpaque, stencilClearCmd);
-        }
-        if (thumbCam != null)
-        {
-            thumbCam.RemoveCommandBuffer(CameraEvent.BeforeForwardOpaque, stencilClearCmd);
-            thumbCam.AddCommandBuffer(CameraEvent.BeforeForwardOpaque, stencilClearCmd);
-        }
+        // URP: CameraEvent command buffers don't execute under Universal RP.
+        // Use RenderPipelineManager.beginCameraRendering to inject the stencil
+        // clear via ScriptableRenderContext.ExecuteCommandBuffer instead.
+        RenderPipelineManager.beginCameraRendering -= OnBeginCameraRendering;
+        RenderPipelineManager.beginCameraRendering += OnBeginCameraRendering;
+    }
+
+    private void OnBeginCameraRendering(ScriptableRenderContext context, Camera cam)
+    {
+        if (stencilClearCmd == null) return;
+        // Only clear stencil for avatar-related cameras
+        if (cam.gameObject.name != "AvatarCamera" && cam.gameObject.name != "ThumbnailCamera") return;
+        context.ExecuteCommandBuffer(stencilClearCmd);
+    }
+
+    private void OnDestroy()
+    {
+        RenderPipelineManager.beginCameraRendering -= OnBeginCameraRendering;
     }
 
     // iOS calls this method to change an asset
@@ -636,8 +655,9 @@ public class UnityBridge : MonoBehaviour
         RenderTexture rt = RenderTexture.GetTemporary(width, height, 24, RenderTextureFormat.ARGB32);
         try
         {
-            // Ensure the thumbnail camera does not render to screen while capturing
-            if (isThumbnailCamera) cam.enabled = false;
+            // URP needs the camera enabled for cam.Render() to fully render
+            // scene-embedded SkinnedMeshRenderers. targetTexture prevents screen output.
+            cam.enabled = true;
             // Render into full texture area regardless of scene viewport settings
             cam.rect = new Rect(0f, 0f, 1f, 1f);
             cam.targetTexture = rt;
@@ -702,7 +722,7 @@ public class UnityBridge : MonoBehaviour
             int.TryParse(parts[2], out reqH);
         }
         if (parts.Length >= 4) transparent = parts[3] == "1";
-        // Pick a camera similar to CaptureThumbnailCoroutine, preferring "ThumbnailCamera"
+        // Pick a camera: prefer "ThumbnailCamera", then "AvatarCamera", else Camera.main
         Camera cam = null;
         var thumbCamGO = GameObject.Find("ThumbnailCamera");
         if (thumbCamGO != null) cam = thumbCamGO.GetComponent<Camera>();
@@ -739,8 +759,9 @@ public class UnityBridge : MonoBehaviour
         RenderTexture rt = RenderTexture.GetTemporary(width, height, 24, RenderTextureFormat.ARGB32);
         try
         {
-            // Ensure the thumbnail camera does not render to screen while capturing
-            if (isThumbnailCamera) cam.enabled = false;
+            // URP needs the camera enabled for cam.Render() to fully render
+            // scene-embedded SkinnedMeshRenderers. targetTexture prevents screen output.
+            cam.enabled = true;
             // Render into full texture area regardless of scene viewport settings
             cam.rect = new Rect(0f, 0f, 1f, 1f);
             if (transparent)
@@ -749,17 +770,22 @@ public class UnityBridge : MonoBehaviour
                 cam.backgroundColor = new Color(0f, 0f, 0f, 0f);
             }
 
-            // Hide all non-avatar renderers during capture to ensure transparency
+            // Hide all non-avatar renderers during capture to ensure transparency.
+            // Walk from avatarRoot (Armature) up to the scene root so that sibling
+            // meshes (body, face) are also considered part of the avatar.
             var mgr = assetManager != null ? assetManager : GameObject.FindObjectOfType<AssetManager>();
             if (mgr != null && mgr.avatarRoot != null)
             {
+                Transform avatarSceneRoot = mgr.avatarRoot;
+                while (avatarSceneRoot.parent != null) avatarSceneRoot = avatarSceneRoot.parent;
+
                 disabledNonAvatarRenderers = new List<Renderer>();
                 var allRenderers = GameObject.FindObjectsOfType<Renderer>(true);
                 foreach (var r in allRenderers)
                 {
                     if (r == null || !r.enabled) continue;
                     var t = r.transform;
-                    bool underAvatar = t == mgr.avatarRoot || t.IsChildOf(mgr.avatarRoot);
+                    bool underAvatar = t == avatarSceneRoot || t.IsChildOf(avatarSceneRoot);
                     if (!underAvatar)
                     {
                         r.enabled = false;
@@ -917,6 +943,11 @@ public class UnityBridge : MonoBehaviour
             float orthoForHeight = height * 0.5f;
             float orthoForWidth = (width * 0.5f) / Mathf.Max(0.01f, cam.aspect);
             cam.orthographicSize = Mathf.Max(orthoForHeight, orthoForWidth);
+            // Reposition so the camera is level with the avatar center, looking
+            // straight at it.  Without this the camera stays high above (e.g.
+            // y=5.14) and LookAt tilts it downward, foreshortening the avatar.
+            Vector3 dir = cam.transform.forward.sqrMagnitude > 0.0001f ? cam.transform.forward : Vector3.forward;
+            cam.transform.position = center - dir.normalized * 10f;
             cam.transform.LookAt(center);
         }
         else

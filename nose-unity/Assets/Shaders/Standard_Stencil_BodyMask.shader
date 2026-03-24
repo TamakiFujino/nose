@@ -1,4 +1,4 @@
-Shader "Nose/Standard Stencil (Top Mask)"
+Shader "Nose/Standard Stencil (Body Mask)"
 {
 	Properties
 	{
@@ -10,7 +10,7 @@ Shader "Nose/Standard Stencil (Top Mask)"
 	// URP SubShader
 	SubShader
 	{
-		Tags { "RenderType"="Opaque" "RenderPipeline"="UniversalPipeline" "Queue"="Geometry+5" }
+		Tags { "RenderType"="Opaque" "RenderPipeline"="UniversalPipeline" "Queue"="Geometry+10" }
 		Cull Back
 		ZWrite On
 		ZTest LEqual
@@ -93,7 +93,7 @@ Shader "Nose/Standard Stencil (Top Mask)"
 	// Built-in RP fallback
     SubShader
 	{
-		Tags { "RenderType"="Opaque" "Queue"="Geometry+5" }
+		Tags { "RenderType"="Opaque" "Queue"="Geometry+10" }
 		Cull Back
 		ZWrite On
 		ZTest LEqual
@@ -107,7 +107,7 @@ Shader "Nose/Standard Stencil (Top Mask)"
 		}
 
 		CGPROGRAM
-		#pragma surface surf Standard fullforwardshadows addshadow
+		#pragma surface surf Standard fullforwardshadows
 		#pragma target 3.0
 
 		sampler2D _MainTex;
@@ -120,7 +120,7 @@ Shader "Nose/Standard Stencil (Top Mask)"
 			float2 uv_MainTex;
 		};
 
-		void surf (Input IN, inout SurfaceOutputStandard o)
+        void surf (Input IN, inout SurfaceOutputStandard o)
 		{
 			fixed4 c = tex2D(_MainTex, IN.uv_MainTex) * _Color;
 			o.Albedo = c.rgb;
