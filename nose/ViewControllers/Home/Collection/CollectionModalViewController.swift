@@ -310,25 +310,12 @@ class CollectionModalViewController: UIViewController, UITextFieldDelegate {
         present(imagePickerVC, animated: true)
     }
     
-    func updateIconButton(with urlString: String) {
-        guard let url = URL(string: urlString) else { return }
-        
-        // Use cached image if available for smoother UX
-        if let cachedImage = ImagePickerCell.imageCache.object(forKey: urlString as NSString) {
-            iconButton.setImage(cachedImage.withRenderingMode(.alwaysOriginal), for: .normal)
-        } else {
-            iconButton.setImage(UIImage(systemName: "photo"), for: .normal)
-            URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
-                guard let data = data,
-                      let image = UIImage(data: data) else { return }
-                ImagePickerCell.imageCache.setObject(image, forKey: urlString as NSString)
-                DispatchQueue.main.async {
-                    self?.iconButton.setImage(image.withRenderingMode(.alwaysOriginal), for: .normal)
-                }
-            }.resume()
-        }
-        
-        iconButton.backgroundColor = .clear
+    func updateIconButton(with emoji: String) {
+        iconButton.setImage(nil, for: .normal)
+        iconButton.setTitle(emoji, for: .normal)
+        iconButton.setTitleColor(.label, for: .normal)
+        iconButton.titleLabel?.font = .systemFont(ofSize: 44)
+        iconButton.backgroundColor = .white
         iconButton.tintColor = .clear
         iconButton.imageView?.contentMode = .scaleAspectFill
         iconButton.clipsToBounds = true
@@ -336,9 +323,14 @@ class CollectionModalViewController: UIViewController, UITextFieldDelegate {
     }
     
     func resetIconButton() {
+        iconButton.setTitle(nil, for: .normal)
         iconButton.setImage(UIImage(systemName: "plus"), for: .normal)
         iconButton.tintColor = .systemGray2
         iconButton.backgroundColor = UIColor.systemGray5
+    }
+
+    func updateLegacyIconButtonState() {
+        updateIconButton(with: "🖼️")
     }
 }
 
@@ -348,8 +340,10 @@ extension CollectionModalViewController: ImagePickerViewControllerDelegate {
         selectedIconUrl = imageUrl.isEmpty ? nil : imageUrl
         selectedIconName = imageName.isEmpty ? nil : imageName
         
-        if let iconUrl = selectedIconUrl, !iconUrl.isEmpty {
-            updateIconButton(with: iconUrl)
+        if let iconName = selectedIconName, !iconName.isEmpty {
+            updateIconButton(with: iconName)
+        } else if let iconUrl = selectedIconUrl, !iconUrl.isEmpty {
+            updateLegacyIconButtonState()
         } else {
             resetIconButton()
         }

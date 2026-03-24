@@ -70,7 +70,7 @@ public class StencilApplier : MonoBehaviour
         for (int i = 0; i < mats.Length; i++)
         {
             if (mats[i] == null) continue;
-            if (!ShouldExcludeMaterial(mats[i]))
+            if (ShouldApplyBodyMask(mats[i]))
             {
                 mats[i].shader = bodyMaskShader;
             }
@@ -106,6 +106,25 @@ public class StencilApplier : MonoBehaviour
             }
         }
         return false;
+    }
+
+    private bool ShouldApplyBodyMask(Material mat)
+    {
+        if (mat == null) return false;
+
+        if (ShouldExcludeMaterial(mat)) return false;
+
+        // Never replace face/makeup materials. They need their own shader properties
+        // such as _BaseColorMap, _BlushColor, and _EyeshadowColor to remain intact.
+        if (mat.HasProperty("_BaseColorMap") ||
+            mat.HasProperty("_BlushColor") ||
+            mat.HasProperty("_EyeshadowColor"))
+        {
+            return false;
+        }
+
+        // Only body-region-mask-capable materials should be swapped to the body mask shader.
+        return mat.HasProperty("_RegionHideMask") || mat.HasProperty("_UseRegionMaskTextures");
     }
 }
 
