@@ -224,20 +224,7 @@ class FloatingUIController: UIViewController {
         view.layoutIfNeeded()
         colorButton.layer.cornerRadius = colorButton.bounds.height / 2
         colorButton.clipsToBounds = true
-        // Ensure tabs have fully rounded (pill) corners
-        parentCategoryStackView.arrangedSubviews.forEach { subview in
-            if let button = subview as? UIButton {
-                button.layer.cornerRadius = button.bounds.height / 2
-                button.clipsToBounds = true
-            }
-        }
-        childCategoryStackView.arrangedSubviews.forEach { subview in
-            if let button = subview as? UIButton {
-                button.layer.cornerRadius = button.bounds.height / 2
-                button.clipsToBounds = true
-            }
-        }
-        // Make top buttons perfectly pill-shaped
+        // Back/Save buttons use dynamic height, so pill-shape them here
         backButton.layer.cornerRadius = backButton.bounds.height / 2
         backButton.clipsToBounds = true
         saveButton.layer.cornerRadius = saveButton.bounds.height / 2
@@ -791,7 +778,7 @@ class FloatingUIController: UIViewController {
         button.setTitleColor(.black, for: .normal)
         // Set default background to secondColor
         button.backgroundColor = .secondColor
-        button.clipsToBounds = true
+        button.layer.cornerRadius = isParent ? 15 : 13
         button.layer.borderWidth = 0
         button.layer.borderColor = UIColor.clear.cgColor
         button.translatesAutoresizingMaskIntoConstraints = false
@@ -867,6 +854,7 @@ class FloatingUIController: UIViewController {
                 // Inactive tab: secondColor background with black text
                 button.backgroundColor = isSelected ? .fourthColor : .secondColor
                 button.setTitleColor(isSelected ? .white : .black, for: .normal)
+                button.layer.cornerRadius = 15
             }
         }
         for (index, subview) in childCategoryStackView.arrangedSubviews.enumerated() {
@@ -878,6 +866,7 @@ class FloatingUIController: UIViewController {
                 // Inactive tab: secondColor background with black text
                 button.backgroundColor = isSelected ? .fourthColor : .secondColor
                 button.setTitleColor(isSelected ? .white : .black, for: .normal)
+                button.layer.cornerRadius = 13
             }
         }
     }

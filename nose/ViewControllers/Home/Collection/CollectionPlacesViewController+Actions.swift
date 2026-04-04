@@ -64,6 +64,7 @@ extension CollectionPlacesViewController {
         if let nav = navigationController {
             nav.pushViewController(vc, animated: true)
         } else {
+            vc.modalPresentationStyle = .fullScreen
             present(vc, animated: true)
         }
     }
@@ -73,6 +74,7 @@ extension CollectionPlacesViewController {
         if let nav = navigationController {
             nav.pushViewController(vc, animated: true)
         } else {
+            vc.modalPresentationStyle = .fullScreen
             present(vc, animated: true)
         }
     }

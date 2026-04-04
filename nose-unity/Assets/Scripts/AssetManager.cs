@@ -46,8 +46,10 @@ public class AssetManager : MonoBehaviour
     // Pending colors to apply once a slot's asset is loaded
     private readonly Dictionary<string, string> slotKeyToPendingColor = new Dictionary<string, string>();
 
-    // Last applied face (base skin) color — used to boost Blush/Eyeshadow visibility on light skin
+    // Last applied face/base skin color so newly loaded face materials can stay in sync.
     private Color? lastAppliedFaceColor;
+    private Color? lastAppliedBlushColor;
+    private Color? lastAppliedEyeshadowColor;
 
     private bool addressablesInitialized = false;
 
@@ -86,8 +88,9 @@ public class AssetManager : MonoBehaviour
     private bool bodyAnimatorDisabledForAPose = false;
     private string currentPoseName = null;
 
-    // Cache solid-color textures (used to tint face base map)
+    // Cache solid-color textures for legacy face graphs that only support a base map.
     private readonly Dictionary<int, Texture2D> solidColorTextureCache = new Dictionary<int, Texture2D>();
+    private Texture2D neutralFaceBaseTexture;
 
     [Header("Debug")]
     public bool verboseLogs = false;
@@ -742,6 +745,13 @@ public class AssetManager : MonoBehaviour
 		// Enforce a stable render order to reduce z-fighting at garment overlaps
 		ApplyStableRenderOrder(asset.category, asset.subcategory, assetInstance);
 
+        // Slightly inflate tops so bottoms don't poke through
+        if (string.Equals(asset.category, "Clothes", StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(asset.subcategory, "Tops", StringComparison.OrdinalIgnoreCase))
+        {
+            assetInstance.transform.localScale = Vector3.one * 1.005f;
+        }
+
         // Track new instance and handle
         loadedAssets[asset.id] = assetInstance;
         slotKeyToActiveAssetId[slotKey] = asset.id;
@@ -761,6 +771,17 @@ public class AssetManager : MonoBehaviour
                 slotKeyToPendingColor.Remove(slotKey);
                 Debug.Log($"Applied pending color to {slotKey}: {pendingHex}");
             }
+        }
+
+        // Re-apply the current face skin color in case the loaded asset introduced
+        // or replaced the renderer/material that owns the face base map.
+        if (lastAppliedFaceColor.HasValue)
+        {
+            ApplyFaceBaseSkinColor(lastAppliedFaceColor.Value);
+        }
+        else
+        {
+            ReapplyCachedFaceMakeupColors();
         }
     }
 
@@ -1320,6 +1341,28 @@ public class AssetManager : MonoBehaviour
         return false;
     }
 
+    private IEnumerable<Renderer> GetFaceCandidateRenderers()
+    {
+        var renderers = new HashSet<Renderer>();
+
+        void AddFrom(Transform t)
+        {
+            if (t == null) return;
+            foreach (var r in t.GetComponentsInChildren<Renderer>(true))
+            {
+                if (r != null) renderers.Add(r);
+            }
+        }
+
+        AddFrom(avatarRoot);
+        AddFrom(avatarRoot != null ? avatarRoot.parent : null);
+        AddFrom(bodySkinnedMesh != null ? bodySkinnedMesh.transform : null);
+        AddFrom(bodySkinnedMesh != null ? bodySkinnedMesh.rootBone : null);
+        AddFrom(bodySkinnedMesh != null && bodySkinnedMesh.transform != null ? bodySkinnedMesh.transform.parent : null);
+
+        return renderers;
+    }
+
     // Applies color to face shader graph properties (base skin, blush, eyeshadow).
     // We intentionally target renderers that look like "face" OR materials that expose makeup properties.
     private void ApplyFaceMakeupColor(string subcategory, Color color)
@@ -1335,9 +1378,8 @@ public class AssetManager : MonoBehaviour
         bool isBlush = sub == "blush";
         bool isEyeshadow = sub == "eyeshadow";
 
-        // On light skin, multiply blending makes Blush/Eyeshadow almost invisible. Boost color (darken/saturate) so it shows.
-        if (isBlush || isEyeshadow)
-            color = BoostMakeupForSkinTone(color, lastAppliedFaceColor);
+        if (isBlush) lastAppliedBlushColor = color;
+        if (isEyeshadow) lastAppliedEyeshadowColor = color;
 
         // Candidate property names to support different Shader Graph setups
         // NOTE: Shader Graph "Reference" names often start with "_" (e.g. _BlushColor),
@@ -1346,7 +1388,7 @@ public class AssetManager : MonoBehaviour
         string[] blushProps = new[] { "_BlushColor", "BlushColor", "_BlushTint", "BlushTint" };
         string[] eyeshadowProps = new[] { "_EyeshadowColor", "EyeshadowColor", "_EyeshadowTint", "EyeshadowTint" };
 
-        var renderers = avatarRoot.GetComponentsInChildren<Renderer>(true);
+        var renderers = GetFaceCandidateRenderers();
         int materialsTouched = 0;
 
         foreach (var r in renderers)
@@ -1374,8 +1416,13 @@ public class AssetManager : MonoBehaviour
 
                 bool changed = false;
                 if (isFace) changed = TrySetFirst(m, color, faceProps);
-                else if (isBlush) changed = TrySetFirst(m, color, blushProps);
-                else if (isEyeshadow) changed = TrySetFirst(m, color, eyeshadowProps);
+                else if (isBlush || isEyeshadow)
+                {
+                    // BlushColor/EyeshadowColor are HDR properties (no sRGB conversion).
+                    // Makeup is routed through the Emission channel (unlit), so the
+                    // chosen color renders as-is. Pass it in linear space directly.
+                    changed = TrySetFirst(m, color.linear, isBlush ? blushProps : eyeshadowProps);
+                }
 
                 if (changed) materialsTouched++;
             }
@@ -1391,25 +1438,54 @@ public class AssetManager : MonoBehaviour
         }
     }
 
+    private void ReapplyCachedFaceMakeupColors()
+    {
+        if (lastAppliedBlushColor.HasValue)
+        {
+            ApplyFaceMakeupColor("Blush", lastAppliedBlushColor.Value);
+        }
+
+        if (lastAppliedEyeshadowColor.HasValue)
+        {
+            ApplyFaceMakeupColor("Eyeshadow", lastAppliedEyeshadowColor.Value);
+        }
+    }
+
     private Texture2D GetOrCreateSolidTexture(Color color)
     {
         var c32 = (Color32)color;
         int key = (c32.r << 24) | (c32.g << 16) | (c32.b << 8) | c32.a;
         if (solidColorTextureCache.TryGetValue(key, out var tex) && tex != null) return tex;
 
-        tex = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+        // Face base color is sampled from a texture, while body color is written
+        // directly to a material color property. Use a linear texture here so the
+        // sampled face color matches the body color more closely in Linear space.
+        tex = new Texture2D(1, 1, TextureFormat.RGBA32, false, true);
         tex.name = $"SolidColor_{c32.r:X2}{c32.g:X2}{c32.b:X2}{c32.a:X2}";
         tex.wrapMode = TextureWrapMode.Clamp;
-        tex.filterMode = FilterMode.Bilinear;
-        tex.SetPixel(0, 0, color);
+        tex.filterMode = FilterMode.Point;
+        tex.SetPixel(0, 0, color.linear);
         tex.Apply(false, false);
 
         solidColorTextureCache[key] = tex;
         return tex;
     }
 
-    // FaceMakeup.shadergraph drives base skin via _BaseColorMap (Texture2D).
-    // To "set base color" we assign a 1x1 solid texture of the chosen skin color.
+    private Texture2D GetOrCreateNeutralFaceBaseTexture()
+    {
+        if (neutralFaceBaseTexture != null) return neutralFaceBaseTexture;
+
+        neutralFaceBaseTexture = new Texture2D(1, 1, TextureFormat.RGBA32, false, true);
+        neutralFaceBaseTexture.name = "FaceBaseNeutral";
+        neutralFaceBaseTexture.wrapMode = TextureWrapMode.Clamp;
+        neutralFaceBaseTexture.filterMode = FilterMode.Point;
+        neutralFaceBaseTexture.SetPixel(0, 0, Color.white);
+        neutralFaceBaseTexture.Apply(false, false);
+        return neutralFaceBaseTexture;
+    }
+
+    // FaceMakeup.shadergraph can either use a dedicated skin tint plus a neutral base map
+    // or, for legacy graphs, a solid-color base map texture.
     private void ApplyFaceBaseSkinColor(Color color)
     {
         if (avatarRoot == null)
@@ -1420,8 +1496,9 @@ public class AssetManager : MonoBehaviour
 
         lastAppliedFaceColor = color;
 
+        var neutralBaseTex = GetOrCreateNeutralFaceBaseTexture();
         var tex = GetOrCreateSolidTexture(color);
-        var renderers = avatarRoot.GetComponentsInChildren<Renderer>(true);
+        var renderers = GetFaceCandidateRenderers();
         int materialsTouched = 0;
 
         foreach (var r in renderers)
@@ -1437,10 +1514,26 @@ public class AssetManager : MonoBehaviour
                 var m = mats[i];
                 if (m == null) continue;
 
-                // Prefer explicit base-color-map property used by the shader graph
+                // Prefer the shared face-base tint path when present. This keeps the
+                // underlying skin tone aligned with the body while makeup stays additive.
+                bool hasSkinBaseTint = m.HasProperty("_SkinBaseColor") || m.HasProperty("SkinBaseColor");
                 bool hasBaseMap = m.HasProperty("_BaseColorMap") || m.HasProperty("BaseColorMap");
                 bool hasMakeup = MaterialHasAny(m, "_BlushColor", "BlushColor", "_EyeshadowColor", "EyeshadowColor");
-                if (!looksLikeFaceObject && !hasBaseMap && !hasMakeup) continue;
+                if (!looksLikeFaceObject && !hasSkinBaseTint && !hasBaseMap && !hasMakeup) continue;
+
+                ApplySkinSurfaceTuning(m);
+
+                if (hasSkinBaseTint)
+                {
+                    if (m.HasProperty("_SkinBaseColor")) m.SetColor("_SkinBaseColor", color);
+                    else m.SetColor("SkinBaseColor", color);
+
+                    if (m.HasProperty("_BaseColorMap")) m.SetTexture("_BaseColorMap", neutralBaseTex);
+                    else if (m.HasProperty("BaseColorMap")) m.SetTexture("BaseColorMap", neutralBaseTex);
+
+                    materialsTouched++;
+                    continue;
+                }
 
                 if (m.HasProperty("_BaseColorMap")) { m.SetTexture("_BaseColorMap", tex); materialsTouched++; continue; }
                 if (m.HasProperty("BaseColorMap")) { m.SetTexture("BaseColorMap", tex); materialsTouched++; continue; }
@@ -1452,39 +1545,35 @@ public class AssetManager : MonoBehaviour
 
         if (materialsTouched == 0)
         {
-            Debug.LogWarning("ApplyFaceBaseSkinColor: No materials updated. Ensure face material uses FaceMakeup shader and has _BaseColorMap.");
+            Debug.LogWarning("ApplyFaceBaseSkinColor: No materials updated. Ensure face material uses FaceMakeup shader and exposes _SkinBaseColor or _BaseColorMap.");
         }
         else
         {
             Debug.Log($"ApplyFaceBaseSkinColor: Updated {materialsTouched} material(s).");
         }
+
+        // Face base refreshes commonly create or touch live material instances.
+        // Re-apply makeup so the visible face renderer stays in sync with cached state.
+        ReapplyCachedFaceMakeupColors();
     }
 
-    // Boosts Blush/Eyeshadow color so it stays visible on light skin (shader uses multiply blend).
-    // Light skin = high luminance → we darken the makeup color so the multiply has a stronger effect.
-    private static Color BoostMakeupForSkinTone(Color makeupColor, Color? faceColor)
+    private static void ApplySkinSurfaceTuning(Material material)
     {
-        float luminance = 0.75f; // when unknown, assume light skin so makeup is visible by default
-        if (faceColor.HasValue)
-        {
-            Color c = faceColor.Value;
-            luminance = 0.2126f * c.linear.r + 0.7152f * c.linear.g + 0.0722f * c.linear.b;
-        }
-        // Light skin: luminance roughly > 0.5. Boost makeup so it's visible.
-        const float lightSkinThreshold = 0.5f;
-        if (luminance <= lightSkinThreshold)
-            return makeupColor; // dark skin: no change
+        if (material == null) return;
 
-        // Strength of boost (0 = no change, 1 = full darken). Stronger for lighter skin.
-        float t = Mathf.Clamp01((luminance - lightSkinThreshold) / 0.4f);
-        float darken = 0.55f + 0.2f * (1f - t); // target multiplier ~0.55–0.75
-        Color boosted = new Color(
-            makeupColor.r * darken,
-            makeupColor.g * darken,
-            makeupColor.b * darken,
-            makeupColor.a
-        );
-        return Color.Lerp(makeupColor, boosted, 0.5f * t);
+        // Ensure face and body materials render with identical matte PBR settings
+        // so the same skin color looks the same on both.
+        if (material.HasProperty("_EnvironmentReflections")) material.SetFloat("_EnvironmentReflections", 0f);
+        if (material.HasProperty("_GlossyReflections")) material.SetFloat("_GlossyReflections", 0f);
+        if (material.HasProperty("_Glossiness")) material.SetFloat("_Glossiness", 0f);
+        if (material.HasProperty("_Metallic")) material.SetFloat("_Metallic", 0f);
+        if (material.HasProperty("_OcclusionStrength")) material.SetFloat("_OcclusionStrength", 1f);
+        if (material.HasProperty("_ReceiveShadows")) material.SetFloat("_ReceiveShadows", 0f);
+        if (material.HasProperty("_Smoothness")) material.SetFloat("_Smoothness", 0f);
+        if (material.HasProperty("_SpecularHighlights")) material.SetFloat("_SpecularHighlights", 0f);
+        if (material.HasProperty("_SpecColor")) material.SetColor("_SpecColor", Color.black);
+        // NOTE: Do NOT zero _EmissionColor here — FaceMakeup shader routes
+        // blush/eyeshadow through Emission for unlit makeup rendering.
     }
 
     private static bool TryParseHexColor(string hex, out Color color)
@@ -1517,8 +1606,8 @@ public class AssetManager : MonoBehaviour
                 {
                     var m = mats[i];
                     if (m == null) continue;
-                    if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", color);
-                    else if (m.HasProperty("_Color")) m.SetColor("_Color", color);
+                    ApplyMaterialColor(m, color);
+                    ApplySkinSurfaceTuning(m);
                 }
             }
             return;
@@ -1542,8 +1631,17 @@ public class AssetManager : MonoBehaviour
         if (targetMats == null || targetMats.Length == 0) return;
         var mat0 = targetMats[0];
         if (mat0 == null) return;
-        if (mat0.HasProperty("_BaseColor")) mat0.SetColor("_BaseColor", color);
-        else if (mat0.HasProperty("_Color")) mat0.SetColor("_Color", color);
+        ApplyMaterialColor(mat0, color);
+    }
+
+    private static void ApplyMaterialColor(Material material, Color color)
+    {
+        if (material == null) return;
+
+        // Some avatar materials expose both properties even though the active shader
+        // only shades one of them. Write both when available so face/body stay aligned.
+        if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", color);
+        if (material.HasProperty("_Color")) material.SetColor("_Color", color);
     }
 
     // Helper: allow external systems (e.g., native bridge) to set body region mask by integer bitmask
