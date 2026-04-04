@@ -979,9 +979,9 @@ class FloatingUIController: UIViewController {
         let currentlyEnabled = isMakeupEnabled(parent: parent, child: child)
 
         if currentlyEnabled {
-            // Turn OFF: show as selected (border on); remove effect (shader uses Add, so black = no effect)
+            // Turn OFF: show as selected (border on); send transparent to disable mask
             setMakeupEnabled(parent: parent, child: child, enabled: false)
-            sendColorToUnity(category: parent, subcategory: child, hex: "#000000")
+            sendColorToUnity(category: parent, subcategory: child, hex: "#00000000")
             currentTopIndex = 0
         } else {
             // Turn ON: unselect (no border) and apply saved color (or default)
