@@ -179,7 +179,7 @@ extension CollectionPlacesViewController {
 
         let ownerId = collection.userId
         let collectionId = collection.id
-        let thumbSize: CGFloat = 216
+        let thumbSize: CGFloat = 260
 
         func renderSquare(image: UIImage?) -> UIImage? {
             guard let img = image else { return nil }
