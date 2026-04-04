@@ -51,6 +51,11 @@ public class AssetManager : MonoBehaviour
     private Color? lastAppliedBlushColor;
     private Color? lastAppliedEyeshadowColor;
 
+    // Cached original mask textures so we can restore them when makeup is re-enabled
+    private readonly Dictionary<Material, Texture> originalBlushMasks = new Dictionary<Material, Texture>();
+    private readonly Dictionary<Material, Texture> originalEyeshadowMasks = new Dictionary<Material, Texture>();
+    private Texture2D _blackMaskTexture;
+
     private bool addressablesInitialized = false;
 
     [Header("Remote Catalog (Firebase Hosting)")]
@@ -1365,6 +1370,17 @@ public class AssetManager : MonoBehaviour
 
     // Applies color to face shader graph properties (base skin, blush, eyeshadow).
     // We intentionally target renderers that look like "face" OR materials that expose makeup properties.
+    private Texture2D GetBlackMaskTexture()
+    {
+        if (_blackMaskTexture == null)
+        {
+            _blackMaskTexture = new Texture2D(1, 1, TextureFormat.R8, false);
+            _blackMaskTexture.SetPixel(0, 0, Color.black);
+            _blackMaskTexture.Apply(false, false);
+        }
+        return _blackMaskTexture;
+    }
+
     private void ApplyFaceMakeupColor(string subcategory, Color color)
     {
         if (avatarRoot == null)
@@ -1381,12 +1397,16 @@ public class AssetManager : MonoBehaviour
         if (isBlush) lastAppliedBlushColor = color;
         if (isEyeshadow) lastAppliedEyeshadowColor = color;
 
+        // Alpha == 0 means "disabled" — we need to zero out the mask texture
+        // so the BaseColor path (skin * (1 - mask)) isn't darkened.
+        bool disabled = (isBlush || isEyeshadow) && color.a < 0.01f;
+
         // Candidate property names to support different Shader Graph setups
-        // NOTE: Shader Graph "Reference" names often start with "_" (e.g. _BlushColor),
-        // but they can also be custom without it (e.g. BlushColor). Support both.
         string[] faceProps = new[] { "_BaseColorTint", "BaseColorTint", "_FaceColor", "FaceColor", "_SkinColor", "SkinColor", "_BaseColor", "_Color" };
         string[] blushProps = new[] { "_BlushColor", "BlushColor", "_BlushTint", "BlushTint" };
         string[] eyeshadowProps = new[] { "_EyeshadowColor", "EyeshadowColor", "_EyeshadowTint", "EyeshadowTint" };
+        string[] blushMaskProps = new[] { "_Mask_Blush", "Mask_Blush" };
+        string[] eyeshadowMaskProps = new[] { "_Mask_Eyeshadow", "Mask_Eyeshadow" };
 
         var renderers = GetFaceCandidateRenderers();
         int materialsTouched = 0;
@@ -1418,10 +1438,42 @@ public class AssetManager : MonoBehaviour
                 if (isFace) changed = TrySetFirst(m, color, faceProps);
                 else if (isBlush || isEyeshadow)
                 {
-                    // BlushColor/EyeshadowColor are HDR properties (no sRGB conversion).
-                    // Makeup is routed through the Emission channel (unlit), so the
-                    // chosen color renders as-is. Pass it in linear space directly.
-                    changed = TrySetFirst(m, color.linear, isBlush ? blushProps : eyeshadowProps);
+                    var maskProps = isBlush ? blushMaskProps : eyeshadowMaskProps;
+                    var cache = isBlush ? originalBlushMasks : originalEyeshadowMasks;
+
+                    if (disabled)
+                    {
+                        // Cache original mask texture and replace with black (empty)
+                        foreach (var prop in maskProps)
+                        {
+                            if (m.HasProperty(prop))
+                            {
+                                if (!cache.ContainsKey(m))
+                                    cache[m] = m.GetTexture(prop);
+                                m.SetTexture(prop, GetBlackMaskTexture());
+                                break;
+                            }
+                        }
+                        changed = TrySetFirst(m, Color.black, isBlush ? blushProps : eyeshadowProps);
+                    }
+                    else
+                    {
+                        // Restore original mask texture if we cached it
+                        if (cache.TryGetValue(m, out Texture orig))
+                        {
+                            foreach (var prop in maskProps)
+                            {
+                                if (m.HasProperty(prop))
+                                {
+                                    m.SetTexture(prop, orig);
+                                    break;
+                                }
+                            }
+                            cache.Remove(m);
+                        }
+                        // Apply color in linear space for HDR Emission channel
+                        changed = TrySetFirst(m, color.linear, isBlush ? blushProps : eyeshadowProps);
+                    }
                 }
 
                 if (changed) materialsTouched++;
