@@ -88,6 +88,42 @@ final class LoginViewController: UIViewController {
         return textView
     }()
     
+    private lazy var sloganStaticLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.text = String(localized: "login_tagline")
+        label.font = .systemFont(ofSize: 22, weight: .regular)
+        label.textColor = UIColor.white.withAlphaComponent(0.85)
+        label.textAlignment = .center
+        label.alpha = 0
+        return label
+    }()
+
+    private lazy var sloganKeywordLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.font = .systemFont(ofSize: 28, weight: .bold)
+        label.textColor = .white
+        label.textAlignment = .center
+        label.alpha = 0
+        return label
+    }()
+
+    private lazy var avatarImageView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.contentMode = .scaleAspectFit
+        imageView.clipsToBounds = true
+        return imageView
+    }()
+
+    private lazy var avatarContainerView: UIView = {
+        let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.clipsToBounds = false
+        return view
+    }()
+
     private lazy var loadingView: UIView = {
         let view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
@@ -112,6 +148,47 @@ final class LoginViewController: UIViewController {
     private var currentNonce: String?
     private var isLoginMode = false
     private var loginGradientLayer: CAGradientLayer?
+    private let avatarImageNames = ["a", "b", "c", "d", "e", "f", "g"]
+    private let avatarGradientColors: [(top: UIColor, bottom: UIColor)] = [
+        (UIColor(red: 0.85, green: 0.80, blue: 0.90, alpha: 1), UIColor(red: 0.60, green: 0.50, blue: 0.75, alpha: 1)), // a: soft lavender
+        (UIColor(red: 0.25, green: 0.30, blue: 0.45, alpha: 1), UIColor(red: 0.15, green: 0.18, blue: 0.35, alpha: 1)), // b: dark navy
+        (UIColor(red: 0.65, green: 0.82, blue: 0.55, alpha: 1), UIColor(red: 0.40, green: 0.55, blue: 0.65, alpha: 1)), // c: green-teal
+        (UIColor(red: 0.55, green: 0.75, blue: 0.95, alpha: 1), UIColor(red: 0.30, green: 0.45, blue: 0.80, alpha: 1)), // d: sporty blue
+        (UIColor(red: 0.95, green: 0.80, blue: 0.85, alpha: 1), UIColor(red: 0.75, green: 0.50, blue: 0.60, alpha: 1)), // e: pink blush
+        (UIColor(red: 0.60, green: 0.60, blue: 0.62, alpha: 1), UIColor(red: 0.30, green: 0.30, blue: 0.35, alpha: 1)), // f: monochrome gray
+        (UIColor(red: 0.55, green: 0.75, blue: 0.72, alpha: 1), UIColor(red: 0.65, green: 0.45, blue: 0.65, alpha: 1)), // g: teal-to-mauve
+    ]
+    private let avatarEmojis: [[String]] = [
+        ["♨️", "🧖", "💆", "🫧", "🧴", "💤", "🌿", "🕯️"],      // a: sauna / relaxing / hotspring
+        ["🏙️", "🛹", "🎤", "🔊", "🧢", "👟", "🎧", "💯"],      // b: street / city boy
+        ["🧟", "👾", "🎮", "💀", "👻", "🕹️", "🧠", "🦇"],      // c: zombie / monsters / game
+        ["🏃‍♀️", "⚽️", "🏅", "💪", "👟", "🔥", "🥇", "🎯"],     // d: running / sports
+        ["📚", "🎀", "🍰", "💅", "🧸", "📝", "🩰", "🌸"],      // e: school girl / teen
+        ["🖤", "🤍", "🌑", "♟️", "🎬", "🖋️", "⛓️", "🕶️"],     // f: gray / monochrome
+        ["🌈", "💖", "🎉", "🦄", "🍬", "🎨", "✨", "🪩"],      // g: colorful / pop
+    ]
+    private lazy var avatarSloganKeywords: [String] = [
+        String(localized: "login_keyword_a"),
+        String(localized: "login_keyword_b"),
+        String(localized: "login_keyword_c"),
+        String(localized: "login_keyword_d"),
+        String(localized: "login_keyword_e"),
+        String(localized: "login_keyword_f"),
+        String(localized: "login_keyword_g"),
+    ]
+    private lazy var avatarPlaceNames: [[String]] = [
+        [String(localized: "login_place_a1"), String(localized: "login_place_a2"), String(localized: "login_place_a3"), String(localized: "login_place_a4"), String(localized: "login_place_a5"), String(localized: "login_place_a6")],
+        [String(localized: "login_place_b1"), String(localized: "login_place_b2"), String(localized: "login_place_b3"), String(localized: "login_place_b4"), String(localized: "login_place_b5"), String(localized: "login_place_b6")],
+        [String(localized: "login_place_c1"), String(localized: "login_place_c2"), String(localized: "login_place_c3"), String(localized: "login_place_c4"), String(localized: "login_place_c5"), String(localized: "login_place_c6")],
+        [String(localized: "login_place_d1"), String(localized: "login_place_d2"), String(localized: "login_place_d3"), String(localized: "login_place_d4"), String(localized: "login_place_d5"), String(localized: "login_place_d6")],
+        [String(localized: "login_place_e1"), String(localized: "login_place_e2"), String(localized: "login_place_e3"), String(localized: "login_place_e4"), String(localized: "login_place_e5"), String(localized: "login_place_e6")],
+        [String(localized: "login_place_f1"), String(localized: "login_place_f2"), String(localized: "login_place_f3"), String(localized: "login_place_f4"), String(localized: "login_place_f5"), String(localized: "login_place_f6")],
+        [String(localized: "login_place_g1"), String(localized: "login_place_g2"), String(localized: "login_place_g3"), String(localized: "login_place_g4"), String(localized: "login_place_g5"), String(localized: "login_place_g6")],
+    ]
+    private var emojiViews: [UIView] = []
+    private var currentAvatarIndex = 0
+    private var avatarTimer: Timer?
+    private var typingTimer: Timer?
     weak var sceneDelegate: SceneDelegate?
     
     // MARK: - Lifecycle
@@ -128,6 +205,16 @@ final class LoginViewController: UIViewController {
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+    }
+
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        avatarTimer?.invalidate()
+        avatarTimer = nil
+        typingTimer?.invalidate()
+        typingTimer = nil
+        emojiViews.forEach { $0.removeFromSuperview() }
+        emojiViews.removeAll()
     }
     
     override func viewDidLayoutSubviews() {
@@ -159,8 +246,9 @@ final class LoginViewController: UIViewController {
         launchLogoImageView.removeFromSuperview()
         view.backgroundColor = .themeLightBlue
         
+        let initialColors = avatarGradientColors[0]
         let gradient = CAGradientLayer()
-        gradient.colors = [UIColor.themeLightBlue.cgColor, UIColor.themeBlue.cgColor]
+        gradient.colors = [initialColors.top.cgColor, initialColors.bottom.cgColor]
         gradient.startPoint = CGPoint(x: 0.5, y: 0)
         gradient.endPoint = CGPoint(x: 0.5, y: 1)
         gradient.frame = view.bounds
@@ -174,29 +262,34 @@ final class LoginViewController: UIViewController {
         bottomStack.setCustomSpacing(16, after: termsAndPrivacyTextView)
         bottomStack.translatesAutoresizingMaskIntoConstraints = false
 
-        launchLogoImageView.widthAnchor.constraint(equalToConstant: 72).isActive = true
-        launchLogoImageView.heightAnchor.constraint(equalToConstant: 72).isActive = true
+        avatarContainerView.addSubview(avatarImageView)
 
-        view.addSubview(launchLogoImageView)
-        view.addSubview(appNameLabel)
+        view.addSubview(sloganStaticLabel)
+        view.addSubview(sloganKeywordLabel)
+        view.addSubview(avatarContainerView)
         view.addSubview(bottomStack)
         view.addSubview(loadingView)
-
-        appNameLabel.font = UIFont(name: "Futura-Medium", size: 66) ?? UIFont.systemFont(ofSize: 66, weight: .medium)
-        appNameLabel.adjustsFontSizeToFitWidth = false
 
         appleButton.widthAnchor.constraint(equalTo: bottomStack.widthAnchor).isActive = true
         appleButton.heightAnchor.constraint(equalToConstant: 50).isActive = true
         googleButton.widthAnchor.constraint(equalTo: bottomStack.widthAnchor).isActive = true
         googleButton.heightAnchor.constraint(equalToConstant: 50).isActive = true
 
-        launchLogoImageView.alpha = 0
+        avatarContainerView.alpha = 0
 
         NSLayoutConstraint.activate([
-            launchLogoImageView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            launchLogoImageView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            appNameLabel.leadingAnchor.constraint(equalTo: launchLogoImageView.trailingAnchor, constant: -8),
-            appNameLabel.centerYAnchor.constraint(equalTo: launchLogoImageView.centerYAnchor, constant: -8),
+            sloganStaticLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            sloganStaticLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 48),
+            sloganKeywordLabel.topAnchor.constraint(equalTo: sloganStaticLabel.bottomAnchor, constant: 2),
+            sloganKeywordLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            avatarContainerView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            avatarContainerView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            avatarContainerView.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.72),
+            avatarContainerView.heightAnchor.constraint(equalTo: avatarContainerView.widthAnchor, multiplier: 1.2),
+            avatarImageView.topAnchor.constraint(equalTo: avatarContainerView.topAnchor),
+            avatarImageView.bottomAnchor.constraint(equalTo: avatarContainerView.bottomAnchor),
+            avatarImageView.leadingAnchor.constraint(equalTo: avatarContainerView.leadingAnchor),
+            avatarImageView.trailingAnchor.constraint(equalTo: avatarContainerView.trailingAnchor),
             termsAndPrivacyTextView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
             termsAndPrivacyTextView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
             bottomStack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
@@ -207,16 +300,379 @@ final class LoginViewController: UIViewController {
             loadingView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             loadingView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
-        
+
+        // Set initial avatar image and slogan
+        currentAvatarIndex = 0
+        avatarImageView.image = UIImage(named: avatarImageNames[currentAvatarIndex])
+        sloganKeywordLabel.text = ""
+        sloganKeywordLabel.alpha = 1
+
         UIView.animate(withDuration: 0.5) {
-            self.launchLogoImageView.alpha = 1
-            self.appNameLabel.alpha = 1
+            self.avatarContainerView.alpha = 1
+            self.sloganStaticLabel.alpha = 1
             self.termsAndPrivacyTextView.alpha = 1
             self.appleButton.alpha = 1
             self.googleButton.alpha = 1
+        } completion: { _ in
+            self.typeKeyword(self.avatarSloganKeywords[self.currentAvatarIndex])
+            self.spawnEmojiViews()
         }
+
+        startAvatarCarousel()
     }
     
+    private func startAvatarCarousel() {
+        avatarTimer?.invalidate()
+        avatarTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
+            self?.slideToNextAvatar()
+        }
+    }
+
+    private func slideToNextAvatar() {
+        let nextIndex = (currentAvatarIndex + 1) % avatarImageNames.count
+        let nextImage = UIImage(named: avatarImageNames[nextIndex])
+        let nextColors = avatarGradientColors[nextIndex]
+
+        // Animate gradient transition
+        let colorAnimation = CABasicAnimation(keyPath: "colors")
+        colorAnimation.fromValue = loginGradientLayer?.colors
+        colorAnimation.toValue = [nextColors.top.cgColor, nextColors.bottom.cgColor]
+        colorAnimation.duration = 0.6
+        colorAnimation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        loginGradientLayer?.colors = [nextColors.top.cgColor, nextColors.bottom.cgColor]
+        loginGradientLayer?.add(colorAnimation, forKey: "colorChange")
+
+        // Remove old emoji and clear keyword
+        removeEmojiViews()
+        typingTimer?.invalidate()
+        sloganKeywordLabel.text = ""
+
+        let slideDistance = view.bounds.width
+
+        // Create incoming image view matching avatarImageView's layout
+        let nextImageView = UIImageView(image: nextImage)
+        nextImageView.contentMode = .scaleAspectFit
+        nextImageView.translatesAutoresizingMaskIntoConstraints = false
+        avatarContainerView.insertSubview(nextImageView, belowSubview: avatarImageView)
+        NSLayoutConstraint.activate([
+            nextImageView.topAnchor.constraint(equalTo: avatarContainerView.topAnchor),
+            nextImageView.bottomAnchor.constraint(equalTo: avatarContainerView.bottomAnchor),
+            nextImageView.leadingAnchor.constraint(equalTo: avatarContainerView.leadingAnchor),
+            nextImageView.trailingAnchor.constraint(equalTo: avatarContainerView.trailingAnchor),
+        ])
+
+        // Position next image off-screen to the right
+        nextImageView.transform = CGAffineTransform(translationX: slideDistance, y: 0)
+
+        // Current image slides out left with dramatic ease-in (slow start, fast exit)
+        UIView.animate(
+            withDuration: 0.6,
+            delay: 0,
+            usingSpringWithDamping: 1.0,
+            initialSpringVelocity: 0,
+            options: .curveEaseIn
+        ) {
+            self.avatarImageView.transform = CGAffineTransform(translationX: -slideDistance, y: 0)
+        }
+
+        // Next image slides in from right with dramatic ease-out (fast entry, gentle stop)
+        UIView.animate(
+            withDuration: 0.7,
+            delay: 0.1,
+            usingSpringWithDamping: 0.7,
+            initialSpringVelocity: 0.9,
+            options: .curveEaseOut
+        ) {
+            nextImageView.transform = .identity
+        } completion: { _ in
+            self.avatarImageView.image = nextImage
+            self.avatarImageView.transform = .identity
+            self.currentAvatarIndex = nextIndex
+            nextImageView.removeFromSuperview()
+            self.typeKeyword(self.avatarSloganKeywords[nextIndex])
+            self.spawnEmojiViews()
+        }
+    }
+
+    private func typeKeyword(_ text: String) {
+        typingTimer?.invalidate()
+        sloganKeywordLabel.text = ""
+        let characters = Array(text)
+        var index = 0
+        typingTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] timer in
+            guard let self = self else { timer.invalidate(); return }
+            if index < characters.count {
+                self.sloganKeywordLabel.text?.append(characters[index])
+                index += 1
+            } else {
+                timer.invalidate()
+            }
+        }
+    }
+
+    private func spawnEmojiViews() {
+        let emojiCount = Int.random(in: 3...4)
+        let placeCount = Int.random(in: 2...3)
+        let totalCount = emojiCount + placeCount
+        let shuffledEmojis = avatarEmojis[currentAvatarIndex].shuffled()
+        let shuffledPlaces = avatarPlaceNames[currentAvatarIndex].shuffled()
+        let bounds = avatarContainerView.bounds
+        var placedFrames: [CGRect] = []
+
+        let containerInScreen = avatarContainerView.convert(bounds, to: view)
+        let screenBounds = view.bounds
+
+        // Balanced zones: place tags first (they need more space), then emoji
+        let zones = balancedZones(count: totalCount, bounds: bounds)
+
+        var animationIndex = 0
+
+        // Spawn place name tags FIRST so they get priority placement
+        for i in 0..<placeCount {
+            let placeName = shuffledPlaces[i]
+            let tag = makePlaceTag(name: placeName)
+            let tagSize = tag.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
+
+            // Try assigned zone first, then fall back to all other zones
+            guard let position = findPositionWithFallback(
+                preferredZone: zones[animationIndex],
+                bounds: bounds,
+                itemSize: tagSize,
+                placedFrames: placedFrames,
+                containerInScreen: containerInScreen,
+                screenBounds: screenBounds
+            ) else { animationIndex += 1; continue }
+
+            let frame = CGRect(x: position.x, y: position.y, width: tagSize.width, height: tagSize.height)
+            placedFrames.append(frame)
+            tag.frame = frame
+
+            tag.transform = CGAffineTransform(scaleX: 0, y: 0)
+            avatarContainerView.insertSubview(tag, belowSubview: avatarImageView)
+            emojiViews.append(tag)
+
+            let delay = Double(animationIndex) * 0.08
+            UIView.animate(
+                withDuration: 0.4, delay: delay,
+                usingSpringWithDamping: 0.6, initialSpringVelocity: 0.8,
+                options: .curveEaseOut
+            ) {
+                tag.transform = .identity
+            } completion: { _ in
+                self.startFloating(tag)
+            }
+
+            animationIndex += 1
+        }
+
+        // Spawn emoji
+        for i in 0..<emojiCount {
+            let emoji = shuffledEmojis[i]
+            let bubbleSize: CGFloat = CGFloat.random(in: 44...56)
+
+            guard let position = findPositionWithFallback(
+                preferredZone: zones[animationIndex],
+                bounds: bounds,
+                itemSize: CGSize(width: bubbleSize, height: bubbleSize),
+                placedFrames: placedFrames,
+                containerInScreen: containerInScreen,
+                screenBounds: screenBounds
+            ) else { animationIndex += 1; continue }
+
+            let frame = CGRect(x: position.x, y: position.y, width: bubbleSize, height: bubbleSize)
+            placedFrames.append(frame)
+
+            let bubble = UIView(frame: frame)
+            bubble.backgroundColor = .white
+            bubble.layer.cornerRadius = bubbleSize / 2
+            bubble.layer.shadowColor = UIColor.black.cgColor
+            bubble.layer.shadowOpacity = 0.12
+            bubble.layer.shadowOffset = CGSize(width: 0, height: 2)
+            bubble.layer.shadowRadius = 4
+
+            let label = UILabel(frame: bubble.bounds)
+            label.text = emoji
+            label.font = .systemFont(ofSize: bubbleSize * 0.55)
+            label.textAlignment = .center
+            bubble.addSubview(label)
+
+            bubble.transform = CGAffineTransform(scaleX: 0, y: 0)
+            avatarContainerView.insertSubview(bubble, belowSubview: avatarImageView)
+            emojiViews.append(bubble)
+
+            let delay = Double(animationIndex) * 0.08
+            UIView.animate(
+                withDuration: 0.4, delay: delay,
+                usingSpringWithDamping: 0.6, initialSpringVelocity: 0.8,
+                options: .curveEaseOut
+            ) {
+                bubble.transform = .identity
+            } completion: { _ in
+                self.startFloating(bubble)
+            }
+
+            animationIndex += 1
+        }
+    }
+
+    private func startFloating(_ view: UIView) {
+        let dx = CGFloat.random(in: -4...4)
+        let dy = CGFloat.random(in: -4...4)
+        let duration = Double.random(in: 1.8...2.5)
+
+        UIView.animate(
+            withDuration: duration,
+            delay: 0,
+            options: [.repeat, .autoreverse, .curveEaseInOut, .allowUserInteraction]
+        ) {
+            view.transform = CGAffineTransform(translationX: dx, y: dy)
+        }
+    }
+
+    private func makePlaceTag(name: String) -> UIView {
+        let container = UIView()
+        container.backgroundColor = .white
+        container.layer.cornerRadius = 14
+        container.layer.shadowColor = UIColor.black.cgColor
+        container.layer.shadowOpacity = 0.12
+        container.layer.shadowOffset = CGSize(width: 0, height: 2)
+        container.layer.shadowRadius = 4
+
+        let pinIcon = UIImageView()
+        pinIcon.translatesAutoresizingMaskIntoConstraints = false
+        pinIcon.image = UIImage(systemName: "mappin.circle.fill")
+        pinIcon.tintColor = .darkGray
+        pinIcon.contentMode = .scaleAspectFit
+
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.text = name
+        label.font = .systemFont(ofSize: 12, weight: .semibold)
+        label.textColor = .darkGray
+
+        container.addSubview(pinIcon)
+        container.addSubview(label)
+
+        NSLayoutConstraint.activate([
+            pinIcon.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 8),
+            pinIcon.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            pinIcon.widthAnchor.constraint(equalToConstant: 16),
+            pinIcon.heightAnchor.constraint(equalToConstant: 16),
+            label.leadingAnchor.constraint(equalTo: pinIcon.trailingAnchor, constant: 4),
+            label.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -10),
+            label.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            container.heightAnchor.constraint(equalToConstant: 28),
+        ])
+
+        return container
+    }
+
+    /// Returns zone indices distributed so items spread across different sides
+    private func balancedZones(count: Int, bounds: CGRect) -> [Int] {
+        // 0=top-left, 1=top-right, 2=left, 3=right
+        var available = [0, 1, 2, 3].shuffled()
+        var result: [Int] = []
+        for _ in 0..<count {
+            if available.isEmpty {
+                available = [0, 1, 2, 3].shuffled()
+            }
+            result.append(available.removeFirst())
+        }
+        return result
+    }
+
+    private func findPositionWithFallback(
+        preferredZone: Int,
+        bounds: CGRect,
+        itemSize: CGSize,
+        placedFrames: [CGRect],
+        containerInScreen: CGRect,
+        screenBounds: CGRect
+    ) -> CGPoint? {
+        // Try preferred zone first
+        if let pos = findPositionInZone(zone: preferredZone, bounds: bounds, itemSize: itemSize, placedFrames: placedFrames, containerInScreen: containerInScreen, screenBounds: screenBounds) {
+            return pos
+        }
+        // Fall back to all other zones
+        for fallback in [0, 1, 2, 3].shuffled() where fallback != preferredZone {
+            if let pos = findPositionInZone(zone: fallback, bounds: bounds, itemSize: itemSize, placedFrames: placedFrames, containerInScreen: containerInScreen, screenBounds: screenBounds) {
+                return pos
+            }
+        }
+        return nil
+    }
+
+    private func findPositionInZone(
+        zone: Int,
+        bounds: CGRect,
+        itemSize: CGSize,
+        placedFrames: [CGRect],
+        containerInScreen: CGRect,
+        screenBounds: CGRect
+    ) -> CGPoint? {
+        let margin: CGFloat = 10
+        let screenPadding: CGFloat = 16
+        let maxY = bounds.height * 0.67 - itemSize.height
+
+        let rawZone: (xMin: CGFloat, xMax: CGFloat, yMin: CGFloat, yMax: CGFloat)
+        switch zone {
+        case 0: // top-left
+            rawZone = (0, bounds.width * 0.25, 0, bounds.height * 0.18)
+        case 1: // top-right
+            rawZone = (bounds.width * 0.6, bounds.width - itemSize.width, 0, bounds.height * 0.18)
+        case 2: // left
+            rawZone = (-itemSize.width * 0.3, bounds.width * 0.1, bounds.height * 0.2, maxY)
+        default: // right
+            rawZone = (bounds.width * 0.75, bounds.width - itemSize.width * 0.2, bounds.height * 0.2, maxY)
+        }
+
+        // Clamp so lowerBound <= upperBound
+        let xMin = min(rawZone.xMin, rawZone.xMax)
+        let xMax = max(rawZone.xMin, rawZone.xMax)
+        let yMin = min(rawZone.yMin, rawZone.yMax)
+        let yMax = max(rawZone.yMin, rawZone.yMax)
+
+        for _ in 0..<15 {
+            let x = CGFloat.random(in: xMin...xMax)
+            let y = CGFloat.random(in: yMin...yMax)
+            let candidate = CGRect(x: x, y: y, width: itemSize.width, height: itemSize.height)
+
+            let overlaps = placedFrames.contains { existing in
+                existing.insetBy(dx: -margin, dy: -margin).intersects(candidate)
+            }
+            if overlaps { continue }
+
+            let screenRect = CGRect(
+                x: containerInScreen.origin.x + x,
+                y: containerInScreen.origin.y + y,
+                width: itemSize.width,
+                height: itemSize.height
+            )
+            if screenRect.minX < screenPadding ||
+               screenRect.maxX > screenBounds.width - screenPadding ||
+               screenRect.minY < screenPadding ||
+               screenRect.maxY > screenBounds.height - screenPadding {
+                continue
+            }
+
+            return CGPoint(x: x, y: y)
+        }
+        return nil
+    }
+
+    private func removeEmojiViews() {
+        let views = emojiViews
+        emojiViews.removeAll()
+        for bubble in views {
+            UIView.animate(withDuration: 0.2, animations: {
+                bubble.transform = CGAffineTransform(scaleX: 0.01, y: 0.01)
+                bubble.alpha = 0
+            }) { _ in
+                bubble.removeFromSuperview()
+            }
+        }
+    }
+
     private func checkLoginState() {
         // Check if user is already logged in
         if let currentUser = Auth.auth().currentUser {
