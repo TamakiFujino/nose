@@ -745,6 +745,13 @@ public class AssetManager : MonoBehaviour
 		// Enforce a stable render order to reduce z-fighting at garment overlaps
 		ApplyStableRenderOrder(asset.category, asset.subcategory, assetInstance);
 
+        // Slightly inflate tops so bottoms don't poke through
+        if (string.Equals(asset.category, "Clothes", StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(asset.subcategory, "Tops", StringComparison.OrdinalIgnoreCase))
+        {
+            assetInstance.transform.localScale = Vector3.one * 1.005f;
+        }
+
         // Track new instance and handle
         loadedAssets[asset.id] = assetInstance;
         slotKeyToActiveAssetId[slotKey] = asset.id;
@@ -1409,8 +1416,13 @@ public class AssetManager : MonoBehaviour
 
                 bool changed = false;
                 if (isFace) changed = TrySetFirst(m, color, faceProps);
-                else if (isBlush) changed = TrySetFirst(m, color, blushProps);
-                else if (isEyeshadow) changed = TrySetFirst(m, color, eyeshadowProps);
+                else if (isBlush || isEyeshadow)
+                {
+                    // BlushColor/EyeshadowColor are HDR properties (no sRGB conversion).
+                    // Makeup is routed through the Emission channel (unlit), so the
+                    // chosen color renders as-is. Pass it in linear space directly.
+                    changed = TrySetFirst(m, color.linear, isBlush ? blushProps : eyeshadowProps);
+                }
 
                 if (changed) materialsTouched++;
             }
@@ -1509,7 +1521,7 @@ public class AssetManager : MonoBehaviour
                 bool hasMakeup = MaterialHasAny(m, "_BlushColor", "BlushColor", "_EyeshadowColor", "EyeshadowColor");
                 if (!looksLikeFaceObject && !hasSkinBaseTint && !hasBaseMap && !hasMakeup) continue;
 
-                ApplyFaceSurfaceTuning(m);
+                ApplySkinSurfaceTuning(m);
 
                 if (hasSkinBaseTint)
                 {
@@ -1545,12 +1557,12 @@ public class AssetManager : MonoBehaviour
         ReapplyCachedFaceMakeupColors();
     }
 
-    private static void ApplyFaceSurfaceTuning(Material material)
+    private static void ApplySkinSurfaceTuning(Material material)
     {
         if (material == null) return;
 
-        // Match the face material response to the body material more closely so
-        // the same chosen skin color does not skew cooler or shinier on the face.
+        // Ensure face and body materials render with identical matte PBR settings
+        // so the same skin color looks the same on both.
         if (material.HasProperty("_EnvironmentReflections")) material.SetFloat("_EnvironmentReflections", 0f);
         if (material.HasProperty("_GlossyReflections")) material.SetFloat("_GlossyReflections", 0f);
         if (material.HasProperty("_Glossiness")) material.SetFloat("_Glossiness", 0f);
@@ -1560,7 +1572,8 @@ public class AssetManager : MonoBehaviour
         if (material.HasProperty("_Smoothness")) material.SetFloat("_Smoothness", 0f);
         if (material.HasProperty("_SpecularHighlights")) material.SetFloat("_SpecularHighlights", 0f);
         if (material.HasProperty("_SpecColor")) material.SetColor("_SpecColor", Color.black);
-        if (material.HasProperty("_EmissionColor")) material.SetColor("_EmissionColor", Color.black);
+        // NOTE: Do NOT zero _EmissionColor here — FaceMakeup shader routes
+        // blush/eyeshadow through Emission for unlit makeup rendering.
     }
 
     private static bool TryParseHexColor(string hex, out Color color)
@@ -1594,6 +1607,7 @@ public class AssetManager : MonoBehaviour
                     var m = mats[i];
                     if (m == null) continue;
                     ApplyMaterialColor(m, color);
+                    ApplySkinSurfaceTuning(m);
                 }
             }
             return;

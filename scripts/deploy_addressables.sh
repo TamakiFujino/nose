@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Script to deploy Unity Addressables to Firebase Hosting
-# This copies built addressables from Unity to the hosting directory and optionally deploys
+# Only copies the catalog + referenced bundles (skips stale bundles from previous builds)
 
 set -e  # Exit on error
 
@@ -43,16 +43,53 @@ if [ ! -d "$UNITY_SERVER_DATA" ]; then
     exit 1
 fi
 
-# Check if there are any files to copy
-if [ -z "$(ls -A "$UNITY_SERVER_DATA" 2>/dev/null)" ]; then
-    print_error "No files found in $UNITY_SERVER_DATA"
-    echo "Please build addressables in Unity first."
+# Find the catalog file
+CATALOG=$(find "$UNITY_SERVER_DATA" -name "catalog_*.json" -maxdepth 1 | head -1)
+if [ -z "$CATALOG" ]; then
+    print_error "No catalog JSON found in $UNITY_SERVER_DATA"
     exit 1
 fi
 
-print_info "Found addressables in: $UNITY_SERVER_DATA"
-echo "Files to copy:"
-ls -lh "$UNITY_SERVER_DATA" | tail -n +2
+CATALOG_NAME=$(basename "$CATALOG")
+CATALOG_HASH="${CATALOG_NAME%.json}.hash"
+
+# Extract only the bundle filenames referenced by the catalog
+REFERENCED_BUNDLES=$(grep -oE '[a-zA-Z0-9_]+\.bundle' "$CATALOG" | sort -u)
+
+if [ -z "$REFERENCED_BUNDLES" ]; then
+    print_error "No bundles referenced in catalog"
+    exit 1
+fi
+
+# Build the list of files to copy
+FILES_TO_COPY=("$CATALOG_NAME")
+if [ -f "$UNITY_SERVER_DATA/$CATALOG_HASH" ]; then
+    FILES_TO_COPY+=("$CATALOG_HASH")
+fi
+while IFS= read -r bundle; do
+    if [ -f "$UNITY_SERVER_DATA/$bundle" ]; then
+        FILES_TO_COPY+=("$bundle")
+    else
+        print_warning "Referenced bundle not found locally: $bundle"
+    fi
+done <<< "$REFERENCED_BUNDLES"
+
+# Show what will be deployed
+print_info "Catalog: $CATALOG_NAME"
+print_info "Referenced bundles: $(echo "$REFERENCED_BUNDLES" | wc -l | tr -d ' ')"
+echo ""
+echo "Files to deploy:"
+for f in "${FILES_TO_COPY[@]}"; do
+    ls -lh "$UNITY_SERVER_DATA/$f" 2>/dev/null | awk '{print "  " $5 "\t" $NF}'
+done
+
+TOTAL_BUNDLES=$(ls "$UNITY_SERVER_DATA"/*.bundle 2>/dev/null | wc -l | tr -d ' ')
+NEEDED_BUNDLES=$(echo "$REFERENCED_BUNDLES" | wc -l | tr -d ' ')
+STALE=$((TOTAL_BUNDLES - NEEDED_BUNDLES))
+if [ "$STALE" -gt 0 ]; then
+    echo ""
+    print_warning "Skipping $STALE stale bundle(s) from previous builds"
+fi
 
 # Ask which environment to deploy to
 echo ""
@@ -85,16 +122,18 @@ for target in "${TARGETS[@]}"; do
     else
         HOSTING_DIR="$HOSTING_STAGING"
     fi
-    
+
     print_info "Copying to $target environment..."
-    
-    # Create directory if it doesn't exist
+
+    # Clean old addressables, then copy only what's needed
     mkdir -p "$HOSTING_DIR"
-    
-    # Copy all files
-    cp -v "$UNITY_SERVER_DATA"/* "$HOSTING_DIR/"
-    
-    print_info "Copied files to: $HOSTING_DIR"
+    rm -f "$HOSTING_DIR"/*.bundle "$HOSTING_DIR"/catalog_*.json "$HOSTING_DIR"/catalog_*.hash
+
+    for f in "${FILES_TO_COPY[@]}"; do
+        cp -v "$UNITY_SERVER_DATA/$f" "$HOSTING_DIR/"
+    done
+
+    print_info "Copied ${#FILES_TO_COPY[@]} files to: $HOSTING_DIR"
 done
 
 echo ""
@@ -106,9 +145,9 @@ read -p "Do you want to deploy to Firebase now? [y/N]: " deploy_choice
 
 if [[ "$deploy_choice" =~ ^[Yy]$ ]]; then
     print_info "Deploying to Firebase..."
-    
+
     cd "$FIREBASE_CONFIG_DIR"
-    
+
     for target in "${TARGETS[@]}"; do
         # Switch to the correct Firebase project for this target
         if [ "$target" == "dev" ]; then
@@ -118,11 +157,11 @@ if [[ "$deploy_choice" =~ ^[Yy]$ ]]; then
             print_info "Switching to Firebase project: nose-staging"
             firebase use nose-staging
         fi
-        
+
         print_info "Deploying to Firebase target: $target"
         firebase deploy --only hosting:"$target"
     done
-    
+
     print_info "Deployment complete!"
     echo ""
     echo "Addressables are now available at:"
@@ -151,4 +190,3 @@ fi
 
 echo ""
 print_info "Done!"
-

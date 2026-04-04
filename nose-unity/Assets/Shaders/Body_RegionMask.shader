@@ -44,6 +44,8 @@ Shader "Nose/Body Region Mask"
 			float4 _MainTex_ST;
 			float4 _RegionMaskPack0_ST;
 			half4 _Color;
+			half _Glossiness;
+			half _Metallic;
 			float _UseAlbedoTexture;
 			float _UseRegionMaskTextures;
 			float _RegionMaskThreshold;
@@ -61,13 +63,16 @@ Shader "Nose/Body Region Mask"
 				float4 positionCS : SV_POSITION;
 				float2 uv : TEXCOORD0;
 				float3 normalWS : TEXCOORD1;
-				float regionValue : TEXCOORD2;
+				float3 positionWS : TEXCOORD2;
+				float regionValue : TEXCOORD3;
 			};
 
 			Varyings vert(Attributes IN)
 			{
 				Varyings OUT;
-				OUT.positionCS = TransformObjectToHClip(IN.positionOS.xyz);
+				VertexPositionInputs posInputs = GetVertexPositionInputs(IN.positionOS.xyz);
+				OUT.positionCS = posInputs.positionCS;
+				OUT.positionWS = posInputs.positionWS;
 				OUT.uv = TRANSFORM_TEX(IN.uv, _MainTex);
 				OUT.normalWS = TransformObjectToWorldNormal(IN.normalOS);
 				OUT.regionValue = saturate(IN.color.r);
@@ -126,13 +131,23 @@ Shader "Nose/Body Region Mask"
 				}
 				half4 c = _UseAlbedoTexture > 0 ? SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, IN.uv) * _Color : _Color;
 
-				half3 normalWS = normalize(IN.normalWS);
-				Light mainLight = GetMainLight();
-				half ndotl = saturate(dot(normalWS, mainLight.direction));
-				half3 ambient = c.rgb * 0.35h;
-				half3 diffuse = c.rgb * mainLight.color * ndotl;
+				// Use URP PBR lighting to match FaceMakeup Shader Graph output
+				InputData inputData = (InputData)0;
+				inputData.positionWS = IN.positionWS;
+				inputData.normalWS = normalize(IN.normalWS);
+				inputData.viewDirectionWS = GetWorldSpaceNormalizeViewDir(IN.positionWS);
+				inputData.shadowCoord = float4(0, 0, 0, 0);
+				inputData.bakedGI = SampleSH(inputData.normalWS);
+				inputData.normalizedScreenSpaceUV = GetNormalizedScreenSpaceUV(IN.positionCS);
 
-				return half4(ambient + diffuse, c.a);
+				SurfaceData surfaceData = (SurfaceData)0;
+				surfaceData.albedo = c.rgb;
+				surfaceData.metallic = _Metallic;
+				surfaceData.smoothness = _Glossiness;
+				surfaceData.alpha = c.a;
+				surfaceData.occlusion = 1.0h;
+
+				return UniversalFragmentPBR(inputData, surfaceData);
 			}
 			ENDHLSL
 		}
