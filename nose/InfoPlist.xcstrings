@@ -30,36 +30,19 @@
         }
       }
     },
-    "NSLocationAlwaysUsageDescription" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Always allow"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "常に許可"
-          }
-        }
-      }
-    },
     "NSLocationWhenInUseUsageDescription" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Allow when using the app"
+            "value" : "nose uses your location to show your position on the map so you can discover and save places nearby. For example, the map centers on your current area when you open the app."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "アプリ使用中は位置情報を許可"
+            "value" : "noseはあなたの現在地を地図上に表示し、近くの場所を見つけて保存するために位置情報を使用します。例えば、アプリを開くと地図が現在地周辺に移動します。"
           }
         }
       }

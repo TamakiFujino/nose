@@ -146,6 +146,7 @@ final class LoginViewController: UIViewController {
     
     // MARK: - Properties
     private var currentNonce: String?
+    private var appleFullName: String?
     private var isLoginMode = false
     private var loginGradientLayer: CAGradientLayer?
     private let avatarImageNames = ["a", "b", "c", "d", "e", "f", "g"]
@@ -614,6 +615,7 @@ final class LoginViewController: UIViewController {
         let screenPadding: CGFloat = 16
         let maxY = bounds.height * 0.67 - itemSize.height
 
+        // swiftlint:disable:next large_tuple
         let rawZone: (xMin: CGFloat, xMax: CGFloat, yMin: CGFloat, yMax: CGFloat)
         switch zone {
         case 0: // top-left
@@ -783,7 +785,7 @@ final class LoginViewController: UIViewController {
             self.hideLoading()
             
             if let error = error {
-                Logger.log("Error checking user: \(error.localizedDescription)", level: .error, category: "Login")
+                Logger.reportNonFatal(error, category: "Login", context: ["phase": "checkExistingUser", "uid": firebaseUser.uid])
                 self.showError(message: String(localized: "login_error_check_user"))
                 return
             }
@@ -792,14 +794,43 @@ final class LoginViewController: UIViewController {
                 Logger.log("User already exists, navigating to home screen", level: .debug, category: "Login")
                 self.transitionToHome()
             } else {
-                Logger.log("New user, navigating to name registration", level: .debug, category: "Login")
-                let nameRegistrationVC = NameRegistrationViewController()
-                nameRegistrationVC.modalPresentationStyle = .fullScreen
-                self.present(nameRegistrationVC, animated: true)
+                // Try Apple-provided name first, then Firebase Auth displayName as fallback
+                let resolvedName = self.appleFullName ?? firebaseUser.displayName
+                if let name = resolvedName,
+                   name.count >= 2, name.count <= 30 {
+                    // Valid name available — create user and skip name registration
+                    Logger.log("New user with resolved name, creating account", level: .debug, category: "Login")
+                    self.createUserAndNavigateHome(firebaseUID: firebaseUser.uid, name: name)
+                } else {
+                    // No usable name — show NameRegistrationViewController
+                    Logger.log("New user, navigating to name registration", level: .debug, category: "Login")
+                    let nameRegistrationVC = NameRegistrationViewController()
+                    nameRegistrationVC.prefillName = resolvedName
+                    nameRegistrationVC.modalPresentationStyle = .fullScreen
+                    self.present(nameRegistrationVC, animated: true)
+                }
             }
         }
     }
     
+    private func createUserAndNavigateHome(firebaseUID: String, name: String) {
+        let user = User(id: firebaseUID, name: name)
+        UserManager.shared.saveUser(user) { [weak self] error in
+            guard let self = self else { return }
+            if let error = error {
+                Logger.reportNonFatal(error, category: "Login", context: ["phase": "createAppleUser", "uid": firebaseUID])
+                // Fall back to manual name registration with pre-filled name
+                let nameRegistrationVC = NameRegistrationViewController()
+                nameRegistrationVC.prefillName = name
+                nameRegistrationVC.modalPresentationStyle = .fullScreen
+                self.present(nameRegistrationVC, animated: true)
+                return
+            }
+            Logger.log("Created user with Apple-provided name", level: .info, category: "Login")
+            self.transitionToHome()
+        }
+    }
+
     private func transitionToHome() {
         guard let window = view.window else { return }
         let homeViewController = HomeViewController()
@@ -819,6 +850,7 @@ final class LoginViewController: UIViewController {
     
     // MARK: - Actions
     @objc private func googleButtonTapped() {
+        appleFullName = nil
         showLoading()
         guard let clientID = FirebaseApp.app()?.options.clientID else {
             hideLoading()
@@ -833,22 +865,22 @@ final class LoginViewController: UIViewController {
             guard let self = self else { return }
             
             if let error = error {
-                Logger.log("Google Sign In error: \(error.localizedDescription)", level: .error, category: "Login")
                 self.hideLoading()
-                // Check if user cancelled
+                // Check if user cancelled — not a reportable failure
                 if let gidError = error as NSError?,
                    gidError.domain == "com.google.GIDSignIn",
                    gidError.code == -5 { // GIDSignInErrorCode.canceled
-                    // User cancelled - don't show error
+                    Logger.log("Google Sign In cancelled by user", level: .debug, category: "Login")
                     return
                 }
+                Logger.reportNonFatal(error, category: "Login", context: ["phase": "googleSignIn"])
                 self.showError(message: String(format: String(localized: "login_error_google_signin_format"), error.localizedDescription))
                 return
             }
             
             guard let authentication = result?.user,
                   let idToken = authentication.idToken?.tokenString else {
-                Logger.log("Failed to get Google credentials", level: .error, category: "Login")
+                Logger.reportNonFatal(message: "Failed to get Google credentials", category: "Login", context: ["phase": "googleSignIn"])
                 self.hideLoading()
                 self.showError(message: String(localized: "login_error_google_credentials"))
                 return
@@ -864,14 +896,14 @@ final class LoginViewController: UIViewController {
             
             Auth.auth().signIn(with: credential) { [weak self] authResult, error in
                 guard let self = self else { return }
-                
+
                 if let error = error {
-                    Logger.log("Firebase Sign In error: \(error.localizedDescription)", level: .error, category: "Login")
+                    Logger.reportNonFatal(error, category: "Login", context: ["phase": "firebaseSignIn", "provider": "google"])
                     self.hideLoading()
                     self.showError(message: String(format: String(localized: "login_error_firebase_auth_format"), error.localizedDescription))
                     return
                 }
-                
+
                 Logger.log("Successfully signed in with Google", level: .info, category: "Login")
                 self.checkExistingUserAndNavigate()
             }
@@ -909,7 +941,17 @@ extension LoginViewController: ASAuthorizationControllerDelegate {
                 hideLoading()
                 return
             }
-            
+
+            // Apple only provides fullName on the FIRST authorization — capture immediately
+            if let nameComponents = appleIDCredential.fullName {
+                let parts = [nameComponents.givenName, nameComponents.familyName].compactMap { $0 }
+                let name = parts.joined(separator: " ").trimmingCharacters(in: .whitespaces)
+                if !name.isEmpty {
+                    appleFullName = name
+                    Logger.log("Captured Apple-provided name: \(name)", level: .debug, category: "Login")
+                }
+            }
+
             let credential = OAuthProvider.credential(
                 providerID: .apple,
                 idToken: idTokenString,
@@ -918,13 +960,26 @@ extension LoginViewController: ASAuthorizationControllerDelegate {
             
             Auth.auth().signIn(with: credential) { [weak self] authResult, error in
                 guard let self = self else { return }
-                
+
                 if let error = error {
-                    Logger.log("Firebase Sign In error: \(error.localizedDescription)", level: .error, category: "Login")
+                    Logger.reportNonFatal(error, category: "Login", context: ["phase": "firebaseSignIn", "provider": "apple"])
                     self.hideLoading()
                     return
                 }
-                
+
+                // Persist Apple-provided name to Firebase Auth displayName (fire-and-forget).
+                // This ensures the name survives across app reinstalls even if Apple
+                // doesn't send fullName on subsequent authorizations.
+                if let name = self.appleFullName {
+                    let changeRequest = Auth.auth().currentUser?.createProfileChangeRequest()
+                    changeRequest?.displayName = name
+                    changeRequest?.commitChanges { error in
+                        if let error = error {
+                            Logger.reportNonFatal(error, category: "Login", context: ["phase": "setDisplayName"])
+                        }
+                    }
+                }
+
                 Logger.log("Successfully signed in with Apple", level: .info, category: "Login")
                 self.checkExistingUserAndNavigate()
             }
@@ -932,7 +987,13 @@ extension LoginViewController: ASAuthorizationControllerDelegate {
     }
     
     func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
-        Logger.log("Apple Sign In error: \(error.localizedDescription)", level: .error, category: "Login")
+        let nsError = error as NSError
+        // ASAuthorizationError.canceled == 1001 — not a reportable failure
+        if nsError.domain == ASAuthorizationError.errorDomain, nsError.code == ASAuthorizationError.canceled.rawValue {
+            Logger.log("Apple Sign In cancelled by user", level: .debug, category: "Login")
+        } else {
+            Logger.reportNonFatal(error, category: "Login", context: ["phase": "appleSignIn"])
+        }
         hideLoading()
     }
 }
