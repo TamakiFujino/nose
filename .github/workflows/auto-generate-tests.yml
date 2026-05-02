@@ -1,0 +1,132 @@
+# Auto-generate unit tests for Swift files changed in Claude PRs.
+# Only runs on claude/* branches targeting staging. Skips if the PR
+# already contains test changes.
+#
+# Prerequisites:
+#   - Claude GitHub App installed on the repo
+#   - ANTHROPIC_API_KEY in repository secrets
+name: "Claude: Auto-generate Tests"
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [staging]
+    paths:
+      - "nose/**/*.swift"
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: auto-tests-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  generate-tests:
+    name: Generate unit tests
+    if: startsWith(github.head_ref, 'claude/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Check if PR already has test changes
+        id: check_tests
+        run: |
+          # Get files changed in this PR
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          echo "Changed files:"
+          echo "$CHANGED"
+
+          # Check if any test files are already modified
+          HAS_TESTS=$(echo "$CHANGED" | grep -c '^noseTests/' || true)
+          echo "has_tests=$HAS_TESTS" >> "$GITHUB_OUTPUT"
+          if [ "$HAS_TESTS" -gt 0 ]; then
+            echo "PR already contains test changes — skipping generation."
+          fi
+
+      - name: Identify testable Swift files
+        if: steps.check_tests.outputs.has_tests == '0'
+        id: files
+        run: |
+          # Get changed Swift files, excluding non-testable locations
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          SWIFT_FILES=$(echo "$CHANGED" \
+            | grep '^nose/.*\.swift$' \
+            | grep -v 'ViewController' \
+            | grep -v 'AppDelegate' \
+            | grep -v 'SceneDelegate' \
+            | grep -v '/Components/' \
+            | head -3)
+
+          echo "Testable Swift files:"
+          echo "$SWIFT_FILES"
+
+          if [ -z "$SWIFT_FILES" ]; then
+            echo "No testable Swift files found — skipping."
+            echo "file_count=0" >> "$GITHUB_OUTPUT"
+          else
+            COUNT=$(echo "$SWIFT_FILES" | wc -l | tr -d ' ')
+            echo "file_count=$COUNT" >> "$GITHUB_OUTPUT"
+            {
+              echo "files<<FILES_EOF"
+              echo "$SWIFT_FILES"
+              echo "FILES_EOF"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Generate tests with Claude
+        if: >-
+          steps.check_tests.outputs.has_tests == '0' &&
+          steps.files.outputs.file_count != '0'
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          max_turns: 15
+          model: claude-sonnet-4-6
+          timeout_minutes: 15
+          direct_prompt: |
+            You are generating unit tests for changed Swift files in a Claude-authored PR
+            for the nose iOS app.
+
+            ## Files to test
+            ${{ steps.files.outputs.files }}
+
+            ## Instructions
+
+            1. Read CLAUDE.md for project context and conventions.
+            2. Read `.claude/commands/gen-tests.md` for the test generation strategy.
+            3. For each file listed above:
+               a. Read the source file.
+               b. Identify pure functions and deterministic logic that can be unit tested.
+               c. Skip files that only contain UIKit/Firebase/Unity code — they are not unit-test candidates.
+               d. Generate the test file following the gen-tests strategy:
+                  - Mirror directory structure: `nose/Managers/Foo/Bar.swift` → `noseTests/Managers/Foo/BarTests.swift`
+                  - Use `@testable import nose` and `XCTestCase`.
+                  - Follow Given/When/Then pattern.
+                  - No force-unwraps, use `XCTUnwrap`.
+                  - Max 10 tests per file.
+            4. If none of the files have testable pure functions, do NOT create any test files.
+               Instead, leave a PR comment explaining why no tests were generated.
+            5. If you created test files, commit them with the message:
+               `test: add unit tests for <file names>`
+               Then push to the current branch.
+
+            ## Constraints
+            - Do NOT modify production code.
+            - Do NOT modify existing test files.
+            - Do NOT add Firebase or Unity mocks — if a file needs those, skip it.
+            - Do NOT generate tests for UIKit view controllers or UI components.
+          allowed_tools: |
+            Bash
+            Read
+            Write
+            Edit
+            Glob
+            Grep

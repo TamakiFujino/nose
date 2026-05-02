@@ -1,0 +1,67 @@
+# Dependabot configuration for the nose iOS repo.
+#
+# Ecosystems covered:
+#   - bundler (Gemfile, root)                — Fastlane, CocoaPods, xcpretty, etc.
+#   - github-actions (.github/workflows/)    — pinned action versions
+#   - npm (scripts/)                         — one-off Node scripts (migration, config gen)
+#
+# Not covered (on purpose):
+#   - CocoaPods: Dependabot support is unreliable. Use the `/bump-firebase`
+#     slash command (`.claude/commands/bump-firebase.md`) for monthly AI-assisted
+#     pod updates instead.
+#   - Unity packages: handled inside the Unity editor manually.
+
+version: 2
+updates:
+  - package-ecosystem: "bundler"
+    directory: "/"
+    target-branch: "staging"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ruby"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    groups:
+      fastlane:
+        patterns:
+          - "fastlane*"
+      cocoapods:
+        patterns:
+          - "cocoapods*"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    target-branch: "staging"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ci"
+    commit-message:
+      prefix: "chore(ci)"
+      include: "scope"
+
+  - package-ecosystem: "npm"
+    directory: "/scripts"
+    target-branch: "staging"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "tooling"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    ignore:
+      # Transitive-only packages we don't care about individually
+      - dependency-name: "@types/*"
+        update-types: ["version-update:semver-patch"]

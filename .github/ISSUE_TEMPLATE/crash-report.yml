@@ -1,0 +1,60 @@
+name: Crash Report
+description: Report a crash from Firebase Crashlytics
+title: "crash: "
+labels: ["bug", "crash"]
+body:
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      description: Where did the crash occur?
+      options:
+        - Production
+        - Staging
+        - Development
+    validations:
+      required: true
+
+  - type: input
+    id: affected_users
+    attributes:
+      label: Affected users
+      description: Number of affected users or sessions (from Crashlytics)
+      placeholder: "e.g. 42 users, 156 sessions"
+    validations:
+      required: false
+
+  - type: input
+    id: crashlytics_id
+    attributes:
+      label: Crashlytics Issue ID
+      description: The issue ID from the Firebase Crashlytics console
+      placeholder: "e.g. abc123def456"
+    validations:
+      required: false
+
+  - type: textarea
+    id: stack_trace
+    attributes:
+      label: Stack Trace
+      description: Paste the full stack trace from Crashlytics
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional Context
+      description: Any extra context — device models, OS versions, repro steps, etc.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: auto_fix
+    attributes:
+      label: Auto-fix
+      description: Should Claude attempt to fix this crash automatically?
+      options:
+        - label: Assign to Claude for automatic fix (`claude:fix` label)
+          required: false
