@@ -135,29 +135,35 @@ protocol ContentViewControllerDelegate: AnyObject {
 extension ContentViewController {
     func didRequestClose() {
         Logger.log("[ContentViewController] didRequestClose() called", level: .debug, category: "UnityContent")
-        
+
+        // Dismiss any in-progress loading alert before popping, otherwise UIKit
+        // can't cleanly remove a VC that has a presented alert on top of it.
+        if let presented = presentedViewController {
+            presented.dismiss(animated: false)
+        }
+        LoadingView.shared.hideAlertLoading()
+
         let cleanupUnityOverlays = {
             // Remove floating UI overlay window
             self.floatingWindow?.isHidden = true
             self.floatingWindow?.rootViewController = nil
             self.floatingWindow = nil
-            
+
+            // Hide Unity window first so it doesn't cover the app
+            UnityLauncher.shared().hideUnity()
+
             // Bring host app window to front again
             if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
-                let normalWindows = windowScene.windows.filter { $0.windowLevel == .normal }
-                if let appWindow = normalWindows.first {
+                let appWindow = windowScene.windows.first { $0.windowLevel == .normal && !$0.isHidden }
+                if let appWindow = appWindow {
                     Logger.log("[ContentViewController] Making app window key and visible", level: .debug, category: "UnityContent")
                     appWindow.makeKeyAndVisible()
                 } else {
-                    Logger.log("[ContentViewController] No normal-level app window found", level: .debug, category: "UnityContent")
+                    Logger.log("[ContentViewController] No visible normal-level app window found", level: .debug, category: "UnityContent")
                 }
             } else {
                 Logger.log("[ContentViewController] No UIWindowScene available", level: .debug, category: "UnityContent")
             }
-            
-            // Hide Unity after we're already back, so we don't flash a blank ContentViewController background.
-            Logger.log("[ContentViewController] Hiding Unity window (no-op)", level: .debug, category: "UnityContent")
-            UnityLauncher.shared().hideUnity()
         }
         
         if let nav = navigationController {

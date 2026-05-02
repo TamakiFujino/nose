@@ -157,7 +157,7 @@ class CollectionPlacesViewController: UIViewController, UIGestureRecognizerDeleg
         stack.axis = .horizontal
         stack.alignment = .center
         stack.distribution = .fillProportionally
-        stack.spacing = -180 // adjust overlap to -100
+        stack.spacing = -196
         return stack
     }()
 
@@ -324,7 +324,7 @@ class CollectionPlacesViewController: UIViewController, UIGestureRecognizerDeleg
 
             avatarsStackView.topAnchor.constraint(equalTo: sharedFriendsLabel.bottomAnchor, constant: 8),
             avatarsStackView.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 0),
-            avatarsStackView.heightAnchor.constraint(equalToConstant: 216),
+            avatarsStackView.heightAnchor.constraint(equalToConstant: 260),
 
             customizeButton.topAnchor.constraint(equalTo: avatarsStackView.bottomAnchor, constant: 6),
             customizeButton.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),

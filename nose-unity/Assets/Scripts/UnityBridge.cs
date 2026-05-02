@@ -796,7 +796,6 @@ public class UnityBridge : MonoBehaviour
 
             // Frame avatar to fit requested aspect without cropping
             cam.aspect = (float)width / Mathf.Max(1, height);
-            // Add more headroom to avoid top clipping at high FOV
             FrameAvatarForFullFigure(cam, 1.20f, 0.0f);
             // Ensure near clip doesn't cut off toes
             cam.nearClipPlane = Mathf.Min(cam.nearClipPlane, 0.01f);
@@ -846,7 +845,11 @@ public class UnityBridge : MonoBehaviour
         var assetMgr = assetManager != null ? assetManager : GameObject.FindObjectOfType<AssetManager>();
         if (assetMgr == null || assetMgr.avatarRoot == null) return false;
 
-        var renderers = assetMgr.avatarRoot.GetComponentsInChildren<Renderer>(true);
+        // Walk up to the avatar scene root so sibling meshes (body, face)
+        // are included — mirrors the hide-non-avatar logic in capture.
+        Transform avatarSceneRoot = assetMgr.avatarRoot;
+        while (avatarSceneRoot.parent != null) avatarSceneRoot = avatarSceneRoot.parent;
+        var renderers = avatarSceneRoot.GetComponentsInChildren<Renderer>(true);
         if (renderers == null || renderers.Length == 0) return false;
 
         bool anyPoint = false;
@@ -927,7 +930,11 @@ public class UnityBridge : MonoBehaviour
         var mgr = assetManager != null ? assetManager : GameObject.FindObjectOfType<AssetManager>();
         if (mgr == null || mgr.avatarRoot == null || cam == null) return;
 
-        var renderers = mgr.avatarRoot.GetComponentsInChildren<Renderer>(true);
+        // Walk up to the avatar scene root so sibling meshes (body, face)
+        // are included — mirrors the hide-non-avatar logic in capture.
+        Transform avatarSceneRoot = mgr.avatarRoot;
+        while (avatarSceneRoot.parent != null) avatarSceneRoot = avatarSceneRoot.parent;
+        var renderers = avatarSceneRoot.GetComponentsInChildren<Renderer>(true);
         if (renderers == null || renderers.Length == 0) return;
         Bounds b = renderers[0].bounds;
         for (int i = 1; i < renderers.Length; i++) { if (renderers[i] != null) b.Encapsulate(renderers[i].bounds); }

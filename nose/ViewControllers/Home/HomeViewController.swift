@@ -113,8 +113,19 @@ final class HomeViewController: UIViewController {
         return blurView
     }()
     
+    private lazy var greetingLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.textColor = .white
+        label.font = .systemFont(ofSize: 18, weight: .medium)
+        label.textAlignment = .center
+        label.alpha = 0
+        return label
+    }()
+
     private var hasSetInitialCamera = false
     private var hasAppeared = false
+    private var shouldFadeOutGreeting = false
     
     private lazy var searchResultsTableView: UITableView = {
         let tableView = UITableView()
@@ -213,6 +224,7 @@ final class HomeViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
+        showGreeting()
         setupManagers()
         setupLocationManager()
         setupNotificationObservers()
@@ -282,7 +294,7 @@ final class HomeViewController: UIViewController {
         // Add main views to the view hierarchy
         // Blur overlays are added right after mapView so they're on top of map but below other UI
         [mapView, topBlurOverlay, bottomBlurOverlay, footerBar, headerView,
-         searchResultsTableView, currentLocationButton, toggle3DButton, messageView].forEach {
+         searchResultsTableView, currentLocationButton, toggle3DButton, messageView, greetingLabel].forEach {
             view.addSubview($0)
         }
         
@@ -369,7 +381,11 @@ final class HomeViewController: UIViewController {
             subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: Constants.messageViewSpacing),
             subtitleLabel.leadingAnchor.constraint(equalTo: messageView.leadingAnchor, constant: Constants.messageViewPadding),
             subtitleLabel.trailingAnchor.constraint(equalTo: messageView.trailingAnchor, constant: -Constants.messageViewPadding),
-            subtitleLabel.bottomAnchor.constraint(equalTo: messageView.bottomAnchor, constant: -Constants.messageViewPadding)
+            subtitleLabel.bottomAnchor.constraint(equalTo: messageView.bottomAnchor, constant: -Constants.messageViewPadding),
+
+            // Greeting label constraints - top of screen
+            greetingLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 40),
+            greetingLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor)
         ])
     }
     
@@ -487,6 +503,34 @@ final class HomeViewController: UIViewController {
         }
     }
 
+    private static let cachedNameKey = "cachedUserName"
+
+    private func showGreeting() {
+        // Show instantly from cache
+        if let cached = UserDefaults.standard.string(forKey: Self.cachedNameKey) {
+            greetingLabel.text = "Hello, \(cached)"
+            greetingLabel.alpha = 1
+        }
+
+        // Fetch latest name and update cache
+        UserManager.shared.getCurrentUser { [weak self] user, _ in
+            guard let self = self, let name = user?.name else { return }
+            UserDefaults.standard.set(name, forKey: Self.cachedNameKey)
+            DispatchQueue.main.async {
+                self.greetingLabel.text = "Hello, \(name)"
+                if self.shouldFadeOutGreeting {
+                    // Zoom already started — show briefly then fade out
+                    self.greetingLabel.alpha = 1
+                    UIView.animate(withDuration: 0.5, delay: 0.3) {
+                        self.greetingLabel.alpha = 0
+                    }
+                } else {
+                    self.greetingLabel.alpha = 1
+                }
+            }
+        }
+    }
+
     private func beginZoomAnimation() {
         // Get coordinate from HC's location manager or MapboxMapManager, fallback to Tokyo
         let coordinate: CLLocationCoordinate2D
@@ -498,7 +542,14 @@ final class HomeViewController: UIViewController {
             coordinate = CLLocationCoordinate2D(latitude: 35.6812, longitude: 139.7671)
         }
 
-        mapManager?.performLandingAnimation(to: coordinate) { [weak self] in
+        mapManager?.performLandingAnimation(to: coordinate, onZoomStart: { [weak self] in
+            guard let self = self else { return }
+            // Fade out greeting when the actual zoom-in begins
+            self.shouldFadeOutGreeting = true
+            UIView.animate(withDuration: 0.5) {
+                self.greetingLabel.alpha = 0
+            }
+        }) { [weak self] in
             guard let self = self else { return }
             self.hasSetInitialCamera = true
             self.is3DViewEnabled = true

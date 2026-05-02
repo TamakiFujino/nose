@@ -51,6 +51,11 @@ public class AssetManager : MonoBehaviour
     private Color? lastAppliedBlushColor;
     private Color? lastAppliedEyeshadowColor;
 
+    // Cached original mask textures so we can restore them when makeup is re-enabled
+    private readonly Dictionary<Material, Texture> originalBlushMasks = new Dictionary<Material, Texture>();
+    private readonly Dictionary<Material, Texture> originalEyeshadowMasks = new Dictionary<Material, Texture>();
+    private Texture2D _blackMaskTexture;
+
     private bool addressablesInitialized = false;
 
     [Header("Remote Catalog (Firebase Hosting)")]
@@ -745,6 +750,13 @@ public class AssetManager : MonoBehaviour
 		// Enforce a stable render order to reduce z-fighting at garment overlaps
 		ApplyStableRenderOrder(asset.category, asset.subcategory, assetInstance);
 
+        // Slightly inflate tops so bottoms don't poke through
+        if (string.Equals(asset.category, "Clothes", StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(asset.subcategory, "Tops", StringComparison.OrdinalIgnoreCase))
+        {
+            assetInstance.transform.localScale = Vector3.one * 1.005f;
+        }
+
         // Track new instance and handle
         loadedAssets[asset.id] = assetInstance;
         slotKeyToActiveAssetId[slotKey] = asset.id;
@@ -1358,6 +1370,17 @@ public class AssetManager : MonoBehaviour
 
     // Applies color to face shader graph properties (base skin, blush, eyeshadow).
     // We intentionally target renderers that look like "face" OR materials that expose makeup properties.
+    private Texture2D GetBlackMaskTexture()
+    {
+        if (_blackMaskTexture == null)
+        {
+            _blackMaskTexture = new Texture2D(1, 1, TextureFormat.R8, false);
+            _blackMaskTexture.SetPixel(0, 0, Color.black);
+            _blackMaskTexture.Apply(false, false);
+        }
+        return _blackMaskTexture;
+    }
+
     private void ApplyFaceMakeupColor(string subcategory, Color color)
     {
         if (avatarRoot == null)
@@ -1374,12 +1397,16 @@ public class AssetManager : MonoBehaviour
         if (isBlush) lastAppliedBlushColor = color;
         if (isEyeshadow) lastAppliedEyeshadowColor = color;
 
+        // Alpha == 0 means "disabled" — we need to zero out the mask texture
+        // so the BaseColor path (skin * (1 - mask)) isn't darkened.
+        bool disabled = (isBlush || isEyeshadow) && color.a < 0.01f;
+
         // Candidate property names to support different Shader Graph setups
-        // NOTE: Shader Graph "Reference" names often start with "_" (e.g. _BlushColor),
-        // but they can also be custom without it (e.g. BlushColor). Support both.
         string[] faceProps = new[] { "_BaseColorTint", "BaseColorTint", "_FaceColor", "FaceColor", "_SkinColor", "SkinColor", "_BaseColor", "_Color" };
         string[] blushProps = new[] { "_BlushColor", "BlushColor", "_BlushTint", "BlushTint" };
         string[] eyeshadowProps = new[] { "_EyeshadowColor", "EyeshadowColor", "_EyeshadowTint", "EyeshadowTint" };
+        string[] blushMaskProps = new[] { "_Mask_Blush", "Mask_Blush" };
+        string[] eyeshadowMaskProps = new[] { "_Mask_Eyeshadow", "Mask_Eyeshadow" };
 
         var renderers = GetFaceCandidateRenderers();
         int materialsTouched = 0;
@@ -1409,8 +1436,45 @@ public class AssetManager : MonoBehaviour
 
                 bool changed = false;
                 if (isFace) changed = TrySetFirst(m, color, faceProps);
-                else if (isBlush) changed = TrySetFirst(m, color, blushProps);
-                else if (isEyeshadow) changed = TrySetFirst(m, color, eyeshadowProps);
+                else if (isBlush || isEyeshadow)
+                {
+                    var maskProps = isBlush ? blushMaskProps : eyeshadowMaskProps;
+                    var cache = isBlush ? originalBlushMasks : originalEyeshadowMasks;
+
+                    if (disabled)
+                    {
+                        // Cache original mask texture and replace with black (empty)
+                        foreach (var prop in maskProps)
+                        {
+                            if (m.HasProperty(prop))
+                            {
+                                if (!cache.ContainsKey(m))
+                                    cache[m] = m.GetTexture(prop);
+                                m.SetTexture(prop, GetBlackMaskTexture());
+                                break;
+                            }
+                        }
+                        changed = TrySetFirst(m, Color.black, isBlush ? blushProps : eyeshadowProps);
+                    }
+                    else
+                    {
+                        // Restore original mask texture if we cached it
+                        if (cache.TryGetValue(m, out Texture orig))
+                        {
+                            foreach (var prop in maskProps)
+                            {
+                                if (m.HasProperty(prop))
+                                {
+                                    m.SetTexture(prop, orig);
+                                    break;
+                                }
+                            }
+                            cache.Remove(m);
+                        }
+                        // Apply color in linear space for HDR Emission channel
+                        changed = TrySetFirst(m, color.linear, isBlush ? blushProps : eyeshadowProps);
+                    }
+                }
 
                 if (changed) materialsTouched++;
             }
@@ -1509,7 +1573,7 @@ public class AssetManager : MonoBehaviour
                 bool hasMakeup = MaterialHasAny(m, "_BlushColor", "BlushColor", "_EyeshadowColor", "EyeshadowColor");
                 if (!looksLikeFaceObject && !hasSkinBaseTint && !hasBaseMap && !hasMakeup) continue;
 
-                ApplyFaceSurfaceTuning(m);
+                ApplySkinSurfaceTuning(m);
 
                 if (hasSkinBaseTint)
                 {
@@ -1545,12 +1609,12 @@ public class AssetManager : MonoBehaviour
         ReapplyCachedFaceMakeupColors();
     }
 
-    private static void ApplyFaceSurfaceTuning(Material material)
+    private static void ApplySkinSurfaceTuning(Material material)
     {
         if (material == null) return;
 
-        // Match the face material response to the body material more closely so
-        // the same chosen skin color does not skew cooler or shinier on the face.
+        // Ensure face and body materials render with identical matte PBR settings
+        // so the same skin color looks the same on both.
         if (material.HasProperty("_EnvironmentReflections")) material.SetFloat("_EnvironmentReflections", 0f);
         if (material.HasProperty("_GlossyReflections")) material.SetFloat("_GlossyReflections", 0f);
         if (material.HasProperty("_Glossiness")) material.SetFloat("_Glossiness", 0f);
@@ -1560,7 +1624,8 @@ public class AssetManager : MonoBehaviour
         if (material.HasProperty("_Smoothness")) material.SetFloat("_Smoothness", 0f);
         if (material.HasProperty("_SpecularHighlights")) material.SetFloat("_SpecularHighlights", 0f);
         if (material.HasProperty("_SpecColor")) material.SetColor("_SpecColor", Color.black);
-        if (material.HasProperty("_EmissionColor")) material.SetColor("_EmissionColor", Color.black);
+        // NOTE: Do NOT zero _EmissionColor here — FaceMakeup shader routes
+        // blush/eyeshadow through Emission for unlit makeup rendering.
     }
 
     private static bool TryParseHexColor(string hex, out Color color)
@@ -1594,6 +1659,7 @@ public class AssetManager : MonoBehaviour
                     var m = mats[i];
                     if (m == null) continue;
                     ApplyMaterialColor(m, color);
+                    ApplySkinSurfaceTuning(m);
                 }
             }
             return;

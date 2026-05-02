@@ -197,7 +197,7 @@ extension FloatingUIController {
                 }
                 // Makeup is color-driven, so also force it off.
                 if slot.parent == "Make Up" {
-                    sendColorToUnity(category: slot.parent, subcategory: child, hex: "#000000")
+                    sendColorToUnity(category: slot.parent, subcategory: child, hex: "#00000000")
                 }
             }
         }
@@ -330,8 +330,8 @@ extension FloatingUIController {
                 if enabled, let hex = entry["color"], !hex.isEmpty {
                     sendColorToUnity(category: unityCategory, subcategory: unitySubcategory, hex: hex)
                 } else {
-                    // Disabled -> remove effect (shader uses Add, black = no effect)
-                    sendColorToUnity(category: unityCategory, subcategory: unitySubcategory, hex: "#000000")
+                    // Disabled -> send transparent to disable mask in shader
+                    sendColorToUnity(category: unityCategory, subcategory: unitySubcategory, hex: "#00000000")
                 }
             } else if let hex = entry["color"], !hex.isEmpty {
                 sendColorToUnity(category: unityCategory, subcategory: unitySubcategory, hex: hex)

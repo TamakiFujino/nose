@@ -15,7 +15,7 @@ MonoBehaviour:
   m_DefaultGroup: 434608182e5ff4d5e9d0fae32c17b029
   m_currentHash:
     serializedVersion: 2
-    Hash: f67c7a5ab1d8cfc0ba9defa95c5a19d2
+    Hash: 00000000000000000000000000000000
   m_OptimizeCatalogSize: 0
   m_BuildRemoteCatalog: 1
   m_BundleLocalCatalog: 0
@@ -100,19 +100,20 @@ MonoBehaviour:
     m_ProfileVersion: 1
   m_LabelTable:
     m_LabelNames:
-    - default
-    - tops-nosleeve-cropped
-    - tops-nosleeve
-    - tops-half-cropped
-    - tops-half
-    - tops-seven-cropped
-    - tops-seven
-    - tops-long-cropped
-    - tops-long
-    - bottoms-short
-    - bottoms-half
-    - bottoms-med
-    - bottoms-long
+    - chest
+    - belly
+    - shoulder
+    - upper_arm
+    - elbow
+    - lower_arm
+    - hip
+    - upper_upper_leg
+    - upper_lower_leg
+    - knee
+    - lower_upper_leg
+    - lower_lower_leg
+    - ankle
+    - foot
   m_SchemaTemplates: []
   m_GroupTemplateObjects:
   - {fileID: 11400000, guid: a3a31934ea5694c79924bb9888249bc4, type: 2}

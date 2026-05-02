@@ -85,7 +85,7 @@ final class UnityManager {
                 id: "\(mainCategory)_\(subcategory)_\(name)",
                 name: name,
                 modelPath: "Models/\(mainCategory)/\(subcategory)/\(name)",
-                thumbnailPath: "Thumbs/\(mainCategory)/\(subcategory)/\(name).jpg",
+                thumbnailPath: "Thumbs/\(mainCategory)/\(subcategory)/\(name).png",
                 category: mainCategory,
                 subcategory: subcategory,
                 isActive: true,

@@ -127,7 +127,7 @@ final class MapboxMapManager: NSObject {
         mapView.camera.ease(to: cameraOptions, duration: 0.5)
     }
     
-    func performLandingAnimation(to coordinate: CLLocationCoordinate2D, completion: @escaping () -> Void) {
+    func performLandingAnimation(to coordinate: CLLocationCoordinate2D, onZoomStart: (() -> Void)? = nil, completion: @escaping () -> Void) {
         // Hide detail layers (labels, POIs, 3D buildings) to reduce rendering load during zoom
         hideDetailLayers()
 
@@ -147,6 +147,7 @@ final class MapboxMapManager: NSObject {
         // 2) the zoom-in, keeping the center fixed on the destination
         mapView.camera.ease(to: globeAlignedCamera, duration: 1.4, curve: .easeInOut) { [weak self] _ in
             guard let self = self else { return }
+            onZoomStart?()
             self.mapView.camera.fly(to: finalCamera, duration: 3.0) { _ in
                 completion()
             }

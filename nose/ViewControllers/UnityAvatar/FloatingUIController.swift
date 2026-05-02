@@ -224,20 +224,7 @@ class FloatingUIController: UIViewController {
         view.layoutIfNeeded()
         colorButton.layer.cornerRadius = colorButton.bounds.height / 2
         colorButton.clipsToBounds = true
-        // Ensure tabs have fully rounded (pill) corners
-        parentCategoryStackView.arrangedSubviews.forEach { subview in
-            if let button = subview as? UIButton {
-                button.layer.cornerRadius = button.bounds.height / 2
-                button.clipsToBounds = true
-            }
-        }
-        childCategoryStackView.arrangedSubviews.forEach { subview in
-            if let button = subview as? UIButton {
-                button.layer.cornerRadius = button.bounds.height / 2
-                button.clipsToBounds = true
-            }
-        }
-        // Make top buttons perfectly pill-shaped
+        // Back/Save buttons use dynamic height, so pill-shape them here
         backButton.layer.cornerRadius = backButton.bounds.height / 2
         backButton.clipsToBounds = true
         saveButton.layer.cornerRadius = saveButton.bounds.height / 2
@@ -791,7 +778,7 @@ class FloatingUIController: UIViewController {
         button.setTitleColor(.black, for: .normal)
         // Set default background to secondColor
         button.backgroundColor = .secondColor
-        button.layer.cornerRadius = isParent ? 16 : 12
+        button.layer.cornerRadius = isParent ? 15 : 13
         button.layer.borderWidth = 0
         button.layer.borderColor = UIColor.clear.cgColor
         button.translatesAutoresizingMaskIntoConstraints = false
@@ -867,7 +854,7 @@ class FloatingUIController: UIViewController {
                 // Inactive tab: secondColor background with black text
                 button.backgroundColor = isSelected ? .fourthColor : .secondColor
                 button.setTitleColor(isSelected ? .white : .black, for: .normal)
-                button.layer.cornerRadius = 16
+                button.layer.cornerRadius = 15
             }
         }
         for (index, subview) in childCategoryStackView.arrangedSubviews.enumerated() {
@@ -879,7 +866,7 @@ class FloatingUIController: UIViewController {
                 // Inactive tab: secondColor background with black text
                 button.backgroundColor = isSelected ? .fourthColor : .secondColor
                 button.setTitleColor(isSelected ? .white : .black, for: .normal)
-                button.layer.cornerRadius = 12
+                button.layer.cornerRadius = 13
             }
         }
     }
@@ -992,9 +979,9 @@ class FloatingUIController: UIViewController {
         let currentlyEnabled = isMakeupEnabled(parent: parent, child: child)
 
         if currentlyEnabled {
-            // Turn OFF: show as selected (border on); remove effect (shader uses Add, so black = no effect)
+            // Turn OFF: show as selected (border on); send transparent to disable mask
             setMakeupEnabled(parent: parent, child: child, enabled: false)
-            sendColorToUnity(category: parent, subcategory: child, hex: "#000000")
+            sendColorToUnity(category: parent, subcategory: child, hex: "#00000000")
             currentTopIndex = 0
         } else {
             // Turn ON: unselect (no border) and apply saved color (or default)

@@ -1,0 +1,242 @@
+# Auto-create a release PR from staging → main on a weekly schedule.
+# Skips if staging has no meaningful changes ahead of main.
+# Can also be triggered manually via workflow_dispatch.
+#
+# The PR body groups commits by conventional-commit type and optionally
+# includes an AI-generated summary (requires ANTHROPIC_API_KEY).
+name: "Release: Create PR"
+
+on:
+  schedule:
+    # Every Monday at 09:00 UTC
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-release-pr:
+    name: Create release PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          ref: staging
+          fetch-depth: 0
+
+      - name: Check staging is ahead of main
+        id: check
+        run: |
+          git fetch origin main
+          AHEAD=$(git rev-list --count origin/main..origin/staging)
+          echo "commits_ahead=$AHEAD"
+          echo "commits_ahead=$AHEAD" >> "$GITHUB_OUTPUT"
+          if [ "$AHEAD" -eq 0 ]; then
+            echo "staging is not ahead of main — nothing to release."
+          fi
+
+      - name: Check for existing release PR
+        if: steps.check.outputs.commits_ahead != '0'
+        id: existing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          EXISTING=$(gh pr list --base main --head staging --state open --json number --jq 'length')
+          echo "open_prs=$EXISTING"
+          echo "open_prs=$EXISTING" >> "$GITHUB_OUTPUT"
+          if [ "$EXISTING" -gt 0 ]; then
+            echo "An open release PR already exists — skipping."
+          fi
+
+      - name: Collect and classify commits
+        if: >-
+          steps.check.outputs.commits_ahead != '0' &&
+          steps.existing.outputs.open_prs == '0'
+        id: commits
+        run: |
+          # Get commit subjects since main
+          SUBJECTS=$(git log --format='%s' origin/main..origin/staging)
+
+          # Check for meaningful changes (not just chore/ci/docs/style/build/test)
+          HAS_MEANINGFUL=$(echo "$SUBJECTS" | grep -cE '^(feat|fix|perf|refactor|revert)(\([^)]+\))?[!]?:' || true)
+          echo "has_meaningful=$HAS_MEANINGFUL"
+          echo "has_meaningful=$HAS_MEANINGFUL" >> "$GITHUB_OUTPUT"
+
+          if [ "$HAS_MEANINGFUL" -eq 0 ]; then
+            echo "Only chore/ci/docs commits — skipping release PR."
+            exit 0
+          fi
+
+          # Build grouped changelog
+          {
+            echo "CHANGELOG<<CHANGELOG_EOF"
+
+            FEATS=$(echo "$SUBJECTS" | grep -E '^feat(\([^)]+\))?[!]?:' || true)
+            FIXES=$(echo "$SUBJECTS" | grep -E '^fix(\([^)]+\))?[!]?:' || true)
+            PERFS=$(echo "$SUBJECTS" | grep -E '^perf(\([^)]+\))?[!]?:' || true)
+            REFACTORS=$(echo "$SUBJECTS" | grep -E '^refactor(\([^)]+\))?[!]?:' || true)
+            OTHERS=$(echo "$SUBJECTS" | grep -vE '^(feat|fix|perf|refactor)(\([^)]+\))?[!]?:' || true)
+
+            if [ -n "$FEATS" ]; then
+              echo "### Features"
+              echo "$FEATS" | sed 's/^/- /'
+              echo ""
+            fi
+            if [ -n "$FIXES" ]; then
+              echo "### Bug Fixes"
+              echo "$FIXES" | sed 's/^/- /'
+              echo ""
+            fi
+            if [ -n "$PERFS" ]; then
+              echo "### Performance"
+              echo "$PERFS" | sed 's/^/- /'
+              echo ""
+            fi
+            if [ -n "$REFACTORS" ]; then
+              echo "### Refactors"
+              echo "$REFACTORS" | sed 's/^/- /'
+              echo ""
+            fi
+            if [ -n "$OTHERS" ]; then
+              echo "### Other"
+              echo "$OTHERS" | sed 's/^/- /'
+              echo ""
+            fi
+
+            echo "CHANGELOG_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Determine next version
+        if: >-
+          steps.check.outputs.commits_ahead != '0' &&
+          steps.existing.outputs.open_prs == '0' &&
+          steps.commits.outputs.has_meaningful != '0'
+        id: version
+        run: |
+          SUBJECTS=$(git log --format='%s%n%b' origin/main..origin/staging)
+
+          # Determine bump type (mirrors scripts/bump_version.sh logic)
+          BUMP="patch"
+          if echo "$SUBJECTS" | grep -qE '^BREAKING CHANGE:'; then
+            BUMP="major"
+          elif echo "$SUBJECTS" | grep -qE '^[a-z]+(\([^)]+\))?!:'; then
+            BUMP="major"
+          elif echo "$SUBJECTS" | grep -qE '^feat(\([^)]+\))?:'; then
+            BUMP="minor"
+          fi
+
+          # Read current version from pbxproj (agvtool unavailable on ubuntu)
+          CURRENT=$(grep -m1 'MARKETING_VERSION = ' nose.xcodeproj/project.pbxproj \
+            | sed -E 's/.*MARKETING_VERSION = ([^;]+);.*/\1/' | tr -d ' ')
+          echo "Current version: $CURRENT"
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          MAJOR="${MAJOR:-0}"; MINOR="${MINOR:-0}"; PATCH="${PATCH:-0}"
+
+          case "$BUMP" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+          esac
+
+          NEXT="${MAJOR}.${MINOR}.${PATCH}"
+          echo "Next version: $NEXT (${BUMP} bump)"
+          echo "next_version=$NEXT" >> "$GITHUB_OUTPUT"
+          echo "bump_type=$BUMP" >> "$GITHUB_OUTPUT"
+
+      - name: Generate AI summary
+        if: >-
+          steps.check.outputs.commits_ahead != '0' &&
+          steps.existing.outputs.open_prs == '0' &&
+          steps.commits.outputs.has_meaningful != '0'
+        id: ai_summary
+        continue-on-error: true
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "No ANTHROPIC_API_KEY — skipping AI summary."
+            echo "summary=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          DIFF_STAT=$(git diff --stat origin/main..origin/staging)
+          CHANGELOG="${{ steps.commits.outputs.CHANGELOG }}"
+
+          PROMPT="You are summarizing changes for a release PR of an iOS app called nose. Write 2-3 sentences describing the user-facing impact of these changes. Be concise.
+
+          Commits:
+          ${CHANGELOG}
+
+          Diff stat:
+          ${DIFF_STAT}"
+
+          # Call Anthropic API
+          RESPONSE=$(curl -s -X POST https://api.anthropic.com/v1/messages \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "content-type: application/json" \
+            -d "$(jq -n \
+              --arg prompt "$PROMPT" \
+              '{
+                model: "claude-sonnet-4-6",
+                max_tokens: 300,
+                messages: [{role: "user", content: $prompt}]
+              }')")
+
+          SUMMARY=$(echo "$RESPONSE" | jq -r '.content[0].text // empty')
+          if [ -n "$SUMMARY" ]; then
+            {
+              echo "summary<<SUMMARY_EOF"
+              echo "$SUMMARY"
+              echo "SUMMARY_EOF"
+            } >> "$GITHUB_OUTPUT"
+          else
+            echo "summary=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create release PR
+        if: >-
+          steps.check.outputs.commits_ahead != '0' &&
+          steps.existing.outputs.open_prs == '0' &&
+          steps.commits.outputs.has_meaningful != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.version.outputs.next_version }}"
+          AI_SUMMARY="${{ steps.ai_summary.outputs.summary }}"
+          CHANGELOG=$(cat <<'CHANGELOG_BODY'
+          ${{ steps.commits.outputs.CHANGELOG }}
+          CHANGELOG_BODY
+          )
+
+          BODY="## Release v${VERSION}
+          "
+
+          if [ -n "$AI_SUMMARY" ]; then
+            BODY="${BODY}
+          ### Summary
+          ${AI_SUMMARY}
+          "
+          fi
+
+          BODY="${BODY}
+          ### Changes
+          ${CHANGELOG}
+          ### Pre-merge checklist
+          - [ ] All changes have been tested on staging
+          - [ ] No regressions in TestFlight build
+          - [ ] Version bump will be applied after merge
+
+          ---
+          *Auto-generated by create-release-pr workflow*"
+
+          gh pr create \
+            --base main \
+            --head staging \
+            --title "chore(release): prepare v${VERSION}" \
+            --body "$BODY"

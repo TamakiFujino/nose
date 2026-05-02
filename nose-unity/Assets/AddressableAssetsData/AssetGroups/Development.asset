@@ -25,12 +25,17 @@ MonoBehaviour:
   - m_GUID: 01b447eb0e2dd42b5971a98fea6aefed
     m_Address: Assets/Models/Clothes/Socks/01_socks_ankle.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - foot
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 01b5fb41cf1c843e8a8bb546accc2a89
     m_Address: Assets/Models/Clothes/Bottoms/07_bottoms_pants_slim_seven.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - hip
+    - knee
+    - upper_lower_leg
+    - upper_upper_leg
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 05d164569414b4778b85bd4cbd077229
     m_Address: Assets/Models/Hair/Back/08_back_straight_long.prefab
@@ -55,12 +60,12 @@ MonoBehaviour:
   - m_GUID: 0c2b50397286a420fbde36646e27a587
     m_Address: Assets/Models/Clothes/Tops/12_tops_wide_long.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 0f3fabe9185ff4803a71c63eb14289e4
-    m_Address: Assets/Models/Base/Body/crouch.prefab
-    m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - chest
+    - elbow
+    - lower_arm
+    - shoulder
+    - upper_arm
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 102852bcd8fa54604a7bce973aa10730
     m_Address: Assets/Models/Hair/Front/07_front_threeseven_long.prefab
@@ -75,17 +80,26 @@ MonoBehaviour:
   - m_GUID: 1594276ca1ee3463c823c2ada64709ed
     m_Address: Assets/Models/Clothes/Bottoms/21_bottoms_skirt_tight_maxi.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - hip
+    - knee
+    - upper_lower_leg
+    - upper_upper_leg
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 1869cc5251db34c899520059f072cc36
     m_Address: Assets/Models/Clothes/Tops/10_tops_wide_half.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - chest
+    - shoulder
+    - upper_arm
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 1a06a1e1320d74c9dbf62eb3560fafac
     m_Address: Assets/Models/Clothes/Tops/21_tops_polo_short.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - chest
+    - shoulder
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 1a06c9003ae424d78979dc1195dc3e99
     m_Address: Assets/Models/Hair/Front/02_front_brunt_long.prefab
@@ -95,27 +109,39 @@ MonoBehaviour:
   - m_GUID: 1a8419e9ba8c045859ab3f7ca8cde85f
     m_Address: Assets/Models/Clothes/Bottoms/03_bottoms_pants_regular_seven.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - hip
+    - knee
+    - upper_lower_leg
+    - upper_upper_leg
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 1e41c75fe9fa249c5a63f5ee8c8935fa
     m_Address: Assets/Models/Clothes/Bottoms/01_bottoms_pants_regular_short.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - hip
+    - upper_upper_leg
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 1fa9058e90d464d6380a816ee2f4bf45
     m_Address: Assets/Models/Clothes/Bottoms/18_bottoms_skirt_tight_short.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - hip
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 23de54f60858447168943d35872e1e7b
     m_Address: Assets/Models/Clothes/Bottoms/25_bottoms_skirt_wide_maxi.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - hip
+    - knee
+    - upper_lower_leg
+    - upper_upper_leg
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 25cdee1fa5ffd48fbae21a052235058a
     m_Address: Assets/Models/Clothes/Bottoms/28_bottoms_towel.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - hip
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 26d291508999d4ff9b1eab14caa3a6f4
     m_Address: Assets/Models/Hair/Arrange/02_arrange_pony_pointed_low.prefab
@@ -140,7 +166,12 @@ MonoBehaviour:
   - m_GUID: 2b65a28f14c8248a8a32d6422d62ac90
     m_Address: Assets/Models/Clothes/Bottoms/08_bottoms_pants_slim_long.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - hip
+    - knee
+    - lower_upper_leg
+    - upper_lower_leg
+    - upper_upper_leg
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 2b7ba739ce320480cab1a33b0b6c9164
     m_Address: Assets/Models/Base/Body/excited.prefab
@@ -160,7 +191,12 @@ MonoBehaviour:
   - m_GUID: 333b1507756d141d19edbb5aafd8686b
     m_Address: Assets/Models/Clothes/Bottoms/17_bottoms_pants_trousers.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - hip
+    - knee
+    - lower_upper_leg
+    - upper_lower_leg
+    - upper_upper_leg
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 34d66b60672e84fdcbfb48ed8ce40dda
     m_Address: Assets/Models/Base/Body/heart_felt.prefab
@@ -170,7 +206,10 @@ MonoBehaviour:
   - m_GUID: 35412df0f91a34fb9be3e7a463bb9bfe
     m_Address: Assets/Models/Clothes/Bottoms/06_bottoms_pants_slim_half.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - hip
+    - upper_lower_leg
+    - upper_upper_leg
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 36f690ee2845f4d7bb48e500922c0251
     m_Address: Assets/Models/Base/Eyebrow/12_eyebrow_F_thin.prefab
@@ -195,17 +234,24 @@ MonoBehaviour:
   - m_GUID: 40edc7606146a485189005e5171ccf04
     m_Address: Assets/Models/Clothes/Tops/15_tops_wide_seven_cropped.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - chest
+    - elbow
+    - shoulder
+    - upper_arm
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 410adc0f395614c7ba7893975e70d24a
     m_Address: Assets/Models/Clothes/Bottoms/19_bottoms_skirt_tight_knee.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - hip
+    - upper_upper_leg
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 41a226e7e94ac436ea175318cbff4a9d
     m_Address: Assets/Models/Clothes/Socks/02_socks_short.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - foot
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 41b0702ff13bc4828a1a8ed2964c18e4
     m_Address: Assets/Models/Base/Body/runway.prefab
@@ -220,27 +266,44 @@ MonoBehaviour:
   - m_GUID: 4a54c6d7c681b48cba078daa7aad8bf7
     m_Address: Assets/Models/Clothes/Tops/01_tops_tight_short.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - chest
+    - shoulder
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 4a8f55993e2444a8aa5fb8f4eda9e68e
     m_Address: Assets/Models/Clothes/Tops/06_tops_tight_half_cropped.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - chest
+    - shoulder
+    - upper_arm
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 4c8f152620ea64a328c8b4c436856170
     m_Address: Assets/Models/Clothes/Bottoms/16_bottoms_pants_wide_long.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - hip
+    - knee
+    - lower_upper_leg
+    - upper_lower_leg
+    - upper_upper_leg
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 4c91121948911400f809d60adee826a9
     m_Address: Assets/Models/Clothes/Tops/23_tops_sweater.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - chest
+    - elbow
+    - lower_arm
+    - shoulder
+    - upper_arm
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 4e0c58abdd2ee404ca8c2991c659f8b8
     m_Address: Assets/Models/Clothes/Socks/07_socks_loose.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - ankle
+    - foot
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 4e48270a602cc49b5911260f3b505f98
     m_Address: Assets/Models/Base/Eyebrow/09_eyebrow_E_thick.prefab
@@ -255,17 +318,26 @@ MonoBehaviour:
   - m_GUID: 5040f659980514737900e8cd9a123bb7
     m_Address: Assets/Models/Clothes/Tops/07_tops_tight_seven_cropped.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - chest
+    - elbow
+    - shoulder
+    - upper_arm
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 50b6cdf73d82e44cd99cd0e7d9304dfe
     m_Address: Assets/Models/Clothes/Socks/04_socks_knee.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - ankle
+    - foot
+    - lower_lower_leg
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 56ba79be37dbc4eae9ab13740e96100b
     m_Address: Assets/Models/Clothes/Bottoms/09_bottoms_pants_tight_short.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - hip
+    - upper_upper_leg
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 586c847f7d0b74c4f8279982e63dd1b4
     m_Address: Assets/Models/Base/Body/hip.prefab
@@ -275,7 +347,10 @@ MonoBehaviour:
   - m_GUID: 5dbc503c055b34302a55e79753a02a12
     m_Address: Assets/Models/Clothes/Tops/02_tops_tight_half.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - chest
+    - shoulder
+    - upper_arm
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 5e4df20445ab8469a9ec9f919b1e5f33
     m_Address: Assets/Models/Base/Body/female_lean.prefab
@@ -290,12 +365,18 @@ MonoBehaviour:
   - m_GUID: 6307f4c5699c84d02bfe8e97ef171038
     m_Address: Assets/Models/Clothes/Bottoms/13_bottoms_pants_wide_short.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - hip
+    - upper_upper_leg
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 64ef2f1240b9c41268344f2139dfe2f7
     m_Address: Assets/Models/Clothes/Bottoms/15_bottoms_pants_wide_seven.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - hip
+    - knee
+    - upper_lower_leg
+    - upper_upper_leg
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 65eb01c2063e141e29952aa8d8cc2dd2
     m_Address: Assets/Models/Base/Body/look_back.prefab
@@ -320,27 +401,40 @@ MonoBehaviour:
   - m_GUID: 73deeccaccb0f426c9aa10cec64581c9
     m_Address: Assets/Models/Clothes/Tops/04_tops_tight_long.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - chest
+    - elbow
+    - lower_arm
+    - shoulder
+    - upper_arm
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 763f6127218074d9f89436dd899765fc
     m_Address: Assets/Models/Clothes/Bottoms/11_bottoms_pants_tight_seven.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - hip
+    - knee
+    - upper_lower_leg
+    - upper_upper_leg
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 773029e157b224633815c22ff39587b6
     m_Address: Assets/Models/Clothes/Tops/09_tops_wide_short.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - chest
+    - shoulder
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 780816531ca2b4b3f82583697f9e2a59
     m_Address: Assets/Models/Clothes/Tops/17_tops_tight_nosleeve.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - chest
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 7a271e8178c23478083773e232971cc0
     m_Address: Assets/Models/Clothes/Tops/19_tops_wide_nosleeve.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - chest
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 7d23b77a6cc3345f5bd21ef7fd8350a7
     m_Address: Assets/Models/Hair/Back/02_back_straight_veryshort.prefab
@@ -360,7 +454,10 @@ MonoBehaviour:
   - m_GUID: 84c90d4e907404587ad33ccb25f4d4b1
     m_Address: Assets/Models/Clothes/Bottoms/02_bottoms_pants_regular_half.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - hip
+    - upper_lower_leg
+    - upper_upper_leg
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 8ad46ac04bc0f4675a4917ade3821502
     m_Address: Assets/Models/Base/Body/shy.prefab
@@ -385,7 +482,10 @@ MonoBehaviour:
   - m_GUID: 8df96a6342f7d4f4daae22bbfbe9283b
     m_Address: Assets/Models/Clothes/Bottoms/24_bottoms_skirt_wide_med.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - hip
+    - upper_lower_leg
+    - upper_upper_leg
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 900e765d295484c36a2a7064b97016ae
     m_Address: Assets/Models/Base/Eyebrow/06_eyebrow_C_thin.prefab
@@ -395,12 +495,18 @@ MonoBehaviour:
   - m_GUID: 90127fd23e7764d5e9445d64fcdd9458
     m_Address: Assets/Models/Clothes/Tops/05_tops_tight_short_cropped.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - chest
+    - shoulder
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 9075f0708cf2e4fe5902d8bff9629600
     m_Address: Assets/Models/Clothes/Socks/05_socks_thigh.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - ankle
+    - foot
+    - lower_lower_leg
+    - lower_upper_leg
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 90a0f4ada70a8409a9d7984dd6a4220e
     m_Address: Assets/Models/Hair/Arrange/08_arrange_twinbun_low.prefab
@@ -415,12 +521,16 @@ MonoBehaviour:
   - m_GUID: 91e95b0e8832240ec87960dc537a2cb1
     m_Address: Assets/Models/Clothes/Tops/14_tops_wide_half_cropped.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - chest
+    - shoulder
+    - upper_arm
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 9443fed0337704a84a6832ea65ec836a
     m_Address: Assets/Models/Clothes/Bottoms/22_bottoms_skirt_wide_short.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - hip
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 9525633a7faab481caee3ce6065e733f
     m_Address: Assets/Models/Hair/Arrange/04_arrange_twintale_low.prefab
@@ -430,7 +540,12 @@ MonoBehaviour:
   - m_GUID: 964dbbde8d8c943e59e65a5a4ad343ec
     m_Address: Assets/Models/Clothes/Tops/22_tops_shirt_long.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - chest
+    - elbow
+    - lower_arm
+    - shoulder
+    - upper_arm
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 9832dca658ae74219af9c2a29f390027
     m_Address: Assets/Models/Base/Eyebrow/10_eyebrow_E_thin.prefab
@@ -455,7 +570,9 @@ MonoBehaviour:
   - m_GUID: a7093227c95cc4d3b848750ff3c805c3
     m_Address: Assets/Models/Clothes/Bottoms/05_bottoms_pants_slim_short.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - hip
+    - upper_upper_leg
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: a8edb43096a6f439f824fdcb918f1063
     m_Address: Assets/Models/Base/Body/victory_double.prefab
@@ -490,7 +607,11 @@ MonoBehaviour:
   - m_GUID: b2e5c2b1b16554a3bbb829f10e577e55
     m_Address: Assets/Models/Clothes/Tops/03_tops_tight_seven.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - chest
+    - elbow
+    - shoulder
+    - upper_arm
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: b2f4a04095ac84be2bc14f6b5afbf4ae
     m_Address: Assets/Models/Accessories/Headwear/02_sunvisor.prefab
@@ -520,7 +641,9 @@ MonoBehaviour:
   - m_GUID: b529ed44febef4ab5a6aabfba6b3b7dc
     m_Address: Assets/Models/Clothes/Tops/13_tops_wide_short_cropped.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - chest
+    - shoulder
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: b908db7491cd54cf09c61ecace227377
     m_Address: Assets/Models/Accessories/Headwear/04_saunahat.prefab
@@ -530,12 +653,17 @@ MonoBehaviour:
   - m_GUID: bacee55cabde148e092cd79139b7877d
     m_Address: Assets/Models/Clothes/Socks/03_socks_med.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - ankle
+    - foot
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: bbb36300562d44157a863634487ce20d
     m_Address: Assets/Models/Clothes/Bottoms/27_bottoms_pants_jorts.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - hip
+    - upper_lower_leg
+    - upper_upper_leg
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: c03ba1149b22d4c5c963c616f3a70fd5
     m_Address: Assets/Models/Hair/Back/04_back_straight_short.prefab
@@ -555,7 +683,10 @@ MonoBehaviour:
   - m_GUID: c6476f5f77ca944629361cbe6fe3ceab
     m_Address: Assets/Models/Clothes/Bottoms/14_bottoms_pants_wide_half.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - hip
+    - upper_lower_leg
+    - upper_upper_leg
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: c997d691e7eec436eb57dc6d54842c2c
     m_Address: Assets/Models/Hair/Side/08_side_straight_long.prefab
@@ -565,7 +696,15 @@ MonoBehaviour:
   - m_GUID: ca0b5fecf18a840f1a76fb01afbf5827
     m_Address: Assets/Models/Clothes/Socks/06_socks_tights.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - ankle
+    - foot
+    - hip
+    - knee
+    - lower_lower_leg
+    - lower_upper_leg
+    - upper_lower_leg
+    - upper_upper_leg
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: cafa196fa49ef41d5be99f8614cc403b
     m_Address: Assets/Models/Hair/Back/03_back_pointed_short.prefab
@@ -575,7 +714,8 @@ MonoBehaviour:
   - m_GUID: d160c59b20cfe40648496612e2db266a
     m_Address: Assets/Models/Clothes/Tops/18_tops_tight_nosleeve_cropped.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - chest
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: d1fe8c09b0b12445e993299217ac5cbe
     m_Address: Assets/Models/Hair/Base/02_base_med.prefab
@@ -590,7 +730,12 @@ MonoBehaviour:
   - m_GUID: d38865c985ef3485f85c6da4834da8c2
     m_Address: Assets/Models/Clothes/Bottoms/12_bottoms_pants_tight_long.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - hip
+    - knee
+    - lower_upper_leg
+    - upper_lower_leg
+    - upper_upper_leg
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: d9348cdf2a98d4871bb2f16897771dda
     m_Address: Assets/Models/Hair/Side/03_side_pointed_med.prefab
@@ -625,7 +770,12 @@ MonoBehaviour:
   - m_GUID: e0ea6e853b22f4f7980ea7b33ebec680
     m_Address: Assets/Models/Clothes/Tops/08_tops_tight_long_cropped.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - chest
+    - elbow
+    - lower_arm
+    - shoulder
+    - upper_arm
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: e2ae331202df141ef8df3fe33c8df034
     m_Address: Assets/Models/Base/Body/ballet.prefab
@@ -635,7 +785,9 @@ MonoBehaviour:
   - m_GUID: e3f9d8b31a0354fc3a333e918c2e7a42
     m_Address: Assets/Models/Clothes/Bottoms/23_bottoms_skirt_wide_knee.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - hip
+    - upper_upper_leg
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: e418d94ec444444b0a3d90ed725f526a
     m_Address: Assets/Models/Hair/Arrange/03_arrange_twintale_high.prefab
@@ -645,17 +797,25 @@ MonoBehaviour:
   - m_GUID: e43370a2e96854e3786ede111b9be9d3
     m_Address: Assets/Models/Clothes/Bottoms/26_bottoms_skirt_pleats_mini.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - hip
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: e5b6b4bc871f849deba4add0003bed5b
     m_Address: Assets/Models/Clothes/Bottoms/20_bottoms_skirt_tight_med.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - hip
+    - upper_lower_leg
+    - upper_upper_leg
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: e70fc050382894e87a3696e50f843bb9
     m_Address: Assets/Models/Clothes/Tops/11_tops_wide_seven.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - chest
+    - elbow
+    - shoulder
+    - upper_arm
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: e76faa7345d564b1fb601d9529d4a2a8
     m_Address: Assets/Models/Base/Eyebrow/13_eyebrow_G_thick.prefab
@@ -680,7 +840,10 @@ MonoBehaviour:
   - m_GUID: ebb6d8943d0804a24b76c50820e59683
     m_Address: Assets/Models/Clothes/Bottoms/10_bottoms_pants_tight_half.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - hip
+    - upper_lower_leg
+    - upper_upper_leg
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: eca4229a3330a4e3e81d394baa37bf99
     m_Address: Assets/Models/Hair/Arrange/06_arrange_bun_low.prefab
@@ -690,7 +853,12 @@ MonoBehaviour:
   - m_GUID: edfe09228b7054e91beb731a40cb2469
     m_Address: Assets/Models/Clothes/Tops/16_tops_wide_long_cropped.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - chest
+    - elbow
+    - lower_arm
+    - shoulder
+    - upper_arm
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: ef787c2632c0c447585af23b4e65afb1
     m_Address: Assets/Models/Hair/Base/01_base_full.prefab
@@ -700,7 +868,8 @@ MonoBehaviour:
   - m_GUID: f07421c67808b43b7b0f74cff23b1ab3
     m_Address: Assets/Models/Clothes/Tops/20_tops_wide_nosleeve_cropped.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - chest
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: f6e414568bcb94c39944f57dd900c6bd
     m_Address: Assets/Models/Base/Body/salute.prefab
@@ -740,7 +909,12 @@ MonoBehaviour:
   - m_GUID: ff01de2c4026b4adf8315069d8679476
     m_Address: Assets/Models/Clothes/Bottoms/04_bottoms_pants_regular_long.prefab
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - hip
+    - knee
+    - lower_upper_leg
+    - upper_lower_leg
+    - upper_upper_leg
     FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 8fe790c7a7882432f9bc520d510026d5, type: 2}

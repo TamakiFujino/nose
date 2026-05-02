@@ -160,9 +160,13 @@ static UnityFramework *_ufw = nil;
 }
 
 - (void)hideUnity {
-    // Hide Unity by presenting an empty view controller over it or resigning key window if needed.
-    // Since Unity is embedded, we'll just bring host UI forward; the floating window removal already reveals Unity.
-    // No-op placeholder to keep API symmetry; actual hiding is managed by our UI layering.
+    if (!_ufw) return;
+    UnityAppController *controller = (UnityAppController *)[_ufw appController];
+    if (!controller || !controller.rootViewController) return;
+    UIWindow *unityWindow = controller.rootViewController.view.window;
+    if (unityWindow) {
+        unityWindow.hidden = YES;
+    }
 }
 
 - (UIViewController *)unityRootViewController {

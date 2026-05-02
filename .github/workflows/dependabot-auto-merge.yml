@@ -1,0 +1,56 @@
+# Auto-approve and merge Dependabot PRs for patch/minor updates.
+# Major updates get a `needs-review` label and a comment for human review.
+#
+# Prerequisites:
+#   - Dependabot PRs target `staging` (set in dependabot.yml)
+#   - pr-checks must pass before auto-merge completes (--auto flag)
+name: "Dependabot: Auto-merge"
+
+on:
+  pull_request:
+    types: [opened, reopened]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    name: Dependabot auto-merge
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Auto-approve and merge patch/minor updates
+        if: steps.metadata.outputs.update-type != 'version-update:semver-major'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          echo "Update type: ${{ steps.metadata.outputs.update-type }}"
+          echo "Approving and enabling auto-merge for $PR_URL"
+          gh pr review "$PR_URL" --approve
+          gh pr merge "$PR_URL" --squash --auto
+
+      - name: Escalate major updates for human review
+        if: steps.metadata.outputs.update-type == 'version-update:semver-major'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          echo "Major update detected — escalating for human review"
+          gh pr edit "$PR_URL" --add-label "needs-review"
+          gh pr comment "$PR_URL" --body "$(cat <<'EOF'
+          ## Major dependency update
+
+          This PR bumps a **major** version (`${{ steps.metadata.outputs.dependency-names }}`: `${{ steps.metadata.outputs.previous-version }}` → `${{ steps.metadata.outputs.new-version }}`).
+
+          Major updates may contain breaking changes. Please review the changelog before merging.
+          EOF
+          )"

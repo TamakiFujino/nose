@@ -160,14 +160,14 @@ extension FloatingUIController {
             // Convert internal id (Assets/Models/.../Name.prefab) to Addressables address (Models/.../Name)
             let modelPath = "Models/\(category)/\(subcategory)/\(name)"
 
-            // Compose remote thumbnail URL on Hosting under /Thumbs/{Category}/{Subcategory}/{Name}.jpg
+            // Compose remote thumbnail URL on Hosting under /Thumbs/{Category}/{Subcategory}/{Name}.png
             var thumbURLString: String? = nil
             if let base = hostingBaseURL() {
                 var thumbURL = URL(string: base)
                 thumbURL?.appendPathComponent("Thumbs")
                 thumbURL?.appendPathComponent(category)
                 thumbURL?.appendPathComponent(subcategory)
-                thumbURL?.appendPathComponent("\(name).jpg")
+                thumbURL?.appendPathComponent("\(name).png")
                 thumbURLString = thumbURL?.absoluteString
             }
 
@@ -271,12 +271,12 @@ extension FloatingUIController {
 
     func resolvedThumbnailURL(for asset: AssetItem) -> URL? {
         guard let base = hostingBaseURL() else { return nil }
-        // Compose: {base}/Thumbs/{Category}/{Subcategory}/{Name}.jpg
+        // Compose: {base}/Thumbs/{Category}/{Subcategory}/{Name}.png
         var url = URL(string: base)
         url?.appendPathComponent("Thumbs")
         url?.appendPathComponent(asset.category)
         url?.appendPathComponent(asset.subcategory)
-        url?.appendPathComponent("\(asset.name).jpg")
+        url?.appendPathComponent("\(asset.name).png")
         return url
     }
 

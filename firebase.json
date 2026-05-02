@@ -2,6 +2,18 @@
   "firestore": {
     "rules": "FirebaseConfig/firestore.rules"
   },
+  "hosting": [
+    {
+      "target": "dev",
+      "public": "hosting/dev",
+      "ignore": ["firebase.json", "**/.*"]
+    },
+    {
+      "target": "staging",
+      "public": "hosting/staging",
+      "ignore": ["firebase.json", "**/.*"]
+    }
+  ],
   "emulators": {
     "auth": { "port": 9099 },
     "firestore": { "port": 8080 },
