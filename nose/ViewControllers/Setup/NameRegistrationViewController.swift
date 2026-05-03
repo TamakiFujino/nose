@@ -73,10 +73,22 @@ final class NameRegistrationViewController: UIViewController {
         return indicator
     }()
     
+    // MARK: - Properties
+    var prefillName: String?
+
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
+        if let name = prefillName, !name.isEmpty {
+            nameTextField.text = name
+            textFieldDidChange(nameTextField)
+        }
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        AnalyticsManager.logScreen("NameRegistration")
     }
     
     // MARK: - Setup
@@ -163,12 +175,22 @@ final class NameRegistrationViewController: UIViewController {
             self.continueButton.isEnabled = true
             
             if let error = error {
-                Logger.log("Error saving user data: \(error.localizedDescription)", level: .error, category: "NameReg")
+                Logger.reportNonFatal(error, category: "NameReg", context: ["op": "saveInitialUserData"])
                 self.showError(message: "Failed to save user data. Please try again.")
                 return
             }
             
             Logger.log("Successfully saved user data", level: .info, category: "NameReg")
+
+            // Set user ID and log sign up event with provider
+            if let currentUser = Auth.auth().currentUser {
+                AnalyticsManager.setUserID(currentUser.uid)
+                if let provider = currentUser.providerData.first?.providerID {
+                    let method = provider.contains("google") ? "google" : provider.contains("apple") ? "apple" : "unknown"
+                    AnalyticsManager.logSignUp(method: method)
+                }
+            }
+
             self.navigateToHomeScreen()
         }
     }

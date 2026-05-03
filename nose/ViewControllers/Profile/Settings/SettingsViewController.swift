@@ -28,6 +28,11 @@ class SettingsViewController: UIViewController, UITableViewDelegate, UITableView
         super.viewWillAppear(animated)
     }
 
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        AnalyticsManager.logScreen("Settings")
+    }
+
     private func setupNavigationBar() {
         navigationItem.title = String(localized: "settings_title")
         self.navigationController?.navigationBar.tintColor = .fourthColor

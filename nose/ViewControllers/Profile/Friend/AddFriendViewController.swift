@@ -403,6 +403,7 @@ class AddFriendViewController: UIViewController {
             DispatchQueue.main.async {
                 switch result {
                 case .success:
+                    AnalyticsManager.logFriendAdded(method: "user_id")
                     self?.showAlert(title: String(localized: "add_friend_request_sent_title"), message: String(localized: "add_friend_request_sent_message")) { _ in
                         self?.searchBar.text = ""
                         self?.resultContainer.isHidden = true
