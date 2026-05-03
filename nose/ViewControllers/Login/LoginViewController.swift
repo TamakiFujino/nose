@@ -206,6 +206,7 @@ final class LoginViewController: UIViewController {
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        AnalyticsManager.logScreen("Login")
     }
 
     override func viewDidDisappear(_ animated: Bool) {
@@ -792,6 +793,7 @@ final class LoginViewController: UIViewController {
             
             if user != nil {
                 Logger.log("User already exists, navigating to home screen", level: .debug, category: "Login")
+                AnalyticsManager.setUserID(firebaseUser.uid)
                 self.transitionToHome()
             } else {
                 // Try Apple-provided name first, then Firebase Auth displayName as fallback
@@ -827,6 +829,8 @@ final class LoginViewController: UIViewController {
                 return
             }
             Logger.log("Created user with Apple-provided name", level: .info, category: "Login")
+            AnalyticsManager.setUserID(firebaseUID)
+            AnalyticsManager.logSignUp(method: "apple")
             self.transitionToHome()
         }
     }
@@ -905,6 +909,7 @@ final class LoginViewController: UIViewController {
                 }
 
                 Logger.log("Successfully signed in with Google", level: .info, category: "Login")
+                AnalyticsManager.logLogin(method: "google")
                 self.checkExistingUserAndNavigate()
             }
         }
@@ -981,6 +986,7 @@ extension LoginViewController: ASAuthorizationControllerDelegate {
                 }
 
                 Logger.log("Successfully signed in with Apple", level: .info, category: "Login")
+                AnalyticsManager.logLogin(method: "apple")
                 self.checkExistingUserAndNavigate()
             }
         }

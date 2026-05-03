@@ -3,6 +3,7 @@ import MapboxMaps
 import CoreLocation
 import GooglePlaces
 import FirebaseAuth
+import FirebasePerformance
 
 final class HomeViewController: UIViewController {
     
@@ -221,8 +222,16 @@ final class HomeViewController: UIViewController {
     }()
     
     // MARK: - Lifecycle
+    /// Firebase Performance trace for the Home screen's initial map + feed
+    /// load. Started in viewDidLoad, stopped after both collections and
+    /// events complete loading (or the first failure).
+    private var homeInitialLoadTrace: Trace?
+    private var homeInitialLoadCollectionsDone = false
+    private var homeInitialLoadEventsDone = false
+
     override func viewDidLoad() {
         super.viewDidLoad()
+        homeInitialLoadTrace = Performance.startTrace(name: "home_initial_load")
         setupUI()
         showGreeting()
         setupManagers()
@@ -230,6 +239,22 @@ final class HomeViewController: UIViewController {
         setupNotificationObservers()
         loadEvents()
         // Landing animation starts in viewDidAppear
+    }
+
+    private func markHomeInitialLoadStepDone(_ step: HomeInitialLoadStep) {
+        switch step {
+        case .collections: homeInitialLoadCollectionsDone = true
+        case .events: homeInitialLoadEventsDone = true
+        }
+        if homeInitialLoadCollectionsDone, homeInitialLoadEventsDone {
+            homeInitialLoadTrace?.stop()
+            homeInitialLoadTrace = nil
+        }
+    }
+
+    private enum HomeInitialLoadStep {
+        case collections
+        case events
     }
     
     deinit {
@@ -240,6 +265,7 @@ final class HomeViewController: UIViewController {
         super.viewDidAppear(animated)
         guard !hasAppeared else { return }
         hasAppeared = true
+        AnalyticsManager.logScreen("Home")
         startLandingAnimation()
     }
 
@@ -403,18 +429,20 @@ final class HomeViewController: UIViewController {
     private func loadCollections() {
         CollectionLoadingService.shared.loadCollections(status: .active) { [weak self] result in
             guard let self = self else { return }
-            
+
             switch result {
             case .success(let loadResult):
                 // Combine all collections
                 self.collections = loadResult.owned + loadResult.shared
-                
+
                 // Show all collection places on the map
                 self.mapManager?.showCollectionPlacesOnMap(self.collections)
-                
+                self.homeInitialLoadTrace?.incrementMetric("collections_count", by: Int64(self.collections.count))
+
             case .failure(let error):
-                Logger.log("Error loading collections: \(error.localizedDescription)", level: .error, category: "Home")
+                Logger.reportNonFatal(error, category: "Home", context: ["op": "loadCollections"])
             }
+            self.markHomeInitialLoadStepDone(.collections)
         }
     }
     
@@ -660,15 +688,18 @@ final class HomeViewController: UIViewController {
     
     private func loadEvents() {
         EventManager.shared.fetchAllCurrentAndFutureEvents { [weak self] result in
+            guard let self = self else { return }
             switch result {
             case .success(let events):
-                self?.events = events
+                self.events = events
                 DispatchQueue.main.async {
-                    self?.mapManager?.showEventsOnMap(events)
+                    self.mapManager?.showEventsOnMap(events)
                 }
+                self.homeInitialLoadTrace?.incrementMetric("events_count", by: Int64(events.count))
             case .failure(let error):
-                Logger.log("Failed to load events: \(error.localizedDescription)", level: .error, category: "Home")
+                Logger.reportNonFatal(error, category: "Home", context: ["op": "loadEvents"])
             }
+            self.markHomeInitialLoadStepDone(.events)
         }
     }
     

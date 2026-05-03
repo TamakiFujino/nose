@@ -83,7 +83,12 @@ final class SearchViewController: UIViewController {
         
         searchTextField.becomeFirstResponder()
     }
-    
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        AnalyticsManager.logScreen("Search")
+    }
+
     private static let searchBarHeight: CGFloat = 60
     private static let searchHeaderShadowSpace: CGFloat = 14
     
@@ -185,6 +190,7 @@ final class SearchViewController: UIViewController {
         dispatchGroup.notify(queue: .main) { [weak self] in
             // Events first, then places
             self?.searchResults = eventResults + placeResults
+            AnalyticsManager.logSearch(hasResults: !(self?.searchResults.isEmpty ?? true))
             self?.tableView.reloadData()
         }
     }
