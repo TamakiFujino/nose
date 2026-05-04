@@ -112,9 +112,6 @@ feature/*   ─┐
 |---|---|
 | `fastlane beta` | Build + upload to TestFlight (staging) |
 | `fastlane release [build_number:<N>]` | Build + submit to App Store for review (auto-increments build number if omitted) |
-| `scripts/bump_version.sh [--tag]` | Conventional-commits-driven semver bump |
-| `scripts/update_changelog.sh <version>` | Prepend a new section to `CHANGELOG.md` |
-| `scripts/generate_release_notes.sh` | AI-generated TestFlight notes (en + ja) |
 
 ---
 
@@ -153,8 +150,6 @@ This repo is heavily AI-assisted. Relevant files and commands:
   - `/gen-tests` — scaffold unit tests for a file
 - **`.github/workflows/ai-pr-review.yml`** — Claude (`claude-sonnet-4-5`)
   reviews every PR to `staging` / `main`, focusing on real bugs.
-- **`scripts/generate_release_notes.sh`** — Claude-generated English + Japanese
-  release notes (currently unused; can be integrated into custom lanes).
 
 Secrets required in GitHub repo settings:
 
