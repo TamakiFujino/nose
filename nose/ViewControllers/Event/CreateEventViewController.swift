@@ -649,13 +649,15 @@ final class CreateEventViewController: UIViewController {
                 switch result {
                 case .success(let eventId):
                     Logger.log("Event created successfully with ID: \(eventId)", level: .info, category: "CreateEvent")
+                    AnalyticsManager.logEventCreated(success: true)
                     self?.clearTemporaryAvatarState()
                     if let self = self {
                         self.delegate?.createEventViewController(self, didCreateEvent: event)
                         self.dismissSelf()
                     }
                 case .failure(let error):
-                    Logger.log("Failed to create event: \(error.localizedDescription)", level: .error, category: "CreateEvent")
+                    Logger.reportNonFatal(error, category: "CreateEvent", context: ["op": "createEvent"])
+                    AnalyticsManager.logEventCreated(success: false)
                     self?.dismiss(animated: true) {
                         self?.showAlert(title: String(localized: "modal_error_title"), message: String(localized: "event_error_create_failed"))
                     }
@@ -694,7 +696,7 @@ final class CreateEventViewController: UIViewController {
                         self.dismissSelf()
                     }
                 case .failure(let error):
-                    Logger.log("Failed to update event: \(error.localizedDescription)", level: .error, category: "CreateEvent")
+                    Logger.reportNonFatal(error, category: "CreateEvent", context: ["op": "updateEvent", "eventId": eventToEdit.id ?? ""])
                     self?.dismiss(animated: true) {
                         self?.showAlert(title: String(localized: "modal_error_title"), message: String(localized: "event_error_update_failed"))
                     }

@@ -62,6 +62,7 @@ class NewCollectionModalViewController: CollectionModalViewController {
                 
                 if let error = error {
                     Logger.log("Error creating collection: \(error.localizedDescription)", level: .error, category: "Collection")
+                    AnalyticsManager.logCollectionCreated(success: false)
                     let messageModal = MessageModalViewController(
                         title: "Error",
                         message: "Failed to create collection. Please try again."
@@ -69,6 +70,7 @@ class NewCollectionModalViewController: CollectionModalViewController {
                     self?.present(messageModal, animated: true)
                     return
                 }
+                AnalyticsManager.logCollectionCreated(success: true)
                 self?.delegate?.newCollectionModalViewController(self!, didCreateCollection: collectionId)
                 self?.dismiss(animated: true)
             }

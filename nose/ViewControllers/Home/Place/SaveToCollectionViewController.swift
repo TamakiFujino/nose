@@ -619,6 +619,7 @@ class SaveToCollectionViewController: UIViewController {
                                 )
                                 self.present(messageModal, animated: true)
                             } else {
+                                AnalyticsManager.logPlaceAdded()
                                 self.loadCollections()
                                 NotificationCenter.default.post(name: NSNotification.Name("UpdateMapWithCollections"), object: nil)
                                 if case .place(let place) = self.itemToSave {
