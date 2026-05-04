@@ -16,8 +16,8 @@ This repository uses GitHub Actions for PR-gated E2E, Firebase rule deploys, and
 
 ### 3. Deploy Production (`deploy-production.yml`)
 - **Trigger**: Push to the `main` branch, or manual workflow dispatch
-- **Action**: (1) Deploys Firestore and Storage rules to the **production** Firebase project. (2) Optionally runs smoke E2E against the production app. (3) Builds and uploads to TestFlight/App Store using the production scheme (`fastlane production`).
-- **Use Case**: Production release with rules and app in sync.
+- **Action**: (1) Deploys Firestore and Storage rules to the **production** Firebase project. (2) Optionally runs smoke E2E against the production app. (3) Builds and submits to App Store for review using `fastlane release` (auto-increments build number).
+- **Use Case**: Production release with automatic App Store submission.
 
 ### 4. Build Unity and cache (`build-unity-cache.yml`) — automates unity-build cache
 - **Trigger**: Push to `staging` when files under `nose-unity/**` change, or manual workflow dispatch.
@@ -97,7 +97,7 @@ The app depends on **Unity** (`unity-build/Unity-iPhone.xcodeproj` → UnityFram
 
 1. **Development**: Work on feature branches; open a PR to `staging`.
 2. **Staging**: After PR checks (E2E) pass, merge to `staging`. CI deploys Firebase to staging and uploads to TestFlight (staging).
-3. **Production**: Open a PR from `staging` to `main`. After merge, CI deploys Firebase to production and uploads to TestFlight/App Store (production).
+3. **Production**: Open a PR from `staging` to `main`. After merge, CI deploys Firebase to production and automatically submits to App Store for review.
 
 ### Branch Protection Rules
 
@@ -114,13 +114,14 @@ Update tests in the **same PR** that changes app behavior. E2E tests live in `Ap
 
 ### `beta` Lane
 - Builds using `nose-staging` scheme
-- Uploads to TestFlight
+- Uploads to TestFlight (internal testers)
 - Used for staging deployments
 
-### `production` Lane
+### `release` Lane
 - Builds using `nose-production` scheme
-- Uploads to TestFlight
-- Used for production deployments
+- Auto-increments build number from latest TestFlight build
+- Submits to App Store for review
+- Used for production deployments (automated via `deploy-production.yml`)
 
 ### `build` Lane
 - Builds the app only (no upload)

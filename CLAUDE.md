@@ -122,8 +122,7 @@ bundle exec fastlane e2e
 
 ### Ship to TestFlight
 ```bash
-bundle exec fastlane beta        # staging → TestFlight internal
-bundle exec fastlane production  # production → TestFlight external
+bundle exec fastlane beta  # staging → TestFlight internal
 ```
 
 ### Submit to App Store (manual)
