@@ -122,13 +122,21 @@ bundle exec fastlane e2e
 
 ### Ship to TestFlight
 ```bash
-bundle exec fastlane beta        # staging → TestFlight internal
-bundle exec fastlane production  # production → TestFlight + App Store
+bundle exec fastlane beta  # staging → TestFlight internal
 ```
 
-### Submit to App Store
+### Submit to App Store (manual)
 ```bash
-bundle exec fastlane release build_number:'<N>'
+bundle exec fastlane release [build_number:'<N>']  # Auto-increments if build_number omitted
+```
+
+### Automated deployment
+```bash
+# Staging → TestFlight: Push to staging branch
+git push origin staging
+
+# Production → App Store review: Merge to main
+# deploy-production.yml runs automatically and submits to App Store for review
 ```
 
 ### Lint + format
@@ -198,13 +206,14 @@ swiftformat --lint nose noseTests    # CI-style check
   → [ai-pr-review.yml] AI review
   → [CI failure on claude/ branch?] → [claude-ci-fix.yml] Auto-fix (max 3×)
   → [@claude comment on PR] → [claude-pr-assist.yml] Follow-up
-  → [Human review → Merge → staging → deploy]
+  → [Human review → Merge → staging → deploy-staging.yml → TestFlight beta]
 
 [Crashlytics crash] → [crashlytics-to-issue.yml] AI triage → Issue + claude:fix → (auto-fix pipeline above)
 
 [Dependabot PR] → [dependabot-auto-merge.yml] patch/minor auto-merge, major → needs-review
 
 [Weekly / manual] → [create-release-pr.yml] staging → main release PR with AI summary
+  → [Human review → Merge → main → deploy-production.yml → App Store review submission]
 ```
 
 ### GitHub labels
