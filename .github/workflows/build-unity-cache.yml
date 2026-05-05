@@ -49,7 +49,7 @@ jobs:
           [ -d "unity-build/Unity-iPhone.xcodeproj" ] || (echo "::error::Unity build did not produce Unity-iPhone.xcodeproj"; exit 1)
 
       - name: Cache unity-build
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: unity-build
           key: unity-build-${{ hashFiles('nose-unity/Packages/manifest.json', 'nose-unity/Assets/**/*.meta') }}
