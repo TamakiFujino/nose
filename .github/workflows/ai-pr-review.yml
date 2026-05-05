@@ -19,7 +19,7 @@ jobs:
     if: contains(github.event.pull_request.labels.*.name, 'ai-review')
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: AI code review
         uses: anc95/ChatGPT-CodeReview@main
