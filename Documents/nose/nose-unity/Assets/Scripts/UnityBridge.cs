@@ -1,0 +1,1046 @@
+using UnityEngine;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using UnityEngine.Rendering;
+
+public class UnityBridge : MonoBehaviour
+{
+    public static UnityBridge Instance { get; private set; }
+
+    // Events for iOS to Unity communication
+    public static event System.Action<string> OnChangeAsset;
+    public static event System.Action<string> OnChangeColor;
+
+    private AssetManager assetManager;
+    private HorizontalRotateOnDrag rotator;
+    private CommandBuffer stencilClearCmd;
+    
+    // Camera focus coroutine (cancel previous when switching)
+    private Coroutine cameraFocusCoroutine;
+    // Default view snapshot (so we can return to the original "main camera" view)
+    private bool hasDefaultView = false;
+    private Vector3 defaultCamPos;
+    private Quaternion defaultCamRot;
+    private float defaultCamFov;
+    
+    // Debounce duplicate ChangeAsset calls per slot to avoid redundant loads
+    private class LastAssetCall { public string assetId; public float time; }
+    private readonly Dictionary<string, LastAssetCall> lastAssetPerSlot = new Dictionary<string, LastAssetCall>();
+    private const float changeAssetDebounceSeconds = 0.15f;
+    
+    // Callback system for iOS responses
+    private Dictionary<string, System.Action<string>> pendingCallbacks = new Dictionary<string, System.Action<string>>();
+    private int callbackIdCounter = 0;
+
+    private void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+    }
+
+    private void Start()
+    {
+        // Ensure UnityLauncher exists so we can send responses back to iOS
+        if (UnityLauncher.Instance == null)
+        {
+            var go = new GameObject("UnityLauncher");
+            go.AddComponent<UnityLauncher>();
+        }
+        assetManager = FindObjectOfType<AssetManager>();
+        if (assetManager == null)
+        {
+            Debug.LogError("UnityBridge: AssetManager not found!");
+        }
+
+        rotator = FindObjectOfType<HorizontalRotateOnDrag>();
+
+        // Ensure ThumbnailCamera never renders to the screen by default
+        var thumbCamGO = GameObject.Find("ThumbnailCamera");
+        if (thumbCamGO != null)
+        {
+            var cam = thumbCamGO.GetComponent<Camera>();
+            if (cam != null) cam.enabled = false;
+        }
+
+        // Attach stencil clear before opaques on avatar cameras to avoid stale stencil between category switches
+        TryAttachStencilClearToAvatarCameras();
+
+        // Capture default view camera transform/FOV once (used for "clothes"/default focus)
+        var viewCam = GetAvatarViewCamera();
+        if (viewCam != null)
+        {
+            defaultCamPos = viewCam.transform.position;
+            defaultCamRot = viewCam.transform.rotation;
+            defaultCamFov = viewCam.fieldOfView;
+            hasDefaultView = true;
+        }
+    }
+
+    private Camera GetAvatarViewCamera()
+    {
+        // Prefer an explicitly-named camera if present
+        var avatarCam = GameObject.Find("AvatarCamera")?.GetComponent<Camera>();
+        if (avatarCam != null) return avatarCam;
+
+        // Avoid the thumbnail camera for view
+        var main = Camera.main;
+        if (main != null && main.gameObject != null && main.gameObject.name != "ThumbnailCamera") return main;
+
+        // Fallback: any enabled camera that's not ThumbnailCamera
+        foreach (var cam in GameObject.FindObjectsOfType<Camera>(true))
+        {
+            if (cam == null || cam.gameObject == null) continue;
+            if (cam.gameObject.name == "ThumbnailCamera") continue;
+            if (cam.enabled) return cam;
+        }
+        // Last resort: any non-thumbnail camera
+        foreach (var cam in GameObject.FindObjectsOfType<Camera>(true))
+        {
+            if (cam == null || cam.gameObject == null) continue;
+            if (cam.gameObject.name == "ThumbnailCamera") continue;
+            return cam;
+        }
+        return null;
+    }
+
+    private Transform GetAvatarFocusTarget(string focus)
+    {
+        var mgr = assetManager != null ? assetManager : FindObjectOfType<AssetManager>();
+        var root = mgr != null ? mgr.avatarRoot : null;
+        // Prefer humanoid bones if available
+        Animator anim = null;
+        if (root != null)
+        {
+            anim = root.GetComponent<Animator>()
+                ?? root.GetComponentInChildren<Animator>(true)
+                ?? root.GetComponentInParent<Animator>();
+        }
+
+        focus = (focus ?? "").ToLowerInvariant();
+        if (anim != null)
+        {
+            if (focus == "face")
+            {
+                var head = anim.GetBoneTransform(HumanBodyBones.Head);
+                if (head != null) return head;
+                var neck = anim.GetBoneTransform(HumanBodyBones.Neck);
+                if (neck != null) return neck;
+            }
+            // clothes/body focus: chest/hips
+            var chest = anim.GetBoneTransform(HumanBodyBones.Chest);
+            if (chest != null) return chest;
+            var hips = anim.GetBoneTransform(HumanBodyBones.Hips);
+            if (hips != null) return hips;
+        }
+
+        // Fallback: search for bones by name in the hierarchy
+        if (root != null)
+        {
+            if (focus == "face")
+            {
+                foreach (var name in new[] { "Head", "head", "Neck", "neck" })
+                {
+                    var found = root.Find(name) ?? FindDeepChild(root, name);
+                    if (found != null) return found;
+                }
+            }
+            foreach (var name in new[] { "Chest", "chest", "Spine1", "spine1", "Hips", "hips" })
+            {
+                var found = root.Find(name) ?? FindDeepChild(root, name);
+                if (found != null) return found;
+            }
+        }
+
+        return root != null ? root : (assetManager != null ? assetManager.transform : transform);
+    }
+
+    // Recursive search for a child transform by name (case-insensitive)
+    private Transform FindDeepChild(Transform parent, string name)
+    {
+        string lower = name.ToLowerInvariant();
+        foreach (Transform child in parent)
+        {
+            if (child.name.ToLowerInvariant() == lower) return child;
+            var result = FindDeepChild(child, name);
+            if (result != null) return result;
+        }
+        return null;
+    }
+
+    private IEnumerator AnimateCameraTo(Camera cam, Vector3 targetPos, Quaternion targetRot, float targetFov, float duration)
+    {
+        if (cam == null) yield break;
+
+        var t0 = cam.transform.position;
+        var r0 = cam.transform.rotation;
+        var f0 = cam.fieldOfView;
+
+        float d = Mathf.Max(0.01f, duration);
+        float t = 0f;
+        while (t < d)
+        {
+            t += Time.deltaTime;
+            float u = Mathf.Clamp01(t / d);
+            // Smoothstep
+            u = u * u * (3f - 2f * u);
+            cam.transform.position = Vector3.Lerp(t0, targetPos, u);
+            cam.transform.rotation = Quaternion.Slerp(r0, targetRot, u);
+            cam.fieldOfView = Mathf.Lerp(f0, targetFov, u);
+            yield return null;
+        }
+
+        cam.transform.position = targetPos;
+        cam.transform.rotation = targetRot;
+        cam.fieldOfView = targetFov;
+    }
+
+    // Dolly (straight-line) camera move that keeps looking at a fixed point throughout.
+    // This avoids the "down then up" feeling caused by mixing vertical offsets + rotation.
+    private IEnumerator AnimateCameraDollyLookAt(
+        Camera cam,
+        Vector3 targetPos,
+        Vector3 lookAtPoint,
+        float targetFov,
+        float duration,
+        bool easeOut = false
+    )
+    {
+        if (cam == null) yield break;
+
+        var p0 = cam.transform.position;
+        var f0 = cam.fieldOfView;
+
+        float d = Mathf.Max(0.01f, duration);
+        float t = 0f;
+        while (t < d)
+        {
+            t += Time.deltaTime;
+            float u = Mathf.Clamp01(t / d);
+            if (easeOut)
+            {
+                // Ease-out cubic: snappier at the start, less "floaty"
+                u = 1f - Mathf.Pow(1f - u, 3f);
+            }
+            else
+            {
+                // Smoothstep (ease-in-out)
+                u = u * u * (3f - 2f * u);
+            }
+
+            var p = Vector3.Lerp(p0, targetPos, u);
+            cam.transform.position = p;
+            var forward = (lookAtPoint - p);
+            if (forward.sqrMagnitude > 0.0001f)
+            {
+                cam.transform.rotation = Quaternion.LookRotation(forward.normalized, Vector3.up);
+            }
+            // Animate position + FOV together.
+            cam.fieldOfView = Mathf.Lerp(f0, targetFov, u);
+            yield return null;
+        }
+
+        cam.transform.position = targetPos;
+        var finalForward = (lookAtPoint - targetPos);
+        if (finalForward.sqrMagnitude > 0.0001f)
+        {
+            cam.transform.rotation = Quaternion.LookRotation(finalForward.normalized, Vector3.up);
+        }
+        cam.fieldOfView = targetFov;
+    }
+
+    // iOS calls this to change the avatar camera focus.
+    // message: "face" or "clothes"
+    public void SetAvatarCameraFocus(string message)
+    {
+        var cam = GetAvatarViewCamera();
+        if (cam == null)
+        {
+            Debug.LogWarning("SetAvatarCameraFocus: No view camera found");
+            return;
+        }
+
+        string focus = (message ?? "").Trim().ToLowerInvariant();
+        // "clothes" means return to default view (no zoom)
+        if (focus == "clothes" || focus == "default" || string.IsNullOrEmpty(focus))
+        {
+            if (hasDefaultView)
+            {
+                if (cameraFocusCoroutine != null) StopCoroutine(cameraFocusCoroutine);
+                cameraFocusCoroutine = StartCoroutine(AnimateCameraTo(cam, defaultCamPos, defaultCamRot, defaultCamFov, 0.22f));
+            }
+            return;
+        }
+        if (focus != "face") focus = "face";
+
+        var target = GetAvatarFocusTarget(focus);
+        if (target == null)
+        {
+            Debug.LogWarning("SetAvatarCameraFocus: No target found");
+            return;
+        }
+
+        // If the target is the avatar root (ground level), estimate face position from bounds
+        Vector3 targetPos = target.position;
+        var mgr = assetManager != null ? assetManager : FindObjectOfType<AssetManager>();
+        var avatarRoot = mgr != null ? mgr.avatarRoot : null;
+        if (avatarRoot != null && target == avatarRoot)
+        {
+            var renderers = avatarRoot.GetComponentsInChildren<Renderer>(true);
+            if (renderers != null && renderers.Length > 0)
+            {
+                Bounds b = renderers[0].bounds;
+                for (int i = 1; i < renderers.Length; i++)
+                    if (renderers[i] != null) b.Encapsulate(renderers[i].bounds);
+                // Head is approximately at 85% of avatar height
+                targetPos = new Vector3(b.center.x, b.min.y + b.size.y * 0.85f, b.center.z);
+            }
+        }
+
+        // Use the default camera direction so zoom in/out is a straight dolly.
+        Vector3 basePos = hasDefaultView ? defaultCamPos : cam.transform.position;
+        Vector3 toCam = basePos - targetPos;
+        Vector3 dir = toCam.sqrMagnitude > 0.0001f ? toCam.normalized : -target.forward;
+
+        // Face framing: wider + higher (show more upper body, keep face higher in frame).
+        float distance = 5.10f;
+        float height = 0.95f;
+        float fov = 66f;
+
+        Vector3 desiredPos = targetPos + dir * distance + Vector3.up * height;
+        // Aim lower (neck/chest) so the face appears higher in frame.
+        // Prefer humanoid chest/hips via our existing resolver; fall back to an offset.
+        var chestOrHips = GetAvatarFocusTarget("clothes");
+        Vector3 lookAt = (chestOrHips != null && chestOrHips != avatarRoot)
+            ? (chestOrHips.position + Vector3.down * 0.15f)
+            : (targetPos + Vector3.down * 0.75f);
+
+        if (cameraFocusCoroutine != null) StopCoroutine(cameraFocusCoroutine);
+        // Zoom-in: slightly faster + ease-out so it doesn't feel overly animated.
+        cameraFocusCoroutine = StartCoroutine(AnimateCameraDollyLookAt(cam, desiredPos, lookAt, fov, 0.16f, easeOut: true));
+    }
+
+    // iOS calls this to override the remote catalog URL explicitly
+    public void SetRemoteCatalogURL(string url)
+    {
+        try
+        {
+            var mgr = assetManager != null ? assetManager : FindObjectOfType<AssetManager>();
+            if (mgr != null)
+            {
+                mgr.remoteCatalogOverrideUrl = url;
+                Debug.Log($"UnityBridge: remote catalog override set to {url}");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"SetRemoteCatalogURL error: {e.Message}");
+        }
+    }
+
+    private void TryAttachStencilClearToAvatarCameras()
+    {
+        if (stencilClearCmd != null) return;
+        Shader clearShader = Shader.Find("Nose/Stencil Clear");
+        if (clearShader == null) return;
+
+        Material clearMat = new Material(clearShader);
+        stencilClearCmd = new CommandBuffer { name = "Clear Stencil" };
+        // Draw a full-screen procedural triangle to clear stencil
+        stencilClearCmd.DrawProcedural(Matrix4x4.identity, clearMat, 0, MeshTopology.Triangles, 3);
+
+        // URP: CameraEvent command buffers don't execute under Universal RP.
+        // Use RenderPipelineManager.beginCameraRendering to inject the stencil
+        // clear via ScriptableRenderContext.ExecuteCommandBuffer instead.
+        RenderPipelineManager.beginCameraRendering -= OnBeginCameraRendering;
+        RenderPipelineManager.beginCameraRendering += OnBeginCameraRendering;
+    }
+
+    private void OnBeginCameraRendering(ScriptableRenderContext context, Camera cam)
+    {
+        if (stencilClearCmd == null) return;
+        // Only clear stencil for avatar-related cameras
+        if (cam.gameObject.name != "AvatarCamera" && cam.gameObject.name != "ThumbnailCamera") return;
+        context.ExecuteCommandBuffer(stencilClearCmd);
+    }
+
+    private void OnDestroy()
+    {
+        RenderPipelineManager.beginCameraRendering -= OnBeginCameraRendering;
+    }
+
+    // iOS calls this method to change an asset
+    public void ChangeAsset(string assetJson)
+    {
+        // Concise log to reduce noise
+        if (!string.IsNullOrEmpty(assetJson))
+        {
+            try { var tmp = JsonUtility.FromJson<MinimalAsset>(assetJson); Debug.Log($"ChangeAsset: {tmp.category}/{tmp.subcategory}/{tmp.name}"); }
+            catch { Debug.Log("ChangeAsset: received"); }
+        }
+        // Debounce duplicates for the same slot/id within a short window
+        try
+        {
+            var m = JsonUtility.FromJson<MinimalAsset>(assetJson);
+            if (m != null && !string.IsNullOrEmpty(m.category) && !string.IsNullOrEmpty(m.subcategory) && !string.IsNullOrEmpty(m.id))
+            {
+                string slotKey = m.category + ":" + m.subcategory;
+                float now = Time.realtimeSinceStartup;
+                if (lastAssetPerSlot.TryGetValue(slotKey, out var last) && last != null)
+                {
+                    if (last.assetId == m.id && (now - last.time) < changeAssetDebounceSeconds)
+                    {
+                        Debug.Log("ChangeAsset: debounced duplicate for slot " + slotKey);
+                        return;
+                    }
+                }
+                lastAssetPerSlot[slotKey] = new LastAssetCall { assetId = m.id, time = now };
+            }
+        }
+        catch { /* ignore parse issues, proceed */ }
+
+        OnChangeAsset?.Invoke(assetJson);
+    }
+
+    // iOS calls this method to change a color
+    public void ChangeColor(string colorJson)
+    {
+        if (!string.IsNullOrEmpty(colorJson))
+        {
+            try { var tmp = JsonUtility.FromJson<MinimalColor>(colorJson); Debug.Log($"ChangeColor: {tmp.category}/{tmp.subcategory} -> {tmp.colorHex}"); }
+            catch { Debug.Log("ChangeColor: received"); }
+        }
+        OnChangeColor?.Invoke(colorJson);
+    }
+
+    // iOS calls this method to remove an asset for a category/subcategory
+    public void RemoveAsset(string message)
+    {
+        try
+        {
+            var data = JsonUtility.FromJson<CategoryRequest>(message);
+            if (assetManager != null && data != null)
+            {
+                assetManager.RemoveAssetForSlot(data.category, data.subcategory);
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"RemoveAsset parse error: {e.Message}");
+        }
+    }
+
+    // iOS calls this to hide/show a category/subcategory without unloading or changing masks
+    // message format: {"category":"Clothes","subcategory":"Tops","visible":true}
+    public void SetCategoryVisibility(string message)
+    {
+        try
+        {
+            var data = JsonUtility.FromJson<VisibilityRequest>(message);
+            if (assetManager != null && data != null)
+            {
+                assetManager.SetVisibilityForSlot(data.category, data.subcategory, data.visible);
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"SetCategoryVisibility parse error: {e.Message}");
+        }
+    }
+
+    // iOS calls this method to reset body pose to default (A-pose)
+    public void ResetBodyPose()
+    {
+        Debug.Log("UnityBridge: ResetBodyPose request");
+        if (assetManager != null)
+        {
+            assetManager.ResetBodyPose();
+        }
+    }
+
+    // iOS calls this method to get all available categories with callback
+    public void GetAvailableCategories(string callbackId)
+    {
+        if (assetManager == null) 
+        {
+            SendResponseToiOS(callbackId, "[]");
+            return;
+        }
+        
+        var categories = assetManager.GetAvailableCategories();
+        var categoryList = new List<object>();
+        
+        foreach (var category in categories)
+        {
+            var subcategories = assetManager.GetSubcategoriesForCategory(category);
+            categoryList.Add(new { category = category, subcategories = subcategories });
+        }
+        
+        var response = new { categories = categoryList };
+        string jsonResponse = JsonUtility.ToJson(response);
+        SendResponseToiOS(callbackId, jsonResponse);
+    }
+
+    // iOS calls this method to get all assets for a specific category/subcategory with callback
+    public void GetAssetsForCategory(string message)
+    {
+        if (assetManager == null) 
+        {
+            SendResponseToiOS("", "[]");
+            return;
+        }
+        
+        try
+        {
+            var data = JsonUtility.FromJson<CategoryRequest>(message);
+            var assets = assetManager.GetAvailableAssets(data.category, data.subcategory);
+            var response = new { assets = assets.ToArray() };
+            string jsonResponse = JsonUtility.ToJson(response);
+            SendResponseToiOS(data.callbackId, jsonResponse);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"Error parsing category request: {e.Message}");
+            SendResponseToiOS("", "[]");
+        }
+    }
+
+    // iOS calls this method to get all available assets (for debugging) with callback
+    public void GetAllAvailableAssets(string callbackId)
+    {
+        if (assetManager == null) 
+        {
+            SendResponseToiOS(callbackId, "[]");
+            return;
+        }
+        
+        var allAssets = new List<AssetItem>();
+        var categories = assetManager.GetAvailableCategories();
+        
+        foreach (var category in categories)
+        {
+            var subcategories = assetManager.GetSubcategoriesForCategory(category);
+            foreach (var subcategory in subcategories)
+            {
+                var assets = assetManager.GetAvailableAssets(category, subcategory);
+                allAssets.AddRange(assets);
+            }
+        }
+        
+        var response = new { assets = allAssets.ToArray() };
+        string jsonResponse = JsonUtility.ToJson(response);
+        SendResponseToiOS(callbackId, jsonResponse);
+    }
+
+    // iOS calls this to get available body poses (from AssetManager.poses)
+    public void GetBodyPoses(string callbackId)
+    {
+        if (assetManager == null)
+        {
+            SendResponseToiOS(callbackId, "{\"poses\":[]}");
+            return;
+        }
+
+        var poseNames = assetManager.poses
+            .Where(p => p != null && !string.IsNullOrEmpty(p.name))
+            .Select(p => p.name)
+            .ToArray();
+        var response = new PoseListResponse { poses = poseNames };
+        string jsonResponse = JsonUtility.ToJson(response);
+        SendResponseToiOS(callbackId, jsonResponse);
+    }
+
+    // iOS calls this method to check if the asset catalog is loaded with callback
+    public void IsAssetCatalogLoaded(string callbackId)
+    {
+        if (assetManager == null) 
+        {
+            SendResponseToiOS(callbackId, "false");
+            return;
+        }
+        
+        var categories = assetManager.GetAvailableCategories();
+        bool isLoaded = categories.Count > 0;
+        SendResponseToiOS(callbackId, isLoaded.ToString());
+    }
+
+    // iOS calls this method to get the current avatar state with callback
+    public void GetCurrentAvatarState(string callbackId)
+    {
+        if (assetManager == null) 
+        {
+            SendResponseToiOS(callbackId, "{}");
+            return;
+        }
+        
+        var state = new Dictionary<string, string>();
+        foreach (var kvp in assetManager.loadedAssets)
+        {
+            var asset = assetManager.GetAssetById(kvp.Key);
+            if (asset != null)
+            {
+                state[$"{asset.category}_{asset.subcategory}"] = asset.id;
+            }
+        }
+        
+        var response = new { state = state };
+        string jsonResponse = JsonUtility.ToJson(response);
+        SendResponseToiOS(callbackId, jsonResponse);
+    }
+
+    // iOS calls this to capture a thumbnail of the avatar camera and receive base64 PNG via callbackId
+    public void CaptureAvatarThumbnail(string callbackId)
+    {
+        StartCoroutine(CaptureThumbnailCoroutine(callbackId));
+    }
+
+    // iOS calls this to rotate the avatar by sending horizontal delta in pixels (string parseable as float)
+    public void RotateAvatar(string message)
+    {
+        if (string.IsNullOrEmpty(message)) return;
+        if (rotator == null) rotator = FindObjectOfType<HorizontalRotateOnDrag>();
+        if (rotator == null)
+        {
+            Debug.LogWarning("RotateAvatar: HorizontalRotateOnDrag not found in scene");
+            return;
+        }
+        if (float.TryParse(message, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float dx))
+        {
+            rotator.ExternalDrag(dx);
+        }
+        else
+        {
+            Debug.LogWarning($"RotateAvatar: could not parse delta '{message}'");
+        }
+    }
+
+    private IEnumerator CaptureThumbnailCoroutine(string callbackId)
+    {
+        // Pick a camera: prefer a camera named "ThumbnailCamera", then "AvatarCamera", else Camera.main, else any enabled camera
+        Camera cam = null;
+        var thumbCamGO = GameObject.Find("ThumbnailCamera");
+        if (thumbCamGO != null) cam = thumbCamGO.GetComponent<Camera>();
+        var avatarCamGO = GameObject.Find("AvatarCamera");
+        if (cam == null && avatarCamGO != null) cam = avatarCamGO.GetComponent<Camera>();
+        if (cam == null) cam = Camera.main;
+        if (cam == null)
+        {
+            var all = GameObject.FindObjectsOfType<Camera>();
+            foreach (var c in all) { if (c != null && c.enabled) { cam = c; break; } }
+        }
+        if (cam == null)
+        {
+            SendResponseToiOS(callbackId, "{\"error\":\"No camera found\"}");
+            yield break;
+        }
+
+        // Wait for end of frame to ensure latest pose is rendered
+        yield return new WaitForEndOfFrame();
+
+        int width = Mathf.Clamp(Screen.width, 128, 4096);
+        int height = Mathf.Clamp(Screen.height, 128, 4096);
+
+        var prevRT = RenderTexture.active;
+        var prevCamRT = cam.targetTexture;
+        var prevCamRect = cam.rect;
+        bool isThumbnailCamera = cam.gameObject != null && cam.gameObject.name == "ThumbnailCamera";
+        bool prevEnabled = cam.enabled;
+        RenderTexture rt = RenderTexture.GetTemporary(width, height, 24, RenderTextureFormat.ARGB32);
+        try
+        {
+            // URP needs the camera enabled for cam.Render() to fully render
+            // scene-embedded SkinnedMeshRenderers. targetTexture prevents screen output.
+            cam.enabled = true;
+            // Render into full texture area regardless of scene viewport settings
+            cam.rect = new Rect(0f, 0f, 1f, 1f);
+            cam.targetTexture = rt;
+            cam.Render();
+
+            RenderTexture.active = rt;
+
+            // Compute avatar viewport rect and crop to it if available
+            Rect pixelRect = new Rect(0, 0, width, height);
+            if (assetManager != null && assetManager.gameObject != null)
+            {
+                if (TryComputeAvatarViewportRect(cam, out Rect viewportRect))
+                {
+                    // Expand slightly for padding
+                    viewportRect = ExpandViewportRect(viewportRect, 0.05f);
+                    pixelRect = ViewportToPixelRect(viewportRect, width, height);
+                }
+            }
+
+            int cropW = Mathf.Clamp(Mathf.RoundToInt(pixelRect.width), 8, width);
+            int cropH = Mathf.Clamp(Mathf.RoundToInt(pixelRect.height), 8, height);
+            Texture2D tex = new Texture2D(cropW, cropH, TextureFormat.RGBA32, false);
+            tex.ReadPixels(pixelRect, 0, 0, false);
+            tex.Apply(false, false);
+
+            byte[] png = ImageConversion.EncodeToPNG(tex);
+            Object.Destroy(tex);
+
+            string b64 = System.Convert.ToBase64String(png);
+            var payload = new ThumbnailPayload { imageBase64 = b64, width = width, height = height };
+            string json = JsonUtility.ToJson(payload);
+            SendResponseToiOS(callbackId, json);
+        }
+        finally
+        {
+            cam.targetTexture = prevCamRT;
+            cam.rect = prevCamRect;
+            if (isThumbnailCamera) cam.enabled = prevEnabled;
+            RenderTexture.active = prevRT;
+            RenderTexture.ReleaseTemporary(rt);
+        }
+    }
+
+    // iOS calls this to capture and save a thumbnail to a file under Application.temporaryCachePath
+    // message format: "relative|width|height|transparentFlag" (transparentFlag: 1=true, 0/absent=false)
+    // Backwards compatible with message = relative only
+    public void CaptureAvatarThumbnailToFile(string message)
+    {
+        StartCoroutine(CaptureThumbnailToFileCoroutine(message));
+    }
+
+    private IEnumerator CaptureThumbnailToFileCoroutine(string message)
+    {
+        // Parse message parts
+        string relativePath = message;
+        int reqW = -1, reqH = -1; bool transparent = false;
+        var parts = message.Split('|');
+        if (parts.Length >= 1) relativePath = parts[0];
+        if (parts.Length >= 3)
+        {
+            int.TryParse(parts[1], out reqW);
+            int.TryParse(parts[2], out reqH);
+        }
+        if (parts.Length >= 4) transparent = parts[3] == "1";
+        // Pick a camera: prefer "ThumbnailCamera", then "AvatarCamera", else Camera.main
+        Camera cam = null;
+        var thumbCamGO = GameObject.Find("ThumbnailCamera");
+        if (thumbCamGO != null) cam = thumbCamGO.GetComponent<Camera>();
+        var avatarCamGO = GameObject.Find("AvatarCamera");
+        if (cam == null && avatarCamGO != null) cam = avatarCamGO.GetComponent<Camera>();
+        if (cam == null) cam = Camera.main;
+        if (cam == null)
+        {
+            var all = GameObject.FindObjectsOfType<Camera>();
+            foreach (var c in all) { if (c != null && c.enabled) { cam = c; break; } }
+        }
+        if (cam == null)
+        {
+            Debug.LogError("CaptureAvatarThumbnailToFile: No camera found");
+            yield break;
+        }
+
+        yield return new WaitForEndOfFrame();
+
+        int width = reqW > 0 ? Mathf.Clamp(reqW, 64, 4096) : Mathf.Clamp(Screen.width, 128, 4096);
+        int height = reqH > 0 ? Mathf.Clamp(reqH, 64, 4096) : Mathf.Clamp(Screen.height, 128, 4096);
+
+		var prevRT = RenderTexture.active;
+        var prevCamRT = cam.targetTexture;
+        var prevCamRect = cam.rect;
+        bool isThumbnailCamera = cam.gameObject != null && cam.gameObject.name == "ThumbnailCamera";
+        bool prevEnabled = cam.enabled;
+        var prevClear = cam.clearFlags;
+        var prevBG = cam.backgroundColor;
+        float prevOrthoSize = cam.orthographic ? cam.orthographicSize : 0f;
+        float prevAspect = cam.aspect;
+        Vector3 prevPos = cam.transform.position; Quaternion prevRot = cam.transform.rotation;
+        List<Renderer> disabledNonAvatarRenderers = null;
+        RenderTexture rt = RenderTexture.GetTemporary(width, height, 24, RenderTextureFormat.ARGB32);
+        try
+        {
+            // URP needs the camera enabled for cam.Render() to fully render
+            // scene-embedded SkinnedMeshRenderers. targetTexture prevents screen output.
+            cam.enabled = true;
+            // Render into full texture area regardless of scene viewport settings
+            cam.rect = new Rect(0f, 0f, 1f, 1f);
+            if (transparent)
+            {
+                cam.clearFlags = CameraClearFlags.SolidColor;
+                cam.backgroundColor = new Color(0f, 0f, 0f, 0f);
+            }
+
+            // Hide all non-avatar renderers during capture to ensure transparency.
+            // Walk from avatarRoot (Armature) up to the scene root so that sibling
+            // meshes (body, face) are also considered part of the avatar.
+            var mgr = assetManager != null ? assetManager : GameObject.FindObjectOfType<AssetManager>();
+            if (mgr != null && mgr.avatarRoot != null)
+            {
+                Transform avatarSceneRoot = mgr.avatarRoot;
+                while (avatarSceneRoot.parent != null) avatarSceneRoot = avatarSceneRoot.parent;
+
+                disabledNonAvatarRenderers = new List<Renderer>();
+                var allRenderers = GameObject.FindObjectsOfType<Renderer>(true);
+                foreach (var r in allRenderers)
+                {
+                    if (r == null || !r.enabled) continue;
+                    var t = r.transform;
+                    bool underAvatar = t == avatarSceneRoot || t.IsChildOf(avatarSceneRoot);
+                    if (!underAvatar)
+                    {
+                        r.enabled = false;
+                        disabledNonAvatarRenderers.Add(r);
+                    }
+                }
+            }
+
+            // Frame avatar to fit requested aspect without cropping
+            cam.aspect = (float)width / Mathf.Max(1, height);
+            FrameAvatarForFullFigure(cam, 1.20f, 0.0f);
+            // Ensure near clip doesn't cut off toes
+            cam.nearClipPlane = Mathf.Min(cam.nearClipPlane, 0.01f);
+            cam.targetTexture = rt;
+            cam.Render();
+            RenderTexture.active = rt;
+            // No cropping – capture full RT to preserve full figure
+            Texture2D tex = new Texture2D(width, height, TextureFormat.RGBA32, false);
+            tex.ReadPixels(new Rect(0, 0, width, height), 0, 0, false);
+            tex.Apply(false, false);
+            byte[] png = ImageConversion.EncodeToPNG(tex);
+            Object.Destroy(tex);
+
+            string dir = System.IO.Path.Combine(Application.temporaryCachePath, System.IO.Path.GetDirectoryName(relativePath) ?? string.Empty);
+            if (!System.IO.Directory.Exists(dir)) System.IO.Directory.CreateDirectory(dir);
+            string full = System.IO.Path.Combine(Application.temporaryCachePath, relativePath);
+            System.IO.File.WriteAllBytes(full, png);
+            Debug.Log($"CaptureAvatarThumbnailToFile: wrote {full}");
+        }
+        finally
+        {
+            // Restore any renderers we hid and camera state
+            if (disabledNonAvatarRenderers != null)
+            {
+                foreach (var r in disabledNonAvatarRenderers)
+                {
+                    if (r != null) r.enabled = true;
+                }
+            }
+            cam.targetTexture = prevCamRT;
+            cam.rect = prevCamRect;
+            cam.clearFlags = prevClear;
+            cam.backgroundColor = prevBG;
+            if (cam.orthographic) cam.orthographicSize = prevOrthoSize;
+            cam.aspect = prevAspect;
+            cam.transform.SetPositionAndRotation(prevPos, prevRot);
+            if (isThumbnailCamera) cam.enabled = prevEnabled;
+            RenderTexture.active = prevRT;
+            RenderTexture.ReleaseTemporary(rt);
+        }
+    }
+
+    private bool TryComputeAvatarViewportRect(Camera cam, out Rect viewportRect)
+    {
+        viewportRect = new Rect(0, 0, 1, 1);
+        if (cam == null) return false;
+        var assetMgr = assetManager != null ? assetManager : GameObject.FindObjectOfType<AssetManager>();
+        if (assetMgr == null || assetMgr.avatarRoot == null) return false;
+
+        // Walk up to the avatar scene root so sibling meshes (body, face)
+        // are included — mirrors the hide-non-avatar logic in capture.
+        Transform avatarSceneRoot = assetMgr.avatarRoot;
+        while (avatarSceneRoot.parent != null) avatarSceneRoot = avatarSceneRoot.parent;
+        var renderers = avatarSceneRoot.GetComponentsInChildren<Renderer>(true);
+        if (renderers == null || renderers.Length == 0) return false;
+
+        bool anyPoint = false;
+        float minX = 1f, minY = 1f, maxX = 0f, maxY = 0f;
+
+        foreach (var r in renderers)
+        {
+            if (r == null) continue;
+            Bounds b = r.bounds;
+            Vector3 c = b.center;
+            Vector3 e = b.extents;
+            // 8 corners of the bounds box
+            Vector3[] corners = new Vector3[]
+            {
+                c + new Vector3( e.x,  e.y,  e.z),
+                c + new Vector3( e.x,  e.y, -e.z),
+                c + new Vector3( e.x, -e.y,  e.z),
+                c + new Vector3( e.x, -e.y, -e.z),
+                c + new Vector3(-e.x,  e.y,  e.z),
+                c + new Vector3(-e.x,  e.y, -e.z),
+                c + new Vector3(-e.x, -e.y,  e.z),
+                c + new Vector3(-e.x, -e.y, -e.z)
+            };
+            foreach (var world in corners)
+            {
+                Vector3 vp = cam.WorldToViewportPoint(world);
+                // consider only points in front of camera
+                if (vp.z <= 0f) continue;
+                anyPoint = true;
+                minX = Mathf.Min(minX, vp.x);
+                minY = Mathf.Min(minY, vp.y);
+                maxX = Mathf.Max(maxX, vp.x);
+                maxY = Mathf.Max(maxY, vp.y);
+            }
+        }
+
+        if (!anyPoint) return false;
+        // Clamp to [0,1]
+        minX = Mathf.Clamp01(minX);
+        minY = Mathf.Clamp01(minY);
+        maxX = Mathf.Clamp01(maxX);
+        maxY = Mathf.Clamp01(maxY);
+        float w = Mathf.Max(0.01f, maxX - minX);
+        float h = Mathf.Max(0.01f, maxY - minY);
+        viewportRect = new Rect(minX, minY, w, h);
+        return true;
+    }
+
+    private Rect ExpandViewportRect(Rect rect, float paddingFraction)
+    {
+        float cx = rect.x + rect.width * 0.5f;
+        float cy = rect.y + rect.height * 0.5f;
+        float w = rect.width * (1f + paddingFraction * 2f);
+        float h = rect.height * (1f + paddingFraction * 2f);
+        float x = cx - w * 0.5f;
+        float y = cy - h * 0.5f;
+        // Clamp to [0,1]
+        float x0 = Mathf.Clamp01(x);
+        float y0 = Mathf.Clamp01(y);
+        float x1 = Mathf.Clamp01(x + w);
+        float y1 = Mathf.Clamp01(y + h);
+        return new Rect(x0, y0, Mathf.Max(0.01f, x1 - x0), Mathf.Max(0.01f, y1 - y0));
+    }
+
+    private Rect ViewportToPixelRect(Rect vp, int texWidth, int texHeight)
+    {
+        float px = vp.x * texWidth;
+        // Flip Y because ReadPixels uses bottom-left origin and viewport.y is from bottom,
+        // but we want the rect's bottom edge at (1 - (y + h)) in pixel space
+        float py = (1f - (vp.y + vp.height)) * texHeight;
+        float pw = vp.width * texWidth;
+        float ph = vp.height * texHeight;
+        return new Rect(Mathf.Round(px), Mathf.Round(py), Mathf.Round(pw), Mathf.Round(ph));
+    }
+
+    private void FrameAvatarForFullFigure(Camera cam, float padding, float verticalBias)
+    {
+        var mgr = assetManager != null ? assetManager : GameObject.FindObjectOfType<AssetManager>();
+        if (mgr == null || mgr.avatarRoot == null || cam == null) return;
+
+        // Walk up to the avatar scene root so sibling meshes (body, face)
+        // are included — mirrors the hide-non-avatar logic in capture.
+        Transform avatarSceneRoot = mgr.avatarRoot;
+        while (avatarSceneRoot.parent != null) avatarSceneRoot = avatarSceneRoot.parent;
+        var renderers = avatarSceneRoot.GetComponentsInChildren<Renderer>(true);
+        if (renderers == null || renderers.Length == 0) return;
+        Bounds b = renderers[0].bounds;
+        for (int i = 1; i < renderers.Length; i++) { if (renderers[i] != null) b.Encapsulate(renderers[i].bounds); }
+
+        Vector3 center = b.center;
+        // Apply a small vertical bias so composition feels centered by eye
+        center.y += verticalBias * b.size.y;
+        float height = Mathf.Max(0.01f, b.size.y) * padding;
+        float width = Mathf.Max(0.01f, b.size.x) * padding;
+
+        if (cam.orthographic)
+        {
+            float orthoForHeight = height * 0.5f;
+            float orthoForWidth = (width * 0.5f) / Mathf.Max(0.01f, cam.aspect);
+            cam.orthographicSize = Mathf.Max(orthoForHeight, orthoForWidth);
+            // Reposition so the camera is level with the avatar center, looking
+            // straight at it.  Without this the camera stays high above (e.g.
+            // y=5.14) and LookAt tilts it downward, foreshortening the avatar.
+            Vector3 dir = cam.transform.forward.sqrMagnitude > 0.0001f ? cam.transform.forward : Vector3.forward;
+            cam.transform.position = center - dir.normalized * 10f;
+            cam.transform.LookAt(center);
+        }
+        else
+        {
+            float vFov = Mathf.Deg2Rad * Mathf.Max(1f, cam.fieldOfView);
+            float distByHeight = (height * 0.5f) / Mathf.Tan(vFov * 0.5f);
+            float hFov = 2f * Mathf.Atan(Mathf.Tan(vFov * 0.5f) * cam.aspect);
+            float distByWidth = (width * 0.5f) / Mathf.Tan(hFov * 0.5f);
+            float dist = Mathf.Max(distByHeight, distByWidth);
+            Vector3 forward = cam.transform.forward.sqrMagnitude > 0.0001f ? cam.transform.forward : Vector3.forward;
+            cam.transform.position = center - forward.normalized * dist;
+            cam.transform.LookAt(center);
+        }
+    }
+    // Send response back to iOS
+    private void SendResponseToiOS(string callbackId, string response)
+    {
+        if (string.IsNullOrEmpty(callbackId))
+        {
+            Debug.LogWarning("No callback ID provided, cannot send response to iOS");
+            return;
+        }
+        
+        // Send response to iOS via UnityLauncher
+        if (UnityLauncher.Instance != null)
+        {
+            var responseData = new ResponseData { callbackId = callbackId, data = response };
+            string jsonResponse = JsonUtility.ToJson(responseData);
+            // Send through UnityResponse so iOS always receives it
+            UnityLauncher.Instance.SendToIOS("UnityResponse", jsonResponse);
+            Debug.Log($"Sent response to iOS: {callbackId} -> {response}");
+        }
+        else
+        {
+            Debug.LogError("UnityLauncher.Instance not found, cannot send response to iOS");
+        }
+    }
+
+    // Send log message back to iOS
+    public void SendLogToiOS(string message)
+    {
+        Debug.Log($"Unity -> iOS: {message}");
+        // You can implement additional logging here if needed
+    }
+}
+
+// Helper classes for JSON serialization
+[System.Serializable]
+public class CategoryRequest
+{
+    public string category;
+    public string subcategory;
+    public string callbackId;
+}
+
+[System.Serializable]
+public class VisibilityRequest
+{
+    public string category;
+    public string subcategory;
+    public bool visible;
+}
+
+[System.Serializable]
+public class ResponseData
+{
+    public string callbackId;
+    public string data;
+}
+
+[System.Serializable]
+public class PoseListResponse
+{
+    public string[] poses;
+}
+
+[System.Serializable]
+public class ThumbnailPayload
+{
+    public string imageBase64;
+    public int width;
+    public int height;
+}
+
+// Minimal log structs to reduce JSON spam parsing
+[System.Serializable]
+public class MinimalAsset { public string category; public string subcategory; public string name; public string id; }
+[System.Serializable]
+public class MinimalColor { public string category; public string subcategory; public string colorHex; }
