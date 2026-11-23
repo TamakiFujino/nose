@@ -41,7 +41,9 @@ def make_wisps(cols, count, mirror=False):
             r_start = random.uniform(0.0, 2.0)
         else:
             r_start = random.uniform(3.0, rows * 0.5)
-        r_end = random.uniform(max(r_start + rows * 0.25, rows * 0.55), rows - 1.05)
+        # 終端は裾近くまで必ず届かせる（下限55%だと中腹で切れる短い毛が混ざり、
+        # メインの髪より明らかに短い浮き毛として悪目立ちする）
+        r_end = random.uniform(rows * 0.82, rows - 1.05)
         floaty = 0.003 if random.random() < 0.22 else 0.0
         amp = random.uniform(0.003, 0.009)
         phase = random.uniform(0, 2 * math.pi)
